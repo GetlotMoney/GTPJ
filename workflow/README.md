@@ -11,7 +11,8 @@ Use `NEXT_ACTIONS.md` as the current execution window.
 ```bash
 python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind final --exp-id FINAL-001 --slug clean_seed5
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug attribute_router --title "attribute router" --source-type user --base-version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router
 ```

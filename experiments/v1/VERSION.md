@@ -35,4 +35,4 @@ config: experiments/v1/config.yaml
 
 - `tune/`
 - `ablation/`
-- `final/`
+- `confirmation/`

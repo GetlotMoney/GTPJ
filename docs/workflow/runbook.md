@@ -8,21 +8,31 @@ Already done in this repository:
 GTPJ-v1 -> tag v1 -> experiments/v1/
 ```
 
-## Run v1 Final Confirmation
+## Run v1 Confirmation
 
-`FINAL-001_clean_seed5` is already initialized in this repository. If it exists,
+`CONFIRM-001_clean_seed5` is already initialized in this repository. If it exists,
 skip the creation command and continue from the branch command.
 
 ```bash
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind final --exp-id FINAL-001 --slug clean_seed5
-git switch -c exp/v1-final-001-clean-seed5 v1
-python train_VGSR_CUB.py --config experiments/v1/final/FINAL-001_clean_seed5/config.yaml
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
+git switch -c exp/v1-confirm-001-clean-seed5 v1
+python train_VGSR_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
 ```
 
 Record results under:
 
 ```text
-experiments/v1/final/FINAL-001_clean_seed5/
+experiments/v1/confirmation/CONFIRM-001_clean_seed5/
+```
+
+## Run a v1 Tuning Experiment
+
+Tuning runs belong under `experiments/v1/tune/`, not under `confirmation/`.
+
+```bash
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+git switch -c exp/v1-tune-001-topo008 v1
+python train_VGSR_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
 ```
 
 ## Start a New Module Trial

@@ -28,7 +28,7 @@ GTPJ/
 |-- idea_tree/              # strict idea source and queues
 `-- experiments/
     |-- module_trials/      # code-backed module trials
-    `-- v1/                 # GTPJ-v1 tune / ablation / final records
+    `-- v1/                 # GTPJ-v1 tune / ablation / confirmation records
 ```
 
 ## Workflow Rule
@@ -70,7 +70,8 @@ python workflow/gtpj_workflow.py validate
 Create records through the helper, not by hand:
 
 ```bash
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind final --exp-id FINAL-001 --slug clean_seed5
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug attribute_router --title "attribute router" --source-type user --base-version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router
 ```

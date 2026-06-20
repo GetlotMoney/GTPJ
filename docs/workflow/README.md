@@ -6,7 +6,7 @@ GTPJ uses a version-first experiment workflow.
 idea_tree
   -> module_trials
   -> promoted baseline vX
-  -> tune / ablation / final under experiments/vX
+  -> tune / ablation / confirmation under experiments/vX
 ```
 
 Core rule:

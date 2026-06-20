@@ -1,7 +1,7 @@
-# FINAL-001_clean_seed5
+# CONFIRM-001_clean_seed5
 
 ```text
-experiment_id: FINAL-001
+experiment_id: CONFIRM-001
 version: v1
 code_tag: v1
 runtime: OpenClaw preferred / Codex compatible
@@ -14,7 +14,7 @@ status: planned
 
 ## Question
 
-Describe the exact question this experiment answers.
+Confirm that `GTPJ-v1` runs cleanly in this repository with `seed=5`.
 
 ## Pre-Run Checklist
 

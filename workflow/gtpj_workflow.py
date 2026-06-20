@@ -53,7 +53,7 @@ class ExperimentKind:
 KINDS = {
     "tune": ExperimentKind("tune", "tune", "TUNE", "TUNE-LITE"),
     "ablation": ExperimentKind("ablation", "ablation", "ABL", "STANDARD"),
-    "final": ExperimentKind("final", "final", "FINAL", "STRICT"),
+    "confirmation": ExperimentKind("confirmation", "confirmation", "CONFIRM", "STRICT"),
 }
 
 

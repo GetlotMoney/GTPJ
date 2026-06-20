@@ -22,4 +22,4 @@ config:
 
 - tune
 - ablation
-- final
+- confirmation

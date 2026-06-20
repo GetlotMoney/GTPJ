@@ -37,4 +37,4 @@ Historical reference for the imported first baseline:
 
 ## Next Step
 
-Run `FINAL-001_clean_v1_seed5` under `experiments/v1/final/` to confirm the first baseline in this clean repository.
+Run `CONFIRM-001_clean_seed5` under `experiments/v1/confirmation/` to confirm the first baseline in this clean repository.

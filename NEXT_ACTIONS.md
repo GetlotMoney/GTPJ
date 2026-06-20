@@ -5,7 +5,7 @@ not every idea.
 
 ## P0
 
-- [ ] Confirm `GTPJ-v1` with `FINAL-001_clean_seed5`.
+- [ ] Confirm `GTPJ-v1` with `CONFIRM-001_clean_seed5`.
 
 ## P1
 

@@ -23,7 +23,7 @@
 - Every new module trial must start from an `idea_tree` node.
 - No `idea_id`, no `dev/idea-*` branch.
 - Every trial must record implementation, config, review, result, and code tag.
-- Tune, ablation, and final runs belong under a concrete version directory, such as `experiments/v1/`.
+- Tune, ablation, and confirmation runs belong under a concrete version directory, such as `experiments/v1/`.
 
 ## Safety
 

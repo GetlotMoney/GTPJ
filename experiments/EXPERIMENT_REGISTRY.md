@@ -16,4 +16,4 @@ No module trials yet.
 
 | Experiment | Version | Kind | Status | Folder | Notes |
 |---|---|---|---|---|---|
-| `FINAL-001_clean_seed5` | `v1` | `final` | planned | `experiments/v1/final/FINAL-001_clean_seed5` | Created by workflow helper. |
+| `CONFIRM-001_clean_seed5` | `v1` | `confirmation` | planned | `experiments/v1/confirmation/CONFIRM-001_clean_seed5` | Created by workflow helper. |
