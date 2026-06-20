@@ -10,15 +10,15 @@ Required structure:
 
 ```text
 experiments/module_trials/IDEA-0001_short_name/
-├── IDEA.md
-└── TRIAL-001_short_name/
-    ├── README.md
-    ├── implementation.md
-    ├── code.diff
-    ├── config.yaml
-    ├── review.md
-    ├── result.md
-    └── logs/
+|-- IDEA.md
+`-- TRIAL-001_short_name/
+    |-- README.md
+    |-- implementation.md
+    |-- code.diff
+    |-- config.yaml
+    |-- review.md
+    |-- result.md
+    `-- logs/
 ```
 
 Every trial must record:

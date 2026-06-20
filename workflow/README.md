@@ -1,0 +1,23 @@
+# GTPJ Executable Workflow
+
+This directory contains the executable workflow layer for GTPJ.
+
+The repository-level rules live in `docs/workflow/`. This directory turns those
+rules into repeatable commands and runtime entrypoints for OpenClaw and Codex.
+
+## Quick Commands
+
+```bash
+python workflow/gtpj_workflow.py status
+python workflow/gtpj_workflow.py validate
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind final --exp-id FINAL-001 --slug clean_seed5
+python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug attribute_router --title "attribute router" --source-type user --base-version v1
+python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router
+```
+
+## Runtime Entrypoints
+
+- `openclaw/README.md`: OpenClaw-first execution rules.
+- `codex/README.md`: Codex-compatible execution rules.
+
+Both runtimes must use the same repository files, templates, and CLI checks.

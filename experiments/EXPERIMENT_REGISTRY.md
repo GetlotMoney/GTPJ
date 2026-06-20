@@ -14,4 +14,6 @@ No module trials yet.
 
 ## Version Experiments
 
-No clean GTPJ-run experiments yet.
+| Experiment | Version | Kind | Status | Folder | Notes |
+|---|---|---|---|---|---|
+| `FINAL-001_clean_seed5` | `v1` | `final` | planned | `experiments/v1/final/FINAL-001_clean_seed5` | Created by workflow helper. |

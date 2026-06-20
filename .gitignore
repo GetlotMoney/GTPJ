@@ -30,7 +30,6 @@ cache/
 *.npz
 
 # Local agent/tool state
-.claude/
 .openclaw-workspace/
 .agent-state/
 experiments/.agent-state/

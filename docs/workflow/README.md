@@ -20,6 +20,7 @@ Runtime rule:
 - OpenClaw is preferred for running experiments.
 - Codex follows the same files and can perform the same workflow.
 - The repository files are the source of truth for both runtimes.
+- Structural actions must go through `workflow/gtpj_workflow.py`.
 
 Read in this order:
 
@@ -30,3 +31,4 @@ Read in this order:
 5. `experiment_protocol.md`
 6. `review_gate.md`
 7. `runbook.md`
+8. `workflow/README.md`

@@ -12,6 +12,7 @@
 - `main` is the only long-lived branch.
 - `v1`, `v2`, `v3` are permanent baseline tags.
 - Trial code snapshots use tags such as `trial/idea-0001/trial-001`.
+- Use `workflow/gtpj_workflow.py` for status checks and new workflow records.
 - Do not create controller branches.
 - Do not migrate old experiment IDs, old branches, old PRs, or old workflow files.
 - Do not push unless the owner explicitly asks for push.
