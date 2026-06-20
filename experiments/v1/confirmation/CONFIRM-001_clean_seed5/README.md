@@ -6,10 +6,10 @@ version: v1
 code_tag: v1
 runtime: OpenClaw preferred / Codex compatible
 review_mode: STRICT
-run_commit:
+run_commit: c2571b0
 config: config.yaml
-log:
-status: planned
+log: pending
+status: running
 ```
 
 ## 问题
@@ -31,3 +31,26 @@ status: planned
 ## 结论
 
 待记录。
+
+## 运行计划
+
+```text
+branch: exp/v1-confirm-001-clean-seed5
+command: F:\Anaconda\envs\dvsr_gpu\python.exe train_VGSR_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
+python: F:\Anaconda\envs\dvsr_gpu\python.exe
+dataset: CUB GZSL
+seed: 5
+device: cuda:0
+data_source: local data junction to C:\Users\Administrator\Desktop\cv-work\DVSR\data
+metadata_source: local junction data/xlsa17/data -> C:\Users\Administrator\Desktop\cv-work\DVSR\xlsa17\xlsa17\data
+```
+
+训练策略由 `config.yaml` 锁定。`lr_stages` 存在时，训练脚本会用分阶段策略覆盖单独的 `epochs` 字段：
+
+```text
+stage 1: lr=0.001, epochs=20, eta_min=1e-5
+stage 2: lr=0.0001, epochs=20, eta_min=1e-6, restart_from_best=False
+stage 3: lr=0.00001, epochs=10, eta_min=1e-7, restart_from_best=False
+total_epochs: 50
+amp: disabled by default
+```
