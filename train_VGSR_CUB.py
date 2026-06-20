@@ -137,7 +137,7 @@ print_log(f"│  resume_from        : {getattr(config, 'resume_from', '')!r}")
 print_log(f"│  resume_lr_schedule : {getattr(config, 'resume_lr_schedule', 'continue')}")
 print_log(f"│  extra_epochs       : {getattr(config, 'extra_epochs', 0)}")
 print_log("├─ Speed Optimizations ───────────────────────────────────┤")
-print_log(f"│  use_amp       : {getattr(config, 'use_amp', True)}  (BF16 autocast)")
+print_log(f"│  use_amp       : {getattr(config, 'use_amp', False)}  (BF16 autocast)")
 print_log(f"│  pin_memory    : enabled if patch cache loaded  non_blocking H2D : True")
 print_log("└─────────────────────────────────────────────────────────┘")
 
@@ -595,8 +595,8 @@ print_log("=" * 60)
 # ==========================================
 # autocast: forward 自动用 fp16 张量核 (FAE 矩阵乘加速 ~30%)
 # GradScaler: backward 自动放大 loss 防 fp16 underflow
-# 关闭开关: yaml 设 use_amp: False
-USE_AMP = bool(getattr(config, 'use_amp', True))
+# GTPJ-v1 keeps AMP disabled by default for reproducibility.
+USE_AMP = bool(getattr(config, 'use_amp', False))
 if USE_AMP:
     # ★ 新 API: torch.amp.autocast('cuda', ...)
     # 用 BF16 而非 FP16: 5070 Ti 原生支持, 数值范围与 FP32 同, 无需 GradScaler

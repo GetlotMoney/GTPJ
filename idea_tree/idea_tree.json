@@ -1,5 +1,510 @@
 {
   "project": "GTPJ",
   "version": "2026-06-20",
-  "ideas": []
+  "current_version": "v1",
+  "ideas": [
+    {
+      "idea_id": "IDEA-0001",
+      "idea_dir": "idea_tree/ideas/IDEA-0001_lastvit_cls/",
+      "title": "LaSt-ViT CLS replacement",
+      "status": "candidate",
+      "source_type": "hybrid",
+      "source_ref": "Code comment claims LaSt-ViT / Vision Transformers Need More Than Registers. Exact paper and official code are not verified yet.",
+      "source_status": "unverified",
+      "global_score": 55,
+      "version_scores": {
+        "v1": {
+          "score": 55,
+          "applicability": "needs_adaptation",
+          "rationale": "May improve fine-grained CLS representation, but v1 depends on CLIP-space alignment and this path can perturb base logits.",
+          "blockers": [
+            "Verify paper/source",
+            "Run shape and CLIP-alignment check"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "Frozen CLIP ViT-L/14@336px",
+        "patch tokens",
+        "base logits"
+      ],
+      "target_component": "model/MyModel.py: use_lastvit_cls",
+      "hypothesis": "Replacing or blending CLIP CLS with a part-aware patch pooled CLS may improve fine-grained bird recognition if the pooled feature remains aligned with CLIP text space.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "possibly improve fine-grained seen discrimination",
+        "H": "unknown"
+      },
+      "implementation_scope": "Evaluate use_lastvit_cls and lastvit residual/projection path without changing the v1 patch-selection baseline.",
+      "risk": "High risk of CLIP text-vision misalignment and seen-favoring shortcut.",
+      "compatibility": "Must keep config-off path exactly equal to v1.",
+      "transfer_notes": "May transfer to later versions if they still use CLIP CLS or base logits.",
+      "priority": 0.55,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_lastvit_cls=false.",
+        "Implementation exists in model/MyModel.py but is not active in v1.",
+        "Source needs paper/source-code verification before trial."
+      ],
+      "next_action": "Verify the cited paper/source, then decide whether to create a small module trial."
+    },
+    {
+      "idea_id": "IDEA-0002",
+      "idea_dir": "idea_tree/ideas/IDEA-0002_dynamic_local_gating/",
+      "title": "Dynamic local branch gating and pooling",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive code switches.",
+      "source_status": "unknown",
+      "global_score": 45,
+      "version_scores": {
+        "v1": {
+          "score": 45,
+          "applicability": "needs_adaptation",
+          "rationale": "v1 uses fixed add scoring; dynamic gating may help hard samples but changes attribution and can overfit seen classes.",
+          "blockers": [
+            "Split dynamic gate, branch weight, and pooling into separate trials",
+            "Document source or local rationale"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "base logits",
+        "local_score",
+        "score_s2v",
+        "score_v2s"
+      ],
+      "target_component": "model/MyModel.py: gating_dynamic, weight_s2v_mode, pool_method=dmp, pool_dynamic",
+      "hypothesis": "Input-dependent gating may reduce harmful local branch influence on easy samples while keeping local evidence for hard samples.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Test dynamic outer gate, dynamic s2v/v2s branch weight, and DMP pooling as separate controlled switches.",
+      "risk": "Can overfit seen classes or make results hard to attribute if multiple gates change together.",
+      "compatibility": "Each sub-switch must be tested independently and default off.",
+      "transfer_notes": "Reusable in any later version that keeps base_logits plus local_score composition.",
+      "priority": 0.45,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switches exist: gating_dynamic=fixed, weight_s2v_mode=fixed, pool_method=mean, pool_dynamic=fixed.",
+        "Implementation exists but v1 uses fixed add scoring.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Split into one-variable trials only after source or rationale is documented."
+    },
+    {
+      "idea_id": "IDEA-0003",
+      "idea_dir": "idea_tree/ideas/IDEA-0003_cosine_only_scoring/",
+      "title": "Cosine-only CrossModal scoring with anchor losses",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive cosine_only path.",
+      "source_status": "unknown",
+      "global_score": 35,
+      "version_scores": {
+        "v1": {
+          "score": 35,
+          "applicability": "needs_adaptation",
+          "rationale": "This changes the main scoring path from additive correction to CrossModal-only cosine scoring, so it is risky for v1.",
+          "blockers": [
+            "Requires strict review",
+            "Requires anchor-loss source/rationale",
+            "Requires shape and unseen-geometry checks"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "CrossModalTransformer",
+        "Text Adapter",
+        "base logits"
+      ],
+      "target_component": "model/MyModel.py: score_mode=cosine_only and related anchor/distill/aux losses",
+      "hypothesis": "Letting CrossModal enhanced visual and text features directly produce logits may outperform additive correction if anchor losses prevent CLIP-space drift.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Evaluate score_mode=cosine_only together with only the minimum required anchor loss, then add distill or auxiliary losses separately.",
+      "risk": "High risk of destroying CLIP zero-shot geometry and hurting unseen classes.",
+      "compatibility": "Default v1 must remain score_mode=add.",
+      "transfer_notes": "May become more suitable for a future version that intentionally replaces additive scoring.",
+      "priority": 0.35,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config contains score_mode=add, lambda_v_anchor=0, lambda_t_unseen_anchor=0, lambda_distill=0, lambda_aux_s2v=0, lambda_aux_v2s=0.",
+        "Implementation path exists but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Require source/rationale review before any trial because this changes the main scoring path."
+    },
+    {
+      "idea_id": "IDEA-0004",
+      "idea_dir": "idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/",
+      "title": "AG-JEPA neighbor-text variant",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive use_ag_jepa_v2 switch.",
+      "source_status": "unknown",
+      "global_score": 40,
+      "version_scores": {
+        "v1": {
+          "score": 40,
+          "applicability": "direct",
+          "rationale": "v1 already uses AG-JEPA; this is a local extension of the active auxiliary loss.",
+          "blockers": [
+            "Document source or mark as local heuristic",
+            "Check whether neighbor classes blur fine-grained birds"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "AG-JEPA auxiliary training",
+        "GPT text prototypes"
+      ],
+      "target_component": "model/MyModel.py: use_ag_jepa_v2",
+      "hypothesis": "Adding nearby class text as a neighbor constraint may make AG-JEPA patch prediction less class-isolated and improve semantic smoothness.",
+      "expected_effect": {
+        "U": "possibly improve if neighbor semantics transfer",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Test use_ag_jepa_v2 with fixed neighbor_topk and neighbor_weight while keeping base AG-JEPA enabled.",
+      "risk": "May blur fine-grained classes and reduce seen discrimination.",
+      "compatibility": "Only valid on top of v1 AG-JEPA; off path is current v1.",
+      "transfer_notes": "Transfers to versions that keep AG-JEPA.",
+      "priority": 0.4,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_ag_jepa_v2=false.",
+        "Implementation exists in _ag_jepa_loss but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Document whether this is a local variant or paper-backed before trial."
+    },
+    {
+      "idea_id": "IDEA-0005",
+      "idea_dir": "idea_tree/ideas/IDEA-0005_counterfactual_negative_text/",
+      "title": "Counterfactual negative text margin",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive use_cf_neg_text switch.",
+      "source_status": "unknown",
+      "global_score": 40,
+      "version_scores": {
+        "v1": {
+          "score": 40,
+          "applicability": "direct",
+          "rationale": "v1 relies on GPT text prototypes; text-neighbor negatives can be tested as an auxiliary margin without changing logits shape.",
+          "blockers": [
+            "Record source or local heuristic",
+            "Avoid over-separating seen classes"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "GPT text prototypes",
+        "base logits"
+      ],
+      "target_component": "model/MyModel.py: use_cf_neg_text",
+      "hypothesis": "Mining text-neighbor negative classes and enforcing a margin may reduce confusion between semantically similar seen classes.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "possibly improve seen class separation",
+        "H": "unknown"
+      },
+      "implementation_scope": "Test use_cf_neg_text with one small lambda and fixed top-k against v1.",
+      "risk": "Could over-separate seen text neighborhoods and hurt unseen transfer.",
+      "compatibility": "Default off; must not change text embeddings or base logits when disabled.",
+      "transfer_notes": "Transfers to versions that keep class text prototypes.",
+      "priority": 0.4,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_cf_neg_text=false, lambda_cf_neg_text=0.",
+        "Loss implementation exists but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Record a reference source or mark as local heuristic before trial."
+    },
+    {
+      "idea_id": "IDEA-0006",
+      "idea_dir": "idea_tree/ideas/IDEA-0006_geo_attribute_routing/",
+      "title": "Geometry-aware attribute routing",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive use_geo_attr_routing switch.",
+      "source_status": "unknown",
+      "global_score": 50,
+      "version_scores": {
+        "v1": {
+          "score": 50,
+          "applicability": "direct",
+          "rationale": "v1 already passes class attributes and CLIP attribute text; routing can be added as an auxiliary loss.",
+          "blockers": [
+            "Find source support or mark local heuristic",
+            "Verify attribute tensors for CUB",
+            "Check patch-attribute alignment stability"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "FAE geometry-aware local encoding",
+        "CUB expert attributes",
+        "CLIP attribute text"
+      ],
+      "target_component": "model/MyModel.py: use_geo_attr_routing",
+      "hypothesis": "Routing local visual features to class-relevant attribute text may improve explainable part-attribute grounding.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Use class attributes and attribute text embeddings to add an auxiliary routing loss.",
+      "risk": "Attribute supervision may not align with CLIP patch space and may overfit CUB attributes.",
+      "compatibility": "Requires class_attr and attr_text_embeds; default off path is current v1.",
+      "transfer_notes": "Transfers to versions that preserve attribute tensors; may not transfer to datasets without attributes.",
+      "priority": 0.5,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_geo_attr_routing=false, lambda_geo_attr_routing=0.",
+        "Implementation checks required attribute tensors but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Find paper/source support for attribute routing or mark as local idea before trial."
+    },
+    {
+      "idea_id": "IDEA-0007",
+      "idea_dir": "idea_tree/ideas/IDEA-0007_text_attribute_reservoir/",
+      "title": "Topology-aware text attribute reservoir",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive use_text_attr_reservoir switch.",
+      "source_status": "unknown",
+      "global_score": 45,
+      "version_scores": {
+        "v1": {
+          "score": 45,
+          "applicability": "needs_adaptation",
+          "rationale": "Could enrich text prototypes, but v1 depends on stable GPT/CLIP text geometry and topology loss.",
+          "blockers": [
+            "Clarify source",
+            "Check text topology drift",
+            "Test with small ratio only"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "GPT text prototypes",
+        "CUB expert attributes",
+        "CLIP attribute text",
+        "Topology-preserving text constraint"
+      ],
+      "target_component": "model/MyModel.py: use_text_attr_reservoir",
+      "hypothesis": "Injecting attribute-text reservoir information into class prototypes may enrich class semantics while topology loss limits drift.",
+      "expected_effect": {
+        "U": "possibly improve semantic transfer",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Enable text_attr_reservoir with zero-init projection and test one small ratio.",
+      "risk": "May distort GPT/CLIP text prototype geometry or leak noisy attribute emphasis.",
+      "compatibility": "Requires class_attr and attr_text_embeds; default off path is current v1.",
+      "transfer_notes": "Transfers to text-prototype versions with attribute support.",
+      "priority": 0.45,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_text_attr_reservoir=false.",
+        "Projection module exists but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Clarify source and decide if this should be tested before attribute routing."
+    },
+    {
+      "idea_id": "IDEA-0008",
+      "idea_dir": "idea_tree/ideas/IDEA-0008_attr_patch_ot/",
+      "title": "Attribute-patch OT alignment",
+      "status": "candidate",
+      "source_type": "hybrid",
+      "source_ref": "Uses optimal-transport style Sinkhorn matching, but the exact GTPJ module source is not verified.",
+      "source_status": "unverified",
+      "global_score": 50,
+      "version_scores": {
+        "v1": {
+          "score": 50,
+          "applicability": "direct",
+          "rationale": "v1 has FAE patches and attribute text inputs, so OT alignment can be tested as an auxiliary loss.",
+          "blockers": [
+            "Verify OT/patch-attribute source",
+            "Check numerical stability",
+            "Keep lambda small"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "FAE geometry-aware local encoding",
+        "CUB expert attributes",
+        "CLIP attribute text"
+      ],
+      "target_component": "model/MyModel.py: use_attr_patch_ot",
+      "hypothesis": "Soft OT alignment between local patches and class-relevant attributes may improve fine-grained part grounding.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Enable attr_patch_ot with fixed top-k, temperature, and Sinkhorn iterations.",
+      "risk": "Extra alignment loss can be unstable and may force incorrect patch-attribute matches.",
+      "compatibility": "Requires class_attr and attr_text_embeds; default off path is current v1.",
+      "transfer_notes": "Transfers only to versions with patch tokens and attribute text.",
+      "priority": 0.5,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_attr_patch_ot=false, lambda_attr_patch_ot=0.",
+        "Sinkhorn-style loss implementation exists but is inactive in v1.",
+        "General OT concept exists, but exact module source is not recorded."
+      ],
+      "next_action": "Verify OT/patch-attribute grounding source before trial."
+    },
+    {
+      "idea_id": "IDEA-0009",
+      "idea_dir": "idea_tree/ideas/IDEA-0009_uncertainty_msdn_gate/",
+      "title": "Uncertainty-aware MSDN gate",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive use_uncertainty_msdn_gate switch.",
+      "source_status": "unknown",
+      "global_score": 50,
+      "version_scores": {
+        "v1": {
+          "score": 50,
+          "applicability": "direct",
+          "rationale": "v1 actively uses MSDN; uncertainty gating can modify only that auxiliary loss while keeping logits shape unchanged.",
+          "blockers": [
+            "Document confidence-gating source or local rationale",
+            "Check whether gating weakens active distillation"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "MSDN mutual branch distillation",
+        "score_s2v",
+        "score_v2s"
+      ],
+      "target_component": "model/MyModel.py: use_uncertainty_msdn_gate",
+      "hypothesis": "Reducing mutual distillation weight when branches are uncertain or disagree may prevent wrong consensus from being reinforced.",
+      "expected_effect": {
+        "U": "unknown",
+        "S": "unknown",
+        "H": "unknown"
+      },
+      "implementation_scope": "Enable uncertainty gate only, keeping lambda_msdn and msdn_temp equal to v1.",
+      "risk": "May weaken an active v1 loss and reduce the benefit of branch distillation.",
+      "compatibility": "Only meaningful when lambda_msdn > 0; default off path is current v1.",
+      "transfer_notes": "Transfers to any version with two-branch distillation.",
+      "priority": 0.5,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config switch exists: use_uncertainty_msdn_gate=false.",
+        "Gate implementation exists inside the MSDN loss but is inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Document whether this is local confidence gating or paper-backed before trial."
+    },
+    {
+      "idea_id": "IDEA-0010",
+      "idea_dir": "idea_tree/ideas/IDEA-0010_seen_unseen_calibration/",
+      "title": "Seen-unseen calibration losses",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "Source unclear. Migrated from inactive calibration and bias-margin losses.",
+      "source_status": "unknown",
+      "global_score": 30,
+      "version_scores": {
+        "v1": {
+          "score": 30,
+          "applicability": "needs_adaptation",
+          "rationale": "Calibration can improve U but may reduce S; v1 should first confirm baseline before calibration trials.",
+          "blockers": [
+            "Find GZSL calibration reference",
+            "Define decision rule based on H, not only U"
+          ]
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "base logits",
+        "GZSL seen/unseen split"
+      ],
+      "target_component": "model/MyModel.py: lambda_cal and lambda_bias",
+      "hypothesis": "Explicit seen-unseen calibration may reduce seen-class bias in generalized zero-shot evaluation.",
+      "expected_effect": {
+        "U": "possibly improve",
+        "S": "possibly decrease",
+        "H": "unknown"
+      },
+      "implementation_scope": "Test lambda_cal and lambda_bias separately, never together in the first trial.",
+      "risk": "Can artificially trade seen accuracy for unseen accuracy without improving harmonic mean.",
+      "compatibility": "Default off path is current v1.",
+      "transfer_notes": "Potentially reusable across GZSL versions but must be scored after each baseline is known.",
+      "priority": 0.3,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        "Config contains lambda_cal=0 and lambda_bias=0.",
+        "Both losses are implemented but inactive in v1.",
+        "Reference source is not recorded."
+      ],
+      "next_action": "Find a GZSL calibration reference before selecting this as a trial."
+    }
+  ]
 }

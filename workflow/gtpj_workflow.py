@@ -36,6 +36,15 @@ FORBIDDEN_REGEXES = [
     re.compile("REV-MOD-" + r"[0-9]{3}"),
     re.compile("COMBO-" + r"[0-9]{3}"),
 ]
+SOURCE_TYPES = {"paper", "user", "observation", "cross_domain", "hybrid"}
+SOURCE_STATUSES = {"verified", "unverified", "unknown", "local_heuristic"}
+APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
+SOURCE_STATUS_RANK = {
+    "verified": 3,
+    "local_heuristic": 2,
+    "unverified": 1,
+    "unknown": 0,
+}
 
 
 class WorkflowError(RuntimeError):
@@ -116,6 +125,16 @@ def branch_slug(value: str) -> str:
     return value.replace("_", "-")
 
 
+def require_score(value: float, label: str) -> float:
+    try:
+        score = float(value)
+    except (TypeError, ValueError) as exc:
+        raise WorkflowError(f"{label} must be a number") from exc
+    if score < 0 or score > 100:
+        raise WorkflowError(f"{label} must be between 0 and 100")
+    return score
+
+
 def list_files_for_scan() -> Iterable[Path]:
     ignored_roots = {".git", "__pycache__"}
     ignored_suffixes = {".pyc", ".pth", ".pt", ".ckpt"}
@@ -168,6 +187,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "workflow/README.md",
         "workflow/openclaw/README.md",
         "workflow/codex/README.md",
+        "idea_tree/INDEX.md",
         "idea_tree/schema.json",
         "idea_tree/idea_tree.json",
         "experiments/EXPERIMENT_REGISTRY.md",
@@ -182,6 +202,43 @@ def cmd_validate(_: argparse.Namespace) -> int:
     idea_tree = json.loads(read_text(REPO_ROOT / "idea_tree" / "idea_tree.json"))
     if idea_tree.get("project") != "GTPJ":
         raise WorkflowError("idea_tree.json project must be GTPJ")
+    current_version = idea_tree.get("current_version")
+    if not isinstance(current_version, str) or not re.fullmatch(r"v[0-9]+", current_version):
+        raise WorkflowError("idea_tree.json current_version must look like v1")
+
+    idea_index = read_text(REPO_ROOT / "idea_tree" / "INDEX.md")
+    for idea in idea_tree.get("ideas", []):
+        idea_id = idea.get("idea_id", "")
+        if not re.fullmatch(r"IDEA-[0-9]{4}", idea_id):
+            raise WorkflowError(f"Invalid idea_id in idea_tree.json: {idea_id}")
+        idea_dir_text = idea.get("idea_dir")
+        if not isinstance(idea_dir_text, str) or not idea_dir_text.startswith("idea_tree/ideas/"):
+            raise WorkflowError(f"{idea_id} must use idea_tree/ideas/ as idea_dir")
+        idea_file = REPO_ROOT / idea_dir_text / "IDEA.md"
+        if not idea_file.exists():
+            raise WorkflowError(f"{idea_id} missing idea file: {rel(idea_file)}")
+        if idea_id not in idea_index or idea_dir_text not in idea_index:
+            raise WorkflowError(f"{idea_id} missing from idea_tree/INDEX.md")
+        if idea.get("source_type") not in SOURCE_TYPES:
+            raise WorkflowError(f"{idea_id} has invalid source_type")
+        if idea.get("source_status") not in SOURCE_STATUSES:
+            raise WorkflowError(f"{idea_id} has invalid source_status")
+        require_score(idea.get("global_score", -1), f"{idea_id} global_score")
+        version_scores = idea.get("version_scores")
+        if not isinstance(version_scores, dict) or not version_scores:
+            raise WorkflowError(f"{idea_id} must define version_scores")
+        if current_version not in version_scores:
+            raise WorkflowError(f"{idea_id} must score current_version {current_version}")
+        for version, entry in version_scores.items():
+            if not re.fullmatch(r"v[0-9]+", version):
+                raise WorkflowError(f"{idea_id} has invalid version score key: {version}")
+            if not isinstance(entry, dict):
+                raise WorkflowError(f"{idea_id} version score for {version} must be an object")
+            require_score(entry.get("score", -1), f"{idea_id} {version} score")
+            if entry.get("applicability") not in APPLICABILITIES:
+                raise WorkflowError(f"{idea_id} {version} has invalid applicability")
+            if not isinstance(entry.get("blockers"), list):
+                raise WorkflowError(f"{idea_id} {version} blockers must be a list")
 
     if not git(["tag", "--list", "v1"], check=False):
         raise WorkflowError("Missing required tag: v1")
@@ -328,6 +385,71 @@ def save_idea_tree(data: dict) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def idea_version_entry(idea: dict, version: str) -> dict:
+    entry = idea.get("version_scores", {}).get(version, {})
+    return entry if isinstance(entry, dict) else {}
+
+
+def idea_score_for_version(idea: dict, version: str) -> float:
+    entry = idea_version_entry(idea, version)
+    try:
+        return float(entry.get("score", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def write_idea_index(data: dict) -> None:
+    current_version = data.get("current_version", "v1")
+    ideas = sorted(
+        data.get("ideas", []),
+        key=lambda item: (
+            -idea_score_for_version(item, current_version),
+            -SOURCE_STATUS_RANK.get(item.get("source_status", "unknown"), 0),
+            -float(item.get("global_score", 0) or 0),
+            item.get("idea_id", ""),
+        ),
+    )
+
+    lines = [
+        "# Idea Tree Index",
+        "",
+        f"Current framework version: `{current_version}`",
+        "",
+        "This is the human-readable master list. For the current work window,",
+        f"sort by `{current_version}` score first. `global_score` is long-term value,",
+        "not the immediate experiment order.",
+        "",
+        "| Rank | Idea | Title | Idea file | Source status | Global | Current score | Applicability | Status | Next action |",
+        "|---:|---|---|---|---|---:|---:|---|---|---|",
+    ]
+    for rank, idea in enumerate(ideas, 1):
+        entry = idea_version_entry(idea, current_version)
+        idea_dir = idea.get("idea_dir", "")
+        idea_file = f"{str(idea_dir).rstrip('/')}/IDEA.md" if idea_dir else ""
+        lines.append(
+            "| "
+            f"{rank} | `{idea.get('idea_id', '')}` | {idea.get('title', '')} | "
+            f"`{idea_file}` | {idea.get('source_status', '')} | "
+            f"{idea.get('global_score', 0)} | {entry.get('score', 0)} | "
+            f"{entry.get('applicability', '')} | {idea.get('status', '')} | "
+            f"{idea.get('next_action', '')} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Version-Aware Rule",
+            "",
+            "- Use the active version score column for experiment order.",
+            "- Add a new `version_scores.vX` entry when a new framework version exists.",
+            "- Do not copy an old version score into a new version without reviewing interface fit.",
+            "- A high `global_score` with a low current score means the idea may be useful later, not now.",
+            "",
+        ]
+    )
+    (REPO_ROOT / "idea_tree" / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
+
+
 def find_idea_record(data: dict, idea_id: str) -> dict:
     for item in data.get("ideas", []):
         if item.get("idea_id") == idea_id:
@@ -339,8 +461,14 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
     idea_id = require_clean_id(args.idea_id, r"IDEA-[0-9]{4}", "idea id")
     slug = require_slug(args.slug)
     base_version = require_clean_id(args.base_version, r"v[0-9]+", "base version")
-    if args.source_type not in {"paper", "user", "observation", "hybrid"}:
+    global_score = require_score(args.global_score, "global_score")
+    version_score = require_score(args.version_score, "version_score")
+    if args.source_type not in SOURCE_TYPES:
         raise WorkflowError("Invalid source_type")
+    if args.source_status not in SOURCE_STATUSES:
+        raise WorkflowError("Invalid source_status")
+    if args.applicability not in APPLICABILITIES:
+        raise WorkflowError("Invalid applicability")
     if not (REPO_ROOT / "experiments" / base_version / "config.yaml").exists():
         raise WorkflowError(f"Unknown base version: {base_version}")
 
@@ -348,12 +476,24 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
     if any(item.get("idea_id") == idea_id for item in data.get("ideas", [])):
         raise WorkflowError(f"Idea already exists in idea_tree.json: {idea_id}")
 
+    idea_dir_rel = f"idea_tree/ideas/{idea_id}_{slug}/"
     idea = {
         "idea_id": idea_id,
+        "idea_dir": idea_dir_rel,
         "title": args.title,
         "status": "candidate",
         "source_type": args.source_type,
         "source_ref": args.source_ref or "",
+        "source_status": args.source_status,
+        "global_score": global_score,
+        "version_scores": {
+            base_version: {
+                "score": version_score,
+                "applicability": args.applicability,
+                "rationale": "",
+                "blockers": [],
+            }
+        },
         "base_versions": [base_version],
         "based_on_modules": [],
         "target_component": "",
@@ -362,17 +502,15 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         "implementation_scope": "",
         "risk": "",
         "compatibility": "",
-        "priority": 0,
+        "transfer_notes": "",
+        "priority": round(version_score / 100, 2),
         "linked_trials": [],
         "linked_versions": [],
         "linked_experiments": [],
         "evidence": [],
         "next_action": "fill IDEA.md and decide whether to select",
     }
-    data.setdefault("ideas", []).append(idea)
-    save_idea_tree(data)
-
-    idea_dir = REPO_ROOT / "experiments" / "module_trials" / f"{idea_id}_{slug}"
+    idea_dir = REPO_ROOT / idea_dir_rel
     ensure_dir(idea_dir)
     write_new(
         idea_dir / "IDEA.md",
@@ -384,10 +522,20 @@ title: {args.title}
 status: candidate
 source_type: {args.source_type}
 source_ref: {args.source_ref or ""}
-base_version: {base_version}
+source_status: {args.source_status}
+global_score: {global_score}
+current_version_score:
+  {base_version}: {version_score}
+idea_dir: {idea_dir_rel}
 ```
 
-## Based On Modules
+## Source
+
+Record the paper, local reasoning, observation, or cross-domain source.
+
+## Based On
+
+- `{base_version}`
 
 ## Target Component
 
@@ -395,25 +543,85 @@ base_version: {base_version}
 
 ## Implementation Scope
 
+## Version Scores
+
+| Version | Score | Applicability | Rationale |
+|---|---:|---|---|
+| `{base_version}` | {version_score} | {args.applicability} | Pending. |
+
+## Transfer Notes
+
+Record whether this can transfer to later versions such as `v2`, and what must change.
+
 ## Risk
 
-## Planned Trials
+## Blockers
 
 ## Decision Rule
 """,
     )
+    data.setdefault("ideas", []).append(idea)
+    save_idea_tree(data)
+    write_idea_index(data)
 
     print(f"created {rel(idea_dir)}")
     return 0
 
 
-def find_idea_dir(idea_id: str) -> Path:
-    matches = sorted((REPO_ROOT / "experiments" / "module_trials").glob(f"{idea_id}_*"))
-    if not matches:
-        raise WorkflowError(f"Missing idea directory for {idea_id}")
-    if len(matches) > 1:
-        raise WorkflowError(f"Multiple idea directories found for {idea_id}")
-    return matches[0]
+def cmd_set_current_version(args: argparse.Namespace) -> int:
+    version = require_clean_id(args.version, r"v[0-9]+", "version")
+    if not (REPO_ROOT / "experiments" / version / "config.yaml").exists():
+        raise WorkflowError(f"Unknown version directory: experiments/{version}")
+
+    data = load_idea_tree()
+    missing = [
+        item.get("idea_id", "")
+        for item in data.get("ideas", [])
+        if version not in item.get("version_scores", {})
+    ]
+    if missing:
+        raise WorkflowError(
+            f"Cannot switch current_version to {version}; missing version_scores for: "
+            + ", ".join(missing)
+        )
+
+    data["current_version"] = version
+    save_idea_tree(data)
+    write_idea_index(data)
+    print(f"current_version={version}")
+    print("refreshed idea_tree/INDEX.md")
+    return 0
+
+
+def idea_folder_name(idea: dict) -> str:
+    idea_id = idea.get("idea_id", "")
+    idea_dir_text = str(idea.get("idea_dir", "")).rstrip("/")
+    folder = Path(idea_dir_text).name
+    if not folder.startswith(f"{idea_id}_"):
+        raise WorkflowError(f"{idea_id} idea_dir must end with {idea_id}_<slug>")
+    return folder
+
+
+def choose_trial_base_version(args: argparse.Namespace, data: dict, idea: dict) -> str:
+    if args.base_version:
+        version = require_clean_id(args.base_version, r"v[0-9]+", "base version")
+    else:
+        current_version = data.get("current_version", "")
+        if current_version in idea.get("version_scores", {}):
+            version = current_version
+        else:
+            base_versions = idea.get("base_versions") or []
+            if not base_versions:
+                raise WorkflowError(f"Idea has no base_versions: {idea.get('idea_id')}")
+            version = require_clean_id(base_versions[0], r"v[0-9]+", "base version")
+
+    if version not in idea.get("version_scores", {}):
+        raise WorkflowError(
+            f"{idea.get('idea_id')} has no version_scores entry for {version}"
+        )
+    if not (REPO_ROOT / "experiments" / version / "config.yaml").exists():
+        raise WorkflowError(f"Unknown base version: {version}")
+    return version
 
 
 def cmd_new_trial(args: argparse.Namespace) -> int:
@@ -422,11 +630,30 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     slug = require_slug(args.slug)
     data = load_idea_tree()
     idea = find_idea_record(data, idea_id)
-    base_versions = idea.get("base_versions") or []
-    if not base_versions:
-        raise WorkflowError(f"Idea has no base_versions: {idea_id}")
-    base_version = require_clean_id(base_versions[0], r"v[0-9]+", "base version")
-    idea_dir = find_idea_dir(idea_id)
+    base_version = choose_trial_base_version(args, data, idea)
+    version_entry = idea_version_entry(idea, base_version)
+    source_idea_file = REPO_ROOT / str(idea.get("idea_dir", "")) / "IDEA.md"
+    if not source_idea_file.exists():
+        raise WorkflowError(f"Missing source idea file: {rel(source_idea_file)}")
+
+    idea_dir = REPO_ROOT / "experiments" / "module_trials" / idea_folder_name(idea)
+    ensure_dir(idea_dir)
+    if not (idea_dir / "IDEA.md").exists():
+        write_new(
+            idea_dir / "IDEA.md",
+            f"""# {idea_id}: {idea.get('title', '')}
+
+```text
+idea_id: {idea_id}
+source_idea_file: {rel(source_idea_file)}
+trial_folder: {rel(idea_dir)}
+```
+
+This file is a trial-local pointer. The authoritative idea source, score, and
+cross-version notes live in `{rel(source_idea_file)}`.
+""",
+        )
+
     trial_dir = idea_dir / f"{trial_id}_{slug}"
     if trial_dir.exists():
         raise WorkflowError(f"Trial already exists: {rel(trial_dir)}")
@@ -443,6 +670,9 @@ trial_id: {trial_id}
 idea_id: {idea_id}
 base_version: {base_version}
 base_code_tag: {base_version}
+idea_source_file: {rel(source_idea_file)}
+version_score: {version_entry.get('score', 0)}
+applicability: {version_entry.get('applicability', '')}
 code_branch: dev/{idea_id.lower()}-{trial_id.lower()}-{slug}
 code_tag: trial/{idea_id.lower()}/{trial_id.lower()}
 code_commit:
@@ -515,15 +745,28 @@ def build_parser() -> argparse.ArgumentParser:
     new_idea.add_argument("--idea-id", required=True)
     new_idea.add_argument("--slug", required=True)
     new_idea.add_argument("--title", required=True)
-    new_idea.add_argument("--source-type", required=True)
+    new_idea.add_argument("--source-type", required=True, choices=sorted(SOURCE_TYPES))
     new_idea.add_argument("--source-ref", default="")
+    new_idea.add_argument(
+        "--source-status",
+        default="unknown",
+        choices=sorted(SOURCE_STATUSES),
+    )
     new_idea.add_argument("--base-version", required=True)
+    new_idea.add_argument("--global-score", type=float, default=0)
+    new_idea.add_argument("--version-score", type=float, default=0)
+    new_idea.add_argument("--applicability", choices=sorted(APPLICABILITIES), default="unclear")
     new_idea.set_defaults(func=cmd_new_idea)
+
+    set_current = sub.add_parser("set-current-version", help="Set active idea ranking version")
+    set_current.add_argument("--version", required=True)
+    set_current.set_defaults(func=cmd_set_current_version)
 
     new_trial = sub.add_parser("new-trial", help="Create a trial folder under an idea")
     new_trial.add_argument("--idea-id", required=True)
     new_trial.add_argument("--trial-id", required=True)
     new_trial.add_argument("--slug", required=True)
+    new_trial.add_argument("--base-version", default="")
     new_trial.set_defaults(func=cmd_new_trial)
 
     return parser

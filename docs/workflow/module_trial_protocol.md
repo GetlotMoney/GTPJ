@@ -6,11 +6,17 @@ Module trials live under:
 experiments/module_trials/
 ```
 
+The authoritative idea record lives under:
+
+```text
+idea_tree/ideas/IDEA-0001_short_name/IDEA.md
+```
+
 Required structure:
 
 ```text
 experiments/module_trials/IDEA-0001_short_name/
-|-- IDEA.md
+|-- IDEA.md              # trial-local pointer to the source idea file
 `-- TRIAL-001_short_name/
     |-- README.md
     |-- implementation.md
@@ -23,8 +29,10 @@ experiments/module_trials/IDEA-0001_short_name/
 
 Every trial must record:
 
+- source idea file
 - base version
 - base code tag
+- version-specific idea score
 - code branch
 - code tag
 - changed files

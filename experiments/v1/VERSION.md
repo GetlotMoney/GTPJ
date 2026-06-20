@@ -29,6 +29,8 @@ config: experiments/v1/config.yaml
 - Use strict continuous training.
 - Use SGDR-style 20+20+10 staged cosine learning rate with nonzero `eta_min`.
 - Do not use test metrics to restart, roll back, stop, or alter training.
+- Keep `config.yaml` limited to active v1 fields only.
+- Inactive module candidates belong to `idea_tree/`, not to the v1 baseline config.
 - Official GTPJ results must be rerun and recorded in this repo.
 
 ## Allowed Experiments

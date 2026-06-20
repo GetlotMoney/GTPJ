@@ -2,25 +2,31 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GTPJ idea tree",
   "type": "object",
-  "required": ["project", "version", "ideas"],
+  "required": ["project", "version", "current_version", "ideas"],
   "properties": {
     "project": { "const": "GTPJ" },
     "version": { "type": "string" },
+    "current_version": { "type": "string", "pattern": "^v[0-9]+$" },
     "ideas": {
       "type": "array",
       "items": {
         "type": "object",
         "required": [
           "idea_id",
+          "idea_dir",
           "title",
           "status",
           "source_type",
+          "source_status",
+          "global_score",
+          "version_scores",
           "base_versions",
           "based_on_modules",
           "target_component",
           "hypothesis",
           "implementation_scope",
           "risk",
+          "transfer_notes",
           "linked_trials",
           "linked_versions",
           "linked_experiments",
@@ -29,14 +35,34 @@
         ],
         "properties": {
           "idea_id": { "type": "string", "pattern": "^IDEA-[0-9]{4}$" },
+          "idea_dir": { "type": "string" },
           "title": { "type": "string" },
           "status": {
             "enum": ["candidate", "selected", "developing", "testing", "validated", "weakened", "rejected", "blocked"]
           },
           "source_type": {
-            "enum": ["paper", "user", "observation", "hybrid"]
+            "enum": ["paper", "user", "observation", "cross_domain", "hybrid"]
           },
           "source_ref": { "type": "string" },
+          "source_status": {
+            "enum": ["verified", "unverified", "unknown", "local_heuristic"]
+          },
+          "global_score": { "type": "number", "minimum": 0, "maximum": 100 },
+          "version_scores": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["score", "applicability", "rationale", "blockers"],
+              "properties": {
+                "score": { "type": "number", "minimum": 0, "maximum": 100 },
+                "applicability": {
+                  "enum": ["direct", "needs_adaptation", "unclear", "not_applicable"]
+                },
+                "rationale": { "type": "string" },
+                "blockers": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
           "base_versions": { "type": "array", "items": { "type": "string" } },
           "based_on_modules": { "type": "array", "items": { "type": "string" } },
           "target_component": { "type": "string" },
@@ -45,6 +71,7 @@
           "implementation_scope": { "type": "string" },
           "risk": { "type": "string" },
           "compatibility": { "type": "string" },
+          "transfer_notes": { "type": "string" },
           "priority": { "type": "number" },
           "linked_trials": { "type": "array", "items": { "type": "string" } },
           "linked_versions": { "type": "array", "items": { "type": "string" } },

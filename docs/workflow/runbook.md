@@ -38,8 +38,9 @@ python train_VGSR_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.ya
 ## Start a New Module Trial
 
 ```bash
-python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug short_name --title "short name" --source-type user --base-version v1
-python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug short_name
+python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug short_name --title "short name" --source-type user --source-status unknown --base-version v1 --global-score 50 --version-score 50 --applicability direct
+python workflow/gtpj_workflow.py set-current-version --version v1
+python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug short_name --base-version v1
 git switch -c dev/idea-0001-trial-001-short-name v1
 ```
 
