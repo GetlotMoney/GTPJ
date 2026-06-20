@@ -8,6 +8,7 @@ Before modifying files, read:
 
 ```text
 AGENTS.md
+NEXT_ACTIONS.md
 docs/workflow/README.md
 workflow/README.md
 ```

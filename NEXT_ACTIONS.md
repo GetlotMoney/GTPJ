@@ -1,4 +1,4 @@
-# GTPJ Backlog
+# GTPJ Next Actions
 
 This is the current execution window. It should contain only the next few actions,
 not every idea.

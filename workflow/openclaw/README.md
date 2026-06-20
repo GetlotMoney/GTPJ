@@ -8,6 +8,7 @@ Before choosing or running an experiment, read:
 
 ```text
 AGENTS.md
+NEXT_ACTIONS.md
 docs/workflow/README.md
 docs/workflow/git_policy.md
 docs/workflow/versioning.md

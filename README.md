@@ -18,6 +18,7 @@ visual-text branch distillation, and AG-JEPA auxiliary training.
 
 ```text
 GTPJ/
+|-- NEXT_ACTIONS.md         # current execution window
 |-- model/                  # model code
 |-- tools/                  # data, feature, evaluation utilities
 |-- config/
@@ -50,6 +51,7 @@ baseline without inventing separate rules.
 
 Start here:
 
+- `NEXT_ACTIONS.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/workflow/README.md`
 - `workflow/README.md`

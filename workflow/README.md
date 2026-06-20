@@ -4,6 +4,7 @@ This directory contains the executable workflow layer for GTPJ.
 
 The repository-level rules live in `docs/workflow/`. This directory turns those
 rules into repeatable commands and runtime entrypoints for OpenClaw and Codex.
+Use `NEXT_ACTIONS.md` as the current execution window.
 
 ## Quick Commands
 

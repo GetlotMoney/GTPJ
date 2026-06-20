@@ -156,6 +156,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
     required = [
         "README.md",
         "AGENTS.md",
+        "NEXT_ACTIONS.md",
         "docs/workflow/README.md",
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
