@@ -18,6 +18,16 @@ idea_tree/ideas/IDEA-xxxx_short_name/IDEA.md
 docs/workflow/code_interface_contract.md
 ```
 
+分支和 tag 命名必须带 base version：
+
+```text
+code_branch: dev/v1-idea-0001-trial-001-short-name
+code_tag: trial/v1/idea-0001/trial-001
+```
+
+其中 `v1` 表示这个 trial 从 `v1` baseline tag 切出。
+如果 trial 成功，它可以被提升为新的 `v2`、`v3` 或后续版本。
+
 必需结构：
 
 ```text

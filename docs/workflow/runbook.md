@@ -43,19 +43,22 @@ python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.ya
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
-git switch -c dev/idea-xxxx-trial-001-short-name v1
+git switch -c dev/v1-idea-xxxx-trial-001-short-name v1
 ```
 
 实现后：
 
 ```bash
-git tag trial/idea-xxxx/trial-001
+git tag trial/v1/idea-xxxx/trial-001
 ```
 
 如果成功并提升：
 
 ```bash
 git switch main
-git merge dev/idea-xxxx-trial-001-short-name
+git merge dev/v1-idea-xxxx-trial-001-short-name
 git tag v2
 ```
+
+注意：`dev/v1-...` 里的 `v1` 是来源 baseline，不是最终版本号。
+如果这个 trial 成功，最终可以提升为下一个正式 baseline，比如 `v2` 或 `v3`。

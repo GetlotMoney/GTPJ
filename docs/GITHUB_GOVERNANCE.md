@@ -8,6 +8,8 @@
 - baseline 版本：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
 - 分支：`main` 长期存在；临时代码实验使用 `dev/...` 或 `exp/...`。
+- 模块 trial 命名：`dev/v1-idea-0001-trial-001-short-name` 必须写出来源 baseline。
+- trial 快照 tag：`trial/v1/idea-0001/trial-001` 必须写出来源 baseline。
 - 配置快照：正式版本配置放在 `config/versions/`，实验副本放在具体实验目录。
 - 创意树：所有候选模块必须先进入 `idea_tree/`，有来源、评分和适用版本。
 - 证据目录：代码验证、trial 记录、调参、消融和确认实验都放在 `experiments/`。
@@ -28,6 +30,23 @@
 3. 每个新模块都能追溯到创意来源，而不是凭空出现。
 4. 每个 trial 都能说明它基于哪个 baseline，以及是否可以关闭回到 baseline。
 5. 项目目录新增、删除、移动或改职责时，必须同步更新 `docs/PROJECT_STRUCTURE.md`。
+
+## 分支名怎么看
+
+```text
+exp/v1-tune-001-topo008
+```
+
+表示：基于 `v1` 的第 1 个调参实验。
+
+```text
+dev/v1-idea-0003-trial-001-token-router
+```
+
+表示：基于 `v1` 的 `IDEA-0003` 第 1 次模块实现尝试。
+
+分支名里的 `v1` 是来源版本，不是最终版本号。这个 trial 如果成功，可以被提升成
+下一个正式 baseline，例如 `v2` 或 `v3`。
 
 ## 规范文件在哪里
 

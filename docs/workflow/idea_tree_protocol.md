@@ -17,7 +17,7 @@
 规则：
 
 - 每个模块 trial 必须有 `idea_id`。
-- 没有 `idea_id`，就不能创建 `dev/idea-*` 分支。
+- 没有 `idea_id`，就不能创建 `dev/vX-idea-*` 分支。
 - tune 和 ablation 问题不会直接变成 idea 节点。
 - `idea_tree/INDEX.md` 是给人读的总索引。它必须展示每个创意文件路径和当前版本分数。
   决定下一步试什么时，先读这个文件。

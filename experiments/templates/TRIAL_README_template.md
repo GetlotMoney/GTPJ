@@ -6,8 +6,8 @@ idea_id:
 idea_title:
 base_version:
 base_code_tag:
-code_branch:
-code_tag:
+code_branch: dev/v1-idea-xxxx-trial-001-short-name
+code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:
 run_config:

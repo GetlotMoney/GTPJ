@@ -747,8 +747,8 @@ base_code_tag: {base_version}
 idea_source_file: {rel(source_idea_file)}
 version_score: {version_entry.get('score', 0)}
 applicability: {version_entry.get('applicability', '')}
-code_branch: dev/{idea_id.lower()}-{trial_id.lower()}-{slug}
-code_tag: trial/{idea_id.lower()}/{trial_id.lower()}
+code_branch: dev/{base_version}-{idea_id.lower()}-{trial_id.lower()}-{slug}
+code_tag: trial/{base_version}/{idea_id.lower()}/{trial_id.lower()}
 code_commit:
 decision: pending
 promote_to:
@@ -866,8 +866,8 @@ missing/unexpected keys:
     write_new(trial_dir / "result.md", "# 结果\n\n待记录。\n")
 
     print(f"已创建 {rel(trial_dir)}")
-    print(f"建议分支: dev/{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}")
-    print(f"实现后建议 tag: trial/{idea_id.lower()}/{trial_id.lower()}")
+    print(f"建议分支: dev/{base_version}-{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}")
+    print(f"实现后建议 tag: trial/{base_version}/{idea_id.lower()}/{trial_id.lower()}")
     return 0
 
 

@@ -85,10 +85,10 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `docs/workflow/README.md` | 未来 workflow 参考入口，说明哪些规则只是后续接入素材。 |
-| `docs/workflow/git_policy.md` | Git 分支、tag、push 和 trial 快照策略。 |
-| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录和提升规则。 |
+| `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
+| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、非线性来源关系和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
-| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、必填记录和决策类型。 |
+| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
 | `docs/workflow/quality_gate.md` | 未来质量门参考，规定实验运行前可以检查的项目。 |
@@ -101,7 +101,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`，并生成带 base version 的 trial 分支/tag 建议。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
