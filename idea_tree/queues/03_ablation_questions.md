@@ -1,0 +1,7 @@
+# Ablation Questions
+
+建议第一个问题：
+
+```text
+ABL-001: 在 GTPJ-v1 中关闭 AG-JEPA，确认该模块的必要性。
+```

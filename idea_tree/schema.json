@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GTPJ idea tree",
+  "type": "object",
+  "required": ["project", "version", "ideas"],
+  "properties": {
+    "project": { "const": "GTPJ" },
+    "version": { "type": "string" },
+    "ideas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "idea_id",
+          "title",
+          "status",
+          "source_type",
+          "base_versions",
+          "based_on_modules",
+          "target_component",
+          "hypothesis",
+          "implementation_scope",
+          "risk",
+          "linked_trials",
+          "linked_versions",
+          "linked_experiments",
+          "evidence",
+          "next_action"
+        ],
+        "properties": {
+          "idea_id": { "type": "string", "pattern": "^IDEA-[0-9]{4}$" },
+          "title": { "type": "string" },
+          "status": {
+            "enum": ["candidate", "selected", "developing", "testing", "validated", "weakened", "rejected", "blocked"]
+          },
+          "source_type": {
+            "enum": ["paper", "user", "observation", "hybrid"]
+          },
+          "source_ref": { "type": "string" },
+          "base_versions": { "type": "array", "items": { "type": "string" } },
+          "based_on_modules": { "type": "array", "items": { "type": "string" } },
+          "target_component": { "type": "string" },
+          "hypothesis": { "type": "string" },
+          "expected_effect": { "type": "object" },
+          "implementation_scope": { "type": "string" },
+          "risk": { "type": "string" },
+          "compatibility": { "type": "string" },
+          "priority": { "type": "number" },
+          "linked_trials": { "type": "array", "items": { "type": "string" } },
+          "linked_versions": { "type": "array", "items": { "type": "string" } },
+          "linked_experiments": { "type": "array", "items": { "type": "string" } },
+          "evidence": { "type": "array" },
+          "next_action": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Data and generated artifacts
+data/
+xlsa17/
+train_log/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Large caches
+cache/
+.cache/
+*.npy
+*.npz
+
+# Local agent/tool state
+.claude/
+.openclaw-workspace/
+.agent-state/
+experiments/.agent-state/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak
+_tmp*
