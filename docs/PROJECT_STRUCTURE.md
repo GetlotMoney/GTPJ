@@ -1,0 +1,279 @@
+# 项目结构说明
+
+本文件是 GTPJ 仓库的结构总账本。它说明每个文件夹和文件的用途。
+
+维护硬规则：
+
+- 新增、删除、移动、重命名任何文件或文件夹时，必须同步更新本文件。
+- 改变某个文件职责时，必须同步更新本文件。
+- 修改 workflow、实验记录规范、创意树规范、代码接口规范时，必须同步更新本文件中对应说明。
+- 只更新实验数值、日志路径或普通记录内容时，也要检查本文件是否需要更新；如果结构和职责没有变化，可以不改。
+- 任何 agent 在完成结构性改动前，必须运行 `python workflow/gtpj_workflow.py validate`。
+
+## 总体框架
+
+GTPJ 仓库分成三层：
+
+```text
+代码层：model/、tools/、train_*.py、config/
+治理层：docs/、workflow/、AGENTS.md、NEXT_ACTIONS.md
+实验层：idea_tree/、experiments/
+```
+
+核心关系：
+
+```text
+idea_tree/                 # 创意来源、评分、排序
+  -> experiments/module_trials/
+                             # 模块创意被选中后，保存实现和证据
+  -> promoted baseline vX    # 成功 trial 才能提升为新版本
+  -> experiments/vX/         # 新版本自己的 tune / ablation / confirmation 记录
+```
+
+版本规则：
+
+```text
+一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录
+```
+
+## 顶层文件
+
+| 路径 | 用途 |
+|---|---|
+| `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录和常用 workflow 命令。 |
+| `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
+| `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
+| `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
+| `environment.yml` | conda 环境定义，用于创建 `gtpj` 运行环境。 |
+| `train_VGSR_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 VGSR 并写训练日志。 |
+| `train_VGSR_AWA2.py` | AWA2 GZSL 训练入口。 |
+| `train_VGSR_SUN.py` | SUN GZSL 训练入口。 |
+| `verify_lastvit.py` | LaSt-ViT pooling 数值验证脚本，用于对比当前实现和参考实现。 |
+
+## `config/`
+
+配置目录。版本配置和数据集别名配置都在这里。
+
+| 路径 | 用途 |
+|---|---|
+| `config/README.md` | 配置策略说明，解释版本配置、实验局部配置和候选模块开关的关系。 |
+| `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
+| `config/VGSR_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 `config/versions/v1.yaml` 保持一致。 |
+| `config/VGSR_awa2_gzsl.yaml` | AWA2 运行配置。 |
+| `config/VGSR_sun_gzsl.yaml` | SUN 运行配置。 |
+
+规则：
+
+- 临时调参不要直接改 `config/versions/v1.yaml`。
+- 实验应复制版本配置到对应实验目录后再修改。
+- 未启用候选模块不进入版本配置，先进入 `idea_tree/`。
+
+## `docs/`
+
+项目文档目录。这里保存长期规则、状态说明和数据说明。
+
+| 路径 | 用途 |
+|---|---|
+| `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
+| `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
+| `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
+
+## `docs/workflow/`
+
+工作流规则目录。OpenClaw 和 Codex 都必须遵守这里的规则。
+
+| 路径 | 用途 |
+|---|---|
+| `docs/workflow/README.md` | workflow 阅读入口，规定推荐阅读顺序和运行时事实来源。 |
+| `docs/workflow/git_policy.md` | Git 分支、tag、push 和 trial 快照策略。 |
+| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录和提升规则。 |
+| `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
+| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、必填记录和决策类型。 |
+| `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
+| `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
+| `docs/workflow/review_gate.md` | review gate，规定实验运行前必须检查的项目和 `ACCEPTED` / `REJECTED` 决策格式。 |
+| `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
+
+## `workflow/`
+
+可执行 workflow 层，把文档规则变成可运行命令。
+
+| 路径 | 用途 |
+|---|---|
+| `workflow/README.md` | workflow 命令入口和 runtime 说明。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`。 |
+| `workflow/codex/README.md` | Codex runtime 入口规则。 |
+| `workflow/openclaw/README.md` | OpenClaw runtime 入口规则。 |
+| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责说明：Coordinator、Reader、Implementer、Reviewer、Result Analyst。 |
+
+`workflow/gtpj_workflow.py` 的职责：
+
+- 检查仓库结构是否完整。
+- 检查创意树、版本配置和接口规范关键章节。
+- 创建实验目录和标准模板。
+- 创建 idea 节点和 trial 目录。
+- 根据 `idea_tree.json.current_version` 重新生成 `idea_tree/INDEX.md`。
+
+## `model/`
+
+模型代码目录。
+
+| 路径 | 用途 |
+|---|---|
+| `model/MyModel.py` | VGSR 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
+
+代码接口要求：
+
+- 新模块必须遵守 `docs/workflow/code_interface_contract.md`。
+- 开关关闭时必须回到选定 base version 行为。
+- 不得静默改变 logits shape、class order、loss 语义或 eval 语义。
+
+## `tools/`
+
+数据、特征和评估工具目录。
+
+| 路径 | 用途 |
+|---|---|
+| `tools/dataset.py` | CUB、AWA2、SUN 数据读取和 DataLoader 定义。 |
+| `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
+| `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
+| `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+
+注意：
+
+- `data/`、`data/cache/`、原始数据、特征缓存和 checkpoint 不纳入 Git。
+- 如果工具脚本改变评估语义，必须同步更新 `docs/workflow/code_interface_contract.md` 和本文件。
+
+## `idea_tree/`
+
+创意树目录。它管理想法来源、评分和优先级，不保存训练日志。
+
+| 路径 | 用途 |
+|---|---|
+| `idea_tree/README.md` | 创意树入口说明。 |
+| `idea_tree/创意树.md` | 中文入口页，帮助快速理解创意树文件分工。 |
+| `idea_tree/INDEX.md` | 给人读的当前创意总榜，由 `workflow/gtpj_workflow.py set-current-version` 生成。 |
+| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version`、`global_score`、`version_scores` 等字段。 |
+| `idea_tree/schema.json` | `idea_tree.json` 的结构约束。 |
+| `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
+| `idea_tree/sources/papers_index.md` | 论文来源索引。 |
+| `idea_tree/sources/source_notes/` | 预留来源笔记目录；可放论文摘录、来源复核摘要等轻量文本。 |
+
+### `idea_tree/queues/`
+
+当前工作队列，从总索引派生，不是事实来源。
+
+| 路径 | 用途 |
+|---|---|
+| `idea_tree/queues/01_selected_next.md` | 已选中的下一步模块 trial。 |
+| `idea_tree/queues/02_module_candidates.md` | 当前候选模块列表。 |
+| `idea_tree/queues/03_ablation_questions.md` | 消融问题队列。 |
+| `idea_tree/queues/04_tuning_questions.md` | 调参问题队列。 |
+
+### `idea_tree/ideas/`
+
+每个稳定创意一个目录，每个目录里必须有 `IDEA.md`。
+
+| 路径 | 用途 |
+|---|---|
+| `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` | LaSt-ViT CLS 替换创意，记录来源、假设、v1 分数和阻塞点。 |
+| `idea_tree/ideas/IDEA-0002_dynamic_local_gating/IDEA.md` | 动态局部门控与池化创意。 |
+| `idea_tree/ideas/IDEA-0003_cosine_only_scoring/IDEA.md` | Cosine-only CrossModal 打分与 anchor loss 创意。 |
+| `idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | AG-JEPA 邻居文本变体创意。 |
+| `idea_tree/ideas/IDEA-0005_counterfactual_negative_text/IDEA.md` | 反事实负文本 margin 创意。 |
+| `idea_tree/ideas/IDEA-0006_geo_attribute_routing/IDEA.md` | 几何感知属性路由创意。 |
+| `idea_tree/ideas/IDEA-0007_text_attribute_reservoir/IDEA.md` | 拓扑感知文本属性库创意。 |
+| `idea_tree/ideas/IDEA-0008_attr_patch_ot/IDEA.md` | 属性-patch OT 对齐创意。 |
+| `idea_tree/ideas/IDEA-0009_uncertainty_msdn_gate/IDEA.md` | 不确定性感知 MSDN gate 创意。 |
+| `idea_tree/ideas/IDEA-0010_seen_unseen_calibration/IDEA.md` | Seen-unseen 校准 loss 创意。 |
+
+## `experiments/`
+
+实验记录目录。这里保存轻量证据，不保存原始数据、大型日志、checkpoint 或 cache。
+
+| 路径 | 用途 |
+|---|---|
+| `experiments/README.md` | 实验记录目录说明。 |
+| `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
+
+### `experiments/templates/`
+
+实验和 trial 的模板目录。
+
+| 路径 | 用途 |
+|---|---|
+| `experiments/templates/experiment_README_template.md` | 普通实验 README 模板。 |
+| `experiments/templates/IDEA_template.md` | idea 文件模板。 |
+| `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
+| `experiments/templates/review_template.md` | review 文件模板。 |
+| `experiments/templates/TRIAL_README_template.md` | trial README 模板。 |
+| `experiments/templates/VERSION_template.md` | 版本说明模板。 |
+
+### `experiments/module_trials/`
+
+模块 trial 证据目录。这里不是权威创意库；权威创意在 `idea_tree/ideas/`。
+
+| 路径 | 用途 |
+|---|---|
+| `experiments/module_trials/INDEX.md` | 模块 trial 索引。 |
+| `experiments/module_trials/IDEA-0001_lastvit_cls/IDEA.md` | 指向 `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` 的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0002_dynamic_local_gating/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0003_cosine_only_scoring/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0005_counterfactual_negative_text/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0006_geo_attribute_routing/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0007_text_attribute_reservoir/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0008_attr_patch_ot/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0009_uncertainty_msdn_gate/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0010_seen_unseen_calibration/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+
+真正开始 trial 后，目录会增加：
+
+```text
+experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
+|-- README.md
+|-- implementation.md
+|-- code.diff
+|-- config.yaml
+|-- review.md
+|-- result.md
+`-- logs/
+```
+
+### `experiments/v1/`
+
+`GTPJ-v1` 的版本实验目录。
+
+| 路径 | 用途 |
+|---|---|
+| `experiments/v1/VERSION.md` | v1 版本说明，记录 baseline、启用模块和训练策略。 |
+| `experiments/v1/config.yaml` | v1 配置归档副本，应与 `config/versions/v1.yaml` 保持一致。 |
+| `experiments/v1/result.md` | v1 结果记录，目前等待干净重跑。 |
+| `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
+| `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
+| `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
+| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/README.md` | v1 seed=5 确认实验记录。 |
+| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml` | 该确认实验使用的配置副本。 |
+| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/review.md` | 该确认实验的 review 记录。 |
+| `experiments/v1/logs/` | 预留版本级日志目录。 |
+| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/logs/` | 该确认实验的日志副本目录。 |
+
+## 更新本文件的判断标准
+
+必须更新本文件的情况：
+
+- 新增、删除、移动、重命名文件或目录。
+- 新增新版本目录，例如 `experiments/v2/`。
+- 新增新 idea，例如 `idea_tree/ideas/IDEA-0011_xxx/`。
+- 新增新 trial，例如 `experiments/module_trials/IDEA-xxxx/TRIAL-001_xxx/`。
+- 新增脚本、工具、模型文件、配置文件。
+- 改变某个文件的职责、入口地位或维护规则。
+
+通常不需要更新本文件的情况：
+
+- 只在已有实验 README 中补充一次运行结果。
+- 只在已有日志目录中增加日志副本。
+- 只修改配置数值，但配置文件职责不变。
+
+即使通常不需要，也必须在提交前检查本文件是否仍然准确。

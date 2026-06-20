@@ -176,6 +176,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "README.md",
         "AGENTS.md",
         "NEXT_ACTIONS.md",
+        "docs/PROJECT_STRUCTURE.md",
         "docs/workflow/README.md",
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
@@ -248,6 +249,22 @@ def cmd_validate(_: argparse.Namespace) -> int:
     archived_config = read_text(REPO_ROOT / "experiments" / "v1" / "config.yaml")
     if v1_config != archived_config:
         raise WorkflowError("config/versions/v1.yaml and experiments/v1/config.yaml differ")
+
+    project_structure = read_text(REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md")
+    for marker in [
+        "总体框架",
+        "顶层文件",
+        "`config/`",
+        "`docs/`",
+        "`workflow/`",
+        "`model/`",
+        "`tools/`",
+        "`idea_tree/`",
+        "`experiments/`",
+        "更新本文件的判断标准",
+    ]:
+        if marker not in project_structure:
+            raise WorkflowError(f"docs/PROJECT_STRUCTURE.md missing section: {marker}")
 
     contract = read_text(REPO_ROOT / "docs" / "workflow" / "code_interface_contract.md")
     for marker in [

@@ -24,12 +24,13 @@ Runtime 规则：
 
 阅读顺序：
 
-1. `git_policy.md`
-2. `versioning.md`
-3. `idea_tree_protocol.md`
-4. `module_trial_protocol.md`
-5. `code_interface_contract.md`
-6. `experiment_protocol.md`
-7. `review_gate.md`
-8. `runbook.md`
-9. `workflow/README.md`
+1. `../PROJECT_STRUCTURE.md`
+2. `git_policy.md`
+3. `versioning.md`
+4. `idea_tree_protocol.md`
+5. `module_trial_protocol.md`
+6. `code_interface_contract.md`
+7. `experiment_protocol.md`
+8. `review_gate.md`
+9. `runbook.md`
+10. `workflow/README.md`

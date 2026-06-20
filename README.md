@@ -50,6 +50,7 @@ OpenClaw 是实验运行的优先 runtime。Codex 必须遵循同一套仓库文
 优先阅读：
 
 - `NEXT_ACTIONS.md`
+- `docs/PROJECT_STRUCTURE.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/workflow/README.md`
 - `workflow/README.md`

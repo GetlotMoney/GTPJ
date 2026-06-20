@@ -13,6 +13,7 @@
 - `v1`、`v2`、`v3` 是永久 baseline tags。
 - Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
 - 使用 `workflow/gtpj_workflow.py` 做状态检查和创建新的 workflow 记录。
+- `docs/PROJECT_STRUCTURE.md` 是项目结构总账本；新增、删除、移动、重命名文件或改变文件职责时必须同步更新。
 - 不创建 controller branch。
 - 不迁移旧实验 ID、旧分支、旧 PR 或旧 workflow 文件。
 - 除非 owner 明确要求 push，否则不要 push。
