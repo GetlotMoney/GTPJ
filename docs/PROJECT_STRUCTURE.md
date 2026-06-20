@@ -154,8 +154,8 @@ idea_tree/                 # 创意来源、评分、排序
 | `idea_tree/README.md` | 创意树入口说明。 |
 | `idea_tree/创意树.md` | 中文入口页，帮助快速理解创意树文件分工。 |
 | `idea_tree/INDEX.md` | 给人读的当前创意总榜；当前为空，等待可靠来源重新登记。 |
-| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version` 和 `ideas`；当前 `ideas` 为空。 |
-| `idea_tree/schema.json` | `idea_tree.json` 的结构约束。 |
+| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version`、`ideas` 和每个 idea 的 `version_scores.vX`；当前 `ideas` 为空。 |
+| `idea_tree/schema.json` | `idea_tree.json` 的结构约束，规定版本分数字段必须按 `v1`、`v2` 这类版本键保存。 |
 | `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
 | `idea_tree/sources/papers_index.md` | 论文来源索引。 |
 | `idea_tree/sources/source_notes/` | 预留来源笔记目录；可放论文摘录、来源复核摘要等轻量文本。 |

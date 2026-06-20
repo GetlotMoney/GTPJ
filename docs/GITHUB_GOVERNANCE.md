@@ -29,6 +29,54 @@
 4. 每个 trial 都能说明它基于哪个 baseline，以及是否可以关闭回到 baseline。
 5. 项目目录新增、删除、移动或改职责时，必须同步更新 `docs/PROJECT_STRUCTURE.md`。
 
+## 规范文件在哪里
+
+当前 GitHub 项目治理的入口是本文件。具体规范按职责拆到下面这些文件：
+
+| 规范 | 文件 | 什么时候更新 |
+|---|---|---|
+| GitHub 总规范 | `docs/GITHUB_GOVERNANCE.md` | 改版本、分支、tag、证据边界、创意树总原则时更新。 |
+| 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 新增、删除、移动、重命名文件或改变文件职责时更新。 |
+| 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
+| 创意树细则 | `docs/workflow/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
+| 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |
+| 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |
+| 代码接口契约 | `docs/workflow/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
+| Git 规则 | `docs/workflow/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
+
+你刚才说的“不同版本的创意权重不一样”属于创意树细则，所以主更新位置是：
+
+```text
+docs/workflow/idea_tree_protocol.md
+idea_tree/README.md
+idea_tree/schema.json
+```
+
+如果这个规则影响整体 GitHub 管理原则，也同步更新本文件。
+
+## 创意树和版本的关系
+
+创意树只保留一棵，不按 `v1`、`v2`、`v3` 各建一棵。
+
+原因是：同一个创意可能对多个版本都有意义，但权重和适用性不同。
+
+```text
+idea = 全局创意
+global_score = 长期价值
+version_scores.v1.score = 对 GTPJ-v1 的当前价值
+version_scores.v2.score = 对 GTPJ-v2 的当前价值
+version_scores.v3.score = 对 GTPJ-v3 的当前价值
+```
+
+规则：
+
+- 当前排序只看 `idea_tree.json.current_version` 对应的版本分数。
+- `global_score` 只表示长期价值，不决定当前优先级。
+- 新增 `v2` 后，每个保留创意都必须重新写 `version_scores.v2`。
+- 不能把 `version_scores.v1` 直接复制成 `version_scores.v2`。
+- 缺少当前版本分数的 idea，不能在当前版本下开 trial。
+- `source_status: unknown` 或 `unverified` 的 idea 不能开 trial，只能留在 inbox 或 candidate 状态。
+
 ## quality_check 是什么
 
 `quality_check.md` 是轻量质量检查记录，不等于旧工作流里的强制审查门。

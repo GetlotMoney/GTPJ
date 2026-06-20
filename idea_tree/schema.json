@@ -17,6 +17,7 @@
           "title",
           "status",
           "source_type",
+          "source_ref",
           "source_status",
           "global_score",
           "version_scores",
@@ -50,6 +51,7 @@
           "global_score": { "type": "number", "minimum": 0, "maximum": 100 },
           "version_scores": {
             "type": "object",
+            "propertyNames": { "pattern": "^v[0-9]+$" },
             "additionalProperties": {
               "type": "object",
               "required": ["score", "applicability", "rationale", "blockers"],

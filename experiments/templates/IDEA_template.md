@@ -8,8 +8,6 @@ source_type: paper | user | observation | cross_domain | hybrid
 source_ref:
 source_status: verified | unverified | unknown | local_heuristic
 global_score: 0
-current_version_score:
-  v1: 0
 idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 ```
 
@@ -33,6 +31,23 @@ idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 | 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
 | `v1` | 0 | unclear | 待补充。 |
+
+机器可读字段写在 `idea_tree/idea_tree.json` 的 `version_scores`：
+
+```json
+{
+  "version_scores": {
+    "v1": {
+      "score": 0,
+      "applicability": "unclear",
+      "rationale": "为什么它适合或不适合 v1",
+      "blockers": []
+    }
+  }
+}
+```
+
+新增 `v2` 时必须重新评估，不能复制 `v1` 分数。
 
 ## 迁移说明
 

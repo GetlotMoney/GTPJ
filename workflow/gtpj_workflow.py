@@ -38,6 +38,7 @@ FORBIDDEN_REGEXES = [
 ]
 SOURCE_TYPES = {"paper", "user", "observation", "cross_domain", "hybrid"}
 SOURCE_STATUSES = {"verified", "unverified", "unknown", "local_heuristic"}
+TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
 SOURCE_STATUS_RANK = {
     "verified": 3,
@@ -225,6 +226,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
             raise WorkflowError(f"{idea_id} has invalid source_type")
         if idea.get("source_status") not in SOURCE_STATUSES:
             raise WorkflowError(f"{idea_id} has invalid source_status")
+        if idea.get("source_status") in TRIAL_ALLOWED_SOURCE_STATUSES:
+            source_ref = idea.get("source_ref")
+            if not isinstance(source_ref, str) or not source_ref.strip():
+                raise WorkflowError(f"{idea_id} with verified/local source must define source_ref")
         require_score(idea.get("global_score", -1), f"{idea_id} global_score")
         version_scores = idea.get("version_scores")
         if not isinstance(version_scores, dict) or not version_scores:
@@ -522,6 +527,8 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         raise WorkflowError("Invalid source_type")
     if args.source_status not in SOURCE_STATUSES:
         raise WorkflowError("Invalid source_status")
+    if args.source_status in TRIAL_ALLOWED_SOURCE_STATUSES and not args.source_ref.strip():
+        raise WorkflowError("Verified or local_heuristic ideas must provide --source-ref")
     if args.applicability not in APPLICABILITIES:
         raise WorkflowError("Invalid applicability")
     if not (REPO_ROOT / "experiments" / base_version / "config.yaml").exists():
@@ -579,8 +586,6 @@ source_type: {args.source_type}
 source_ref: {args.source_ref or ""}
 source_status: {args.source_status}
 global_score: {global_score}
-current_version_score:
-  {base_version}: {version_score}
 idea_dir: {idea_dir_rel}
 ```
 
@@ -603,6 +608,9 @@ idea_dir: {idea_dir_rel}
 | 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
 | `{base_version}` | {version_score} | {args.applicability} | 待补充。 |
+
+机器可读版本评分写在 `idea_tree/idea_tree.json` 的 `version_scores` 字段。
+新增 `v2`、`v3` 时必须重新评估，不能复制 `{base_version}` 分数。
 
 ## 迁移说明
 
@@ -685,8 +693,19 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     slug = require_slug(args.slug)
     data = load_idea_tree()
     idea = find_idea_record(data, idea_id)
+    source_status = idea.get("source_status")
+    if source_status not in TRIAL_ALLOWED_SOURCE_STATUSES:
+        raise WorkflowError(
+            f"{idea_id} source_status is {source_status!r}; "
+            "module trial requires verified or local_heuristic source"
+        )
+    source_ref = idea.get("source_ref")
+    if not isinstance(source_ref, str) or not source_ref.strip():
+        raise WorkflowError(f"{idea_id} must define source_ref before trial")
     base_version = choose_trial_base_version(args, data, idea)
     version_entry = idea_version_entry(idea, base_version)
+    if not str(version_entry.get("rationale", "")).strip():
+        raise WorkflowError(f"{idea_id} must explain version_scores.{base_version}.rationale before trial")
     source_idea_file = REPO_ROOT / str(idea.get("idea_dir", "")) / "IDEA.md"
     if not source_idea_file.exists():
         raise WorkflowError(f"Missing source idea file: {rel(source_idea_file)}")
