@@ -48,7 +48,6 @@ idea_tree/                 # 创意来源、评分、排序
 | `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
-| `verify_lastvit.py` | LaSt-ViT pooling 数值验证脚本，用于对比当前实现和参考实现。 |
 
 ## `config/`
 
@@ -218,6 +217,8 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `experiments/module_trials/INDEX.md` | 模块 trial 索引。 |
 | `experiments/module_trials/IDEA-0001_lastvit_cls/IDEA.md` | 指向 `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` 的 trial-local 指针。 |
+| `experiments/module_trials/IDEA-0001_lastvit_cls/checks/` | `IDEA-0001` 的预 trial 验证脚本目录；保存轻量代码证据，不保存训练日志或 checkpoint。 |
+| `experiments/module_trials/IDEA-0001_lastvit_cls/checks/verify_lastvit.py` | LaSt-ViT pooling 数值一致性验证脚本，用于对比 GTPJ 当前实现和参考实现。 |
 | `experiments/module_trials/IDEA-0002_dynamic_local_gating/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
 | `experiments/module_trials/IDEA-0003_cosine_only_scoring/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
 | `experiments/module_trials/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |

@@ -1,13 +1,13 @@
 # 模块 Trials 索引
 
-当前还没有已启动的模块 trial。
+当前还没有已启动的模块 trial。`IDEA-0001` 只有预 trial 验证脚本，不算正式训练 trial。
 
 权威 idea 记录放在 `idea_tree/ideas/`。本目录只在某个 idea 被选中并开始代码实现后，
 保存 implementation trial 和证据。
 
 | Idea | 源 idea 文件 | Trial 证据目录 | Trial 状态 |
 |---|---|---|---|
-| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` | `experiments/module_trials/IDEA-0001_lastvit_cls/` | no trial |
+| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` | `experiments/module_trials/IDEA-0001_lastvit_cls/` | no trial; pre-trial check |
 | `IDEA-0002` | `idea_tree/ideas/IDEA-0002_dynamic_local_gating/IDEA.md` | `experiments/module_trials/IDEA-0002_dynamic_local_gating/` | no trial |
 | `IDEA-0003` | `idea_tree/ideas/IDEA-0003_cosine_only_scoring/IDEA.md` | `experiments/module_trials/IDEA-0003_cosine_only_scoring/` | no trial |
 | `IDEA-0004` | `idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | `experiments/module_trials/IDEA-0004_ag_jepa_neighbor_text/` | no trial |

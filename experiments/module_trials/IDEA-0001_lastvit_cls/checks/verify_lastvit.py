@@ -4,8 +4,11 @@
 官方代码: C:/Users/Administrator/Desktop/项目/LAST-ViT-main/LAST-ViT-main/cls_pretrain/conf.py
          (class dense_vit.forward, 第 132-180 行)
 
-我的代码: c:/Users/Administrator/Desktop/项目/DVSR/model/MyModel.py
+我的代码: GTPJ 仓库的 model/MyModel.py
          (lastvit_pool 函数, 第 39+ 行)
+
+归档位置:
+  experiments/module_trials/IDEA-0001_lastvit_cls/checks/verify_lastvit.py
 
 测试方法:
   1. 构造固定 seed 的 [B=2, N=196, D=768] 输入张量
