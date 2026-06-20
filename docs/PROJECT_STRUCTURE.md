@@ -75,7 +75,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本、tag、分支、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`

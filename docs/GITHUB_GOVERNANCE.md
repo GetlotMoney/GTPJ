@@ -31,22 +31,115 @@
 4. 每个 trial 都能说明它基于哪个 baseline，以及是否可以关闭回到 baseline。
 5. 项目目录新增、删除、移动或改职责时，必须同步更新 `docs/PROJECT_STRUCTURE.md`。
 
-## 分支名怎么看
+## 命名规范
+
+普通实验分支：
+
+```text
+exp/<base-version>-<kind>-<number>-<short-name>
+```
+
+示例：
+
+```text
+exp/v1-tune-001-topo008
+exp/v1-ablation-001-disable-jepa
+exp/v1-confirm-001-clean-seed5
+```
+
+模块 trial 开发分支：
+
+```text
+dev/<base-version>-idea-xxxx-trial-xxx-<short-name>
+```
+
+示例：
+
+```text
+dev/v1-idea-0003-trial-001-token-router
+dev/v2-idea-0003-trial-002-token-router
+```
+
+模块 trial 永久快照 tag：
+
+```text
+trial/<base-version>/idea-xxxx/trial-xxx
+```
+
+示例：
+
+```text
+trial/v1/idea-0003/trial-001
+trial/v2/idea-0003/trial-002
+```
+
+## 命名怎么看
 
 ```text
 exp/v1-tune-001-topo008
 ```
 
-表示：基于 `v1` 的第 1 个调参实验。
+含义：
+
+- `exp`：普通实验分支。
+- `v1`：基于 `v1` baseline tag。
+- `tune`：调参实验。也可以是 `ablation` 或 `confirm`。
+- `001`：该类型第 1 次实验。
+- `topo008`：人能读懂的简短名字。
 
 ```text
 dev/v1-idea-0003-trial-001-token-router
 ```
 
-表示：基于 `v1` 的 `IDEA-0003` 第 1 次模块实现尝试。
+含义：
+
+- `dev`：新模块开发分支，不是稳定版本。
+- `v1`：这次 trial 基于 `v1` baseline tag 切出。
+- `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
+- `trial-001`：这个 idea 的第 1 次实现尝试。
+- `token-router`：人能读懂的简短名字。
+
+```text
+trial/v1/idea-0003/trial-001
+```
+
+含义：
+
+- `trial`：永久 trial 代码快照。
+- `v1`：快照基于 `v1` baseline。
+- `idea-0003`：对应的创意。
+- `trial-001`：对应的实现尝试。
 
 分支名里的 `v1` 是来源版本，不是最终版本号。这个 trial 如果成功，可以被提升成
 下一个正式 baseline，例如 `v2` 或 `v3`。
+
+## 合并和删除
+
+普通实验分支：
+
+- `exp/...` 分支只承载 tune、ablation、confirmation 的实验记录。
+- 跑完后，把 README、config、日志路径、结果和结论合并回 `main`。
+- 实验记录合并回 `main` 后，可以删除这个 `exp/...` 分支。
+
+成功的模块 trial：
+
+- 成功标准不是只看一次 `H` 上涨，而是指标有效、代码干净、实验口径一致。
+- 代码和证据合并回 `main`。
+- 合并后打新的 baseline tag，例如 `v2` 或 `v3`。
+- 新 baseline tag 打好后，可以删除对应 `dev/...` 分支。
+
+失败的模块 trial：
+
+- 失败代码不合并进 `main`。
+- 先打永久快照 tag，例如 `trial/v1/idea-0003/trial-001`。
+- 把失败证据、日志路径、结论合并回 `main`。
+- 快照 tag 和证据都保存后，可以删除对应 `dev/...` 分支。
+
+永久保留：
+
+- 不删除 `main`。
+- 不删除 `vX` baseline tag。
+- 不删除 `trial/...` 永久快照 tag。
 
 ## 规范文件在哪里
 
