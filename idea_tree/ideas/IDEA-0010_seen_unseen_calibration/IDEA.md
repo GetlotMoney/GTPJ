@@ -1,4 +1,4 @@
-# IDEA-0010: Seen-unseen calibration losses
+# IDEA-0010：Seen-unseen 校准 loss
 
 ```text
 idea_id: IDEA-0010
@@ -11,27 +11,27 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0010_seen_unseen_calibration/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive calibration and bias-margin losses.
+来源不明确。由未启用的 calibration 和 bias-margin losses 迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - base logits
 - GZSL seen/unseen split
 
-## Hypothesis
+## 假设
 
-Explicit seen-unseen calibration may reduce seen-class bias in generalized zero-shot evaluation.
+显式 seen-unseen calibration 可能降低 generalized zero-shot evaluation 中的 seen-class bias。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 30 | needs_adaptation | Should wait until v1 baseline is confirmed; optimize H, not U alone. |
+| `v1` | 30 | needs_adaptation | 应等 v1 baseline 确认后再做；优化目标应是 H，而不是只看 U。 |
 
-## Blockers
+## 阻塞点
 
-- Find GZSL calibration reference.
-- Define H-based decision rule.
+- 找 GZSL calibration 参考。
+- 定义基于 H 的决策规则。

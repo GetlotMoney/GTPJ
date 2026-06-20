@@ -1,4 +1,4 @@
-# IDEA-0002: Dynamic local branch gating and pooling
+# IDEA-0002：动态局部分支门控与池化
 
 ```text
 idea_id: IDEA-0002
@@ -7,5 +7,5 @@ trial_folder: experiments/module_trials/IDEA-0002_dynamic_local_gating/
 status: no_trial
 ```
 
-This file is a trial-local pointer. The authoritative idea source, score, and
-cross-version notes live in `idea_tree/ideas/IDEA-0002_dynamic_local_gating/IDEA.md`.
+本文件只是 trial-local 指针。权威的创意来源、评分和跨版本说明在
+`idea_tree/ideas/IDEA-0002_dynamic_local_gating/IDEA.md`。

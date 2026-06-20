@@ -1,34 +1,35 @@
-# Workflow Overview
+# Workflow 总览
 
-GTPJ uses a version-first experiment workflow.
+GTPJ 使用“版本优先”的实验工作流。
 
 ```text
 idea_tree
   -> module_trials
   -> promoted baseline vX
-  -> tune / ablation / confirmation under experiments/vX
+  -> tune / ablation / confirmation 放在 experiments/vX 下
 ```
 
-Core rule:
+核心规则：
 
 ```text
-one vX = one baseline = one Git tag = one version experiment directory
+一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录
 ```
 
-Runtime rule:
+Runtime 规则：
 
-- OpenClaw is preferred for running experiments.
-- Codex follows the same files and can perform the same workflow.
-- The repository files are the source of truth for both runtimes.
-- Structural actions must go through `workflow/gtpj_workflow.py`.
+- OpenClaw 优先用于运行实验。
+- Codex 遵循相同文件，也可以执行同一套 workflow。
+- 仓库文件是两个 runtime 的唯一事实来源。
+- 结构性动作必须通过 `workflow/gtpj_workflow.py`。
 
-Read in this order:
+阅读顺序：
 
 1. `git_policy.md`
 2. `versioning.md`
 3. `idea_tree_protocol.md`
 4. `module_trial_protocol.md`
-5. `experiment_protocol.md`
-6. `review_gate.md`
-7. `runbook.md`
-8. `workflow/README.md`
+5. `code_interface_contract.md`
+6. `experiment_protocol.md`
+7. `review_gate.md`
+8. `runbook.md`
+9. `workflow/README.md`

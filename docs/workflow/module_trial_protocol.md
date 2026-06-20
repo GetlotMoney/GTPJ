@@ -1,18 +1,24 @@
-# Module Trial Protocol
+# 模块 Trial 协议
 
-Module trials live under:
+模块 trial 放在：
 
 ```text
 experiments/module_trials/
 ```
 
-The authoritative idea record lives under:
+权威 idea 记录放在：
 
 ```text
 idea_tree/ideas/IDEA-0001_short_name/IDEA.md
 ```
 
-Required structure:
+模块代码改动必须遵守：
+
+```text
+docs/workflow/code_interface_contract.md
+```
+
+必需结构：
 
 ```text
 experiments/module_trials/IDEA-0001_short_name/
@@ -27,12 +33,19 @@ experiments/module_trials/IDEA-0001_short_name/
     `-- logs/
 ```
 
-Every trial must record:
+每个 trial 必须记录：
 
 - source idea file
 - base version
 - base code tag
 - version-specific idea score
+- insertion point
+- input contract
+- output contract
+- shape invariants
+- config switch and baseline-off path
+- 如果触碰 loss/evaluation，记录对应 contract
+- 最低验证证据
 - code branch
 - code tag
 - changed files
@@ -40,7 +53,7 @@ Every trial must record:
 - review decision
 - result and final decision
 
-Trial decisions:
+Trial decision：
 
 ```text
 reject / revise / combine / promote

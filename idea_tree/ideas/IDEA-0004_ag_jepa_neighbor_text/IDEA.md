@@ -1,4 +1,4 @@
-# IDEA-0004: AG-JEPA neighbor-text variant
+# IDEA-0004：AG-JEPA 邻居文本变体
 
 ```text
 idea_id: IDEA-0004
@@ -11,27 +11,28 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive `use_ag_jepa_v2` switch.
+来源不明确。由未启用的 `use_ag_jepa_v2` 开关迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - AG-JEPA auxiliary training
 - GPT text prototypes
 
-## Hypothesis
+## 假设
 
-Adding nearby class text as a neighbor constraint may make AG-JEPA patch prediction less class-isolated and improve semantic smoothness.
+加入相邻类别文本作为 neighbor constraint，可能让 AG-JEPA patch prediction
+不那么类别孤立，并提升语义平滑性。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 40 | direct | v1 already uses AG-JEPA, so this is a local extension. |
+| `v1` | 40 | direct | v1 已经使用 AG-JEPA，因此这是局部扩展。 |
 
-## Blockers
+## 阻塞点
 
-- Decide whether this is local or paper-backed.
-- Check fine-grained class blurring.
+- 判断这是本地想法还是论文支持。
+- 检查是否会模糊细粒度类别边界。

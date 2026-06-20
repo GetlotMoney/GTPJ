@@ -1,4 +1,4 @@
-# IDEA-0009: Uncertainty-aware MSDN gate
+# IDEA-0009：不确定性感知 MSDN gate
 
 ```text
 idea_id: IDEA-0009
@@ -11,28 +11,28 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0009_uncertainty_msdn_gate/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive `use_uncertainty_msdn_gate` switch.
+来源不明确。由未启用的 `use_uncertainty_msdn_gate` 开关迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - MSDN mutual branch distillation
 - score_s2v
 - score_v2s
 
-## Hypothesis
+## 假设
 
-Reducing mutual distillation weight when branches are uncertain or disagree may prevent wrong consensus from being reinforced.
+当分支不确定或意见不一致时，降低 mutual distillation 权重，可能避免错误共识被强化。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 50 | direct | v1 actively uses MSDN and logits shape is unchanged. |
+| `v1` | 50 | direct | v1 主动使用 MSDN，且 logits shape 不变。 |
 
-## Blockers
+## 阻塞点
 
-- Document confidence-gating source or local rationale.
-- Check whether gating weakens active distillation.
+- 记录 confidence-gating 来源或本地理由。
+- 检查 gating 是否削弱当前有效的 distillation。

@@ -1,16 +1,15 @@
-# GTPJ-v1 Result
+# GTPJ-v1 结果
 
-Status: pending clean rerun in this repository.
+状态：等待在本仓库中干净重跑。
 
-## Imported Reference
+## 导入参考值
 
-This is a reference value for orientation only. It is not an official GTPJ result
-until rerun and recorded from this repository.
+这个值只用于定位方向。它不是正式 GTPJ 结果，除非从本仓库重跑并记录。
 
-| Dataset | Seed | U | S | H | ZS | Best epoch |
+| 数据集 | Seed | U | S | H | ZS | Best epoch |
 |---|---:|---:|---:|---:|---:|---:|
 | CUB GZSL | 5 | 71.46 | 76.40 | 73.85 | 81.61 | 41 |
 
-## Official Result
+## 正式结果
 
-Pending.
+等待记录。

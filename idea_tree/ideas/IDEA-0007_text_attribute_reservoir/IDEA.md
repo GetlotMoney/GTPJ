@@ -1,4 +1,4 @@
-# IDEA-0007: Topology-aware text attribute reservoir
+# IDEA-0007：拓扑感知文本属性库
 
 ```text
 idea_id: IDEA-0007
@@ -11,11 +11,11 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0007_text_attribute_reservoir/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive `use_text_attr_reservoir` switch.
+来源不明确。由未启用的 `use_text_attr_reservoir` 开关迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - GPT text prototypes
@@ -23,17 +23,18 @@ Source unclear. Migrated from inactive `use_text_attr_reservoir` switch.
 - CLIP attribute text
 - topology-preserving text constraint
 
-## Hypothesis
+## 假设
 
-Injecting attribute-text reservoir information into class prototypes may enrich semantics while topology loss limits drift.
+把 attribute-text reservoir 信息注入 class prototypes，可能丰富语义；
+同时 topology loss 可以限制表示漂移。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 45 | needs_adaptation | Potentially useful but can distort GPT/CLIP text geometry. |
+| `v1` | 45 | needs_adaptation | 可能有用，但可能扭曲 GPT/CLIP text geometry。 |
 
-## Blockers
+## 阻塞点
 
-- Clarify source.
-- Check text topology drift.
+- 澄清来源。
+- 检查 text topology drift。

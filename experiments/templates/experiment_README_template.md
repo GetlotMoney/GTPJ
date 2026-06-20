@@ -1,4 +1,4 @@
-﻿# Experiment
+# 实验
 
 ```text
 experiment_id:
@@ -9,9 +9,9 @@ config:
 log:
 ```
 
-## Result
+## 结果
 
-| Dataset | Seed | U | S | H | ZS | Best epoch |
+| 数据集 | Seed | U | S | H | ZS | Best epoch |
 |---|---:|---:|---:|---:|---:|---:|
 
-## Conclusion
+## 结论

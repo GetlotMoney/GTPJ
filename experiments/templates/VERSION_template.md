@@ -10,15 +10,15 @@ promoted_from:
 config:
 ```
 
-## Active Modules
+## 当前启用模块
 
 -
 
-## Changes From Base
+## 相比 Base 的变化
 
 -
 
-## Allowed Experiments
+## 允许的实验类型
 
 - tune
 - ablation

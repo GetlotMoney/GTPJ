@@ -1,4 +1,4 @@
-# IDEA-0008: Attribute-patch OT alignment
+# IDEA-0008：属性-patch OT 对齐
 
 ```text
 idea_id: IDEA-0008
@@ -11,28 +11,28 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0008_attr_patch_ot/
 ```
 
-## Source
+## 来源
 
-Uses optimal-transport style Sinkhorn matching, but the exact GTPJ module source is not verified.
+使用 optimal-transport 风格的 Sinkhorn matching，但 GTPJ 中该模块的精确来源尚未验证。
 
-## Based On
+## 基于什么
 
 - `v1`
 - FAE geometry-aware local encoding
 - CUB expert attributes
 - CLIP attribute text
 
-## Hypothesis
+## 假设
 
-Soft OT alignment between local patches and class-relevant attributes may improve fine-grained part grounding.
+局部 patch 与类别相关属性之间的 soft OT alignment，可能提升细粒度 part grounding。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 50 | direct | v1 has FAE patches and attribute text inputs. |
+| `v1` | 50 | direct | v1 有 FAE patches 和 attribute text 输入。 |
 
-## Blockers
+## 阻塞点
 
-- Verify OT/patch-attribute grounding source.
-- Check numerical stability.
+- 验证 OT/patch-attribute grounding 来源。
+- 检查数值稳定性。

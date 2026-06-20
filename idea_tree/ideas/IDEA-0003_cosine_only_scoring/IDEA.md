@@ -1,4 +1,4 @@
-# IDEA-0003: Cosine-only CrossModal scoring with anchor losses
+# IDEA-0003：Cosine-only CrossModal 打分与 anchor loss
 
 ```text
 idea_id: IDEA-0003
@@ -11,28 +11,29 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0003_cosine_only_scoring/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive `cosine_only` path.
+来源不明确。由未启用的 `cosine_only` 路径迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - CrossModalTransformer
 - Text Adapter
 - base logits
 
-## Hypothesis
+## 假设
 
-Direct CrossModal cosine scoring may outperform additive correction if anchor losses prevent CLIP-space drift.
+如果 anchor loss 能阻止 CLIP-space drift，直接使用 CrossModal cosine scoring
+可能优于 additive correction。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 35 | needs_adaptation | High risk because it changes the main scoring path. |
+| `v1` | 35 | needs_adaptation | 高风险，因为它会改变主打分路径。 |
 
-## Blockers
+## 阻塞点
 
-- Strict source/rationale review.
-- Shape check and unseen-geometry check.
+- 严格 review 来源/理由。
+- 检查 shape 和 unseen-geometry。

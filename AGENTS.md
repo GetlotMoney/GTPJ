@@ -1,32 +1,32 @@
-# GTPJ Agent Rules
+# GTPJ Agent 规则
 
-## Communication
+## 沟通
 
-- Default to Chinese when working with the owner.
-- Start with the conclusion, then give the key reasons.
-- For complex work, give a short plan before editing.
-- State uncertainty and risks directly.
+- 与 owner 协作时默认使用中文。
+- 先说结论，再说关键原因。
+- 复杂任务在编辑前先给简短计划。
+- 直接说明不确定性和风险。
 
-## Repository Rules
+## 仓库规则
 
-- `main` is the only long-lived branch.
-- `v1`, `v2`, `v3` are permanent baseline tags.
-- Trial code snapshots use tags such as `trial/idea-0001/trial-001`.
-- Use `workflow/gtpj_workflow.py` for status checks and new workflow records.
-- Do not create controller branches.
-- Do not migrate old experiment IDs, old branches, old PRs, or old workflow files.
-- Do not push unless the owner explicitly asks for push.
+- `main` 是唯一长期分支。
+- `v1`、`v2`、`v3` 是永久 baseline tags。
+- Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
+- 使用 `workflow/gtpj_workflow.py` 做状态检查和创建新的 workflow 记录。
+- 不创建 controller branch。
+- 不迁移旧实验 ID、旧分支、旧 PR 或旧 workflow 文件。
+- 除非 owner 明确要求 push，否则不要 push。
 
-## Experiment Rules
+## 实验规则
 
-- OpenClaw is the preferred runtime; Codex is compatible and must follow the same files.
-- Every new module trial must start from an `idea_tree` node.
-- No `idea_id`, no `dev/idea-*` branch.
-- Every trial must record implementation, config, review, result, and code tag.
-- Tune, ablation, and confirmation runs belong under a concrete version directory, such as `experiments/v1/`.
+- OpenClaw 是优先 runtime；Codex 兼容，但必须遵循同一套文件。
+- 每个新模块 trial 都必须从 `idea_tree` 节点开始。
+- 没有 `idea_id`，就没有 `dev/idea-*` 分支。
+- 每个 trial 必须记录 implementation、config、review、result 和 code tag。
+- Tune、ablation 和 confirmation 运行属于具体版本目录，例如 `experiments/v1/`。
 
-## Safety
+## 安全
 
-- Do not commit datasets, checkpoints, raw caches, secrets, or large logs.
-- Do not use training/test feedback to change training behavior mid-run.
-- Do not hide failed experiments; record them as evidence.
+- 不提交数据集、checkpoint、原始 cache、密钥或大型日志。
+- 不使用训练/测试反馈在运行中途改变训练行为。
+- 不隐藏失败实验；失败也要作为证据记录。

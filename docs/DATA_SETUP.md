@@ -1,8 +1,8 @@
-# Data Setup
+# 数据准备
 
-Datasets and feature caches are not tracked by Git.
+数据集和特征缓存不纳入 Git 管理。
 
-Expected local paths:
+预期本地路径：
 
 ```text
 data/xlsa17/data/CUB/
@@ -13,11 +13,11 @@ data/gpt4_data/
 data/cache/
 ```
 
-Do not commit:
+不要提交：
 
-- raw datasets
-- CLIP feature caches
-- checkpoints
-- large training logs
+- 原始数据集
+- CLIP 特征缓存
+- checkpoint
+- 大型训练日志
 
-For a run record, store only lightweight summaries in Git and record the local or cloud path for large artifacts.
+对于一次运行记录，Git 中只保存轻量摘要，并记录大型产物的本地路径或云端路径。

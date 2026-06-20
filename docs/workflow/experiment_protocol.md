@@ -1,8 +1,8 @@
-# Experiment Protocol
+# 实验协议
 
-Tune, ablation, and confirmation runs belong to a baseline version.
+tune、ablation 和 confirmation 运行都属于某个 baseline 版本。
 
-Examples:
+示例：
 
 ```text
 experiments/v1/tune/TUNE-001_topo008/
@@ -10,7 +10,7 @@ experiments/v1/ablation/ABL-001_disable_jepa/
 experiments/v1/confirmation/CONFIRM-001_clean_seed5/
 ```
 
-Each experiment folder must contain:
+每个实验目录必须包含：
 
 ```text
 README.md
@@ -19,10 +19,10 @@ review.md
 logs/
 ```
 
-Rules:
+规则：
 
-- Do not change model code in tune or ablation branches.
-- Put parameter searches only under `tune/`; do not put tuning runs under `confirmation/`.
-- Copy the version config into the experiment folder before editing.
-- Record command, seed, config, log path, U/S/H/ZS, best epoch, and conclusion.
-- Failed runs are evidence and must be recorded.
+- tune 或 ablation 分支不要修改模型代码。
+- 参数搜索只放在 `tune/` 下；不要把 tuning run 放到 `confirmation/`。
+- 编辑前，先把版本配置复制到实验目录。
+- 记录命令、seed、config、日志路径、U/S/H/ZS、best epoch 和结论。
+- 失败运行也是证据，必须记录。

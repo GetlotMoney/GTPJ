@@ -1,55 +1,53 @@
 # GTPJ
 
-GeoTopoPatch-JEPA for generalized zero-shot learning.
+GTPJ 是面向广义零样本学习（generalized zero-shot learning）的
+GeoTopoPatch-JEPA 实验仓库。
 
-GTPJ is a clean experiment repository for the first official baseline,
-`GTPJ-v1`. It starts from the current accepted framework only: frozen CLIP, GPT
-text descriptions, patch bottleneck, geometry-aware local encoding,
-topology-preserving text constraint, conditional text adaptation, mutual
-visual-text branch distillation, and AG-JEPA auxiliary training.
+这个仓库用于维护第一个正式基线 `GTPJ-v1`。它只保留当前认可的框架：
+冻结 CLIP、GPT 文本描述、patch bottleneck、几何感知局部编码、拓扑保持文本约束、
+条件文本适配、视觉-文本双分支互蒸馏，以及 AG-JEPA 辅助训练。
 
-## Current Version
+## 当前版本
 
-| Version | Code tag | Status | Main dataset | Notes |
+| 版本 | 代码 tag | 状态 | 主数据集 | 说明 |
 |---|---|---|---|---|
-| `GTPJ-v1` | `v1` | initialized | CUB GZSL | Needs a clean rerun in this repo before becoming an official reported result. |
+| `GTPJ-v1` | `v1` | 已初始化 | CUB GZSL | 需要在本仓库中干净重跑后，才能作为正式报告结果。 |
 
-## Project Layout
+## 项目结构
 
 ```text
 GTPJ/
-|-- NEXT_ACTIONS.md         # current execution window
-|-- model/                  # model code
-|-- tools/                  # data, feature, evaluation utilities
+|-- NEXT_ACTIONS.md         # 当前执行窗口
+|-- model/                  # 模型代码
+|-- tools/                  # 数据、特征、评估工具
 |-- config/
-|   `-- versions/v1.yaml    # fixed GTPJ-v1 config
-|-- docs/workflow/          # GitHub and experiment workflow rules
-|-- workflow/               # executable workflow commands
-|-- idea_tree/              # strict idea source and queues
+|   `-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
+|-- docs/workflow/          # GitHub 与实验工作流规则
+|-- workflow/               # 可执行 workflow 命令
+|-- idea_tree/              # 严格的创意来源和队列
 `-- experiments/
-    |-- module_trials/      # code-backed module trials
-    `-- v1/                 # GTPJ-v1 tune / ablation / confirmation records
+    |-- module_trials/      # 有代码实现证据的模块 trial
+    `-- v1/                 # GTPJ-v1 调参、消融、确认记录
 ```
 
-## Workflow Rule
+## 工作流规则
 
-One version is one baseline:
+一个版本就是一个 baseline：
 
 ```text
-v1 = GTPJ-v1 = one code snapshot = one Git tag = one version experiment directory
+v1 = GTPJ-v1 = 一个代码快照 = 一个 Git tag = 一个版本实验目录
 ```
 
-Module ideas do not immediately become `v2`, `v3`, or `v4`. They first go
-through `idea_tree/` and `experiments/module_trials/`. Only a successful,
-reviewed trial is promoted into a new baseline version.
+模块创意不会立刻变成 `v2`、`v3` 或 `v4`。它们必须先经过
+`idea_tree/` 和 `experiments/module_trials/`。只有成功并通过 review 的
+trial 才能提升为新的 baseline 版本。
 
-## Runtime Preference
+## 运行时偏好
 
-OpenClaw is the preferred runtime for experiments. Codex must follow the same
-repo files and produce the same records, so both runtimes can work on the same
-baseline without inventing separate rules.
+OpenClaw 是实验运行的优先 runtime。Codex 必须遵循同一套仓库文件并产出同样的记录，
+这样两个 runtime 才能在同一个 baseline 上工作，而不会各自发明规则。
 
-Start here:
+优先阅读：
 
 - `NEXT_ACTIONS.md`
 - `docs/PROJECT_STATUS.md`
@@ -58,16 +56,16 @@ Start here:
 - `experiments/v1/VERSION.md`
 - `idea_tree/README.md`
 
-## Executable Workflow
+## 可执行工作流
 
-Always check the repo before creating records:
+创建任何记录前，先检查仓库：
 
 ```bash
 python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
 ```
 
-Create records through the helper, not by hand:
+通过 helper 创建记录，不要手工乱建目录：
 
 ```bash
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5

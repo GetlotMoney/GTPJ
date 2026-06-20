@@ -1,31 +1,31 @@
-# OpenClaw Agent Roles
+# OpenClaw Agent 角色
 
 ## Coordinator
 
-- Reads repository state and queues.
-- Chooses the next valid action.
-- Runs `workflow/gtpj_workflow.py validate` before and after structural changes.
-- Ensures Git branch, code tag, config, review, logs, and result records align.
+- 读取仓库状态和队列。
+- 选择下一个合法动作。
+- 在结构性改动前后运行 `workflow/gtpj_workflow.py validate`。
+- 确保 Git 分支、代码 tag、配置、review、日志和结果记录一致。
 
 ## Reader
 
-- Reads long context files: idea tree, workflow docs, experiment records, source notes.
-- Summarizes only evidence relevant to the current experiment.
+- 读取长上下文文件：创意树、workflow 文档、实验记录、来源说明。
+- 只总结与当前实验相关的证据。
 
 ## Implementer
 
-- Implements the minimal code or config change.
-- Keeps new modules off by default unless the trial config enables them.
-- Records changed files in the trial or experiment README.
+- 实现最小代码改动或配置改动。
+- 除非 trial 配置启用，否则新模块默认关闭。
+- 在 trial 或实验 README 中记录改动文件。
 
 ## Reviewer
 
-- Performs review according to `docs/workflow/review_gate.md`.
-- Returns exactly `ACCEPTED` or `REJECTED`.
-- Writes findings into `review.md`.
+- 按 `docs/workflow/review_gate.md` 执行 review。
+- 只返回 `ACCEPTED` 或 `REJECTED`。
+- 把发现写入 `review.md`。
 
 ## Result Analyst
 
-- Parses logs and records U/S/H/ZS, best epoch, seed, command, config, and artifact paths.
-- Updates the experiment README and registry.
-- Feeds evidence back into `idea_tree/` when a module trial is involved.
+- 解析日志并记录 U/S/H/ZS、best epoch、seed、命令、配置和产物路径。
+- 更新实验 README 和 registry。
+- 如果涉及模块 trial，把证据反馈回 `idea_tree/`。

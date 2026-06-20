@@ -1,6 +1,6 @@
-# GTPJ-v1 Ablation Index
+# GTPJ-v1 Ablation 索引
 
-Planned:
+计划项：
 
 ```text
 ABL-001_disable_ag_jepa

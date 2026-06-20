@@ -1,6 +1,6 @@
-# GTPJ-v1 Confirmation Index
+# GTPJ-v1 Confirmation 索引
 
-Planned:
+计划项：
 
 ```text
 CONFIRM-001_clean_seed5

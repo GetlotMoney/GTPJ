@@ -12,22 +12,22 @@ log:
 status: planned
 ```
 
-## Question
+## 问题
 
-Confirm that `GTPJ-v1` runs cleanly in this repository with `seed=5`.
+确认 `GTPJ-v1` 能在本仓库中用 `seed=5` 干净运行。
 
-## Pre-Run Checklist
+## 运行前检查
 
-- [ ] Branch starts from tag `v1`.
-- [ ] Config is copied from `experiments/v1/config.yaml`.
-- [ ] Only the declared variable or switch changes.
-- [ ] Review decision is `ACCEPTED`.
+- [ ] 分支从 tag `v1` 切出。
+- [ ] 配置复制自 `experiments/v1/config.yaml`。
+- [ ] 只改变声明过的变量或开关。
+- [ ] Review decision 为 `ACCEPTED`。
 
-## Result
+## 结果
 
-| Dataset | Seed | U | S | H | ZS | Best epoch | Log |
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
 
-## Conclusion
+## 结论
 
-Pending.
+待记录。

@@ -1,12 +1,12 @@
-# Experiments
+# 实验记录
 
-Experiment records are lightweight evidence files, not raw training storage.
+实验记录是轻量证据文件，不是原始训练存储区。
 
-Main areas:
+主要区域：
 
 ```text
-module_trials/   code-backed innovation trials
-v1/              GTPJ-v1 tune / ablation / confirmation records
+module_trials/   有代码实现证据的创新 trial
+v1/              GTPJ-v1 tune / ablation / confirmation 记录
 ```
 
-Do not store large datasets, checkpoints, or raw cache files here.
+不要在这里保存大型数据集、checkpoint 或原始 cache 文件。

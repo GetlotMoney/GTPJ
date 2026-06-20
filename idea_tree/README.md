@@ -1,39 +1,38 @@
-# Idea Tree
+# 创意树
 
-This directory is the source of truth for module innovation.
+这个目录是模块创新的事实来源。
 
-Use `inbox.md` for rough ideas. Move only selected ideas into a stable
-`IDEA-xxxx` node.
+`inbox.md` 用来暂存粗糙想法。只有被选中的想法才移动成稳定的
+`IDEA-xxxx` 节点。
 
-No module trial can start without an idea node.
+没有 idea 节点，就不能启动模块 trial。
 
-## Required Structure
+## 必需结构
 
 ```text
 idea_tree/
-|-- INDEX.md                 # human-readable master ranking
-|-- idea_tree.json           # machine-readable idea registry
+|-- INDEX.md                 # 给人读的总排名
+|-- idea_tree.json           # 机器可读的创意注册表
 |-- ideas/
 |   `-- IDEA-0001_short_name/
-|       `-- IDEA.md          # source, hypothesis, version scores, constraints
-|-- queues/                  # current execution queues derived from the index
-`-- sources/                 # paper/source indexes
+|       `-- IDEA.md          # 来源、假设、版本评分、约束
+|-- queues/                  # 从总索引派生出的当前执行队列
+`-- sources/                 # 论文/来源索引
 ```
 
-## Ranking Rule
+## 排序规则
 
-Ideas are ranked per framework version, not only globally.
+创意按框架版本排序，不只按全局价值排序。
 
 ```text
-global_score = long-term value estimate
-version_scores.v1.score = usefulness for GTPJ-v1
-version_scores.v2.score = usefulness for GTPJ-v2
+global_score = 长期价值估计
+version_scores.v1.score = 对 GTPJ-v1 的当前价值
+version_scores.v2.score = 对 GTPJ-v2 的当前价值
 ```
 
-The active framework version uses its own score column. An idea can be useful
-for multiple versions with different scores and different implementation notes.
+当前激活的框架版本使用自己的分数列。一个创意可以同时适用于多个版本，
+但每个版本可以有不同分数和不同实现说明。
 
-Use `INDEX.md` as the current decision board. Use each
-`ideas/IDEA-xxxx_slug/IDEA.md` file as the source and rationale record. Start a
-trial only after the selected version score, source status, blockers, and
-transfer notes have been checked.
+`INDEX.md` 是当前决策面板。每个 `ideas/IDEA-xxxx_slug/IDEA.md`
+是该创意的来源和理由记录。只有检查过所选版本分数、来源状态、阻塞点和迁移说明后，
+才能启动 trial。

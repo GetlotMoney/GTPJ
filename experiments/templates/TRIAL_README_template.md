@@ -16,7 +16,7 @@ decision:
 promote_to:
 ```
 
-## Result
+## 结果
 
-| Dataset | Seed | U | S | H | ZS | Best epoch |
+| 数据集 | Seed | U | S | H | ZS | Best epoch |
 |---|---:|---:|---:|---:|---:|---:|

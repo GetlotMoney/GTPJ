@@ -1,8 +1,8 @@
-# Versioning
+# 版本管理
 
-## Baseline Versions
+## Baseline 版本
 
-Each baseline is named:
+每个 baseline 命名为：
 
 ```text
 GTPJ-v1
@@ -10,7 +10,7 @@ GTPJ-v2
 GTPJ-v3
 ```
 
-The matching Git tags are:
+对应 Git tag：
 
 ```text
 v1
@@ -18,7 +18,7 @@ v2
 v3
 ```
 
-Each version owns its records:
+每个版本拥有自己的记录目录：
 
 ```text
 experiments/v1/
@@ -26,12 +26,12 @@ experiments/v2/
 experiments/v3/
 ```
 
-## Promotion
+## 提升规则
 
-Only a successful reviewed trial can become a new baseline.
+只有成功且通过 review 的 trial 才能成为新的 baseline。
 
 ```text
 IDEA-0001 -> TRIAL-001 -> promote -> GTPJ-v2
 ```
 
-Do not create a new `vX` for every small attempt.
+不要因为每个小尝试都创建一个新的 `vX`。

@@ -1,4 +1,4 @@
-# IDEA-0001: LaSt-ViT CLS replacement
+# IDEA-0001：LaSt-ViT CLS 替换
 
 ```text
 idea_id: IDEA-0001
@@ -11,28 +11,30 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0001_lastvit_cls/
 ```
 
-## Source
+## 来源
 
-Code comment claims LaSt-ViT / Vision Transformers Need More Than Registers. Exact paper and official code are not verified.
+代码注释声称参考 LaSt-ViT / Vision Transformers Need More Than Registers。
+具体论文和官方代码尚未验证。
 
-## Based On
+## 基于什么
 
 - `v1`
-- Frozen CLIP ViT-L/14@336px
+- 冻结的 CLIP ViT-L/14@336px
 - patch tokens
 - base logits
 
-## Hypothesis
+## 假设
 
-Replacing or blending CLIP CLS with a part-aware patch pooled CLS may improve fine-grained recognition if the pooled feature stays aligned with CLIP text space.
+如果 pooled feature 仍能保持与 CLIP text space 对齐，那么用 part-aware patch pooled CLS
+替换或融合 CLIP CLS，可能提升细粒度识别。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 55 | needs_adaptation | Potentially useful, but risky because v1 depends on CLIP-space alignment. |
+| `v1` | 55 | needs_adaptation | 可能有用，但风险较高，因为 v1 依赖 CLIP-space alignment。 |
 
-## Blockers
+## 阻塞点
 
-- Verify source.
-- Run shape and CLIP-alignment checks.
+- 验证来源。
+- 运行 shape 和 CLIP-alignment 检查。

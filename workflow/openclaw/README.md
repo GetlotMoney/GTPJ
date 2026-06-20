@@ -1,10 +1,10 @@
-# OpenClaw Workflow Entrypoint
+# OpenClaw 工作流入口
 
-OpenClaw is the preferred runtime for GTPJ experiments.
+OpenClaw 是 GTPJ 实验的优先 runtime。
 
-## Startup Contract
+## 启动契约
 
-Before choosing or running an experiment, read:
+选择或运行实验前，先阅读：
 
 ```text
 AGENTS.md
@@ -20,18 +20,18 @@ docs/workflow/runbook.md
 workflow/openclaw/agent_roles.md
 ```
 
-Then run:
+然后运行：
 
 ```bash
 python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
 ```
 
-## Execution Rules
+## 执行规则
 
-- Use `workflow/gtpj_workflow.py` to create experiment, idea, and trial folders.
-- Do not create ad hoc experiment directories by hand.
-- Do not run a module trial unless it has an `IDEA-xxxx` node.
-- Do not run training until the review file decision is `ACCEPTED`.
-- Write results back to the experiment folder before updating queues.
-- Do not push unless the owner explicitly asks.
+- 使用 `workflow/gtpj_workflow.py` 创建 experiment、idea 和 trial 目录。
+- 不要手工创建临时实验目录。
+- 没有 `IDEA-xxxx` 节点时，不要运行模块 trial。
+- review 文件的 decision 不是 `ACCEPTED` 时，不要开始训练。
+- 更新队列前，先把结果写回实验目录。
+- 除非 owner 明确要求，否则不要 push。

@@ -1,4 +1,4 @@
-# IDEA-0006: Geometry-aware attribute routing
+# IDEA-0006：几何感知属性路由
 
 ```text
 idea_id: IDEA-0006
@@ -11,28 +11,28 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0006_geo_attribute_routing/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive `use_geo_attr_routing` switch.
+来源不明确。由未启用的 `use_geo_attr_routing` 开关迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - FAE geometry-aware local encoding
 - CUB expert attributes
 - CLIP attribute text
 
-## Hypothesis
+## 假设
 
-Routing local visual features to class-relevant attribute text may improve explainable part-attribute grounding.
+把局部视觉特征路由到类别相关的属性文本，可能提升可解释的 part-attribute grounding。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 50 | direct | v1 already passes class attributes and CLIP attribute text. |
+| `v1` | 50 | direct | v1 已经传递 class attributes 和 CLIP attribute text。 |
 
-## Blockers
+## 阻塞点
 
-- Find source support or mark local heuristic.
-- Verify attribute tensor availability.
+- 找来源支持，或标记为 local heuristic。
+- 验证 attribute tensor 是否可用。

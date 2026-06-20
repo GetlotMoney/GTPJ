@@ -1,20 +1,19 @@
-# Config Policy
+# 配置策略
 
-`config/versions/v1.yaml` is the fixed config for `GTPJ-v1`.
+`config/versions/v1.yaml` 是 `GTPJ-v1` 的固定配置。
 
-Rules:
+规则：
 
-- `config/versions/vX.yaml` stores the reusable baseline config for version `vX`.
-- `experiments/vX/config.yaml` is the archived copy for that version.
-- A tune, ablation, or confirmation run must copy the version config into its own experiment folder.
-- Do not edit the version config to run a one-off experiment.
-- Version configs only contain active baseline fields. Inactive module
-  candidates are tracked in `idea_tree/` and must be added only to a trial-local
-  config after an `IDEA-xxxx` node is selected.
-- Old inert keys and runtime-only switches are not kept in version configs.
+- `config/versions/vX.yaml` 保存版本 `vX` 可复用的 baseline 配置。
+- `experiments/vX/config.yaml` 是该版本的归档副本。
+- tune、ablation 或 confirmation 运行必须先把版本配置复制到自己的实验目录。
+- 不要为了跑一次临时实验而直接修改版本配置。
+- 版本配置只包含当前 baseline 启用的字段。未启用的候选模块在 `idea_tree/` 中跟踪，
+  只有选中 `IDEA-xxxx` 节点后，才能加入 trial-local 配置。
+- 旧的空转 key 和只影响 runtime 的开关不保留在版本配置中。
 
-Current aliases:
+当前别名：
 
 ```text
-config/VGSR_cub_gzsl.yaml -> same content as config/versions/v1.yaml
+config/VGSR_cub_gzsl.yaml -> 与 config/versions/v1.yaml 内容相同
 ```

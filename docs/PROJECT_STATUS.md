@@ -1,8 +1,8 @@
-# Project Status
+# 项目状态
 
-Date: 2026-06-20
+日期：2026-06-20
 
-## Current Baseline
+## 当前基线
 
 ```text
 name: GTPJ-v1
@@ -11,30 +11,31 @@ status: initialized, pending clean rerun
 dataset: CUB GZSL
 ```
 
-## Active Modules
+## 当前启用模块
 
-- Frozen CLIP ViT-L/14@336px backbone
-- GPT text description prototypes
+- 冻结的 CLIP ViT-L/14@336px backbone
+- GPT 文本描述 prototype
 - Text Adapter
 - Patch bottleneck / patch selection
-- Geometry-aware local visual encoding
-- Bidirectional visual-text interaction
-- Topology-preserving text constraint
-- Conditional text adaptation
-- Mutual visual-text branch distillation
-- AG-JEPA auxiliary training
+- 几何感知局部视觉编码
+- 双向视觉-文本交互
+- 拓扑保持文本约束
+- 条件文本适配
+- 视觉-文本双分支互蒸馏
+- AG-JEPA 辅助训练
 - AG-JEPA negative text margin
 
-## Official Result Status
+## 正式结果状态
 
-No result is official until rerun and recorded inside this repo.
+任何结果都必须在本仓库中重跑并记录后，才算正式结果。
 
-Historical reference for the imported first baseline:
+导入的第一版 baseline 的历史参考值：
 
-| Dataset | Seed | U | S | H | ZS | Status |
+| 数据集 | Seed | U | S | H | ZS | 状态 |
 |---|---:|---:|---:|---:|---:|---|
-| CUB GZSL | 5 | 71.46 | 76.40 | 73.85 | 81.61 | reference only, must rerun |
+| CUB GZSL | 5 | 71.46 | 76.40 | 73.85 | 81.61 | 仅作参考，必须重跑 |
 
-## Next Step
+## 下一步
 
-Run `CONFIRM-001_clean_seed5` under `experiments/v1/confirmation/` to confirm the first baseline in this clean repository.
+在 `experiments/v1/confirmation/` 下运行 `CONFIRM-001_clean_seed5`，
+确认这个干净仓库中的第一版 baseline。

@@ -1,4 +1,4 @@
-# IDEA-xxxx: short title
+# IDEA-xxxx：简短标题
 
 ```text
 idea_id:
@@ -13,36 +13,35 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 ```
 
-## Source
+## 来源
 
-Record the paper, local reasoning, observation, or cross-domain source.
+记录论文、自己的想法、观察、跨学科来源或混合来源。
 
-## Based On
+## 基于什么
 
 - base version:
 - based on modules:
 
-## Target Component
+## 目标组件
 
-## Hypothesis
+## 假设
 
-## Implementation Scope
+## 实现范围
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 0 | unclear | Pending. |
+| `v1` | 0 | unclear | 待补充。 |
 
-## Transfer Notes
+## 迁移说明
 
-Record whether this can transfer to later versions such as `v2`, and what must
-change.
+记录这个创意是否可以迁移到 `v2` 等后续版本，以及需要改变什么。
 
-## Risk
+## 风险
 
-## Blockers
+## 阻塞点
 
-## Planned Trials
+## 计划 Trials
 
-## Decision Rule
+## 决策规则

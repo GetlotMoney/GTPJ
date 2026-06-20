@@ -6,10 +6,10 @@ review_mode: STRICT
 decision: PENDING
 ```
 
-## Scope
+## 范围
 
-## Findings
+## 发现
 
-## Decision
+## 决策
 
 PENDING

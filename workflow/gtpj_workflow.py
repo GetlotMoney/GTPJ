@@ -154,18 +154,18 @@ def cmd_status(_: argparse.Namespace) -> int:
     tags = git(["tag", "--points-at", "HEAD"], check=False)
     porcelain = git(["status", "--short"], check=False)
 
-    print("GTPJ workflow status")
+    print("GTPJ workflow 状态")
     print(f"- branch: {branch}")
     print(f"- head: {head}")
     print(f"- tags at head: {tags or '(none)'}")
     print(f"- working tree: {'dirty' if porcelain else 'clean'}")
     print()
-    print("Available versions:")
+    print("可用版本:")
     for version_dir in sorted((REPO_ROOT / "experiments").glob("v*")):
         if version_dir.is_dir():
             print(f"- {version_dir.name}: {rel(version_dir)}")
     print()
-    print("Next queues:")
+    print("后续队列:")
     for queue in sorted((REPO_ROOT / "idea_tree" / "queues").glob("*.md")):
         print(f"- {rel(queue)}")
     return 0
@@ -180,6 +180,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
         "docs/workflow/module_trial_protocol.md",
+        "docs/workflow/code_interface_contract.md",
         "docs/workflow/experiment_protocol.md",
         "docs/workflow/idea_tree_protocol.md",
         "docs/workflow/review_gate.md",
@@ -248,6 +249,33 @@ def cmd_validate(_: argparse.Namespace) -> int:
     if v1_config != archived_config:
         raise WorkflowError("config/versions/v1.yaml and experiments/v1/config.yaml differ")
 
+    contract = read_text(REPO_ROOT / "docs" / "workflow" / "code_interface_contract.md")
+    for marker in [
+        "Baseline-Off Equivalence",
+        "Input Contract",
+        "Output Contract",
+        "Shape Invariants",
+        "Config Switch Contract",
+        "Loss Contract",
+        "Evaluation Contract",
+        "Minimum Verification",
+    ]:
+        if marker not in contract:
+            raise WorkflowError(f"code_interface_contract.md missing section: {marker}")
+
+    implementation_template = read_text(
+        REPO_ROOT / "experiments" / "templates" / "implementation_template.md"
+    )
+    for marker in [
+        "Input Contract",
+        "Output Contract",
+        "Shape Invariants",
+        "Baseline-Off Path",
+        "Minimum Verification",
+    ]:
+        if marker not in implementation_template:
+            raise WorkflowError(f"implementation_template.md missing section: {marker}")
+
     offenders: list[str] = []
     for path in list_files_for_scan():
         try:
@@ -282,25 +310,25 @@ log:
 status: planned
 ```
 
-## Question
+## 问题
 
-Describe the exact question this experiment answers.
+描述这个实验要回答的精确问题。
 
-## Pre-Run Checklist
+## 运行前检查
 
-- [ ] Branch starts from tag `{version}`.
-- [ ] Config is copied from `experiments/{version}/config.yaml`.
-- [ ] Only the declared variable or switch changes.
-- [ ] Review decision is `ACCEPTED`.
+- [ ] 分支从 tag `{version}` 切出。
+- [ ] 配置复制自 `experiments/{version}/config.yaml`。
+- [ ] 只改变声明过的变量或开关。
+- [ ] Review decision 为 `ACCEPTED`。
 
-## Result
+## 结果
 
-| Dataset | Seed | U | S | H | ZS | Best epoch | Log |
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
 
-## Conclusion
+## 结论
 
-Pending.
+待记录。
 """
 
 
@@ -313,11 +341,11 @@ review_mode: {kind.default_review}
 decision: PENDING
 ```
 
-## Scope
+## 范围
 
-## Findings
+## 发现
 
-## Decision
+## 决策
 
 PENDING
 """
@@ -331,7 +359,7 @@ def append_version_experiment_registry(
     experiment_name = f"{exp_id}_{slug}"
     row = (
         f"| `{experiment_name}` | `{version}` | `{kind.name}` | planned | "
-        f"`{rel(folder)}` | Created by workflow helper. |"
+        f"`{rel(folder)}` | 由 workflow helper 创建。 |"
     )
     if experiment_name in content:
         return
@@ -339,7 +367,7 @@ def append_version_experiment_registry(
     placeholder = "No clean GTPJ-run experiments yet."
     table = "\n".join(
         [
-            "| Experiment | Version | Kind | Status | Folder | Notes |",
+            "| 实验 | 版本 | 类型 | 状态 | 目录 | 说明 |",
             "|---|---|---|---|---|---|",
             row,
         ]
@@ -371,8 +399,8 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     copy_new(src_config, exp_dir / "config.yaml")
     append_version_experiment_registry(version, kind, exp_id, slug, exp_dir)
 
-    print(f"created {rel(exp_dir)}")
-    print(f"suggested branch: exp/{version}-{exp_id.lower()}-{branch_slug(slug)}")
+    print(f"已创建 {rel(exp_dir)}")
+    print(f"建议分支: exp/{version}-{exp_id.lower()}-{branch_slug(slug)}")
     return 0
 
 
@@ -411,15 +439,15 @@ def write_idea_index(data: dict) -> None:
     )
 
     lines = [
-        "# Idea Tree Index",
+        "# 创意树索引",
         "",
-        f"Current framework version: `{current_version}`",
+        f"当前框架版本：`{current_version}`",
         "",
-        "This is the human-readable master list. For the current work window,",
-        f"sort by `{current_version}` score first. `global_score` is long-term value,",
-        "not the immediate experiment order.",
+        "这是给人读的主列表。当前工作窗口优先按",
+        f"`{current_version}` 分数排序。`global_score` 表示长期价值，",
+        "不直接决定当前实验顺序。",
         "",
-        "| Rank | Idea | Title | Idea file | Source status | Global | Current score | Applicability | Status | Next action |",
+        "| 排名 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 当前分 | 适用性 | 状态 | 下一步 |",
         "|---:|---|---|---|---|---:|---:|---|---|---|",
     ]
     for rank, idea in enumerate(ideas, 1):
@@ -438,12 +466,12 @@ def write_idea_index(data: dict) -> None:
     lines.extend(
         [
             "",
-            "## Version-Aware Rule",
+            "## 版本感知规则",
             "",
-            "- Use the active version score column for experiment order.",
-            "- Add a new `version_scores.vX` entry when a new framework version exists.",
-            "- Do not copy an old version score into a new version without reviewing interface fit.",
-            "- A high `global_score` with a low current score means the idea may be useful later, not now.",
+            "- 实验顺序使用当前激活版本的分数列。",
+            "- 创建新框架版本时，添加新的 `version_scores.vX` 条目。",
+            "- 没有重新检查接口适配性前，不要把旧版本分数复制到新版本。",
+            "- 高 `global_score` 但低当前分，表示这个想法可能以后有用，不代表现在优先。",
             "",
         ]
     )
@@ -508,7 +536,7 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         "linked_versions": [],
         "linked_experiments": [],
         "evidence": [],
-        "next_action": "fill IDEA.md and decide whether to select",
+        "next_action": "补全 IDEA.md，并决定是否选中",
     }
     idea_dir = REPO_ROOT / idea_dir_rel
     ensure_dir(idea_dir)
@@ -529,42 +557,42 @@ current_version_score:
 idea_dir: {idea_dir_rel}
 ```
 
-## Source
+## 来源
 
-Record the paper, local reasoning, observation, or cross-domain source.
+记录论文、自己的想法、观察、跨学科来源或混合来源。
 
-## Based On
+## 基于什么
 
 - `{base_version}`
 
-## Target Component
+## 目标组件
 
-## Hypothesis
+## 假设
 
-## Implementation Scope
+## 实现范围
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `{base_version}` | {version_score} | {args.applicability} | Pending. |
+| `{base_version}` | {version_score} | {args.applicability} | 待补充。 |
 
-## Transfer Notes
+## 迁移说明
 
-Record whether this can transfer to later versions such as `v2`, and what must change.
+记录这个创意是否可以迁移到 `v2` 等后续版本，以及需要改变什么。
 
-## Risk
+## 风险
 
-## Blockers
+## 阻塞点
 
-## Decision Rule
+## 决策规则
 """,
     )
     data.setdefault("ideas", []).append(idea)
     save_idea_tree(data)
     write_idea_index(data)
 
-    print(f"created {rel(idea_dir)}")
+    print(f"已创建 {rel(idea_dir)}")
     return 0
 
 
@@ -589,7 +617,7 @@ def cmd_set_current_version(args: argparse.Namespace) -> int:
     save_idea_tree(data)
     write_idea_index(data)
     print(f"current_version={version}")
-    print("refreshed idea_tree/INDEX.md")
+    print("已刷新 idea_tree/INDEX.md")
     return 0
 
 
@@ -649,8 +677,8 @@ source_idea_file: {rel(source_idea_file)}
 trial_folder: {rel(idea_dir)}
 ```
 
-This file is a trial-local pointer. The authoritative idea source, score, and
-cross-version notes live in `{rel(source_idea_file)}`.
+本文件只是 trial-local 指针。权威的创意来源、评分和跨版本说明在
+`{rel(source_idea_file)}`。
 """,
         )
 
@@ -680,68 +708,141 @@ decision: pending
 promote_to:
 ```
 
-## Changed Files
+## 改动文件
 
-## Result
+## 结果
 
-| Dataset | Seed | U | S | H | ZS | Best epoch | Log |
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
 
-## Decision
+## 决策
 
-Pending.
+待记录。
 """,
     )
     write_new(
         trial_dir / "implementation.md",
-        """# Implementation
+        """# 实现记录
 
-## New Module
+参考契约：
 
-## Based On
+```text
+docs/workflow/code_interface_contract.md
+```
 
-## Insert Point
+## 新模块
 
-## Input
+## 基于什么
 
-## Output
+## 接入点
 
-## Config Switch
+| 项目 | 值 |
+|---|---|
+| File | |
+| Class/function | |
+| 接入前/后 | |
+| Consumes | |
+| Produces | |
 
-## Baseline-Off Path
+## Input Contract（输入契约）
 
-## Risks
+| 名称 | Shape | Dtype | Device | 含义 | Gradients |
+|---|---|---|---|---|---|
 
-## Verification Points
+## Output Contract（输出契约）
+
+| 名称 | Shape | Dtype | Device | 含义 | 是否替换已有变量 |
+|---|---|---|---|---|---|
+
+## Shape Invariants（形状不变量）
+
+- [ ] Batch dimension 保持不变。
+- [ ] Class dimension 保持不变。
+- [ ] Logits shape 保持 `[B, C]`。
+- [ ] Visual/text embedding dimensions 仍与 scorer 兼容。
+- [ ] Seen/unseen 类别顺序不变。
+- [ ] 没有引入意外 broadcasting。
+
+## 配置开关
+
+```text
+switch:
+default:
+trial config path:
+base config affected: no
+```
+
+## Baseline-Off Path（基线关闭路径）
+
+解释为什么模块关闭路径等价于选定 base version。
+
+## Loss Contract（Loss 契约）
+
+```text
+new loss:
+lambda key:
+lambda=0 behavior:
+normalization/reduction changes:
+```
+
+## Evaluation Contract（评估契约）
+
+```text
+eval path changed: yes/no
+logits shape:
+class order:
+metric calculation:
+```
+
+## Checkpoint Contract（Checkpoint 契约）
+
+```text
+new state_dict keys:
+old checkpoint load behavior:
+missing/unexpected keys:
+```
+
+## 风险
+
+## Minimum Verification（最低验证）
+
+- [ ] Switch-off forward pass。
+- [ ] Switch-on forward pass。
+- [ ] Logits shape check。
+- [ ] Loss scalar 和 backward check。
+- [ ] Evaluation 输出 class-count 检查。
+- [ ] Base config files 没有变化。
+
+## 验证命令
 """,
     )
     write_new(trial_dir / "review.md", make_review(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT")))
-    write_new(trial_dir / "result.md", "# Result\n\nPending.\n")
+    write_new(trial_dir / "result.md", "# 结果\n\n待记录。\n")
 
-    print(f"created {rel(trial_dir)}")
-    print(f"suggested branch: dev/{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}")
-    print(f"suggested tag after implementation: trial/{idea_id.lower()}/{trial_id.lower()}")
+    print(f"已创建 {rel(trial_dir)}")
+    print(f"建议分支: dev/{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}")
+    print(f"实现后建议 tag: trial/{idea_id.lower()}/{trial_id.lower()}")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="GTPJ executable workflow helper")
+    parser = argparse.ArgumentParser(description="GTPJ 可执行 workflow helper")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    status = sub.add_parser("status", help="Show workflow status")
+    status = sub.add_parser("status", help="显示 workflow 状态")
     status.set_defaults(func=cmd_status)
 
-    validate = sub.add_parser("validate", help="Validate workflow structure")
+    validate = sub.add_parser("validate", help="校验 workflow 结构")
     validate.set_defaults(func=cmd_validate)
 
-    new_exp = sub.add_parser("new-experiment", help="Create a version experiment folder")
+    new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)
     new_exp.add_argument("--kind", required=True, choices=sorted(KINDS))
     new_exp.add_argument("--exp-id", required=True)
     new_exp.add_argument("--slug", required=True)
     new_exp.set_defaults(func=cmd_new_experiment)
 
-    new_idea = sub.add_parser("new-idea", help="Create a new idea node and folder")
+    new_idea = sub.add_parser("new-idea", help="创建新的 idea 节点和目录")
     new_idea.add_argument("--idea-id", required=True)
     new_idea.add_argument("--slug", required=True)
     new_idea.add_argument("--title", required=True)
@@ -758,11 +859,11 @@ def build_parser() -> argparse.ArgumentParser:
     new_idea.add_argument("--applicability", choices=sorted(APPLICABILITIES), default="unclear")
     new_idea.set_defaults(func=cmd_new_idea)
 
-    set_current = sub.add_parser("set-current-version", help="Set active idea ranking version")
+    set_current = sub.add_parser("set-current-version", help="设置当前 idea 排序版本")
     set_current.add_argument("--version", required=True)
     set_current.set_defaults(func=cmd_set_current_version)
 
-    new_trial = sub.add_parser("new-trial", help="Create a trial folder under an idea")
+    new_trial = sub.add_parser("new-trial", help="在某个 idea 下创建 trial 目录")
     new_trial.add_argument("--idea-id", required=True)
     new_trial.add_argument("--trial-id", required=True)
     new_trial.add_argument("--slug", required=True)

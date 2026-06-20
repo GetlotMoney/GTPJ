@@ -1,17 +1,16 @@
-# GTPJ Next Actions
+# GTPJ 下一步动作
 
-This is the current execution window. It should contain only the next few actions,
-not every idea.
+这是当前执行窗口。这里只放近期要做的少数动作，不放所有想法。
 
 ## P0
 
-- [ ] Confirm `GTPJ-v1` with `CONFIRM-001_clean_seed5`.
+- [ ] 使用 `CONFIRM-001_clean_seed5` 确认 `GTPJ-v1`。
 
 ## P1
 
-- [ ] Fill the first selected module idea in `idea_tree/inbox.md`.
+- [ ] 在 `idea_tree/inbox.md` 中补全第一个被选中的模块创意。
 
-## Done
+## 已完成
 
-- [x] Initialize clean GTPJ repository.
-- [x] Create executable workflow entrypoints and CLI helper.
+- [x] 初始化干净的 GTPJ 仓库。
+- [x] 创建可执行 workflow 入口和 CLI helper。

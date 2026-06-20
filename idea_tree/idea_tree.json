@@ -6,7 +6,7 @@
     {
       "idea_id": "IDEA-0001",
       "idea_dir": "idea_tree/ideas/IDEA-0001_lastvit_cls/",
-      "title": "LaSt-ViT CLS replacement",
+      "title": "LaSt-ViT CLS 替换",
       "status": "candidate",
       "source_type": "hybrid",
       "source_ref": "Code comment claims LaSt-ViT / Vision Transformers Need More Than Registers. Exact paper and official code are not verified yet.",
@@ -51,12 +51,12 @@
         "Implementation exists in model/MyModel.py but is not active in v1.",
         "Source needs paper/source-code verification before trial."
       ],
-      "next_action": "Verify the cited paper/source, then decide whether to create a small module trial."
+      "next_action": "验证引用论文/来源，然后决定是否创建小型模块 trial。"
     },
     {
       "idea_id": "IDEA-0002",
       "idea_dir": "idea_tree/ideas/IDEA-0002_dynamic_local_gating/",
-      "title": "Dynamic local branch gating and pooling",
+      "title": "动态局部分支门控与池化",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive code switches.",
@@ -102,12 +102,12 @@
         "Implementation exists but v1 uses fixed add scoring.",
         "Reference source is not recorded."
       ],
-      "next_action": "Split into one-variable trials only after source or rationale is documented."
+      "next_action": "记录来源或理由后，再拆成单变量 trial。"
     },
     {
       "idea_id": "IDEA-0003",
       "idea_dir": "idea_tree/ideas/IDEA-0003_cosine_only_scoring/",
-      "title": "Cosine-only CrossModal scoring with anchor losses",
+      "title": "Cosine-only CrossModal 打分与 anchor loss",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive cosine_only path.",
@@ -153,12 +153,12 @@
         "Implementation path exists but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Require source/rationale review before any trial because this changes the main scoring path."
+      "next_action": "由于会改变主打分路径，任何 trial 前必须先 review 来源/理由。"
     },
     {
       "idea_id": "IDEA-0004",
       "idea_dir": "idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/",
-      "title": "AG-JEPA neighbor-text variant",
+      "title": "AG-JEPA 邻居文本变体",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive use_ag_jepa_v2 switch.",
@@ -202,12 +202,12 @@
         "Implementation exists in _ag_jepa_loss but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Document whether this is a local variant or paper-backed before trial."
+      "next_action": "trial 前记录这是本地变体还是论文支持。"
     },
     {
       "idea_id": "IDEA-0005",
       "idea_dir": "idea_tree/ideas/IDEA-0005_counterfactual_negative_text/",
-      "title": "Counterfactual negative text margin",
+      "title": "反事实负文本 margin",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive use_cf_neg_text switch.",
@@ -251,12 +251,12 @@
         "Loss implementation exists but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Record a reference source or mark as local heuristic before trial."
+      "next_action": "记录参考来源，或标记为 local heuristic 后再 trial。"
     },
     {
       "idea_id": "IDEA-0006",
       "idea_dir": "idea_tree/ideas/IDEA-0006_geo_attribute_routing/",
-      "title": "Geometry-aware attribute routing",
+      "title": "几何感知属性路由",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive use_geo_attr_routing switch.",
@@ -302,12 +302,12 @@
         "Implementation checks required attribute tensors but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Find paper/source support for attribute routing or mark as local idea before trial."
+      "next_action": "为 attribute routing 找论文/来源支持，或在 trial 前标记为本地想法。"
     },
     {
       "idea_id": "IDEA-0007",
       "idea_dir": "idea_tree/ideas/IDEA-0007_text_attribute_reservoir/",
-      "title": "Topology-aware text attribute reservoir",
+      "title": "拓扑感知文本属性库",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive use_text_attr_reservoir switch.",
@@ -354,12 +354,12 @@
         "Projection module exists but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Clarify source and decide if this should be tested before attribute routing."
+      "next_action": "澄清来源，并决定是否应早于 attribute routing 测试。"
     },
     {
       "idea_id": "IDEA-0008",
       "idea_dir": "idea_tree/ideas/IDEA-0008_attr_patch_ot/",
-      "title": "Attribute-patch OT alignment",
+      "title": "属性-patch OT 对齐",
       "status": "candidate",
       "source_type": "hybrid",
       "source_ref": "Uses optimal-transport style Sinkhorn matching, but the exact GTPJ module source is not verified.",
@@ -405,12 +405,12 @@
         "Sinkhorn-style loss implementation exists but is inactive in v1.",
         "General OT concept exists, but exact module source is not recorded."
       ],
-      "next_action": "Verify OT/patch-attribute grounding source before trial."
+      "next_action": "trial 前验证 OT/patch-attribute 的来源依据。"
     },
     {
       "idea_id": "IDEA-0009",
       "idea_dir": "idea_tree/ideas/IDEA-0009_uncertainty_msdn_gate/",
-      "title": "Uncertainty-aware MSDN gate",
+      "title": "不确定性感知 MSDN gate",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive use_uncertainty_msdn_gate switch.",
@@ -455,12 +455,12 @@
         "Gate implementation exists inside the MSDN loss but is inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Document whether this is local confidence gating or paper-backed before trial."
+      "next_action": "记录这是本地 confidence gating，还是有论文支持。"
     },
     {
       "idea_id": "IDEA-0010",
       "idea_dir": "idea_tree/ideas/IDEA-0010_seen_unseen_calibration/",
-      "title": "Seen-unseen calibration losses",
+      "title": "Seen-unseen 校准 loss",
       "status": "candidate",
       "source_type": "observation",
       "source_ref": "Source unclear. Migrated from inactive calibration and bias-margin losses.",
@@ -504,7 +504,7 @@
         "Both losses are implemented but inactive in v1.",
         "Reference source is not recorded."
       ],
-      "next_action": "Find a GZSL calibration reference before selecting this as a trial."
+      "next_action": "选中 trial 前先找到 GZSL calibration 参考。"
     }
   ]
 }

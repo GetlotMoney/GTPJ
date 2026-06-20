@@ -1,12 +1,12 @@
-# Git Policy
+# Git 策略
 
-## Permanent Objects
+## 永久对象
 
-- `main`: latest stable project files and lightweight records.
-- `v1`, `v2`, `v3`: permanent baseline tags.
-- `trial/idea-xxxx/trial-xxx`: permanent trial code snapshots.
+- `main`：最新稳定项目文件和轻量记录。
+- `v1`、`v2`、`v3`：永久 baseline tag。
+- `trial/idea-xxxx/trial-xxx`：永久 trial 代码快照。
 
-## Temporary Branches
+## 临时分支
 
 ```text
 dev/idea-0001-trial-001-short-name
@@ -16,15 +16,15 @@ exp/v1-ablation-001-short-name
 exp/v1-confirm-001-short-name
 ```
 
-Rules:
+规则：
 
-- Do not create controller branches.
-- Do not run new module work directly on `main`.
-- Trial branches start from a baseline tag.
-- Tune, ablation, and confirmation branches start from the matching baseline tag.
-- Failed trial code is preserved by trial tag, not merged into `main`.
-- Successful trial code can be promoted into `main` and tagged as a new `vX`.
+- 不创建 controller branch。
+- 不要直接在 `main` 上做新模块开发。
+- trial 分支从 baseline tag 切出。
+- tune、ablation 和 confirmation 分支从匹配的 baseline tag 切出。
+- 失败 trial 的代码通过 trial tag 保留，不合并进 `main`。
+- 成功 trial 的代码可以提升到 `main`，并打成新的 `vX` tag。
 
-Push rule:
+Push 规则：
 
-- Do not push automatically. Push only after the owner explicitly asks.
+- 不自动 push。只有 owner 明确要求后才 push。

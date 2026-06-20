@@ -1,19 +1,19 @@
-# Experiment Registry
+# 实验登记表
 
-Project: GTPJ
+项目：GTPJ
 
-## Versions
+## 版本
 
-| Version | Status | Code tag | Config | Notes |
+| 版本 | 状态 | 代码 tag | 配置 | 说明 |
 |---|---|---|---|---|
-| `GTPJ-v1` | initialized | `v1` | `experiments/v1/config.yaml` | First clean baseline, pending rerun. |
+| `GTPJ-v1` | 已初始化 | `v1` | `experiments/v1/config.yaml` | 第一版干净 baseline，等待重跑确认。 |
 
-## Module Trials
+## 模块 Trials
 
-No module trials yet.
+当前还没有已启动的模块 trial。
 
-## Version Experiments
+## 版本实验
 
-| Experiment | Version | Kind | Status | Folder | Notes |
+| 实验 | 版本 | 类型 | 状态 | 目录 | 说明 |
 |---|---|---|---|---|---|
-| `CONFIRM-001_clean_seed5` | `v1` | `confirmation` | planned | `experiments/v1/confirmation/CONFIRM-001_clean_seed5` | Created by workflow helper. |
+| `CONFIRM-001_clean_seed5` | `v1` | `confirmation` | planned | `experiments/v1/confirmation/CONFIRM-001_clean_seed5` | 由 workflow helper 创建。 |

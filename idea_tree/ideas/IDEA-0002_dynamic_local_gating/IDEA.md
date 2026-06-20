@@ -1,4 +1,4 @@
-# IDEA-0002: Dynamic local branch gating and pooling
+# IDEA-0002：动态局部分支门控与池化
 
 ```text
 idea_id: IDEA-0002
@@ -11,28 +11,28 @@ current_version_score:
 idea_dir: idea_tree/ideas/IDEA-0002_dynamic_local_gating/
 ```
 
-## Source
+## 来源
 
-Source unclear. Migrated from inactive code switches.
+来源不明确。由未启用的代码开关迁移而来。
 
-## Based On
+## 基于什么
 
 - `v1`
 - base logits
 - local_score
 - score_s2v / score_v2s
 
-## Hypothesis
+## 假设
 
-Input-dependent gating may reduce harmful local branch influence on easy samples while keeping local evidence for hard samples.
+输入相关的 gating 可能降低局部分支在简单样本上的有害影响，同时保留困难样本所需的局部证据。
 
-## Version Scores
+## 版本评分
 
-| Version | Score | Applicability | Rationale |
+| 版本 | 分数 | 适用性 | 理由 |
 |---|---:|---|---|
-| `v1` | 45 | needs_adaptation | Useful only if split into one-variable trials; multiple gates together are hard to interpret. |
+| `v1` | 45 | needs_adaptation | 只有拆成单变量 trial 才有解释性；多个 gate 同时变化会难以判断。 |
 
-## Blockers
+## 阻塞点
 
-- Record source or local rationale.
-- Split dynamic gate, branch weight, and pooling into separate ideas or trials.
+- 记录来源或本地理由。
+- 把 dynamic gate、branch weight 和 pooling 拆成独立 idea 或 trial。

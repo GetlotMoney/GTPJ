@@ -1,12 +1,11 @@
-# GTPJ Executable Workflow
+# GTPJ 可执行工作流
 
-This directory contains the executable workflow layer for GTPJ.
+这个目录包含 GTPJ 的可执行 workflow 层。
 
-The repository-level rules live in `docs/workflow/`. This directory turns those
-rules into repeatable commands and runtime entrypoints for OpenClaw and Codex.
-Use `NEXT_ACTIONS.md` as the current execution window.
+仓库级规则放在 `docs/workflow/`。本目录把这些规则转成可重复执行的命令，
+以及 OpenClaw 和 Codex 的 runtime 入口。`NEXT_ACTIONS.md` 是当前执行窗口。
 
-## Quick Commands
+## 常用命令
 
 ```bash
 python workflow/gtpj_workflow.py status
@@ -18,9 +17,10 @@ python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router --base-version v1
 ```
 
-## Runtime Entrypoints
+## Runtime 入口
 
-- `openclaw/README.md`: OpenClaw-first execution rules.
-- `codex/README.md`: Codex-compatible execution rules.
+- `openclaw/README.md`：OpenClaw 优先的执行规则。
+- `codex/README.md`：Codex 兼容执行规则。
 
-Both runtimes must use the same repository files, templates, and CLI checks.
+两个 runtime 必须使用同一套仓库文件、模板和 CLI 检查。
+模块代码改动还必须满足 `docs/workflow/code_interface_contract.md`。

@@ -10,30 +10,30 @@ promoted_from: none
 config: experiments/v1/config.yaml
 ```
 
-## Active Modules
+## 当前启用模块
 
-- Frozen CLIP ViT-L/14@336px backbone
-- GPT text description prototypes
+- 冻结的 CLIP ViT-L/14@336px backbone
+- GPT 文本描述 prototype
 - Text Adapter
 - Patch bottleneck / patch selection
-- Geometry-aware local visual encoding
-- Bidirectional visual-text interaction
-- Topology-preserving text constraint
-- Conditional text adaptation
-- Mutual visual-text branch distillation
-- AG-JEPA auxiliary training
+- 几何感知局部视觉编码
+- 双向视觉-文本交互
+- 拓扑保持文本约束
+- 条件文本适配
+- 视觉-文本双分支互蒸馏
+- AG-JEPA 辅助训练
 - AG-JEPA negative text margin
 
-## Training Policy
+## 训练策略
 
-- Use strict continuous training.
-- Use SGDR-style 20+20+10 staged cosine learning rate with nonzero `eta_min`.
-- Do not use test metrics to restart, roll back, stop, or alter training.
-- Keep `config.yaml` limited to active v1 fields only.
-- Inactive module candidates belong to `idea_tree/`, not to the v1 baseline config.
-- Official GTPJ results must be rerun and recorded in this repo.
+- 使用严格连续训练。
+- 使用 SGDR 风格的 20+20+10 分阶段 cosine learning rate，并设置非零 `eta_min`。
+- 不使用 test metrics 来重启、回滚、停止或改变训练。
+- `config.yaml` 只保留启用的 v1 字段。
+- 未启用的候选模块属于 `idea_tree/`，不属于 v1 baseline config。
+- 正式 GTPJ 结果必须在本仓库中重跑并记录。
 
-## Allowed Experiments
+## 允许的实验类型
 
 - `tune/`
 - `ablation/`

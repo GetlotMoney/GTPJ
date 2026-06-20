@@ -6,8 +6,8 @@ runtime:
 decision: ACCEPTED / REJECTED
 ```
 
-## Scope
+## 范围
 
-## Findings
+## 发现
 
-## Required Fixes
+## 必须修复项
