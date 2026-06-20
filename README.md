@@ -30,9 +30,9 @@ GTPJ/
 |   `-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
 |-- docs/                   # GitHub 治理、项目状态和未来 workflow 参考
 |-- workflow/               # 可选结构辅助；未来 workflow 接入口
-|-- idea_tree/              # 严格的创意来源和队列
+|-- idea_tree/              # 创意来源和队列；当前已清空，等待可靠来源
 `-- experiments/
-    |-- module_trials/      # 有代码实现证据的模块 trial
+    |-- module_trials/      # 模块 trial 证据；当前无已启动 trial
     `-- v1/                 # GTPJ-v1 调参、消融、确认记录
 ```
 
@@ -47,6 +47,8 @@ v1 = GTPJ-v1 = 一个代码快照 = 一个 Git tag = 一个版本实验目录
 模块创意不会立刻变成 `v2`、`v3` 或 `v4`。它们必须先经过
 `idea_tree/` 和 `experiments/module_trials/`。只有证据完整、质量检查通过、
 并被明确接纳的 trial 才能提升为新的 baseline 版本。
+
+当前创意树已清空。新的创意必须从可靠来源重新登记，不能直接复用旧的来源不明候选。
 
 ## 未来工作流接入
 
@@ -73,12 +75,13 @@ python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
 ```
 
-需要创建标准目录时，可以使用 helper；当前它不是强制工作流：
+需要创建标准目录时，可以使用 helper；当前它不是强制工作流。
+下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
 
 ```bash
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
-python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug attribute_router --title "attribute router" --source-type user --source-status unknown --base-version v1 --global-score 50 --version-score 50 --applicability direct
+python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
-python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router --base-version v1
+python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
 ```

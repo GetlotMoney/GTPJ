@@ -9,7 +9,7 @@ experiments/module_trials/
 权威 idea 记录放在：
 
 ```text
-idea_tree/ideas/IDEA-0001_short_name/IDEA.md
+idea_tree/ideas/IDEA-xxxx_short_name/IDEA.md
 ```
 
 模块代码改动必须遵守：
@@ -21,7 +21,7 @@ docs/workflow/code_interface_contract.md
 必需结构：
 
 ```text
-experiments/module_trials/IDEA-0001_short_name/
+experiments/module_trials/IDEA-xxxx_short_name/
 |-- IDEA.md              # trial-local pointer to the source idea file
 `-- TRIAL-001_short_name/
     |-- README.md

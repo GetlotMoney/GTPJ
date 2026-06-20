@@ -487,6 +487,8 @@ def write_idea_index(data: dict) -> None:
             f"{entry.get('applicability', '')} | {idea.get('status', '')} | "
             f"{idea.get('next_action', '')} |"
         )
+    if not ideas:
+        lines.append("| - | - | - | - | - | - | - | - | - | 等待从可靠来源重新登记。 |")
 
     lines.extend(
         [

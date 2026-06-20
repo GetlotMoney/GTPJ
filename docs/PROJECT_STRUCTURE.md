@@ -153,8 +153,8 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `idea_tree/README.md` | 创意树入口说明。 |
 | `idea_tree/创意树.md` | 中文入口页，帮助快速理解创意树文件分工。 |
-| `idea_tree/INDEX.md` | 给人读的当前创意总榜，由 `workflow/gtpj_workflow.py set-current-version` 生成。 |
-| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version`、`global_score`、`version_scores` 等字段。 |
+| `idea_tree/INDEX.md` | 给人读的当前创意总榜；当前为空，等待可靠来源重新登记。 |
+| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version` 和 `ideas`；当前 `ideas` 为空。 |
 | `idea_tree/schema.json` | `idea_tree.json` 的结构约束。 |
 | `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
 | `idea_tree/sources/papers_index.md` | 论文来源索引。 |
@@ -177,16 +177,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` | LaSt-ViT CLS 替换创意，记录来源、假设、v1 分数和阻塞点。 |
-| `idea_tree/ideas/IDEA-0002_dynamic_local_gating/IDEA.md` | 动态局部门控与池化创意。 |
-| `idea_tree/ideas/IDEA-0003_cosine_only_scoring/IDEA.md` | Cosine-only CrossModal 打分与 anchor loss 创意。 |
-| `idea_tree/ideas/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | AG-JEPA 邻居文本变体创意。 |
-| `idea_tree/ideas/IDEA-0005_counterfactual_negative_text/IDEA.md` | 反事实负文本 margin 创意。 |
-| `idea_tree/ideas/IDEA-0006_geo_attribute_routing/IDEA.md` | 几何感知属性路由创意。 |
-| `idea_tree/ideas/IDEA-0007_text_attribute_reservoir/IDEA.md` | 拓扑感知文本属性库创意。 |
-| `idea_tree/ideas/IDEA-0008_attr_patch_ot/IDEA.md` | 属性-patch OT 对齐创意。 |
-| `idea_tree/ideas/IDEA-0009_uncertainty_msdn_gate/IDEA.md` | 不确定性感知 MSDN gate 创意。 |
-| `idea_tree/ideas/IDEA-0010_seen_unseen_calibration/IDEA.md` | Seen-unseen 校准 loss 创意。 |
+| `idea_tree/ideas/.gitkeep` | 保留空的创意目录；来源明确后再新增 `IDEA-xxxx_slug/IDEA.md`。 |
 
 ## `experiments/`
 
@@ -217,18 +208,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/module_trials/INDEX.md` | 模块 trial 索引。 |
-| `experiments/module_trials/IDEA-0001_lastvit_cls/IDEA.md` | 指向 `idea_tree/ideas/IDEA-0001_lastvit_cls/IDEA.md` 的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0001_lastvit_cls/checks/` | `IDEA-0001` 的预 trial 验证脚本目录；保存轻量代码证据，不保存训练日志或 checkpoint。 |
-| `experiments/module_trials/IDEA-0001_lastvit_cls/checks/verify_lastvit.py` | LaSt-ViT pooling 数值一致性验证脚本，用于对比 GTPJ 当前实现和参考实现。 |
-| `experiments/module_trials/IDEA-0002_dynamic_local_gating/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0003_cosine_only_scoring/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0004_ag_jepa_neighbor_text/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0005_counterfactual_negative_text/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0006_geo_attribute_routing/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0007_text_attribute_reservoir/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0008_attr_patch_ot/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0009_uncertainty_msdn_gate/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
-| `experiments/module_trials/IDEA-0010_seen_unseen_calibration/IDEA.md` | 指向对应 idea 文件的 trial-local 指针。 |
+| `experiments/module_trials/.gitkeep` | 保留空的模块 trial 目录；来源明确且开始实现后再新增 `IDEA-xxxx_slug/`。 |
 
 真正开始 trial 后，目录会增加：
 

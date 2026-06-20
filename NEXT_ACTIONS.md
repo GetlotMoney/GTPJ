@@ -4,14 +4,15 @@
 
 ## P0
 
-- [ ] 从 `idea_tree/queues/01_selected_next.md` 选择第一个模块 trial。
+- [ ] 从可靠来源重新登记第一个创意。
 
 ## P1
 
-- [ ] 在 `idea_tree/inbox.md` 中补全第一个被选中的模块创意。
+- [ ] 明确第一个新创意基于哪个 baseline、参考来源和预期验证方式。
 
 ## 已完成
 
 - [x] 初始化干净的 GTPJ 仓库。
 - [x] 创建可执行 workflow 入口和 CLI helper。
 - [x] 使用 `CONFIRM-001_clean_seed5` 确认 `GTPJ-v1`，CUB seed=5 H=73.79。
+- [x] 清空来源不明的旧创意树和待做实验队列。

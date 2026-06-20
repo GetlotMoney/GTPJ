@@ -31,7 +31,7 @@ experiments/v3/
 只有成功且通过质量检查的 trial 才能成为新的 baseline。
 
 ```text
-IDEA-0001 -> TRIAL-001 -> promote -> GTPJ-v2
+IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
 ```
 
 不要因为每个小尝试都创建一个新的 `vX`。

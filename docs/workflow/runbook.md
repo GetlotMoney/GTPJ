@@ -37,23 +37,25 @@ python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.ya
 
 ## 启动新模块 Trial
 
+下面是模板命令，`IDEA-XXXX`、`idea-xxxx` 和 `<source>` 需要替换成真实值。
+
 ```bash
-python workflow/gtpj_workflow.py new-idea --idea-id IDEA-0001 --slug short_name --title "short name" --source-type user --source-status unknown --base-version v1 --global-score 50 --version-score 50 --applicability direct
+python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
-python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug short_name --base-version v1
-git switch -c dev/idea-0001-trial-001-short-name v1
+python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
+git switch -c dev/idea-xxxx-trial-001-short-name v1
 ```
 
 实现后：
 
 ```bash
-git tag trial/idea-0001/trial-001
+git tag trial/idea-xxxx/trial-001
 ```
 
 如果成功并提升：
 
 ```bash
 git switch main
-git merge dev/idea-0001-trial-001-short-name
+git merge dev/idea-xxxx-trial-001-short-name
 git tag v2
 ```

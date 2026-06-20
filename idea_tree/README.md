@@ -7,6 +7,8 @@
 
 没有 idea 节点，就不能启动模块 trial。
 
+当前创意树已清空。旧的来源不明候选和待做实验不再作为后续依据。
+
 ## 必需结构
 
 ```text
@@ -14,8 +16,7 @@ idea_tree/
 |-- INDEX.md                 # 给人读的总排名
 |-- idea_tree.json           # 机器可读的创意注册表
 |-- ideas/
-|   `-- IDEA-0001_short_name/
-|       `-- IDEA.md          # 来源、假设、版本评分、约束
+|   `-- .gitkeep             # 当前为空；来源明确后再新增 IDEA-xxxx_slug/
 |-- queues/                  # 从总索引派生出的当前执行队列
 `-- sources/                 # 论文/来源索引
 ```
