@@ -86,7 +86,7 @@ baseline path affected: yes/no
 - seen/unseen class order 不变；
 - score、loss 或 calibration 逻辑中不允许意外 broadcasting。
 
-任何有意破坏不变量的改动都必须按 `STRICT` review 处理，并且没有 version bump
+任何有意破坏不变量的改动都必须按高风险质量检查处理，并且没有 version bump
 不能提升。
 
 ## Config Switch Contract（配置开关契约）
@@ -106,7 +106,7 @@ config/versions/v1.yaml
 experiments/v1/config.yaml
 ```
 
-成功 review 并提升后，switch 才能进入新的版本配置，例如 `config/versions/v2.yaml`。
+成功通过质量检查并提升后，switch 才能进入新的版本配置，例如 `config/versions/v2.yaml`。
 
 默认值必须保持 baseline：
 
@@ -142,7 +142,7 @@ lambda_new_loss > 0 -> 新 loss 只按该权重贡献到 total loss
 - metric calculation；
 - evaluation script 消耗的 output fields。
 
-改变任何受保护项目都需要 `STRICT` review，并且必须记录为高风险接口变更。
+改变任何受保护项目都需要高风险质量检查，并且必须记录为高风险接口变更。
 
 ## Checkpoint Contract（Checkpoint 契约）
 
@@ -168,14 +168,14 @@ lambda_new_loss > 0 -> 新 loss 只按该权重贡献到 total loss
 - base config files 没有意外变化。
 
 如果完整训练成本太高，可以使用 dry run、小 batch 或 shape probe，
-但必须记录为什么这些检查足以通过 review gate。
+但必须记录为什么这些检查足以通过质量门。
 
 ## Promotion Rule（提升规则）
 
 模块 trial 只有在满足以下条件时，才能提升为新的 baseline version：
 
 - implementation 满足本契约；
-- review decision 为 `ACCEPTED`；
+- quality check decision 为 `ACCEPTED`；
 - trial 已记录结果证据；
 - baseline-off path 仍然有效；
 - 新版本 config 与旧 base version config 分开创建。

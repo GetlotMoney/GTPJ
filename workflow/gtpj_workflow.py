@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Executable workflow helper for the GTPJ repository.
+"""Optional repository-structure helper for the GTPJ repository.
 
-This script is intentionally small and deterministic. It creates workflow
+This script is intentionally small and deterministic. It creates governance
 folders, copies version configs, and validates repository invariants. It does
 not run training, push to GitHub, or mutate Git history.
 """
@@ -56,7 +56,7 @@ class ExperimentKind:
     name: str
     folder: str
     prefix: str
-    default_review: str
+    default_check: str
 
 
 KINDS = {
@@ -154,7 +154,7 @@ def cmd_status(_: argparse.Namespace) -> int:
     tags = git(["tag", "--points-at", "HEAD"], check=False)
     porcelain = git(["status", "--short"], check=False)
 
-    print("GTPJ workflow 状态")
+    print("GTPJ repository 状态")
     print(f"- branch: {branch}")
     print(f"- head: {head}")
     print(f"- tags at head: {tags or '(none)'}")
@@ -184,7 +184,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/code_interface_contract.md",
         "docs/workflow/experiment_protocol.md",
         "docs/workflow/idea_tree_protocol.md",
-        "docs/workflow/review_gate.md",
+        "docs/workflow/quality_gate.md",
         "docs/workflow/runbook.md",
         "workflow/README.md",
         "workflow/openclaw/README.md",
@@ -320,7 +320,7 @@ experiment_id: {exp_id}
 version: {version}
 code_tag: {version}
 runtime: OpenClaw preferred / Codex compatible
-review_mode: {kind.default_review}
+quality_check_mode: {kind.default_check}
 run_commit:
 config: config.yaml
 log:
@@ -336,7 +336,7 @@ status: planned
 - [ ] 分支从 tag `{version}` 切出。
 - [ ] 配置复制自 `experiments/{version}/config.yaml`。
 - [ ] 只改变声明过的变量或开关。
-- [ ] Review decision 为 `ACCEPTED`。
+- [ ] Quality check decision 为 `ACCEPTED`。
 
 ## 结果
 
@@ -349,18 +349,26 @@ status: planned
 """
 
 
-def make_review(kind: ExperimentKind) -> str:
-    return f"""# Review
+def make_quality_check(kind: ExperimentKind) -> str:
+    return f"""# Quality Check
 
 ```text
 runtime:
-review_mode: {kind.default_review}
+quality_check_mode: {kind.default_check}
 decision: PENDING
 ```
 
 ## 范围
 
 ## 发现
+
+## 质量检查
+
+- [ ] 代码快照或 base version 明确。
+- [ ] 配置副本保存在实验目录。
+- [ ] 日志路径明确。
+- [ ] 结果口径明确。
+- [ ] 没有未声明的 eval / class order / logits shape 改动。
 
 ## 决策
 
@@ -376,7 +384,7 @@ def append_version_experiment_registry(
     experiment_name = f"{exp_id}_{slug}"
     row = (
         f"| `{experiment_name}` | `{version}` | `{kind.name}` | planned | "
-        f"`{rel(folder)}` | 由 workflow helper 创建。 |"
+        f"`{rel(folder)}` | 由结构 helper 创建。 |"
     )
     if experiment_name in content:
         return
@@ -412,7 +420,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
 
     ensure_dir(exp_dir / "logs")
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
-    write_new(exp_dir / "review.md", make_review(kind))
+    write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     copy_new(src_config, exp_dir / "config.yaml")
     append_version_experiment_registry(version, kind, exp_id, slug, exp_dir)
 
@@ -833,7 +841,7 @@ missing/unexpected keys:
 ## 验证命令
 """,
     )
-    write_new(trial_dir / "review.md", make_review(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT")))
+    write_new(trial_dir / "quality_check.md", make_quality_check(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT")))
     write_new(trial_dir / "result.md", "# 结果\n\n待记录。\n")
 
     print(f"已创建 {rel(trial_dir)}")
@@ -843,13 +851,13 @@ missing/unexpected keys:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="GTPJ 可执行 workflow helper")
+    parser = argparse.ArgumentParser(description="GTPJ 可选结构辅助 helper")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    status = sub.add_parser("status", help="显示 workflow 状态")
+    status = sub.add_parser("status", help="显示仓库状态")
     status.set_defaults(func=cmd_status)
 
-    validate = sub.add_parser("validate", help="校验 workflow 结构")
+    validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
@@ -896,7 +904,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return args.func(args)
     except WorkflowError as exc:
-        print(f"workflow-error: {exc}", file=sys.stderr)
+        print(f"gtpj-helper-error: {exc}", file=sys.stderr)
         return 1
 
 

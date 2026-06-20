@@ -1,11 +1,13 @@
-# OpenClaw Agent 角色
+# OpenClaw Agent 角色（未来参考）
+
+当前阶段只管理 GitHub 项目规范；以下角色分工是未来 OpenClaw 接入时的参考。
 
 ## Coordinator
 
 - 读取仓库状态和队列。
 - 选择下一个合法动作。
 - 在结构性改动前后运行 `workflow/gtpj_workflow.py validate`。
-- 确保 Git 分支、代码 tag、配置、review、日志和结果记录一致。
+- 确保 Git 分支、代码 tag、配置、quality_check、日志和结果记录一致。
 
 ## Reader
 
@@ -18,11 +20,11 @@
 - 除非 trial 配置启用，否则新模块默认关闭。
 - 在 trial 或实验 README 中记录改动文件。
 
-## Reviewer
+## 质量检查者
 
-- 按 `docs/workflow/review_gate.md` 执行 review。
-- 只返回 `ACCEPTED` 或 `REJECTED`。
-- 把发现写入 `review.md`。
+- 按 `docs/workflow/quality_gate.md` 执行质量检查。
+- 未来工作流可以继续使用 `ACCEPTED` 或 `REJECTED`，但当前 GitHub 治理阶段不强制。
+- 把发现写入 `quality_check.md`。
 
 ## Result Analyst
 

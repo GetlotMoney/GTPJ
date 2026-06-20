@@ -28,7 +28,7 @@ experiments/module_trials/IDEA-0001_short_name/
     |-- implementation.md
     |-- code.diff
     |-- config.yaml
-    |-- review.md
+    |-- quality_check.md
     |-- result.md
     `-- logs/
 ```
@@ -50,7 +50,7 @@ experiments/module_trials/IDEA-0001_short_name/
 - code tag
 - changed files
 - implementation summary
-- review decision
+- quality check decision
 - result and final decision
 
 Trial decision：

@@ -13,6 +13,12 @@ GeoTopoPatch-JEPA 实验仓库。
 |---|---|---|---|---|
 | `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | `CONFIRM-001_clean_seed5` 已完成，seed=5 正式基准 H=73.79。 |
 
+## 当前管理重点
+
+当前阶段先管理 GitHub 项目本身：版本、tag、分支、目录、配置快照、创意树和实验证据。
+OpenClaw / Codex 工作流之后再接入这个仓库；现有 `docs/workflow/` 和 `workflow/`
+只作为未来工作流参考，不是当前必须执行的完整流程。
+
 ## 项目结构
 
 ```text
@@ -22,15 +28,15 @@ GTPJ/
 |-- tools/                  # 数据、特征、评估工具
 |-- config/
 |   `-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
-|-- docs/workflow/          # GitHub 与实验工作流规则
-|-- workflow/               # 可执行 workflow 命令
+|-- docs/                   # GitHub 治理、项目状态和未来 workflow 参考
+|-- workflow/               # 可选结构辅助；未来 workflow 接入口
 |-- idea_tree/              # 严格的创意来源和队列
 `-- experiments/
     |-- module_trials/      # 有代码实现证据的模块 trial
     `-- v1/                 # GTPJ-v1 调参、消融、确认记录
 ```
 
-## 工作流规则
+## GitHub 管理规则
 
 一个版本就是一个 baseline：
 
@@ -39,34 +45,35 @@ v1 = GTPJ-v1 = 一个代码快照 = 一个 Git tag = 一个版本实验目录
 ```
 
 模块创意不会立刻变成 `v2`、`v3` 或 `v4`。它们必须先经过
-`idea_tree/` 和 `experiments/module_trials/`。只有成功并通过 review 的
-trial 才能提升为新的 baseline 版本。
+`idea_tree/` 和 `experiments/module_trials/`。只有证据完整、质量检查通过、
+并被明确接纳的 trial 才能提升为新的 baseline 版本。
 
-## 运行时偏好
+## 未来工作流接入
 
-OpenClaw 是实验运行的优先 runtime。Codex 必须遵循同一套仓库文件并产出同样的记录，
-这样两个 runtime 才能在同一个 baseline 上工作，而不会各自发明规则。
+OpenClaw 是未来实验运行的优先 runtime。Codex 需要兼容同一套仓库文件。
+但在正式接入前，本仓库先保证 GitHub 治理干净：版本能回滚、实验能追溯、
+创意有来源、代码快照和结果不混淆。
 
 优先阅读：
 
 - `NEXT_ACTIONS.md`
 - `docs/PROJECT_STRUCTURE.md`
 - `docs/PROJECT_STATUS.md`
-- `docs/workflow/README.md`
-- `workflow/README.md`
+- `docs/workflow/README.md`（未来 workflow 参考）
+- `workflow/README.md`（可选结构辅助）
 - `experiments/v1/VERSION.md`
 - `idea_tree/README.md`
 
-## 可执行工作流
+## 可选结构辅助
 
-创建任何记录前，先检查仓库：
+需要检查仓库结构时，可以运行：
 
 ```bash
 python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
 ```
 
-通过 helper 创建记录，不要手工乱建目录：
+需要创建标准目录时，可以使用 helper；当前它不是强制工作流：
 
 ```bash
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5

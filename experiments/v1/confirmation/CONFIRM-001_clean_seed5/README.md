@@ -5,7 +5,7 @@ experiment_id: CONFIRM-001
 version: v1
 code_tag: v1
 runtime: Codex
-review_mode: STRICT
+quality_check: quality_check.md
 run_commit: c2571b0
 config: config.yaml
 log: logs/CONFIRM-001_CUB_seed5_20260620-202215.txt
@@ -21,7 +21,7 @@ status: done
 - [x] 当前分支为 `exp/v1-confirm-001-clean-seed5`。
 - [x] 配置使用 `experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml`。
 - [x] 不修改模型代码、训练脚本或版本配置。
-- [x] Review decision 为 `ACCEPTED`。
+- [x] Quality check decision 为 `ACCEPTED`。
 - [x] 环境 smoke check 通过：`torch.cuda.is_available() == True`，`clip` 可导入，CUB split、patch cache、GPT55 text cache 可读取。
 
 ## 运行计划

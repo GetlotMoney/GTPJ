@@ -1,9 +1,9 @@
-# GTPJ 可执行工作流
+# GTPJ 可选结构辅助
 
-这个目录包含 GTPJ 的可执行 workflow 层。
+这个目录目前不是强制工作流，而是可选的结构辅助层。
 
-仓库级规则放在 `docs/workflow/`。本目录把这些规则转成可重复执行的命令，
-以及 OpenClaw 和 Codex 的 runtime 入口。`NEXT_ACTIONS.md` 是当前执行窗口。
+当前主规范放在 `docs/GITHUB_GOVERNANCE.md`。`docs/workflow/` 是未来
+OpenClaw/Codex 接入时的参考草案。`NEXT_ACTIONS.md` 是当前执行窗口。
 
 ## 常用命令
 
@@ -17,10 +17,10 @@ python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-0001 --trial-id TRIAL-001 --slug basic_router --base-version v1
 ```
 
-## Runtime 入口
+## 未来 Runtime 入口
 
 - `openclaw/README.md`：OpenClaw 优先的执行规则。
 - `codex/README.md`：Codex 兼容执行规则。
 
-两个 runtime 必须使用同一套仓库文件、模板和 CLI 检查。
+未来两个 runtime 必须使用同一套仓库文件、模板和 CLI 检查。
 模块代码改动还必须满足 `docs/workflow/code_interface_contract.md`。

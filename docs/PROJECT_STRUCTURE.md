@@ -6,9 +6,9 @@
 
 - 新增、删除、移动、重命名任何文件或文件夹时，必须同步更新本文件。
 - 改变某个文件职责时，必须同步更新本文件。
-- 修改 workflow、实验记录规范、创意树规范、代码接口规范时，必须同步更新本文件中对应说明。
+- 修改 GitHub 治理规范、实验记录规范、创意树规范、代码接口规范或未来 workflow 参考时，必须同步更新本文件中对应说明。
 - 只更新实验数值、日志路径或普通记录内容时，也要检查本文件是否需要更新；如果结构和职责没有变化，可以不改。
-- 任何 agent 在完成结构性改动前，必须运行 `python workflow/gtpj_workflow.py validate`。
+- 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；当前阶段它是结构辅助检查，不是完整 workflow。
 
 ## 总体框架
 
@@ -40,7 +40,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录和常用 workflow 命令。 |
+| `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和可选结构辅助命令。 |
 | `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
@@ -75,35 +75,36 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
+| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本、tag、分支、配置快照、创意树和实验证据。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`
 
-工作流规则目录。OpenClaw 和 Codex 都必须遵守这里的规则。
+未来 workflow 参考目录。当前阶段不强制执行完整 workflow；这里保存之后 OpenClaw/Codex 接入时可以学习和复用的规则草案。
 
 | 路径 | 用途 |
 |---|---|
-| `docs/workflow/README.md` | workflow 阅读入口，规定推荐阅读顺序和运行时事实来源。 |
+| `docs/workflow/README.md` | 未来 workflow 参考入口，说明哪些规则只是后续接入素材。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push 和 trial 快照策略。 |
 | `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
-| `docs/workflow/review_gate.md` | review gate，规定实验运行前必须检查的项目和 `ACCEPTED` / `REJECTED` 决策格式。 |
+| `docs/workflow/quality_gate.md` | 未来质量门参考，规定实验运行前可以检查的项目。 |
 | `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
 
 ## `workflow/`
 
-可执行 workflow 层，把文档规则变成可运行命令。
+可选结构辅助层。当前阶段用于检查结构和创建标准目录；未来可以升级为 OpenClaw/Codex workflow 入口。
 
 | 路径 | 用途 |
 |---|---|
-| `workflow/README.md` | workflow 命令入口和 runtime 说明。 |
+| `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
 | `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`。 |
-| `workflow/codex/README.md` | Codex runtime 入口规则。 |
-| `workflow/openclaw/README.md` | OpenClaw runtime 入口规则。 |
-| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责说明：Coordinator、Reader、Implementer、Reviewer、Result Analyst。 |
+| `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
+| `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
+| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
 
 `workflow/gtpj_workflow.py` 的职责：
 
@@ -205,7 +206,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
-| `experiments/templates/review_template.md` | review 文件模板。 |
+| `experiments/templates/quality_check_template.md` | 轻量质量检查模板，用于记录代码快照、配置、日志、结果口径和接口风险。 |
 | `experiments/templates/TRIAL_README_template.md` | trial README 模板。 |
 | `experiments/templates/VERSION_template.md` | 版本说明模板。 |
 
@@ -237,7 +238,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |-- implementation.md
 |-- code.diff
 |-- config.yaml
-|-- review.md
+|-- quality_check.md
 |-- result.md
 `-- logs/
 ```
@@ -256,7 +257,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
 | `experiments/v1/confirmation/CONFIRM-001_clean_seed5/README.md` | v1 seed=5 确认实验记录。 |
 | `experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml` | 该确认实验使用的配置副本。 |
-| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/review.md` | 该确认实验的 review 记录。 |
+| `experiments/v1/confirmation/CONFIRM-001_clean_seed5/quality_check.md` | 该确认实验的轻量质量检查记录。 |
 | `experiments/v1/logs/` | 预留版本级日志目录。 |
 | `experiments/v1/confirmation/CONFIRM-001_clean_seed5/logs/` | 该确认实验的日志副本目录。 |
 

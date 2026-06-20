@@ -23,7 +23,7 @@
   条目，并说明每个版本需要改变什么。
 - 如果当前框架是 `v2`，同一个 idea 可以留在树里，但 trial 必须使用
   `version_scores.v2`。`v1` 分数只是证据，不是许可。
-- 模块 trial 必须先选择一个 base version。选定的 base version 决定 review 使用哪个分数、
+- 模块 trial 必须先选择一个 base version。选定的 base version 决定质量检查使用哪个分数、
   风险和约束。
 - 被拒绝的 idea 也留在树里，带着证据和较低优先级。
 - 旧实验结果不迁移。

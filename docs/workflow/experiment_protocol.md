@@ -15,7 +15,7 @@ experiments/v1/confirmation/CONFIRM-001_clean_seed5/
 ```text
 README.md
 config.yaml
-review.md
+quality_check.md
 logs/
 ```
 

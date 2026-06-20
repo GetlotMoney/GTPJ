@@ -1,8 +1,7 @@
-# Review
+# Quality Check
 
 ```text
 runtime: Codex
-review_mode: STRICT
 decision: ACCEPTED
 ```
 

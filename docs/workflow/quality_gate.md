@@ -1,4 +1,7 @@
-# Review Gate
+# 质量门（未来参考）
+
+当前 GitHub 治理阶段不强制执行本文件。本文件保留的是未来 workflow 接入时可以学习的
+质量门思想：实验运行前先确认代码、配置、日志和结果口径不会混乱。
 
 运行实验前：
 
@@ -13,12 +16,12 @@
 
 - baseline-off path 能回到选定 base version 的行为；
 - input 和 output 的 tensor shape 已记录；
-- 除非明确 review，否则 logits shape 和 class order 不变；
+- 除非明确记录为接口变更，否则 logits shape 和 class order 不变；
 - 新 loss 默认关闭，并由 config 权重控制；
 - 除非 trial 明确就是 evaluation 实验，否则 evaluation 语义不变；
 - 训练前已记录最低验证证据。
 
-Review decision 只能是：
+未来工作流可以使用的决策值：
 
 ```text
 ACCEPTED
@@ -31,4 +34,4 @@ REJECTED
 - `STANDARD`：ablation、dataset transfer 或低风险 switch。
 - `STRICT`：新模块代码、新 loss、forward path、data flow 或 evaluation 变化。
 
-OpenClaw 和 Codex 必须写出兼容的 review 文件。
+OpenClaw 和 Codex 未来应写出兼容的 `quality_check.md` 文件。

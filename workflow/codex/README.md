@@ -1,6 +1,7 @@
-# Codex 工作流入口
+# Codex 未来工作流入口
 
-Codex 遵循与 OpenClaw 相同的仓库工作流。
+当前阶段不强制执行 Codex 工作流。Codex 只需要遵循 GitHub 项目治理规范；
+未来正式接入时，再遵循与 OpenClaw 相同的仓库工作流。
 
 ## 启动契约
 
@@ -9,6 +10,7 @@ Codex 遵循与 OpenClaw 相同的仓库工作流。
 ```text
 AGENTS.md
 NEXT_ACTIONS.md
+docs/GITHUB_GOVERNANCE.md
 docs/workflow/README.md
 workflow/README.md
 ```
@@ -22,7 +24,7 @@ python workflow/gtpj_workflow.py validate
 
 ## Codex 职责
 
-- 使用 `workflow/gtpj_workflow.py` 执行结构性 workflow 动作。
+- 可以使用 `workflow/gtpj_workflow.py` 执行结构性辅助动作。
 - 保持改动最小且范围明确。
 - 不迁移旧分支名、旧实验 ID、旧视频文件或旧外部工具工作流文件。
 - 除非 owner 明确要求，否则不要 push。
