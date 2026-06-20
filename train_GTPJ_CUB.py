@@ -14,7 +14,7 @@ from datetime import datetime
 #    暂时禁用, 只用预加载和 BF16 加速
 torch.backends.cudnn.benchmark = False
 
-from model.MyModel import VGSR
+from model.MyModel import GTPJ
 from tools.dataset import CUBDataLoader
 from tools.helper_func import eval_zs_gzsl, get_clip_spatial_features
 
@@ -52,10 +52,10 @@ def print_log(msg):
 # ==========================================
 #   加载配置
 # ==========================================
-parser = argparse.ArgumentParser(description="Train VGSR on CUB GZSL.")
+parser = argparse.ArgumentParser(description="Train GTPJ on CUB GZSL.")
 parser.add_argument(
     "--config",
-    default="./config/VGSR_cub_gzsl.yaml",
+    default="./config/GTPJ_cub_gzsl.yaml",
     help="Path to the YAML config. Use an experiment-local config.yaml for tracked runs.",
 )
 args = parser.parse_args()
@@ -88,7 +88,7 @@ print_log("=" * 60)
 # ★ 模块配置摘要 (每次训练记录, 便于回看)
 print_log("")
 print_log("┌─ Module Configuration ───────────────────────────────────┐")
-print_log(f"│  model_mode    : {getattr(config, 'model_mode', 'vgsr')}")
+print_log(f"│  model_mode    : {getattr(config, 'model_mode', 'gtpj')}")
 print_log(f"│  text_source   : {getattr(config, 'text_source', 'gpt4')}")
 print_log(f"│  use_aug_cache : {getattr(config, 'use_aug_cache', False)}")
 print_log("├─ Architecture ──────────────────────────────────────────┤")
@@ -380,7 +380,7 @@ seen_gpt_embeds = gpt_text_embeds[dataloader.seenclasses] \
 unseen_clip_embeds = gpt_text_embeds[dataloader.unseenclasses] \
     if gpt_text_embeds is not None else class_text_embeds[dataloader.unseenclasses]
 
-model = VGSR(
+model = GTPJ(
     config,
     dataloader.seenclasses,
     dataloader.unseenclasses,
@@ -439,7 +439,7 @@ extra_epochs       = int(getattr(config, 'extra_epochs', 0))
 # ★ Bug 修复 (2026-05-25): clip_only / adapter_only 消融时强制跳过 resume
 # 否则 checkpoint 里的 logit_scale / Adapter / proj_text 等参数会污染消融结果,
 # clip_only 数值不再是干净 CLIP 基线
-_model_mode_for_resume = getattr(config, 'model_mode', 'vgsr')
+_model_mode_for_resume = getattr(config, 'model_mode', 'gtpj')
 if _model_mode_for_resume in ('clip_only', 'adapter_only') and resume_from:
     print_log(f"\n[Resume] model_mode='{_model_mode_for_resume}' detected, "
               f"forcing resume_from='' (skip checkpoint to keep ablation clean)")
@@ -608,7 +608,7 @@ else:
 # ==========================================
 #   消融模式: clip_only 跳过训练直接评估
 # ==========================================
-model_mode = getattr(config, 'model_mode', 'vgsr')
+model_mode = getattr(config, 'model_mode', 'gtpj')
 print_log(f"\n  ★ Model mode: {model_mode}")
 
 if model_mode == 'clip_only':

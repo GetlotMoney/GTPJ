@@ -1,13 +1,13 @@
-﻿"""
-VGSR 主模型 (CLIP + Adapter + GPT + 双向 Transformer)
+"""
+GTPJ 主模型 (CLIP + Adapter + GPT + 双向 Transformer)
 =========================================================
-模块化说明：本文件内包含 VGSR 的核心建模组件与轻量辅助目标。
+模块化说明：本文件内包含 GTPJ 的核心建模组件与轻量辅助目标。
   1. LaSt-ViT 工具函数           — 频域池化与 top-K patch 选择
   2. Adapter                    — 文本特征轻量增强 (VDT-TransZero)
   3. CrossModalTransformer      — 视觉-语义双向 Transformer (TransZero++)
      包含子组件: BoxRelationalEmbedding, GeometryMultiHeadAttention, FAELayer
      支持 LaSt-ViT patch 子集选择后再进行几何感知交互
-  4. VGSR                       — 主模型, 组合上述模块
+  4. GTPJ                       — 主模型, 组合上述模块
      可选启用 LaSt-CLS 增强、LaSt patch 选择器与 AG-JEPA 辅助预测损失
 
 接口契约 (不要破坏):
@@ -331,8 +331,8 @@ class GeometryMultiHeadAttention(nn.Module):
     def __init__(self, dim_com, heads, dim_g=64, dropout=0.1):
         """
         Args:
-            dim_com: 公共维度 (在 VGSR 里是 512), 必须能被 heads 整除
-            heads:   注意力头数 (在 VGSR 里默认 4)
+            dim_com: 公共维度 (在 GTPJ 里是 512), 必须能被 heads 整除
+            heads:   注意力头数 (在 GTPJ 里默认 4)
             dim_g:   几何编码维度 (64), 来自 BoxRelationalEmbedding
             dropout: 注意力权重 dropout 比例
         """
@@ -361,7 +361,7 @@ class GeometryMultiHeadAttention(nn.Module):
     def forward(self, x, geometry_emb):
         """
         Args:
-            x:            [B, N, dim_com]    输入特征 (在 VGSR 里 N=576)
+            x:            [B, N, dim_com]    输入特征 (在 GTPJ 里 N=576)
             geometry_emb: [B, N, N, dim_g]   预计算几何编码 (float16)
         Returns:
             [B, N, dim_com]  解耦位置纠缠后的特征 + 残差 + LN
@@ -764,9 +764,9 @@ class CrossModalTransformer(nn.Module):
 
 
 # ==========================================================
-#  模块 3: 主模型 VGSR
+#  模块 3: 主模型 GTPJ
 # ==========================================================
-class VGSR(nn.Module):
+class GTPJ(nn.Module):
     """
     GZSL 主模型
     ┌──────────────────────────────────────────────────────────┐
@@ -1301,8 +1301,8 @@ class VGSR(nn.Module):
         # ===== 消融模式分支 (clip_only / adapter_only) =====
         # clip_only:    纯 CLIP 余弦, 不经过 Adapter / FAE / CrossModalTransformer
         # adapter_only: seen 文本经 Adapter 微调, 视觉端用 CLS, 跳过 FAE / CrossModal
-        # vgsr (默认):   走下方完整流程
-        model_mode = getattr(self.config, 'model_mode', 'vgsr')
+        # gtpj (默认):   走下方完整流程
+        model_mode = getattr(self.config, 'model_mode', 'gtpj')
         if model_mode in ('clip_only', 'adapter_only'):
             # 提取 CLS token (兼容多种输入形状)
             if clip_features.dim() == 3 and clip_features.size(1) == 577:
@@ -1345,7 +1345,7 @@ class VGSR(nn.Module):
                 'clip_S_pp':   logits,
                 'clip_pred':   logits,
             }
-        # ===== 消融分支结束, 下方为 vgsr 全功能流程 =====
+        # ===== 消融分支结束, 下方为 gtpj 全功能流程 =====
 
         # 分离 CLS token 和 patches
         if clip_features.dim() == 3 and clip_features.size(1) == 577:

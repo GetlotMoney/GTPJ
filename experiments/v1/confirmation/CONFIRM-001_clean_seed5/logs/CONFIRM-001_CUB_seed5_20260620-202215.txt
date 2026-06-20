@@ -10,7 +10,7 @@
 ============================================================
 
 ┌─ Module Configuration ───────────────────────────────────┐
-│  model_mode    : vgsr
+│  model_mode    : gtpj
 │  text_source   : gpt55
 │  use_aug_cache : False
 ├─ Architecture ──────────────────────────────────────────┤
@@ -94,7 +94,7 @@
 ============================================================
   ⚠ AMP disabled (use_amp=False), running fp32
 
-  ★ Model mode: vgsr
+  ★ Model mode: gtpj
 
 ────────────────────────────────────────────────────────────
   Epoch [1/50]  Training...

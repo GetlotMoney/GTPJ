@@ -9,8 +9,8 @@ import clip
 from types import SimpleNamespace
 from datetime import datetime
 
-# [引用] VGSR 模型
-from model.MyModel import VGSR
+# [引用] GTPJ 模型
+from model.MyModel import GTPJ
 # [引用] AWA2 数据集加载器
 from tools.dataset import AWA2DataLoader
 # [引用] 统一评估函数
@@ -37,10 +37,10 @@ def print_log(message):
 # ==========================================
 
 # 加载 Config
-parser = argparse.ArgumentParser(description="Train VGSR on AWA2 GZSL.")
+parser = argparse.ArgumentParser(description="Train GTPJ on AWA2 GZSL.")
 parser.add_argument(
     "--config",
-    default="./config/VGSR_awa2_gzsl.yaml",
+    default="./config/GTPJ_awa2_gzsl.yaml",
     help="Path to the YAML config. Use an experiment-local config.yaml for tracked runs.",
 )
 args = parser.parse_args()
@@ -109,10 +109,10 @@ with torch.no_grad():
     class_text_embeds = class_text_embeds.float()  # [50, 768]
 # ============================================================
 
-# 4. 初始化 VGSR 模型
-print_log("Initializing VGSR Model...")
+# 4. 初始化 GTPJ 模型
+print_log("Initializing GTPJ Model...")
 # [修改] 传入 class_text_embeds
-model = VGSR(
+model = GTPJ(
     config,
     dataloader.att,
     dataloader.clip_att,
@@ -133,7 +133,7 @@ report_interval = niters // config.epochs
 best_performance = [0, 0, 0, 0]  # U, S, H, ZS
 best_performance_zsl = 0
 
-print_log(f"Start VGSR Training for AWA2 ({niters} iters)...")
+print_log(f"Start GTPJ Training for AWA2 ({niters} iters)...")
 
 for i in range(niters):
     model.train()
@@ -179,7 +179,7 @@ for i in range(niters):
 
         if H > best_performance[2]:
             best_performance = [acc_novel, acc_seen, H, acc_zs]
-            # save_path = f'save_model/VGSR_AWA2_Best.pth'
+            # save_path = f'save_model/GTPJ_AWA2_Best.pth'
             # if not os.path.exists('save_model'): os.makedirs('save_model')
             # torch.save(model.state_dict(), save_path)
 

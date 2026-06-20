@@ -28,7 +28,7 @@ status: done
 
 ```text
 branch: exp/v1-confirm-001-clean-seed5
-command: F:\Anaconda\envs\dvsr_gpu\python.exe train_VGSR_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
+command: F:\Anaconda\envs\dvsr_gpu\python.exe train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
 python: F:\Anaconda\envs\dvsr_gpu\python.exe
 dataset: CUB GZSL
 seed: 5

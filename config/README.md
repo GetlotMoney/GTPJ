@@ -15,5 +15,5 @@
 当前别名：
 
 ```text
-config/VGSR_cub_gzsl.yaml -> 与 config/versions/v1.yaml 内容相同
+config/GTPJ_cub_gzsl.yaml -> 与 config/versions/v1.yaml 内容相同
 ```

@@ -45,9 +45,9 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义，用于创建 `gtpj` 运行环境。 |
-| `train_VGSR_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 VGSR 并写训练日志。 |
-| `train_VGSR_AWA2.py` | AWA2 GZSL 训练入口。 |
-| `train_VGSR_SUN.py` | SUN GZSL 训练入口。 |
+| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
+| `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
+| `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 | `verify_lastvit.py` | LaSt-ViT pooling 数值验证脚本，用于对比当前实现和参考实现。 |
 
 ## `config/`
@@ -58,9 +58,9 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `config/README.md` | 配置策略说明，解释版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
-| `config/VGSR_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 `config/versions/v1.yaml` 保持一致。 |
-| `config/VGSR_awa2_gzsl.yaml` | AWA2 运行配置。 |
-| `config/VGSR_sun_gzsl.yaml` | SUN 运行配置。 |
+| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 `config/versions/v1.yaml` 保持一致。 |
+| `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
+| `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
 
 规则：
 
@@ -120,7 +120,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | VGSR 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/MyModel.py` | GTPJ 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：

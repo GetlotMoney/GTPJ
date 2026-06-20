@@ -9,8 +9,8 @@ import clip
 from types import SimpleNamespace
 from datetime import datetime
 
-# [引用] VGSR 模型
-from model.MyModel import VGSR
+# [引用] GTPJ 模型
+from model.MyModel import GTPJ
 # [引用] SUN 数据集加载器
 from tools.dataset import SUNDataLoader
 # [修改] 引入统一的评估函数和特征提取函数
@@ -37,10 +37,10 @@ def print_log(message):
 # ==========================================
 
 # 加载 Config
-parser = argparse.ArgumentParser(description="Train VGSR on SUN GZSL.")
+parser = argparse.ArgumentParser(description="Train GTPJ on SUN GZSL.")
 parser.add_argument(
     "--config",
-    default="./config/VGSR_sun_gzsl.yaml",
+    default="./config/GTPJ_sun_gzsl.yaml",
     help="Path to the YAML config. Use an experiment-local config.yaml for tracked runs.",
 )
 args = parser.parse_args()
@@ -103,10 +103,10 @@ with torch.no_grad():
 
 # ============================================================
 
-# 初始化 VGSR 模型
-print_log("Initializing VGSR Model...")
+# 初始化 GTPJ 模型
+print_log("Initializing GTPJ Model...")
 # [修改] 传入 class_text_embeds
-model = VGSR(
+model = GTPJ(
     config,
     dataloader.att,
     dataloader.clip_att,
@@ -127,7 +127,7 @@ report_interval = niters // config.epochs
 best_performance = [0, 0, 0, 0]
 best_performance_zsl = 0
 
-print_log(f"Start VGSR Training for SUN ({niters} iters)...")
+print_log(f"Start GTPJ Training for SUN ({niters} iters)...")
 
 for i in range(niters):
     model.train()
@@ -173,7 +173,7 @@ for i in range(niters):
         if H > best_performance[2]:
             best_performance = [acc_novel, acc_seen, H, acc_zs]
             # 保存模型
-            # save_path = f'save_model/VGSR_SUN_Best.pth'
+            # save_path = f'save_model/GTPJ_SUN_Best.pth'
             # if not os.path.exists('save_model'): os.makedirs('save_model')
             # torch.save(model.state_dict(), save_path)
 

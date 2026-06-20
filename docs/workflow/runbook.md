@@ -16,7 +16,7 @@ GTPJ-v1 -> tag v1 -> experiments/v1/
 ```bash
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
 git switch -c exp/v1-confirm-001-clean-seed5 v1
-python train_VGSR_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
+python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
 ```
 
 结果记录到：
@@ -32,7 +32,7 @@ tuning run 属于 `experiments/v1/tune/`，不要放到 `confirmation/`。
 ```bash
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 git switch -c exp/v1-tune-001-topo008 v1
-python train_VGSR_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
+python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
 ```
 
 ## 启动新模块 Trial
