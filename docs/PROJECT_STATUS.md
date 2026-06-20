@@ -7,7 +7,7 @@
 ```text
 name: GTPJ-v1
 code_tag: v1
-status: initialized, pending clean rerun
+status: confirmed
 dataset: CUB GZSL
 ```
 
@@ -28,14 +28,14 @@ dataset: CUB GZSL
 ## 正式结果状态
 
 任何结果都必须在本仓库中重跑并记录后，才算正式结果。
-
-导入的第一版 baseline 的历史参考值：
+`CONFIRM-001_clean_seed5` 已完成，当前正式结果如下：
 
 | 数据集 | Seed | U | S | H | ZS | 状态 |
 |---|---:|---:|---:|---:|---:|---|
-| CUB GZSL | 5 | 71.46 | 76.40 | 73.85 | 81.61 | 仅作参考，必须重跑 |
+| CUB GZSL | 5 | 72.20 | 75.45 | 73.79 | 81.80 | 正式复现结果 |
+
+历史导入参考值仅用于对照：CUB seed=5，U=71.46，S=76.40，H=73.85，ZS=81.61。
 
 ## 下一步
 
-在 `experiments/v1/confirmation/` 下运行 `CONFIRM-001_clean_seed5`，
-确认这个干净仓库中的第一版 baseline。
+使用 `GTPJ-v1` 的正式 CUB seed=5 基准，开始模块 trial、调参或消融实验。

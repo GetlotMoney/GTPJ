@@ -3,7 +3,7 @@
 ```text
 version: v1
 baseline_name: GTPJ-v1
-status: initialized, pending clean rerun
+status: confirmed
 code_tag: v1
 base_version: none
 promoted_from: none
@@ -31,7 +31,7 @@ config: experiments/v1/config.yaml
 - 不使用 test metrics 来重启、回滚、停止或改变训练。
 - `config.yaml` 只保留启用的 v1 字段。
 - 未启用的候选模块属于 `idea_tree/`，不属于 v1 baseline config。
-- 正式 GTPJ 结果必须在本仓库中重跑并记录。
+- 正式 GTPJ-v1 CUB seed=5 结果已在本仓库中重跑并记录：`H=73.79`，best epoch=26。
 
 ## 允许的实验类型
 

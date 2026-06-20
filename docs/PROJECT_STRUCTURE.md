@@ -249,7 +249,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |---|---|
 | `experiments/v1/VERSION.md` | v1 版本说明，记录 baseline、启用模块和训练策略。 |
 | `experiments/v1/config.yaml` | v1 配置归档副本，应与 `config/versions/v1.yaml` 保持一致。 |
-| `experiments/v1/result.md` | v1 结果记录，目前等待干净重跑。 |
+| `experiments/v1/result.md` | v1 结果记录，保存正式复现实验指标和历史参考值。 |
 | `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |

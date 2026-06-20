@@ -4,7 +4,7 @@
 
 ## P0
 
-- [ ] 使用 `CONFIRM-001_clean_seed5` 确认 `GTPJ-v1`。
+- [ ] 从 `idea_tree/queues/01_selected_next.md` 选择第一个模块 trial。
 
 ## P1
 
@@ -14,3 +14,4 @@
 
 - [x] 初始化干净的 GTPJ 仓库。
 - [x] 创建可执行 workflow 入口和 CLI helper。
+- [x] 使用 `CONFIRM-001_clean_seed5` 确认 `GTPJ-v1`，CUB seed=5 H=73.79。

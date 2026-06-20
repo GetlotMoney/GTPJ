@@ -11,7 +11,7 @@ GeoTopoPatch-JEPA 实验仓库。
 
 | 版本 | 代码 tag | 状态 | 主数据集 | 说明 |
 |---|---|---|---|---|
-| `GTPJ-v1` | `v1` | 已初始化 | CUB GZSL | 需要在本仓库中干净重跑后，才能作为正式报告结果。 |
+| `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | `CONFIRM-001_clean_seed5` 已完成，seed=5 正式基准 H=73.79。 |
 
 ## 项目结构
 
