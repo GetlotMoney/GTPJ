@@ -10,19 +10,18 @@ GTPJ-v1 -> tag v1 -> experiments/v1/
 
 ## 运行 v1 确认实验
 
-`CONFIRM-001_clean_seed5` 已经在本仓库中初始化。如果目录已经存在，
-跳过创建命令，从切分支命令继续。
+确认实验使用 `experiments/v1/confirmation/`，用于复验当前 baseline。
 
 ```bash
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug clean_seed5
-git switch -c exp/v1-confirm-001-clean-seed5 v1
-python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_clean_seed5/config.yaml
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-043 --slug cond008_seed5
+git switch -c exp/v1-confirm-043-cond008-seed5 v1
+python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-043_cond008_seed5/config.yaml
 ```
 
 结果记录到：
 
 ```text
-experiments/v1/confirmation/CONFIRM-001_clean_seed5/
+experiments/v1/confirmation/CONFIRM-043_cond008_seed5/
 ```
 
 ## 运行 v1 调参实验

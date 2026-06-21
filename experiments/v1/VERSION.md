@@ -8,6 +8,7 @@ code_tag: v1
 base_version: none
 promoted_from: none
 config: experiments/v1/config.yaml
+current_baseline_experiment: TUNE-043_cond008
 ```
 
 ## 当前启用模块
@@ -31,7 +32,7 @@ config: experiments/v1/config.yaml
 - 不使用 test metrics 来重启、回滚、停止或改变训练。
 - `config.yaml` 只保留启用的 v1 字段。
 - 未启用的候选模块属于 `idea_tree/`，不属于 v1 baseline config。
-- 正式 GTPJ-v1 CUB seed=5 结果已在本仓库中重跑并记录：`H=73.79`，best epoch=26。
+- 第一版正式 GTPJ-v1 CUB seed=5 baseline 为 `TUNE-043_cond008`：`H=73.93`，best epoch=26。
 
 ## 允许的实验类型
 

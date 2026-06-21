@@ -63,7 +63,7 @@ lambda_topo_pearson:
 use_conditional_text:
   value: True
 conditional_text_ratio:
-  value: 0.010
+  value: 0.008
 meta_net_hidden:
   value: 48
 

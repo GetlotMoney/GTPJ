@@ -7,7 +7,7 @@ tune、ablation 和 confirmation 运行都属于某个 baseline 版本。
 ```text
 experiments/v1/tune/TUNE-001_topo008/
 experiments/v1/ablation/ABL-001_disable_jepa/
-experiments/v1/confirmation/CONFIRM-001_clean_seed5/
+experiments/v1/confirmation/CONFIRM-043_cond008_seed5/
 ```
 
 每个实验目录必须包含：

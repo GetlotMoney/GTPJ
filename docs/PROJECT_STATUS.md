@@ -1,6 +1,6 @@
 # 项目状态
 
-日期：2026-06-20
+日期：2026-06-21
 
 ## 当前基线
 
@@ -9,6 +9,7 @@ name: GTPJ-v1
 code_tag: v1
 status: confirmed
 dataset: CUB GZSL
+current_baseline_experiment: TUNE-043_cond008
 ```
 
 ## 当前启用模块
@@ -27,15 +28,12 @@ dataset: CUB GZSL
 
 ## 正式结果状态
 
-任何结果都必须在本仓库中重跑并记录后，才算正式结果。
-`CONFIRM-001_clean_seed5` 已完成，当前正式结果如下：
+`TUNE-043_cond008` 已确定为 `GTPJ-v1` 第一版正式 baseline。该结果使用同一主框架、CUB GZSL、seed=5 和三阶段训练契约。
 
-| 数据集 | Seed | U | S | H | ZS | 状态 |
-|---|---:|---:|---:|---:|---:|---|
-| CUB GZSL | 5 | 72.20 | 75.45 | 73.79 | 81.80 | 正式复现结果 |
-
-历史导入参考值仅用于对照：CUB seed=5，U=71.46，S=76.40，H=73.85，ZS=81.61。
+| 实验 | 数据集 | Seed | U | S | H | ZS | 状态 |
+|---|---|---:|---:|---:|---:|---:|---|
+| `TUNE-043_cond008` | CUB GZSL | 5 | 72.36 | 75.57 | 73.93 | 81.62 | 第一版正式 baseline |
 
 ## 下一步
 
-使用 `GTPJ-v1` 的正式 CUB seed=5 基准，开始模块 trial、调参或消融实验。
+使用 `GTPJ-v1` 当前 `TUNE-043_cond008` 的 CUB seed=5 基准，开始模块 trial、调参、消融或跨数据集实验。
