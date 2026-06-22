@@ -232,13 +232,13 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/VERSION.md` | v1 版本说明，记录 baseline、启用模块和训练策略。 |
 | `experiments/v1/config.yaml` | v1 配置归档副本，应与 `config/versions/v1.yaml` 保持一致。 |
 | `experiments/v1/result.md` | v1 结果记录，保存第一版正式 baseline 指标。 |
-| `experiments/v1/tune/INDEX.md` | v1 调参实验索引，当前记录 `TUNE-043_cond008`。 |
+| `experiments/v1/baseline/README.md` | `GTPJ-v1` 第一版正式 baseline 证据说明。 |
+| `experiments/v1/baseline/config.yaml` | `GTPJ-v1` baseline 配置副本，`conditional_text_ratio=0.008`。 |
+| `experiments/v1/baseline/quality_check.md` | `GTPJ-v1` baseline 轻量质量检查记录。 |
+| `experiments/v1/baseline/logs/` | `GTPJ-v1` baseline 日志副本目录。 |
+| `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
-| `experiments/v1/tune/TUNE-043_cond008/README.md` | 第一版正式 baseline 对应的调参实验记录。 |
-| `experiments/v1/tune/TUNE-043_cond008/config.yaml` | `TUNE-043_cond008` 的配置副本，`conditional_text_ratio=0.008`。 |
-| `experiments/v1/tune/TUNE-043_cond008/quality_check.md` | `TUNE-043_cond008` 的轻量质量检查记录。 |
-| `experiments/v1/tune/TUNE-043_cond008/logs/` | `TUNE-043_cond008` 的日志副本目录。 |
 | `experiments/v1/logs/` | 预留版本级日志目录。 |
 
 ## 更新本文件的判断标准

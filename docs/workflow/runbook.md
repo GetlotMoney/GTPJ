@@ -13,15 +13,15 @@ GTPJ-v1 -> tag v1 -> experiments/v1/
 确认实验使用 `experiments/v1/confirmation/`，用于复验当前 baseline。
 
 ```bash
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-043 --slug cond008_seed5
-git switch -c exp/v1-confirm-043-cond008-seed5 v1
-python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-043_cond008_seed5/config.yaml
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug v1_seed5
+git switch -c exp/v1-confirm-001-v1-seed5 v1
+python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_v1_seed5/config.yaml
 ```
 
 结果记录到：
 
 ```text
-experiments/v1/confirmation/CONFIRM-043_cond008_seed5/
+experiments/v1/confirmation/CONFIRM-001_v1_seed5/
 ```
 
 ## 运行 v1 调参实验

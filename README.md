@@ -11,7 +11,7 @@ GeoTopoPatch-JEPA 实验仓库。
 
 | 版本 | 代码 tag | 状态 | 主数据集 | 说明 |
 |---|---|---|---|---|
-| `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 第一版正式 baseline 为 `TUNE-043_cond008`，seed=5，H=73.93。 |
+| `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 新仓库第一版正式 baseline，seed=5，H=73.93。 |
 
 ## 当前管理重点
 
@@ -33,7 +33,7 @@ GTPJ/
 |-- idea_tree/              # 创意来源和队列；当前已清空，等待可靠来源
 `-- experiments/
     |-- module_trials/      # 模块 trial 证据；当前无已启动 trial
-    `-- v1/                 # GTPJ-v1 调参、消融、确认记录；第一版 baseline 来自 TUNE-043_cond008
+    `-- v1/                 # GTPJ-v1 baseline、调参、消融、确认记录
 ```
 
 ## GitHub 管理规则
@@ -79,7 +79,7 @@ python workflow/gtpj_workflow.py validate
 下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
 
 ```bash
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-043 --slug cond008_seed5
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug v1_seed5
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1

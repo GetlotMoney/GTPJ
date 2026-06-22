@@ -2,7 +2,7 @@
   CLIP + Adapter + GPT  |  CUB GZSL Training
 ============================================================
   Log file  : ./train_log/CUB/training_log_CUB_2026-06-13_14-52-32.txt
-  Config    : experiments\04_hyperparameter_tuning\TUNE-043_cond008\config.yaml
+  Config    : experiments\v1\baseline\config.yaml
   Device    : cuda:0
   Epochs    : 30
   Batch size: 64
