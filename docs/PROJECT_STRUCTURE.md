@@ -15,9 +15,9 @@
 GTPJ 仓库分成三层：
 
 ```text
-代码层：model/、tools/、train_*.py、config/
+代码层：model/、tools/、train_*.py、当前运行别名 config/GTPJ_*.yaml
 治理层：docs/、workflow/、AGENTS.md、NEXT_ACTIONS.md
-实验层：idea_tree/、experiments/
+实验层：idea_tree/、experiments/、config/versions/
 ```
 
 核心关系：
@@ -35,6 +35,9 @@ idea_tree/                 # 创意来源、评分、排序
 ```text
 一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
 ```
+
+当前唯一权威基线是 `GTPJ-v1 / tag v1 / H=73.93`。`main` 是唯一长期分支；
+`v1` 是 tag，不是分支。
 
 代码层和实验层不要混淆：
 
@@ -67,7 +70,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `config/README.md` | 配置策略说明，解释版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
-| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 `config/versions/v1.yaml` 保持一致。 |
+| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与当前主版本的 `config/versions/vX.yaml` 保持一致；现在对应 `v1`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
 
@@ -76,6 +79,7 @@ idea_tree/                 # 创意来源、评分、排序
 - 临时调参不要直接改 `config/versions/v1.yaml`。
 - 实验应复制版本配置到对应实验目录后再修改。
 - 未启用候选模块不进入版本配置，先进入 `idea_tree/`。
+- `config/versions/` 属于账本层；`config/GTPJ_*.yaml` 属于当前运行别名，提升新版本时必须明确同步。
 
 ## `docs/`
 
@@ -101,7 +105,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
-| `docs/workflow/quality_gate.md` | 未来质量门参考，规定实验运行前可以检查的项目。 |
+| `docs/workflow/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
 | `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
 
 ## `workflow/`
@@ -111,7 +115,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`，并生成带 base version 的 trial 分支/tag 建议。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，并生成带 base version 的分支/tag 建议。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
@@ -119,9 +123,12 @@ idea_tree/                 # 创意来源、评分、排序
 `workflow/gtpj_workflow.py` 的职责：
 
 - 检查仓库结构是否完整。
+- 检查当前唯一基线 `v1` tag 是否对应 `H=73.93`。
 - 检查创意树、版本配置和接口规范关键章节。
 - 创建实验目录和标准模板。
+- 创建实验时同步更新全局登记表和版本索引。
 - 创建 idea 节点和 trial 目录。
+- 创建 trial 时同步更新 module trial 索引和 idea 的 `linked_trials`。
 - 根据 `idea_tree.json.current_version` 重新生成 `idea_tree/INDEX.md`。
 
 ## `model/`
@@ -205,11 +212,11 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `experiments/templates/experiment_README_template.md` | 普通实验 README 模板。 |
+| `experiments/templates/experiment_README_template.md` | 普通实验 README 模板，记录代码快照、环境、数据/cache、日志、attempt、失败阶段和 tune/ablation 专属字段。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
-| `experiments/templates/quality_check_template.md` | 轻量质量检查模板，用于记录代码快照、配置、日志、结果口径和接口风险。 |
-| `experiments/templates/TRIAL_README_template.md` | trial README 模板。 |
+| `experiments/templates/quality_check_template.md` | 质量检查模板，用于记录证据完整性，并在正式升版时执行 promotion gate。 |
+| `experiments/templates/TRIAL_README_template.md` | trial README 模板，包含结果记录和 promotion gate 字段。 |
 | `experiments/templates/VERSION_template.md` | 版本说明模板。 |
 
 ### `experiments/module_trials/`

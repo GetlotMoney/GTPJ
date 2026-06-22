@@ -13,6 +13,10 @@ GeoTopoPatch-JEPA 实验仓库。
 |---|---|---|---|---|
 | `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 新仓库第一版正式 baseline，seed=5，H=73.93。 |
 
+当前只有一个权威代码基线：`GTPJ-v1 / tag v1 / H=73.93`。`main` 是唯一长期分支；
+`v1` 是代码快照 tag，不是分支。如果本地或远端 `v1` tag 指向旧结果，
+必须先修正为 `H=73.93` 对应快照再跑实验。
+
 ## 当前管理重点
 
 当前阶段先管理 GitHub 项目本身：版本、tag、分支、目录、配置快照、创意树和实验证据。
@@ -59,6 +63,9 @@ v1
 `main` 保存当前主版本代码，同时保存所有历史版本账本。也就是说，
 `experiments/v2/` 留在最新 `main` 中，不表示当前 `v3` 继承了 `v2` 的代码；
 它只是 `v2` 的历史记录。
+
+普通实验和模块 trial 的临时分支都从当前 `main` 开出，以继承最新账本。
+分支名中的 `v1`、`v2` 只表示 `base_code_tag`，不是长期分支名。
 
 全局版本树记录在：
 
@@ -113,3 +120,7 @@ python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name 
 python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
 ```
+
+注意：`new-idea` 之后不能立刻无脑 `new-trial`。必须先补全
+`version_scores.<base_version>.rationale`、`hypothesis`、`implementation_scope`、
+`risk`，把 idea 状态改为 `selected`，并确认没有 blockers。

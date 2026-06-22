@@ -24,7 +24,11 @@ idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 
 ## 假设
 
+必须写清楚这个创意为什么可能提升当前版本。
+
 ## 实现范围
+
+必须写清楚会改哪些文件、哪些模块、哪些 forward/loss/eval 路径。
 
 ## 版本评分
 
@@ -55,7 +59,11 @@ idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 
 ## 风险
 
+必须写清楚 shape、loss、eval、训练稳定性、计算量或来源可靠性风险。
+
 ## 阻塞点
+
+没有阻塞点时写 `none`。有阻塞点时，不能开 trial。
 
 ## 计划 Trials
 

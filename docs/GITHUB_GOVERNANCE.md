@@ -3,11 +3,27 @@
 本文件是当前阶段的主规范。目标不是运行实验工作流，而是先把 GitHub 仓库管理干净，
 让未来 OpenClaw 或 Codex 工作流都能接入同一个事实来源。
 
+## 当前唯一权威基线
+
+当前仓库只承认一个正式基线：
+
+```text
+GTPJ-v1
+code_tag: v1
+baseline H: 73.93
+长期分支: main
+```
+
+`main` 是唯一长期分支。`v1` 是 tag，不是分支。
+
+早期错误指向旧结果的 `v1` tag 不再作为有效基线。当前初始化阶段允许一次性把
+`v1` 修正到 `H=73.93` 的 GTPJ-v1 快照；修正后 `v1` 按永久 tag 管理，不再移动。
+
 ## 当前阶段只管理什么
 
 - baseline 版本：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
-- 分支：`main` 长期存在；临时代码实验使用 `dev/...` 或 `exp/...`。
+- 分支：只有 `main` 长期存在；临时代码实验使用 `dev/...`、`exp/...` 或 `promote/...`。
 - 模块 trial 命名：`dev/v1-idea-0001-trial-001-short-name` 必须写出来源 baseline。
 - trial 快照 tag：`trial/v1/idea-0001/trial-001` 必须写出来源 baseline。
 - 配置快照：正式版本配置放在 `config/versions/`，实验副本放在具体实验目录。
@@ -112,14 +128,16 @@ experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 正确提升流程：
 
 ```text
-1. 从 parent tag 切 dev 分支，只做代码 trial。
-2. trial 成功后，打 trial/<parent-version>/idea-xxxx/trial-xxx 快照 tag。
-3. 回到当前 main，开 promote 分支。
-4. 在 promote 分支中保留当前 main 的账本层。
-5. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
-6. 新增 experiments/vX/ 和 config/versions/vX.yaml。
-7. 更新 VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、README。
-8. 验证通过后，合并 promote 分支为 main，并打 vX tag。
+1. 从当前 main 开 dev 分支，继承最新账本。
+2. 如果 parent_version 不是当前 main 代码，只恢复代码层到 parent tag，不恢复账本层。
+3. trial 成功后，在明确 code_commit 上打 trial/<parent-version>/idea-xxxx/trial-xxx 快照 tag。
+4. 回到当前 main，开 promote 分支。
+5. 在 promote 分支中保留当前 main 的账本层。
+6. 把成功 trial 的证据目录回流到当前账本。
+7. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
+8. 新增 experiments/vX/ 和 config/versions/vX.yaml。
+9. 更新 VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
+10. 验证通过后，合并 promote 分支为 main，并在最终 main commit 上打 vX tag。
 ```
 
 代码层包括：
@@ -241,6 +259,7 @@ trial/v1/idea-0003/trial-001
 普通实验分支：
 
 - `exp/...` 分支只承载 tune、ablation、confirmation 的实验记录。
+- `exp/...` 从当前 `main` 开出，继承最新账本；分支名里的 `v1` 是 `base_code_tag`。
 - 跑完后，把 README、config、日志路径、结果和结论合并回 `main`。
 - 实验记录合并回 `main` 后，可以删除这个 `exp/...` 分支。
 
@@ -251,8 +270,23 @@ trial/v1/idea-0003/trial-001
 - 如果新 `vX` 的父节点不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
   只切换代码层，不能删除或回退全局账本层。
 - `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
+- 成功 trial 的证据目录、日志副本、quality_check、result 和 code.diff 必须回流到当前 `main` 账本。
 - 合并后打新的 baseline tag，例如 `v2` 或 `v3`。
 - 新 baseline tag 打好后，可以删除对应 `dev/...` 分支。
+
+Promotion 硬门：
+
+- `H` 相比父版本有明确提升，且记录 baseline H、trial H 和 delta H。
+- 不能只凭一次偶然结果；至少要记录同 seed 对照，必要时补充多 seed 或重复运行。
+- `U`、`S`、`ZS` 没有出现不可接受退化；如果有退化，必须解释为什么仍然接受。
+- 训练命令、seed、配置副本、日志路径、best epoch 和结果表完整。
+- evaluation 口径没有改变，包括 class order、seen/unseen split、logits shape 和 metric calculation。
+- 模块开关关闭时可以回到 `parent_version` 行为。
+- `quality_check.md` 的 promotion decision 必须是 `ACCEPTED`。
+- `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`EXPERIMENT_REGISTRY.md`
+  都已经更新。
+
+只有同时满足上面条件，trial 才能提升为正式 `vX`。
 
 失败的模块 trial：
 
@@ -266,6 +300,22 @@ trial/v1/idea-0003/trial-001
 - 不删除 `main`。
 - 不删除 `vX` baseline tag。
 - 不删除 `trial/...` 永久快照 tag。
+
+## GitHub 保护规则
+
+GitHub 远端应设置保护规则：
+
+- 保护 `main`，禁止 force push。
+- 禁止删除 `main`。
+- 保护 `v*` tag，禁止移动、覆盖或删除。
+- 保护 `trial/**` tag，禁止移动、覆盖或删除。
+- 只有 owner 明确要求时才允许 push。
+- 正式 baseline tag 和 trial tag 推送后视为不可变对象。
+
+如果 GitHub ruleset 暂时没有配置，也必须在人工操作中遵守这些规则。
+
+例外：当前初始化阶段已经确认唯一基线是 `H=73.93`，如果远端 `v1` tag 仍指向旧结果，
+允许在 owner 明确要求推送时执行一次强制修正。修正完成后 `v1` 不再移动。
 
 ## 规范文件在哪里
 
@@ -318,7 +368,7 @@ version_scores.v3.score = 对 GTPJ-v3 的当前价值
 
 ## quality_check 是什么
 
-`quality_check.md` 是轻量质量检查记录，不等于旧工作流里的强制审查门。
+普通实验的 `quality_check.md` 是轻量质量检查记录，不等于旧工作流里的强制审查门。
 
 它只回答：
 
@@ -328,8 +378,12 @@ version_scores.v3.score = 对 GTPJ-v3 的当前价值
 - 有没有改变 eval、class order、logits shape 或数据划分？
 - 如果是模块 trial，关闭开关后能不能回到 baseline？
 
+但 baseline promotion 是强制门。任何 trial 想成为正式 `vX`，必须通过
+promotion quality gate，不能只看一次 `H` 提升。
+
 以后如果正式接入 OpenClaw/Codex 工作流，可以把 `quality_check` 升级成自动化质量门。
-在此之前，它只是 GitHub 证据完整性的检查表。
+在此之前，普通实验的 `quality_check` 是 GitHub 证据完整性的检查表；
+promotion 的 `quality_check` 是正式版本准入门。
 
 ## 从旧 cv 实验工作流可以学习什么
 

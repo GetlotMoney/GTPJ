@@ -25,7 +25,9 @@ code_branch: dev/v1-idea-0001-trial-001-short-name
 code_tag: trial/v1/idea-0001/trial-001
 ```
 
-其中 `v1` 表示这个 trial 从 `v1` baseline tag 切出。
+其中 `v1` 表示这个 trial 的代码来源是 `v1` baseline tag。临时分支仍从当前
+`main` 开出，以继承最新账本；如果当前 `main` 代码不是 `v1`，只恢复代码层到
+`v1`，不要恢复账本层。
 如果 trial 成功，它可以被提升为新的 `v2`、`v3` 或后续版本。
 
 必需结构：
@@ -61,10 +63,35 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - changed files
 - implementation summary
 - quality check decision
-- result and final decision
+- result
+- `trial_decision`
+- `promotion_decision`
 
-Trial decision：
+`trial_decision`：
 
 ```text
 reject / revise / combine / promote
 ```
+
+`promotion_decision`：
+
+```text
+not_applicable / ACCEPTED / REJECTED
+```
+
+只有 `trial_decision: promote` 且 `promotion_decision: ACCEPTED` 时，trial 才能提升为正式 `vX`。
+`H` 提升但证据不完整时，必须写 `revise` 或 `REJECTED`，不能写 `promote`。
+
+Promotion 必填证据：
+
+- parent version / parent tag；
+- trial code tag；
+- trial tag 指向 README 中记录的 code_commit；
+- baseline H、trial H、delta H；
+- U/S/ZS、best epoch、seed；
+- config 副本路径；
+- 原始日志路径和 Git 内日志副本路径；
+- class order、seen/unseen split、logits shape、metric calculation 未改变的说明；
+- switch-off 等价检查；
+- `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`docs/PROJECT_STRUCTURE.md`
+  和 `idea_tree/idea_tree.json` 更新记录。

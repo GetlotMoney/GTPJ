@@ -18,6 +18,16 @@ v2
 v3
 ```
 
+注意：`v1`、`v2`、`v3` 是 tag，不是长期分支。仓库只有一个长期分支 `main`。
+
+当前唯一权威基线：
+
+```text
+GTPJ-v1
+code_tag: v1
+H: 73.93
+```
+
 每个版本拥有自己的记录目录：
 
 ```text
@@ -89,14 +99,17 @@ experiments/VERSION_TREE.md
 当前 main = v3 代码 + 最新账本
 目标 v4 = v1 代码 + 模块B
 
-1. dev/v1-idea-xxxx-trial-001-b 只负责证明 v1 + 模块B。
-2. 成功后打 trial/v1/idea-xxxx/trial-001。
-3. 从当前 main 开 promote/v1-idea-xxxx-to-v4。
-4. promote 分支保留当前 main 的账本层。
-5. promote 分支把代码层切换成 v1 + 模块B。
-6. promote 分支新增 experiments/v4/ 和 config/versions/v4.yaml。
-7. promote 分支更新 experiments/VERSION_TREE.md 和全局索引。
-8. 通过验证后，promote 合并为 main，打 tag v4。
+1. 从当前 main 开 dev/v1-idea-xxxx-trial-001-b，继承最新账本。
+2. 如果当前 main 代码不是 v1，只恢复代码层到 v1，不恢复账本层。
+3. dev 分支只负责证明 v1 + 模块B。
+4. 成功后在明确 commit 上打 trial/v1/idea-xxxx/trial-001。
+5. 从当前 main 开 promote/v1-idea-xxxx-to-v4。
+6. promote 分支保留当前 main 的账本层。
+7. promote 分支把代码层切换成 v1 + 模块B。
+8. promote 分支把成功 trial 的证据回流到当前账本。
+9. promote 分支新增 experiments/v4/ 和 config/versions/v4.yaml。
+10. promote 分支更新 experiments/VERSION_TREE.md、全局索引、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
+11. 通过验证后，promote 合并为 main，最终 main commit 打 tag v4。
 ```
 
 每个 `experiments/vX/VERSION.md` 必须记录：
@@ -132,9 +145,33 @@ v1
 规则：
 
 - `main` 永远代表最新稳定项目，不要为了重新基于 `v1` 做实验而把 `main` 回退到 `v1`。
-- 想从哪个 baseline 做新模块，就从哪个 tag 切 `dev/<base-version>-...` 分支。
+- 想从哪个 baseline 做新模块，就在临时分支名和记录中写清楚 `base_code_tag`。
+- 临时分支从当前 `main` 开出，以继承最新账本；必要时只把代码层恢复到目标 baseline tag。
 - 分支名里的 `v1`、`v2` 是来源版本；提升后的 `vX` 是新的正式版本。
 - 版本提升时，必须在新版本记录中写清楚 `parent_version`。
 - 添加模块、替换模块、删除模块或组合模块，只要成为正式框架，就新增一个 `vX`。
 - 新 `vX` 不需要继承当前 `main` 的代码；它只继承自己声明的 `parent_version`。
 - 新 `vX` 不能删除旧版本账本；旧版本代码靠 tag 保存，旧版本记录靠 `experiments/vX/` 保存。
+- 版本继承关系以 `experiments/VERSION_TREE.md` 和 `experiments/vX/VERSION.md` 为准，不以 Git commit parent 推断。
+
+## Promotion 成功标准
+
+`H` 提升是必要证据，但不是唯一标准。
+
+一个 trial 只有同时满足下面条件，才能提升为正式 `vX`：
+
+- 指标有效：记录父版本 baseline H、trial H、delta H、U、S、ZS、best epoch。
+- 对照一致：至少同 seed 对照；高风险改动需要重复运行或多 seed 复核。
+- 口径一致：class order、seen/unseen split、logits shape、metric calculation 不变。
+- 配置可追溯：使用的 config 副本保存在 trial 或新版本目录。
+- 日志可追溯：原始日志路径和 Git 内日志副本路径明确。
+- 接口干净：输入输出 shape、loss、eval、checkpoint 变化已声明。
+- 关闭等价：模块 switch 关闭后回到 `parent_version` 行为。
+- 决策完整：`quality_check.md` 的 promotion decision 为 `ACCEPTED`。
+- 账本完整：`experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、
+  `experiments/EXPERIMENT_REGISTRY.md`、`docs/PROJECT_STATUS.md`、`docs/PROJECT_STRUCTURE.md`、
+  `README.md` 和 `idea_tree/idea_tree.json` 已同步更新。
+- tag 正确：新 `vX` tag 指向最终 `main` commit，trial tag 指向记录的 `code_commit`。
+
+如果只满足 `H` 提升，但无法证明口径一致或关闭等价，结论只能是 `revise`，
+不能是 `promote`。

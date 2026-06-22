@@ -40,6 +40,8 @@ SOURCE_TYPES = {"paper", "user", "observation", "cross_domain", "hybrid"}
 SOURCE_STATUSES = {"verified", "unverified", "unknown", "local_heuristic"}
 TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
+TRIAL_ALLOWED_APPLICABILITIES = {"direct", "needs_adaptation"}
+TRIAL_READY_STATUSES = {"selected"}
 SOURCE_STATUS_RANK = {
     "verified": 3,
     "local_heuristic": 2,
@@ -58,12 +60,22 @@ class ExperimentKind:
     folder: str
     prefix: str
     default_check: str
+    branch_kind: str
 
 
 KINDS = {
-    "tune": ExperimentKind("tune", "tune", "TUNE", "TUNE-LITE"),
-    "ablation": ExperimentKind("ablation", "ablation", "ABL", "STANDARD"),
-    "confirmation": ExperimentKind("confirmation", "confirmation", "CONFIRM", "STRICT"),
+    "tune": ExperimentKind("tune", "tune", "TUNE", "TUNE-LITE", "tune"),
+    "ablation": ExperimentKind("ablation", "ablation", "ABL", "STANDARD", "ablation"),
+    "confirmation": ExperimentKind("confirmation", "confirmation", "CONFIRM", "STRICT", "confirm"),
+}
+
+CANONICAL_BASELINES = {
+    "v1": {
+        "name": "GTPJ-v1",
+        "H": "73.93",
+        "result_file": "experiments/v1/result.md",
+        "version_file": "experiments/v1/VERSION.md",
+    }
 }
 
 
@@ -100,12 +112,22 @@ def git(args: list[str], check: bool = True) -> str:
         ["git", *args],
         cwd=REPO_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
     if check and result.returncode != 0:
         raise WorkflowError(result.stderr.strip() or result.stdout.strip())
     return result.stdout.strip()
+
+
+def git_show(ref_path: str, check: bool = True) -> str:
+    return git(["show", ref_path], check=check)
+
+
+def tag_commit(tag: str) -> str:
+    return git(["rev-parse", tag])
 
 
 def require_clean_id(value: str, pattern: str, label: str) -> str:
@@ -115,7 +137,7 @@ def require_clean_id(value: str, pattern: str, label: str) -> str:
 
 
 def require_slug(value: str) -> str:
-    if not re.fullmatch(r"[a-z0-9][a-z0-9_\\-]*", value):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", value):
         raise WorkflowError(
             "Slug must use lowercase letters, numbers, underscore, or hyphen"
         )
@@ -126,6 +148,19 @@ def branch_slug(value: str) -> str:
     return value.replace("_", "-")
 
 
+def experiment_branch_name(version: str, kind: ExperimentKind, exp_id: str, slug: str) -> str:
+    number = exp_id.split("-", 1)[1].lower()
+    return f"exp/{version}-{kind.branch_kind}-{number}-{branch_slug(slug)}"
+
+
+def trial_branch_name(base_version: str, idea_id: str, trial_id: str, slug: str) -> str:
+    return f"dev/{base_version}-{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}"
+
+
+def trial_tag_name(base_version: str, idea_id: str, trial_id: str) -> str:
+    return f"trial/{base_version}/{idea_id.lower()}/{trial_id.lower()}"
+
+
 def require_score(value: float, label: str) -> float:
     try:
         score = float(value)
@@ -134,6 +169,15 @@ def require_score(value: float, label: str) -> float:
     if score < 0 or score > 100:
         raise WorkflowError(f"{label} must be between 0 and 100")
     return score
+
+
+def require_path_inside(path: Path, root: Path, label: str) -> None:
+    resolved_path = path.resolve()
+    resolved_root = root.resolve()
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise WorkflowError(f"{label} must stay inside {rel(root)}") from exc
 
 
 def list_files_for_scan() -> Iterable[Path]:
@@ -177,7 +221,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "README.md",
         "AGENTS.md",
         "NEXT_ACTIONS.md",
+        "docs/GITHUB_GOVERNANCE.md",
         "docs/PROJECT_STRUCTURE.md",
+        "docs/PROJECT_STATUS.md",
+        "docs/DATA_SETUP.md",
         "docs/workflow/README.md",
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
@@ -190,13 +237,31 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "workflow/README.md",
         "workflow/openclaw/README.md",
         "workflow/codex/README.md",
+        "config/README.md",
+        "config/GTPJ_cub_gzsl.yaml",
         "idea_tree/INDEX.md",
+        "idea_tree/README.md",
         "idea_tree/schema.json",
         "idea_tree/idea_tree.json",
+        "experiments/README.md",
         "experiments/EXPERIMENT_REGISTRY.md",
         "experiments/VERSION_TREE.md",
+        "experiments/module_trials/INDEX.md",
+        "experiments/templates/IDEA_template.md",
+        "experiments/templates/TRIAL_README_template.md",
+        "experiments/templates/VERSION_template.md",
+        "experiments/templates/experiment_README_template.md",
+        "experiments/templates/implementation_template.md",
+        "experiments/templates/quality_check_template.md",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
+        "experiments/v1/result.md",
+        "experiments/v1/baseline/README.md",
+        "experiments/v1/baseline/config.yaml",
+        "experiments/v1/baseline/quality_check.md",
+        "experiments/v1/tune/INDEX.md",
+        "experiments/v1/ablation/INDEX.md",
+        "experiments/v1/confirmation/INDEX.md",
         "config/versions/v1.yaml",
     ]
     missing = [item for item in required if not (REPO_ROOT / item).exists()]
@@ -218,7 +283,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
         idea_dir_text = idea.get("idea_dir")
         if not isinstance(idea_dir_text, str) or not idea_dir_text.startswith("idea_tree/ideas/"):
             raise WorkflowError(f"{idea_id} must use idea_tree/ideas/ as idea_dir")
-        idea_file = REPO_ROOT / idea_dir_text / "IDEA.md"
+        idea_dir = REPO_ROOT / idea_dir_text
+        require_path_inside(idea_dir, REPO_ROOT / "idea_tree" / "ideas", f"{idea_id} idea_dir")
+        idea_file = idea_dir / "IDEA.md"
         if not idea_file.exists():
             raise WorkflowError(f"{idea_id} missing idea file: {rel(idea_file)}")
         if idea_id not in idea_index or idea_dir_text not in idea_index:
@@ -227,6 +294,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
             raise WorkflowError(f"{idea_id} has invalid source_type")
         if idea.get("source_status") not in SOURCE_STATUSES:
             raise WorkflowError(f"{idea_id} has invalid source_status")
+        if idea.get("source_status") in {"unknown", "unverified"}:
+            if idea.get("status") in {"selected", "developing", "testing", "validated"}:
+                raise WorkflowError(f"{idea_id} cannot be selected before source is verified")
         if idea.get("source_status") in TRIAL_ALLOWED_SOURCE_STATUSES:
             source_ref = idea.get("source_ref")
             if not isinstance(source_ref, str) or not source_ref.strip():
@@ -247,9 +317,27 @@ def cmd_validate(_: argparse.Namespace) -> int:
                 raise WorkflowError(f"{idea_id} {version} has invalid applicability")
             if not isinstance(entry.get("blockers"), list):
                 raise WorkflowError(f"{idea_id} {version} blockers must be a list")
+            if idea.get("source_status") in {"unknown", "unverified"}:
+                if float(entry.get("score", 0) or 0) != 0:
+                    raise WorkflowError(f"{idea_id} with unknown/unverified source must keep score 0")
+                if entry.get("applicability") not in {"unclear", "not_applicable"}:
+                    raise WorkflowError(f"{idea_id} with unknown/unverified source must not be directly applicable")
 
-    if not git(["tag", "--list", "v1"], check=False):
-        raise WorkflowError("Missing required tag: v1")
+    for version, meta in CANONICAL_BASELINES.items():
+        if not git(["tag", "--list", version], check=False):
+            raise WorkflowError(f"Missing required tag: {version}")
+        result_at_tag = git_show(f"{version}:{meta['result_file']}")
+        version_at_tag = git_show(f"{version}:{meta['version_file']}")
+        expected_h = meta["H"]
+        if expected_h not in result_at_tag or expected_h not in version_at_tag:
+            raise WorkflowError(
+                f"{version} tag does not point to canonical {meta['name']} H={expected_h}. "
+                f"Current local {version} -> {tag_commit(version)[:12]}"
+            )
+        for local_file in [meta["result_file"], meta["version_file"]]:
+            local_text = read_text(REPO_ROOT / local_file)
+            if expected_h not in local_text:
+                raise WorkflowError(f"{local_file} must record canonical H={expected_h}")
 
     v1_config = read_text(REPO_ROOT / "config" / "versions" / "v1.yaml")
     archived_config = read_text(REPO_ROOT / "experiments" / "v1" / "config.yaml")
@@ -324,12 +412,25 @@ def make_experiment_readme(version: str, kind: ExperimentKind, exp_id: str, slug
 ```text
 experiment_id: {exp_id}
 version: {version}
-code_tag: {version}
+base_code_tag: {version}
+branch_source: main
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: {kind.default_check}
 run_commit:
+dirty_state:
 config: config.yaml
-log:
+command:
+seed:
+python_env:
+torch_cuda:
+dataset_split:
+cache_fingerprint:
+original_log:
+copied_log:
+artifact_manifest:
+attempt_id:
+failure_stage:
+decision:
 status: planned
 ```
 
@@ -339,15 +440,53 @@ status: planned
 
 ## 运行前检查
 
-- [ ] 分支从 tag `{version}` 切出。
+- [ ] 临时分支从当前 `main` 切出，用 `base_code_tag: {version}` 固定代码来源。
 - [ ] 配置复制自 `experiments/{version}/config.yaml`。
 - [ ] 只改变声明过的变量或开关。
-- [ ] Quality check decision 为 `ACCEPTED`。
+- [ ] `quality_check.md` 已创建；实验完成后再填写 decision。
+
+## 变量
+
+Tune 实验填写：
+
+```text
+tuned_parameter:
+old_value:
+new_value:
+search_space:
+single_variable:
+baseline_H:
+trial_H:
+delta_H:
+promotion_rule:
+```
+
+Ablation 实验填写：
+
+```text
+disabled_module:
+switch_key:
+baseline_off_path:
+expected_effect:
+affected_contracts:
+control_result:
+ablation_delta:
+```
 
 ## 结果
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
+
+## 失败记录
+
+```text
+failure_stage:
+error_summary:
+stderr_or_log:
+retry_decision:
+impact_on_next_plan:
+```
 
 ## 结论
 
@@ -362,6 +501,7 @@ def make_quality_check(kind: ExperimentKind) -> str:
 runtime:
 quality_check_mode: {kind.default_check}
 decision: PENDING
+promotion_decision: not_applicable
 ```
 
 ## 范围
@@ -375,6 +515,22 @@ decision: PENDING
 - [ ] 日志路径明确。
 - [ ] 结果口径明确。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
+
+## Promotion Gate（仅正式提升 vX 时填写）
+
+- [ ] parent_version / parent_tag 明确。
+- [ ] trial tag 指向 README 中记录的 code_commit。
+- [ ] baseline H、trial H、delta H 明确。
+- [ ] U/S/ZS、best epoch、seed 明确。
+- [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
+- [ ] trial config 和新版本 config 路径明确。
+- [ ] 原始日志路径和 Git 内日志副本路径明确。
+- [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
+- [ ] input/output shape、loss、eval、checkpoint 变化已声明。
+- [ ] switch off 能回到 parent_version 行为。
+- [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
+- [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
+- [ ] 新 baseline tag 准备打在最终 main commit 上。
 
 ## 决策
 
@@ -395,19 +551,38 @@ def append_version_experiment_registry(
     if experiment_name in content:
         return
 
-    placeholder = "No clean GTPJ-run experiments yet."
-    table = "\n".join(
-        [
-            "| 实验 | 版本 | 类型 | 状态 | 目录 | 说明 |",
-            "|---|---|---|---|---|---|",
-            row,
-        ]
-    )
-    if placeholder in content:
-        content = content.replace(placeholder, table)
-    else:
-        content = content.rstrip() + "\n" + row + "\n"
+    lines = [
+        line
+        for line in content.splitlines()
+        if "No clean GTPJ-run experiments yet." not in line and "| 暂无 |" not in line
+    ]
+    content = "\n".join(lines).rstrip() + "\n" + row + "\n"
     registry.write_text(content, encoding="utf-8")
+
+
+def append_kind_index(
+    version: str, kind: ExperimentKind, exp_id: str, slug: str, folder: Path
+) -> None:
+    index = REPO_ROOT / "experiments" / version / kind.folder / "INDEX.md"
+    if not index.exists():
+        raise WorkflowError(f"Missing experiment index: {rel(index)}")
+    experiment_name = f"{exp_id}_{slug}"
+    content = read_text(index)
+    if experiment_name in content:
+        return
+    lines = [
+        line
+        for line in content.splitlines()
+        if "| 暂无 |" not in line and "当前还没有新仓库内启动的" not in line
+    ]
+    content = "\n".join(lines).rstrip()
+    section = "\n\n## 实验记录\n\n| 实验 | 状态 | 目录 | 说明 |\n|---|---|---|---|\n"
+    row = f"| `{experiment_name}` | planned | `{rel(folder)}` | 由结构 helper 创建。 |"
+    if "## 实验记录" not in content:
+        content = content + section + row + "\n"
+    else:
+        content = content + "\n" + row + "\n"
+    index.write_text(content, encoding="utf-8")
 
 
 def cmd_new_experiment(args: argparse.Namespace) -> int:
@@ -420,6 +595,12 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     if not base_dir.exists():
         raise WorkflowError(f"Unknown version directory: {rel(base_dir)}")
     src_config = base_dir / "config.yaml"
+    duplicates = sorted((base_dir / kind.folder).glob(f"{exp_id}_*"))
+    if duplicates:
+        raise WorkflowError(
+            f"{exp_id} already exists under {rel(base_dir / kind.folder)}: "
+            + ", ".join(rel(path) for path in duplicates)
+        )
     exp_dir = base_dir / kind.folder / f"{exp_id}_{slug}"
     if exp_dir.exists():
         raise WorkflowError(f"Experiment already exists: {rel(exp_dir)}")
@@ -429,9 +610,10 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     copy_new(src_config, exp_dir / "config.yaml")
     append_version_experiment_registry(version, kind, exp_id, slug, exp_dir)
+    append_kind_index(version, kind, exp_id, slug, exp_dir)
 
     print(f"已创建 {rel(exp_dir)}")
-    print(f"建议分支: exp/{version}-{exp_id.lower()}-{branch_slug(slug)}")
+    print(f"建议分支: {experiment_branch_name(version, kind, exp_id, slug)}")
     return 0
 
 
@@ -532,6 +714,11 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         raise WorkflowError("Verified or local_heuristic ideas must provide --source-ref")
     if args.applicability not in APPLICABILITIES:
         raise WorkflowError("Invalid applicability")
+    if args.source_status in {"unknown", "unverified"}:
+        if global_score != 0 or version_score != 0:
+            raise WorkflowError("Unknown or unverified ideas must keep scores at 0")
+        if args.applicability not in {"unclear", "not_applicable"}:
+            raise WorkflowError("Unknown or unverified ideas cannot be direct/needs_adaptation")
     if not (REPO_ROOT / "experiments" / base_version / "config.yaml").exists():
         raise WorkflowError(f"Unknown base version: {base_version}")
 
@@ -666,6 +853,29 @@ def idea_folder_name(idea: dict) -> str:
     return folder
 
 
+def append_module_trial_index(idea_id: str, trial_id: str, slug: str, trial_dir: Path) -> None:
+    index = REPO_ROOT / "experiments" / "module_trials" / "INDEX.md"
+    if not index.exists():
+        raise WorkflowError(f"Missing module trial index: {rel(index)}")
+    trial_name = f"{trial_id}_{slug}"
+    content = read_text(index)
+    if rel(trial_dir) in content or trial_name in content:
+        return
+    row = f"| `{idea_id}` | `{trial_name}` | planned | `{rel(trial_dir)}` | 待运行。 |"
+    lines = [
+        line
+        for line in content.splitlines()
+        if "当前还没有已经启动的模块 trial" not in line and "| 暂无 |" not in line
+    ]
+    content = "\n".join(lines).rstrip()
+    section = "\n\n## Trial 记录\n\n| Idea | Trial | 状态 | 目录 | 说明 |\n|---|---|---|---|---|\n"
+    if "## Trial 记录" not in content:
+        content = content + section + row + "\n"
+    else:
+        content = content + "\n" + row + "\n"
+    index.write_text(content, encoding="utf-8")
+
+
 def choose_trial_base_version(args: argparse.Namespace, data: dict, idea: dict) -> str:
     if args.base_version:
         version = require_clean_id(args.base_version, r"v[0-9]+", "base version")
@@ -694,6 +904,8 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     slug = require_slug(args.slug)
     data = load_idea_tree()
     idea = find_idea_record(data, idea_id)
+    if idea.get("status") not in TRIAL_READY_STATUSES:
+        raise WorkflowError(f"{idea_id} must be selected before creating a trial")
     source_status = idea.get("source_status")
     if source_status not in TRIAL_ALLOWED_SOURCE_STATUSES:
         raise WorkflowError(
@@ -703,10 +915,19 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     source_ref = idea.get("source_ref")
     if not isinstance(source_ref, str) or not source_ref.strip():
         raise WorkflowError(f"{idea_id} must define source_ref before trial")
+    if source_status == "local_heuristic" and not idea.get("evidence"):
+        raise WorkflowError(f"{idea_id} local_heuristic must define reproducible evidence before trial")
     base_version = choose_trial_base_version(args, data, idea)
     version_entry = idea_version_entry(idea, base_version)
     if not str(version_entry.get("rationale", "")).strip():
         raise WorkflowError(f"{idea_id} must explain version_scores.{base_version}.rationale before trial")
+    if version_entry.get("applicability") not in TRIAL_ALLOWED_APPLICABILITIES:
+        raise WorkflowError(f"{idea_id} applicability for {base_version} must be direct or needs_adaptation")
+    if version_entry.get("blockers"):
+        raise WorkflowError(f"{idea_id} must resolve blockers before trial")
+    for field in ["hypothesis", "implementation_scope", "risk"]:
+        if not str(idea.get(field, "")).strip():
+            raise WorkflowError(f"{idea_id} must define {field} before trial")
     source_idea_file = REPO_ROOT / str(idea.get("idea_dir", "")) / "IDEA.md"
     if not source_idea_file.exists():
         raise WorkflowError(f"Missing source idea file: {rel(source_idea_file)}")
@@ -736,6 +957,8 @@ trial_folder: {rel(idea_dir)}
     ensure_dir(trial_dir / "logs")
     copy_new(REPO_ROOT / "experiments" / base_version / "config.yaml", trial_dir / "config.yaml")
     write_new(trial_dir / "code.diff", "")
+    code_branch = trial_branch_name(base_version, idea_id, trial_id, slug)
+    code_tag = trial_tag_name(base_version, idea_id, trial_id)
     write_new(
         trial_dir / "README.md",
         f"""# {trial_id}_{slug}
@@ -745,22 +968,40 @@ trial_id: {trial_id}
 idea_id: {idea_id}
 base_version: {base_version}
 base_code_tag: {base_version}
+branch_source: main
 idea_source_file: {rel(source_idea_file)}
+idea_title: {idea.get('title', '')}
 version_score: {version_entry.get('score', 0)}
 applicability: {version_entry.get('applicability', '')}
-code_branch: dev/{base_version}-{idea_id.lower()}-{trial_id.lower()}-{slug}
-code_tag: trial/{base_version}/{idea_id.lower()}/{trial_id.lower()}
+code_branch: {code_branch}
+code_tag: {code_tag}
 code_commit:
-decision: pending
+trial_decision: pending
+promotion_decision: not_applicable
 promote_to:
+changed_files:
+run_config: config.yaml
+run_log:
 ```
 
 ## 改动文件
+
+| 文件 | 改动 | 是否属于代码层 |
+|---|---|---|
 
 ## 结果
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
+
+## Promotion Gate
+
+- [ ] baseline H、trial H、delta H 已记录。
+- [ ] U/S/ZS 没有不可接受退化。
+- [ ] class order、split、logits shape、metric calculation 未改变。
+- [ ] switch off 能回到 `{base_version}` 行为。
+- [ ] 证据目录、日志副本和 code.diff 完整。
+- [ ] `promotion_decision` 为 `ACCEPTED` 后才允许提升为正式 vX。
 
 ## 决策
 
@@ -863,12 +1104,22 @@ missing/unexpected keys:
 ## 验证命令
 """,
     )
-    write_new(trial_dir / "quality_check.md", make_quality_check(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT")))
+    write_new(
+        trial_dir / "quality_check.md",
+        make_quality_check(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")),
+    )
     write_new(trial_dir / "result.md", "# 结果\n\n待记录。\n")
+    append_module_trial_index(idea_id, trial_id, slug, trial_dir)
+    linked_trials = idea.setdefault("linked_trials", [])
+    trial_rel = rel(trial_dir)
+    if trial_rel not in linked_trials:
+        linked_trials.append(trial_rel)
+        save_idea_tree(data)
+        write_idea_index(data)
 
     print(f"已创建 {rel(trial_dir)}")
-    print(f"建议分支: dev/{base_version}-{idea_id.lower()}-{trial_id.lower()}-{branch_slug(slug)}")
-    print(f"实现后建议 tag: trial/{base_version}/{idea_id.lower()}/{trial_id.lower()}")
+    print(f"建议分支: {code_branch}")
+    print(f"实现后建议 tag: {code_tag}")
     return 0
 
 

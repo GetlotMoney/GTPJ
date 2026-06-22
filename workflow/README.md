@@ -5,6 +5,9 @@
 当前主规范放在 `docs/GITHUB_GOVERNANCE.md`。`docs/workflow/` 是未来
 OpenClaw/Codex 接入时的参考草案。`NEXT_ACTIONS.md` 是当前执行窗口。
 
+当前唯一权威基线是 `GTPJ-v1 / tag v1 / H=73.93`。`validate` 会检查本地
+`v1` tag 是否指向这个基线记录；如果 tag 错位，先修正 tag，不要继续跑实验。
+
 ## 常用命令
 
 下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
@@ -18,6 +21,9 @@ python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name 
 python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
 ```
+
+`new-idea` 只创建候选节点。创建 trial 前必须人工补全 rationale、hypothesis、
+implementation_scope、risk，确认 blockers 为空，并把 idea 状态改为 `selected`。
 
 ## 未来 Runtime 入口
 

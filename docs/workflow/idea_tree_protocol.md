@@ -112,10 +112,17 @@ v1 score 高不代表 v2 score 自动高。
 
 - 有明确 `idea_id`。
 - 有当前 base version 的 `version_scores.<base_version>`。
+- idea 状态必须是 `selected`，不能直接从 `candidate` 开 trial。
 - `source_status` 是 `verified` 或 `local_heuristic`。
 - `source_ref` 能说明来源：论文、官方代码、用户明确想法、可复核观察或跨学科来源。
+- 如果是 `local_heuristic`，必须写明可复核观察、owner 接受理由和日期。
 - `version_scores.<base_version>.rationale` 解释了为什么它适合这个版本。
-- `blockers` 不包含会阻止当前 trial 的关键问题。
+- `version_scores.<base_version>.applicability` 必须是 `direct` 或 `needs_adaptation`。
+- `blockers` 必须为空；只要还有未解决 blocker，就不能开 trial。
+- `hypothesis`、`implementation_scope`、`risk` 必须非空。
 
 `source_status: unknown` 或 `unverified` 的 idea 只能留在 `inbox` 或 candidate 记录里，
 不能开 trial。
+
+`source_status: unknown` 或 `unverified` 的 idea 也不能进入 `selected` 队列；
+当前版本分数应保持 `0`，适用性应为 `unclear` 或 `not_applicable`，避免来源不明的想法占据执行优先级。
