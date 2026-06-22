@@ -5,8 +5,15 @@ version:
 baseline_name:
 status:
 code_tag:
-base_version:
-promoted_from:
+parent_version:
+parent_tag:
+change_type:
+based_on_trial:
+inherits_code_from:
+does_not_inherit:
+ledger_source:
+ledger_source_commit:
+code_source:
 config:
 ```
 
@@ -17,6 +24,14 @@ config:
 ## 相比 Base 的变化
 
 -
+
+## 版本树位置
+
+```text
+parent_version:
+children:
+notes:
+```
 
 ## 允许的实验类型
 

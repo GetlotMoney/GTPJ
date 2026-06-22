@@ -194,6 +194,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "idea_tree/schema.json",
         "idea_tree/idea_tree.json",
         "experiments/EXPERIMENT_REGISTRY.md",
+        "experiments/VERSION_TREE.md",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
         "config/versions/v1.yaml",

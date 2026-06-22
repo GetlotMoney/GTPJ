@@ -67,7 +67,10 @@ trial/v2/idea-0003/trial-002
   `dev/<base-version>-idea-xxxx-trial-xxx-short-name`。
 - tune、ablation 和 confirmation 分支从匹配的 baseline tag 切出。
 - 失败 trial 的代码通过 trial tag 保留，不合并进 `main`。
-- 成功 trial 的代码可以提升到 `main`，并打成新的 `vX` tag。
+- 成功 trial 的代码可以提升为新的 `vX` tag。新 `vX` 必须记录父节点，
+  不默认继承当前 `main` 代码。
+- 从旧父节点提升新 `vX` 时，必须从当前 `main` 开 `promote/...` 分支，
+  保留账本层，只替换或移植代码层。
 
 ## 命名怎么看
 
@@ -101,12 +104,40 @@ trial/v1/idea-0003/trial-001
 ## 合并和删除
 
 - `exp/...` 分支：实验记录合并回 `main` 后可以删除。
-- 成功的 `dev/...` 分支：代码和证据合并回 `main`，打新 `vX` tag 后可以删除。
+- 成功的 `dev/...` 分支：先打 trial tag，再提升为新 `vX`。
+  提升必须通过 `promote/...` 分支完成；`promote/...` 从当前 `main` 开出，
+  因此继承最新账本。然后只把代码层切换到新 `vX`。
+  全局账本层必须保留所有历史版本记录。
+  打好新 `vX` tag 后可以删除 `dev/...` 分支。
 - 失败的 `dev/...` 分支：先打 `trial/<base-version>/idea-xxxx/trial-xxx` tag，
   再把失败证据记录回 `main`，然后可以删除分支。
 - 不删除 `main`。
 - 不删除 `vX` baseline tag。
 - 不删除 `trial/...` 永久快照 tag。
+
+## Promote 分支
+
+当 trial 成功并准备成为正式版本时，使用：
+
+```text
+promote/<parent-version>-idea-xxxx-to-vX
+```
+
+示例：
+
+```text
+promote/v1-idea-0003-to-v4
+```
+
+含义：
+
+- `promote`：正式提升分支，不是实验分支。
+- `v1`：代码父节点。
+- `idea-0003`：来自哪个创意 trial。
+- `v4`：准备生成的新 baseline。
+
+`promote/...` 必须从当前 `main` 切出，这样它继承最新账本；
+代码层再从 parent tag 和 trial tag 移植。
 
 Push 规则：
 

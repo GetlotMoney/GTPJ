@@ -33,8 +33,18 @@ idea_tree/                 # 创意来源、评分、排序
 版本规则：
 
 ```text
-一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录
+一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
 ```
+
+代码层和实验层不要混淆：
+
+```text
+代码层跟随当前主版本，例如 v3。
+实验层是全局账本，必须同时保留 experiments/v1/、experiments/v2/、experiments/v3/。
+```
+
+`experiments/v2/` 出现在最新 `main` 中，只表示 v2 历史记录仍被保存，
+不表示当前主版本 v3 继承了 v2 的代码。
 
 ## 顶层文件
 
@@ -75,7 +85,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本树、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`
@@ -86,7 +96,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/workflow/README.md` | 未来 workflow 参考入口，说明哪些规则只是后续接入素材。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
-| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、非线性来源关系和提升规则。 |
+| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
@@ -187,6 +197,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
+| `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
 
 ### `experiments/templates/`
 

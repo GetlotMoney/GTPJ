@@ -31,6 +31,129 @@
 4. 每个 trial 都能说明它基于哪个 baseline，以及是否可以关闭回到 baseline。
 5. 项目目录新增、删除、移动或改职责时，必须同步更新 `docs/PROJECT_STRUCTURE.md`。
 
+## 版本树和全局账本
+
+GTPJ 使用版本树，不使用默认串行版本链。
+
+```text
+v1
+|-- v2 = parent v1 + 模块A
+`-- v3 = parent v1 + 模块B
+```
+
+这表示 `v2` 和 `v3` 可以是兄弟版本，不要求 `v3` 继承 `v2`。
+
+每个正式版本都必须记录父节点：
+
+```text
+version: v3
+parent_version: v1
+parent_tag: v1
+code_tag: v3
+change_type: add_module / replace_module / remove_module / combo
+based_on_trial: trial/v1/idea-0003/trial-001
+inherits_code_from: v1
+does_not_inherit: v2
+```
+
+代码继承和实验记录保存是两件事：
+
+```text
+代码层：model/、tools/、train_*.py、当前运行 config
+账本层：docs/、idea_tree/、experiments/、config/versions/
+```
+
+`main` 的含义是：
+
+```text
+main = 当前选中的主版本代码 + 全部历史版本的全局账本
+```
+
+全局版本树账本放在：
+
+```text
+experiments/VERSION_TREE.md
+```
+
+所以当 `main` 当前代码切到 `v3` 时，仓库里仍然保留：
+
+```text
+experiments/v1/
+experiments/v2/
+experiments/v3/
+config/versions/v1.yaml
+config/versions/v2.yaml
+config/versions/v3.yaml
+```
+
+这些旧目录是历史账本，不表示 `v3` 继承了 `v2` 的代码。
+
+如果 `v3.parent_version = v1`，那么：
+
+```text
+v3 代码继承 v1
+v3 不继承 v2 代码
+experiments/v2/ 仍然保留在 main，作为 v2 历史记录
+```
+
+## 从旧父节点提升新主版本
+
+当当前 `main` 已经包含较新的账本，但新版本代码要从旧父节点产生时，必须按“两条来源”
+处理：
+
+```text
+代码来源：parent_version 对应的 tag，例如 v1
+账本来源：提升时的当前 main
+```
+
+禁止把旧 tag 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
+`idea_tree/`、`config/versions/` 等全局账本回退到旧状态。
+
+正确提升流程：
+
+```text
+1. 从 parent tag 切 dev 分支，只做代码 trial。
+2. trial 成功后，打 trial/<parent-version>/idea-xxxx/trial-xxx 快照 tag。
+3. 回到当前 main，开 promote 分支。
+4. 在 promote 分支中保留当前 main 的账本层。
+5. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
+6. 新增 experiments/vX/ 和 config/versions/vX.yaml。
+7. 更新 VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、README。
+8. 验证通过后，合并 promote 分支为 main，并打 vX tag。
+```
+
+代码层包括：
+
+```text
+model/
+tools/
+train_*.py
+当前运行别名 config/GTPJ_*.yaml
+```
+
+账本层包括：
+
+```text
+docs/
+workflow/
+idea_tree/
+experiments/
+config/versions/
+AGENTS.md
+NEXT_ACTIONS.md
+README.md
+```
+
+每个新版本必须记录：
+
+```text
+parent_version: v1
+parent_tag: v1
+ledger_source: current main
+ledger_source_commit: <提升开始时的 main commit>
+code_source: parent tag + trial tag
+```
+
 ## 命名规范
 
 普通实验分支：
@@ -124,7 +247,10 @@ trial/v1/idea-0003/trial-001
 成功的模块 trial：
 
 - 成功标准不是只看一次 `H` 上涨，而是指标有效、代码干净、实验口径一致。
-- 代码和证据合并回 `main`。
+- 成功 trial 可以提升为新的 `vX`，但必须先写清 `parent_version`。
+- 如果新 `vX` 的父节点不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
+  只切换代码层，不能删除或回退全局账本层。
+- `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
 - 合并后打新的 baseline tag，例如 `v2` 或 `v3`。
 - 新 baseline tag 打好后，可以删除对应 `dev/...` 分支。
 
@@ -150,6 +276,7 @@ trial/v1/idea-0003/trial-001
 | GitHub 总规范 | `docs/GITHUB_GOVERNANCE.md` | 改版本、分支、tag、证据边界、创意树总原则时更新。 |
 | 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 新增、删除、移动、重命名文件或改变文件职责时更新。 |
 | 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
+| 版本树账本 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变父节点关系或主版本时更新。 |
 | 创意树细则 | `docs/workflow/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
 | 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |
 | 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |

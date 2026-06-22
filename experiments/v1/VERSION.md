@@ -5,8 +5,15 @@ version: v1
 baseline_name: GTPJ-v1
 status: confirmed
 code_tag: v1
-base_version: none
-promoted_from: none
+parent_version: none
+parent_tag: none
+change_type: initial_baseline
+based_on_trial: none
+inherits_code_from: none
+does_not_inherit: none
+ledger_source: initial
+ledger_source_commit: none
+code_source: initial
 config: experiments/v1/config.yaml
 baseline_evidence: experiments/v1/baseline/
 ```
@@ -33,6 +40,14 @@ baseline_evidence: experiments/v1/baseline/
 - `config.yaml` 只保留启用的 v1 字段。
 - 未启用的候选模块属于 `idea_tree/`，不属于 v1 baseline config。
 - 第一版正式 GTPJ-v1 CUB seed=5 baseline：`H=73.93`，best epoch=26。
+
+## 版本树位置
+
+```text
+parent_version: none
+children: none yet
+notes: v1 是当前版本树根节点。
+```
 
 ## 允许的实验类型
 

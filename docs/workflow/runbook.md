@@ -53,10 +53,26 @@ git tag trial/v1/idea-xxxx/trial-001
 
 如果成功并提升：
 
+不要把 `dev/v1-...` 整体直接合并到 `main`。它的账本来自旧 `v1` 时间点，
+可能缺少当前 `main` 里的历史记录。
+
+正确做法是从当前 `main` 开 promote 分支：
+
 ```bash
 git switch main
-git merge dev/v1-idea-xxxx-trial-001-short-name
-git tag v2
+git switch -c promote/v1-idea-xxxx-to-v2
+```
+
+然后在 promote 分支中：
+
+```text
+1. 保留当前 main 的 docs/、experiments/、idea_tree/、config/versions/。
+2. 只把代码层移植为 parent tag + 成功 trial 的代码。
+3. 新增 experiments/v2/。
+4. 新增 config/versions/v2.yaml。
+5. 更新 experiments/VERSION_TREE.md。
+6. 更新 experiments/EXPERIMENT_REGISTRY.md、docs/PROJECT_STATUS.md、README.md。
+7. 验证通过后合并 promote 分支到 main，并打 tag v2。
 ```
 
 注意：`dev/v1-...` 里的 `v1` 是来源 baseline，不是最终版本号。
