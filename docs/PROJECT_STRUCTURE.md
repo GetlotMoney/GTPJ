@@ -112,6 +112,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
 | `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建和不自动 push 边界。 |
 | `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
+| `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
 | `docs/workflow/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
 | `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
 

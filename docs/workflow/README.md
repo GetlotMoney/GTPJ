@@ -45,6 +45,7 @@ idea_tree
 9. `experiment_protocol.md`
 10. `promotion.md`
 11. `agent_orchestration.md`
-12. `quality_gate.md`
-13. `runbook.md`
-14. `../../workflow/README.md`
+12. `agents/README.md`
+13. `quality_gate.md`
+14. `runbook.md`
+15. `../../workflow/README.md`
