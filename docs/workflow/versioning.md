@@ -90,7 +90,8 @@ experiments/VERSION_TREE.md
 账本来源 = 当前 main
 ```
 
-不要把从旧 tag 切出的 `dev/...` 分支整体合并成 `main`。那个分支的账本停留在旧时间点，
+不要把从旧父节点恢复代码层的 `dev/...` 分支整体合并成 `main`。如果直接复用旧工作树，
+账本会停留在旧时间点，
 可能缺少后来的 `experiments/v2/`、`experiments/v3/`、创意树和规范更新。
 
 实现步骤：

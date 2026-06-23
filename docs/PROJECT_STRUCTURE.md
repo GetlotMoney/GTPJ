@@ -1,14 +1,18 @@
 # 项目结构说明
 
-本文件是 GTPJ 仓库的结构总账本。它说明每个文件夹和文件的用途。
+本文件是 GTPJ 仓库的结构总账本。它说明稳定目录、入口文件和可重复目录模式的用途；
+不作为每个实验、idea、trial 实例的逐项清单。
 
 维护硬规则：
 
-- 新增、删除、移动、重命名任何文件或文件夹时，必须同步更新本文件。
-- 改变某个文件职责时，必须同步更新本文件。
+- 新增、删除、移动、重命名稳定入口、目录类型或关键文件时，必须同步更新本文件。
+- 改变某个文件或目录类型的职责时，必须同步更新本文件。
+- 新增普通实验、idea 或 trial 的具体实例时，优先更新对应 INDEX、登记表或 idea_tree 记录；
+  只有结构模式、入口职责或维护规则变化时才更新本文件。
 - 修改 GitHub 治理规范、实验记录规范、创意树规范、代码接口规范或未来 workflow 参考时，必须同步更新本文件中对应说明。
 - 只更新实验数值、日志路径或普通记录内容时，也要检查本文件是否需要更新；如果结构和职责没有变化，可以不改。
-- 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；当前阶段它是结构辅助检查，不是完整 workflow。
+- 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；需要确认 GitHub 远端基线时再运行
+  `python workflow/gtpj_workflow.py validate-remote`。当前阶段它们是结构辅助检查，不是完整 workflow。
 
 ## 总体框架
 
@@ -115,7 +119,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，并生成带 base version 的分支/tag 建议。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1`，并生成带 base version 的分支/tag 建议。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
@@ -263,15 +267,16 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 
 必须更新本文件的情况：
 
-- 新增、删除、移动、重命名文件或目录。
-- 新增新版本目录，例如 `experiments/v2/`。
-- 新增新 idea，例如 `idea_tree/ideas/IDEA-0011_xxx/`。
-- 新增新 trial，例如 `experiments/module_trials/IDEA-xxxx/TRIAL-001_xxx/`。
-- 新增脚本、工具、模型文件、配置文件。
+- 新增、删除、移动、重命名稳定入口、目录类型、顶层目录或关键规范文件。
+- 新增正式 baseline 目录或新的版本层级说明，例如 `experiments/v2/`、`config/versions/v2.yaml`。
+- 新增脚本、工具、模型文件、配置文件，且它们承担新的入口或职责。
 - 改变某个文件的职责、入口地位或维护规则。
 
 通常不需要更新本文件的情况：
 
+- 在已有 `tune/`、`ablation/`、`confirmation/` 下新增一次实验运行目录。
+- 在已有 `idea_tree/ideas/` 下新增一个具体 `IDEA-xxxx_slug/`。
+- 在已有 `experiments/module_trials/` 下新增一个具体 trial 目录。
 - 只在已有实验 README 中补充一次运行结果。
 - 只在已有日志目录中增加日志副本。
 - 只修改配置数值，但配置文件职责不变。

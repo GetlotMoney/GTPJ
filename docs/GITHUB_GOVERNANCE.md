@@ -45,7 +45,8 @@ baseline H: 73.93
 2. 每个实验结果都能找到它使用的代码、配置、日志和结论。
 3. 每个新模块都能追溯到创意来源，而不是凭空出现。
 4. 每个 trial 都能说明它基于哪个 baseline，以及是否可以关闭回到 baseline。
-5. 项目目录新增、删除、移动或改职责时，必须同步更新 `docs/PROJECT_STRUCTURE.md`。
+5. 稳定入口、目录类型或文件职责变化时，必须同步更新 `docs/PROJECT_STRUCTURE.md`；
+   新增普通实验、idea、trial 的具体实例只更新对应账本或索引，除非结构模式也变化。
 
 ## 版本树和全局账本
 
@@ -122,7 +123,8 @@ experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 账本来源：提升时的当前 main
 ```
 
-禁止把旧 tag 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
+必须从当前 `main` 开临时分支，必要时只把代码层恢复到旧父节点。
+禁止把旧父节点状态下的完整工作树或旧 `dev/...` 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
 `idea_tree/`、`config/versions/` 等全局账本回退到旧状态。
 
 正确提升流程：
@@ -235,7 +237,8 @@ dev/v1-idea-0003-trial-001-token-router
 含义：
 
 - `dev`：新模块开发分支，不是稳定版本。
-- `v1`：这次 trial 基于 `v1` baseline tag 切出。
+- `v1`：这次 trial 的父代码来源是 `v1` baseline tag；`dev/...` 分支仍从当前 `main`
+  开出，必要时只恢复代码层。
 - `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
 - `trial-001`：这个 idea 的第 1 次实现尝试。
 - `token-router`：人能读懂的简短名字。
@@ -324,7 +327,7 @@ GitHub 远端应设置保护规则：
 | 规范 | 文件 | 什么时候更新 |
 |---|---|---|
 | GitHub 总规范 | `docs/GITHUB_GOVERNANCE.md` | 改版本、分支、tag、证据边界、创意树总原则时更新。 |
-| 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 新增、删除、移动、重命名文件或改变文件职责时更新。 |
+| 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 改稳定入口、目录类型、关键文件或职责时更新；动态实例只更新对应索引。 |
 | 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
 | 版本树账本 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变父节点关系或主版本时更新。 |
 | 创意树细则 | `docs/workflow/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |

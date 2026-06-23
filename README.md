@@ -108,14 +108,24 @@ OpenClaw 是未来实验运行的优先 runtime。Codex 需要兼容同一套仓
 ```bash
 python workflow/gtpj_workflow.py status
 python workflow/gtpj_workflow.py validate
+python workflow/gtpj_workflow.py validate-remote
 ```
 
 需要创建标准目录时，可以使用 helper；当前它不是强制工作流。
+`new-experiment` 必须在 clean working tree 中运行，并且先从当前 `main` 切到 helper 建议的 `exp/...` 分支。
 下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
 
 ```bash
+git switch main
+git status --short
+git switch -c exp/v1-confirm-001-v1-seed5
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug v1_seed5
+
+git switch main
+git status --short
+git switch -c exp/v1-tune-001-topo008
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1

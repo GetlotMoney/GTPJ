@@ -1,17 +1,19 @@
 # GTPJ-v1 Tune 索引
 
-Tuning run 使用类似 `TUNE-001_topo008` 的 ID，并且只放在本目录：
+ID 规范：`TUNE-001_slug`；目录：`experiments/v1/tune/TUNE-001_slug/`。
 
-```text
-experiments/v1/tune/
-```
-
-创建命令：
+创建前先确认 working tree clean，再从当前 `main` 开建议分支；helper 会拒绝在脏工作区、
+`main` 或错误分支上创建实验目录：
 
 ```bash
+git switch main
+git status --short
+git switch -c exp/v1-tune-001-topo008
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 ```
 
-## 已完成
+## 实验记录
 
-当前还没有新仓库内启动的调参实验。第一版基准证据放在 `experiments/v1/baseline/`。
+| 实验 | 状态 | 目录 | 说明 |
+|---|---|---|---|
+| 暂无 | - | - | 由 `workflow/gtpj_workflow.py new-experiment` 创建后追加。 |

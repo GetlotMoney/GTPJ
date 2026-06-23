@@ -126,8 +126,57 @@ def git_show(ref_path: str, check: bool = True) -> str:
     return git(["show", ref_path], check=check)
 
 
+def resolve_commit(ref: str) -> str:
+    return git(["rev-parse", "--verify", f"{ref}^{{commit}}"])
+
+
 def tag_commit(tag: str) -> str:
-    return git(["rev-parse", tag])
+    return resolve_commit(f"refs/tags/{tag}")
+
+
+def remote_ref_commit(remote: str, ref: str, label: str) -> str:
+    peeled_ref = f"{ref}^{{}}"
+    output = git(["ls-remote", "--exit-code", remote, ref, peeled_ref], check=False)
+    if not output:
+        raise WorkflowError(f"Missing remote ref: {label} ({ref})")
+
+    entries: dict[str, str] = {}
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            entries[parts[1]] = parts[0]
+    if peeled_ref in entries:
+        return entries[peeled_ref]
+    if ref in entries:
+        return entries[ref]
+    raise WorkflowError(f"Missing remote ref: {label} ({ref})")
+
+
+def require_clean_worktree(command_name: str) -> None:
+    porcelain = git(["status", "--short"], check=False)
+    if porcelain:
+        raise WorkflowError(
+            f"Working tree must be clean before {command_name} creates files:\n"
+            f"{porcelain}"
+        )
+
+
+def current_branch() -> str:
+    return git(["branch", "--show-current"], check=False)
+
+
+def require_experiment_branch(expected_branch: str) -> None:
+    branch = current_branch()
+    if not branch:
+        raise WorkflowError(
+            "new-experiment requires a named experiment branch "
+            f"{expected_branch}; current HEAD is detached"
+        )
+    if branch != expected_branch:
+        raise WorkflowError(
+            f"new-experiment must run on expected branch {expected_branch}; "
+            f"current branch is {branch}"
+        )
 
 
 def require_clean_id(value: str, pattern: str, label: str) -> str:
@@ -406,6 +455,37 @@ def cmd_validate(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_validate_remote(args: argparse.Namespace) -> int:
+    remote = args.remote
+    try:
+        expected = tag_commit("v1")
+    except WorkflowError as exc:
+        raise WorkflowError("Missing local authoritative tag: v1") from exc
+
+    checks = [
+        ("origin/main", "refs/heads/main"),
+        ("origin/v1", "refs/tags/v1"),
+    ]
+    errors: list[str] = []
+    for label, ref in checks:
+        display_label = label.replace("origin", remote, 1)
+        try:
+            actual = remote_ref_commit(remote, ref, display_label)
+        except WorkflowError as exc:
+            errors.append(str(exc))
+            continue
+        if actual != expected:
+            errors.append(
+                f"{display_label} must point to local v1 tag commit {expected}; "
+                f"got {actual}"
+            )
+    if errors:
+        raise WorkflowError("Remote validation failed:\n" + "\n".join(errors))
+
+    print("validate-remote-ok")
+    return 0
+
+
 def make_experiment_readme(version: str, kind: ExperimentKind, exp_id: str, slug: str) -> str:
     return f"""# {exp_id}_{slug}
 
@@ -590,6 +670,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     kind = KINDS[args.kind]
     exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
     slug = require_slug(args.slug)
+    expected_branch = experiment_branch_name(version, kind, exp_id, slug)
 
     base_dir = REPO_ROOT / "experiments" / version
     if not base_dir.exists():
@@ -605,6 +686,9 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     if exp_dir.exists():
         raise WorkflowError(f"Experiment already exists: {rel(exp_dir)}")
 
+    require_clean_worktree("new-experiment")
+    require_experiment_branch(expected_branch)
+
     ensure_dir(exp_dir / "logs")
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
@@ -613,7 +697,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     append_kind_index(version, kind, exp_id, slug, exp_dir)
 
     print(f"已创建 {rel(exp_dir)}")
-    print(f"建议分支: {experiment_branch_name(version, kind, exp_id, slug)}")
+    print(f"建议分支: {expected_branch}")
     return 0
 
 
@@ -1132,6 +1216,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)
+
+    validate_remote = sub.add_parser("validate-remote", help="校验远端 main 和 v1 tag")
+    validate_remote.add_argument("--remote", default="origin")
+    validate_remote.set_defaults(func=cmd_validate_remote)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)

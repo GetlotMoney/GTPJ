@@ -23,6 +23,7 @@ baseline H: 73.93
 git switch main
 git status --short
 python workflow/gtpj_workflow.py validate
+python workflow/gtpj_workflow.py validate-remote
 ```
 
 要求：
@@ -30,9 +31,11 @@ python workflow/gtpj_workflow.py validate
 ```text
 working tree: clean
 validate-ok
+validate-remote-ok
 ```
 
 如果工作区不干净，先提交或处理当前改动，不要直接开实验分支。
+如果只是本地离线复查，可以先跳过 `validate-remote`，但正式开实验前需要确认远端基线对齐。
 
 ## 运行 v1 确认实验
 
