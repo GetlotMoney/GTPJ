@@ -34,7 +34,7 @@ GTPJ/
 |   `-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
 |-- docs/                   # GitHub 治理、项目状态和未来 workflow 参考
 |-- workflow/               # 可选结构辅助；未来 workflow 接入口
-|-- idea_tree/              # 创意来源和队列；当前已清空，等待可靠来源
+|-- idea_tree/              # 总创意库和按版本生成的创意选择清单
 `-- experiments/
     |-- module_trials/      # 模块 trial 证据；当前无已启动 trial
     `-- v1/                 # GTPJ-v1 baseline、调参、消融、确认记录
@@ -84,6 +84,8 @@ experiments/VERSION_TREE.md
 开 `promote/...` 分支，保留最新账本，只移植代码层。
 
 当前创意树已清空。新的创意必须从可靠来源重新登记，不能直接复用旧的来源不明候选。
+`idea_tree/INDEX.md` 是总创意清单；`idea_tree/versions/v1.md` 是 v1 创意选择清单。
+创新 trial 只读取对应 base version 的版本清单，不需要每次读完整总表。
 
 ## 未来工作流接入
 

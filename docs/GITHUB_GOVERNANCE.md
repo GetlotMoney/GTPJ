@@ -355,18 +355,20 @@ idea_tree/schema.json
 ```text
 idea = 全局创意
 global_score = 长期价值
-version_scores.v1.score = 对 GTPJ-v1 的当前价值
-version_scores.v2.score = 对 GTPJ-v2 的当前价值
-version_scores.v3.score = 对 GTPJ-v3 的当前价值
+version_scores.v1 = 对 GTPJ-v1 的适配记录
+version_scores.v2 = 对 GTPJ-v2 的适配记录
+version_scores.v3 = 对 GTPJ-v3 的适配记录
 ```
 
 规则：
 
-- 当前排序只看 `idea_tree.json.current_version` 对应的版本分数。
+- 版本选择清单只看对应 `version_scores.vX`，例如 `versions/v1.md` 看 `version_scores.v1`。
 - `global_score` 只表示长期价值，不决定当前优先级。
+- `idea_tree/INDEX.md` 是总创意清单；`idea_tree/versions/vX.md` 是某个版本的选择清单。
+- 创新 trial 只读取对应 base version 的 `idea_tree/versions/vX.md`，避免每次读取完整总表。
 - 新增 `v2` 后，每个保留创意都必须重新写 `version_scores.v2`。
 - 不能把 `version_scores.v1` 直接复制成 `version_scores.v2`。
-- 缺少当前版本分数的 idea，不能在当前版本下开 trial。
+- 缺少当前版本适配记录的 idea，不能在当前版本下开 trial。
 - `source_status: unknown` 或 `unverified` 的 idea 不能开 trial，只能留在 inbox 或 candidate 状态。
 
 ## quality_check 是什么

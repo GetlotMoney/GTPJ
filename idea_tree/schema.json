@@ -60,6 +60,9 @@
                 "applicability": {
                   "enum": ["direct", "needs_adaptation", "unclear", "not_applicable"]
                 },
+                "stage": {
+                  "enum": ["candidate", "selected", "trialing", "validated", "rejected", "blocked", "not_applicable"]
+                },
                 "rationale": { "type": "string" },
                 "blockers": { "type": "array", "items": { "type": "string" } }
               }

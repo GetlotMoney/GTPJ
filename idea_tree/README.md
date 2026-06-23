@@ -13,26 +13,30 @@
 
 ```text
 idea_tree/
-|-- INDEX.md                 # 给人读的总排名
-|-- idea_tree.json           # 机器可读的创意注册表
+|-- INDEX.md                 # 给人读的总创意清单，不直接决定实验顺序
+|-- idea_tree.json           # 机器可读的总创意注册表，唯一事实源
 |-- ideas/
 |   `-- .gitkeep             # 当前为空；来源明确后再新增 IDEA-xxxx_slug/
+|-- versions/
+|   `-- v1.md                # v1 创意选择清单；未来新增 v2.md、v3.md
 |-- queues/                  # 从总索引派生出的当前执行队列
 `-- sources/                 # 论文/来源索引
 ```
 
 ## 排序规则
 
-创意按框架版本排序，不只按全局价值排序。
+创意先进入总创意库，再按框架版本生成版本视图。
 
 ```text
 global_score = 长期价值估计
-version_scores.v1.score = 对 GTPJ-v1 的当前价值
-version_scores.v2.score = 对 GTPJ-v2 的当前价值
+version_scores.v1 = 这个创意对 GTPJ-v1 的适配记录
+version_scores.v2 = 这个创意对 GTPJ-v2 的适配记录
 ```
 
-当前激活的框架版本使用自己的分数列。一个创意可以同时适用于多个版本，
-但每个版本可以有不同分数和不同实现说明。
+`INDEX.md` 是总创意清单，只回答项目里有哪些创意。某个版本下一步适合试什么，
+读取 `versions/<version>.md`，例如 `versions/v1.md`。
+
+一个创意可以同时适用于多个版本，但每个版本可以有不同分数、阶段和实现说明。
 
 例子：
 
@@ -44,8 +48,8 @@ IDEA-0001 属性路由
 ```
 
 这表示它长期价值高，但在 `v1` 下不一定优先。当前版本是 `v1` 时，
-`INDEX.md` 按 `version_scores.v1.score` 排序；当前版本切到 `v2` 后，
-必须按 `version_scores.v2.score` 重新排序。
+创新 trial 只读取 `versions/v1.md`；当前版本切到 `v2` 后，读取
+`versions/v2.md`。
 
 新建 `v2` 后，不能把 `v1` 分数直接复制过去。每个创意都要重新判断：
 
@@ -54,8 +58,8 @@ IDEA-0001 属性路由
 - 旧实验结果是否仍然有参考意义；
 - 需要直接接入、适配，还是标记为不适用。
 
-`INDEX.md` 是当前决策面板。每个 `ideas/IDEA-xxxx_slug/IDEA.md`
-是该创意的来源和理由记录。只有检查过所选版本分数、来源状态、阻塞点和迁移说明后，
+`versions/vX.md` 是当前版本决策面板。每个 `ideas/IDEA-xxxx_slug/IDEA.md`
+是该创意的来源和理由记录。只有检查过所选版本适配记录、来源状态、阻塞点和迁移说明后，
 才能启动 trial。
 
 来源不清楚时，先放在 `inbox.md`。只有 `source_status` 变成 `verified`

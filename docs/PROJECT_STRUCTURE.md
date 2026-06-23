@@ -120,7 +120,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议和创意树版本视图。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
@@ -134,7 +134,8 @@ idea_tree/                 # 创意来源、评分、排序
 - 创建实验时同步更新全局登记表和版本索引。
 - 创建 idea 节点和 trial 目录。
 - 创建 trial 时同步更新 module trial 索引和 idea 的 `linked_trials`。
-- 根据 `idea_tree.json.current_version` 重新生成 `idea_tree/INDEX.md`。
+- 根据 `idea_tree.json.current_version` 和每个创意的 `version_scores` 重新生成
+  `idea_tree/INDEX.md` 与 `idea_tree/versions/vX.md`。
 
 ## `model/`
 
@@ -175,9 +176,11 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `idea_tree/README.md` | 创意树入口说明。 |
 | `idea_tree/创意树.md` | 中文入口页，帮助快速理解创意树文件分工。 |
-| `idea_tree/INDEX.md` | 给人读的当前创意总榜；当前为空，等待可靠来源重新登记。 |
-| `idea_tree/idea_tree.json` | 机器可读创意注册表，包含 `current_version`、`ideas` 和每个 idea 的 `version_scores.vX`；当前 `ideas` 为空。 |
+| `idea_tree/INDEX.md` | 给人读的总创意清单，只回答有哪些创意；当前为空，等待可靠来源重新登记。 |
+| `idea_tree/idea_tree.json` | 机器可读总创意注册表，包含 `current_version`、`ideas` 和每个 idea 的 `version_scores.vX`；当前 `ideas` 为空，是创意树唯一机器事实源。 |
 | `idea_tree/schema.json` | `idea_tree.json` 的结构约束，规定版本分数字段必须按 `v1`、`v2` 这类版本键保存。 |
+| `idea_tree/versions/` | 按版本生成的人类阅读选择清单；创新 trial 只读取对应 base version 的清单。 |
+| `idea_tree/versions/v1.md` | `v1` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
 | `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
 | `idea_tree/sources/papers_index.md` | 论文来源索引。 |
 | `idea_tree/sources/source_notes/` | 预留来源笔记目录；可放论文摘录、来源复核摘要等轻量文本。 |

@@ -42,6 +42,15 @@ TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
 TRIAL_ALLOWED_APPLICABILITIES = {"direct", "needs_adaptation"}
 TRIAL_READY_STATUSES = {"selected"}
+VERSION_STAGES = {
+    "candidate",
+    "selected",
+    "trialing",
+    "validated",
+    "rejected",
+    "blocked",
+    "not_applicable",
+}
 SOURCE_STATUS_RANK = {
     "verified": 3,
     "local_heuristic": 2,
@@ -315,6 +324,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "idea_tree/README.md",
         "idea_tree/schema.json",
         "idea_tree/idea_tree.json",
+        "idea_tree/versions/v1.md",
         "experiments/README.md",
         "experiments/EXPERIMENT_REGISTRY.md",
         "experiments/VERSION_TREE.md",
@@ -348,6 +358,17 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("idea_tree.json current_version must look like v1")
 
     idea_index = read_text(REPO_ROOT / "idea_tree" / "INDEX.md")
+    version_docs: dict[str, str] = {}
+    expected_version_docs = {current_version}
+    for idea in idea_tree.get("ideas", []):
+        expected_version_docs.update(str(version) for version in idea.get("version_scores", {}).keys())
+    for version in sorted(expected_version_docs):
+        if not re.fullmatch(r"v[0-9]+", version):
+            raise WorkflowError(f"Invalid idea version view: {version}")
+        version_path = REPO_ROOT / "idea_tree" / "versions" / f"{version}.md"
+        if not version_path.exists():
+            raise WorkflowError(f"Missing idea version view: {rel(version_path)}")
+        version_docs[version] = read_text(version_path)
     for idea in idea_tree.get("ideas", []):
         idea_id = idea.get("idea_id", "")
         if not re.fullmatch(r"IDEA-[0-9]{4}", idea_id):
@@ -387,8 +408,14 @@ def cmd_validate(_: argparse.Namespace) -> int:
             require_score(entry.get("score", -1), f"{idea_id} {version} score")
             if entry.get("applicability") not in APPLICABILITIES:
                 raise WorkflowError(f"{idea_id} {version} has invalid applicability")
+            stage = entry.get("stage")
+            if stage is not None and stage not in VERSION_STAGES:
+                raise WorkflowError(f"{idea_id} {version} has invalid stage")
             if not isinstance(entry.get("blockers"), list):
                 raise WorkflowError(f"{idea_id} {version} blockers must be a list")
+            version_doc = version_docs.get(version, "")
+            if idea_id not in version_doc or idea_dir_text not in version_doc:
+                raise WorkflowError(f"{idea_id} missing from idea_tree/versions/{version}.md")
             if idea.get("source_status") in {"unknown", "unverified"}:
                 if float(entry.get("score", 0) or 0) != 0:
                     raise WorkflowError(f"{idea_id} with unknown/unverified source must keep score 0")
@@ -756,12 +783,80 @@ def idea_score_for_version(idea: dict, version: str) -> float:
         return 0
 
 
+def idea_version_stage(idea: dict, version: str) -> str:
+    entry = idea_version_entry(idea, version)
+    stage = entry.get("stage") or idea.get("status", "")
+    return str(stage)
+
+
+def idea_versions(data: dict) -> list[str]:
+    versions = {str(data.get("current_version", "v1"))}
+    for idea in data.get("ideas", []):
+        versions.update(str(version) for version in idea.get("version_scores", {}).keys())
+    return sorted(version for version in versions if re.fullmatch(r"v[0-9]+", version))
+
+
+def idea_file_for_row(idea: dict) -> str:
+    idea_dir = idea.get("idea_dir", "")
+    return f"{str(idea_dir).rstrip('/')}/IDEA.md" if idea_dir else ""
+
+
 def write_idea_index(data: dict) -> None:
     current_version = data.get("current_version", "v1")
     ideas = sorted(
         data.get("ideas", []),
         key=lambda item: (
-            -idea_score_for_version(item, current_version),
+            -float(item.get("global_score", 0) or 0),
+            item.get("idea_id", ""),
+        ),
+    )
+
+    lines = [
+        "# 总创意清单",
+        "",
+        f"当前实验版本视图：`idea_tree/versions/{current_version}.md`",
+        "",
+        "这是给人读的全局创意总表，只回答“有哪些创意”。",
+        "具体某个版本下一步试什么，请读取 `idea_tree/versions/vX.md`。",
+        "",
+        "| Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |",
+        "|---|---|---|---|---:|---|---|---|",
+    ]
+    for idea in ideas:
+        versions = ", ".join(f"`{version}`" for version in sorted(idea.get("version_scores", {}).keys()))
+        lines.append(
+            "| "
+            f"`{idea.get('idea_id', '')}` | {idea.get('title', '')} | "
+            f"`{idea_file_for_row(idea)}` | {idea.get('source_status', '')} | "
+            f"{idea.get('global_score', 0)} | {versions or '-'} | "
+            f"{idea.get('status', '')} | {idea.get('next_action', '')} |"
+        )
+    if not ideas:
+        lines.append("| - | - | - | - | - | - | - | 等待从可靠来源重新登记。 |")
+
+    lines.extend(
+        [
+            "",
+            "## 使用规则",
+            "",
+            "- 本文件是总清单，不直接作为实验优先级队列。",
+            "- 按版本选择创新 trial 时，读取 `idea_tree/versions/<base_version>.md`。",
+            "- `idea_tree.json` 是唯一机器事实源；本文件由 helper 刷新。",
+            "",
+        ]
+    )
+    (REPO_ROOT / "idea_tree" / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_idea_version_doc(data: dict, version: str) -> None:
+    ideas = sorted(
+        [
+            idea
+            for idea in data.get("ideas", [])
+            if version in idea.get("version_scores", {})
+        ],
+        key=lambda item: (
+            -idea_score_for_version(item, version),
             -SOURCE_STATUS_RANK.get(item.get("source_status", "unknown"), 0),
             -float(item.get("global_score", 0) or 0),
             item.get("idea_id", ""),
@@ -769,45 +864,49 @@ def write_idea_index(data: dict) -> None:
     )
 
     lines = [
-        "# 创意树索引",
+        f"# {version} 创意选择清单",
         "",
-        f"当前框架版本：`{current_version}`",
+        f"本文件只展示适用于 `{version}` 的创意视图。总创意库见 `idea_tree/INDEX.md`。",
+        "`idea_tree.json` 是唯一机器事实源；本文件由 helper 刷新。",
         "",
-        "这是给人读的主列表。当前工作窗口优先按",
-        f"`{current_version}` 分数排序。`global_score` 表示长期价值，",
-        "不直接决定当前实验顺序。",
-        "",
-        "| 排名 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 当前分 | 适用性 | 状态 | 下一步 |",
-        "|---:|---|---|---|---|---:|---:|---|---|---|",
+        "| 排名 | Idea | 标题 | Idea 文件 | 优先级 | 适用性 | 阶段 | 阻塞点 | 下一步 |",
+        "|---:|---|---|---|---:|---|---|---|---|",
     ]
     for rank, idea in enumerate(ideas, 1):
-        entry = idea_version_entry(idea, current_version)
-        idea_dir = idea.get("idea_dir", "")
-        idea_file = f"{str(idea_dir).rstrip('/')}/IDEA.md" if idea_dir else ""
+        entry = idea_version_entry(idea, version)
+        blockers = entry.get("blockers", [])
+        blocker_text = "; ".join(str(item) for item in blockers) if blockers else "-"
         lines.append(
             "| "
             f"{rank} | `{idea.get('idea_id', '')}` | {idea.get('title', '')} | "
-            f"`{idea_file}` | {idea.get('source_status', '')} | "
-            f"{idea.get('global_score', 0)} | {entry.get('score', 0)} | "
-            f"{entry.get('applicability', '')} | {idea.get('status', '')} | "
+            f"`{idea_file_for_row(idea)}` | {entry.get('score', 0)} | "
+            f"{entry.get('applicability', '')} | {idea_version_stage(idea, version)} | "
+            f"{blocker_text} | "
             f"{idea.get('next_action', '')} |"
         )
     if not ideas:
-        lines.append("| - | - | - | - | - | - | - | - | - | 等待从可靠来源重新登记。 |")
+        lines.append("| - | - | - | - | - | - | - | - | 当前版本还没有可选创意。 |")
 
     lines.extend(
         [
             "",
-            "## 版本感知规则",
+            "## 准入规则",
             "",
-            "- 实验顺序使用当前激活版本的分数列。",
-            "- 创建新框架版本时，添加新的 `version_scores.vX` 条目。",
-            "- 没有重新检查接口适配性前，不要把旧版本分数复制到新版本。",
-            "- 高 `global_score` 但低当前分，表示这个想法可能以后有用，不代表现在优先。",
+            "- 创新 trial 只能从本文件中 `阶段=selected` 且无阻塞点的 idea 启动。",
+            "- `global_score` 只表示长期价值，不替代当前版本适配判断。",
+            "- 新版本必须重新生成自己的 `versions/vX.md`，不能直接沿用旧版本清单。",
             "",
         ]
     )
-    (REPO_ROOT / "idea_tree" / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
+    version_path = REPO_ROOT / "idea_tree" / "versions" / f"{version}.md"
+    version_path.parent.mkdir(parents=True, exist_ok=True)
+    version_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_idea_views(data: dict) -> None:
+    write_idea_index(data)
+    for version in idea_versions(data):
+        write_idea_version_doc(data, version)
 
 
 def find_idea_record(data: dict, idea_id: str) -> dict:
@@ -857,6 +956,7 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
             base_version: {
                 "score": version_score,
                 "applicability": args.applicability,
+                "stage": "candidate",
                 "rationale": "",
                 "blockers": [],
             }
@@ -908,14 +1008,14 @@ idea_dir: {idea_dir_rel}
 
 ## 实现范围
 
-## 版本评分
+## 版本适配记录
 
-| 版本 | 分数 | 适用性 | 理由 |
+| 版本 | 优先级 | 适用性 | 理由 |
 |---|---:|---|---|
 | `{base_version}` | {version_score} | {args.applicability} | 待补充。 |
 
-机器可读版本评分写在 `idea_tree/idea_tree.json` 的 `version_scores` 字段。
-新增 `v2`、`v3` 时必须重新评估，不能复制 `{base_version}` 分数。
+机器可读版本适配记录写在 `idea_tree/idea_tree.json` 的 `version_scores` 字段。
+新增 `v2`、`v3` 时必须重新评估，不能复制 `{base_version}` 适配记录。
 
 ## 迁移说明
 
@@ -930,7 +1030,7 @@ idea_dir: {idea_dir_rel}
     )
     data.setdefault("ideas", []).append(idea)
     save_idea_tree(data)
-    write_idea_index(data)
+    write_idea_views(data)
 
     print(f"已创建 {rel(idea_dir)}")
     return 0
@@ -955,9 +1055,9 @@ def cmd_set_current_version(args: argparse.Namespace) -> int:
 
     data["current_version"] = version
     save_idea_tree(data)
-    write_idea_index(data)
+    write_idea_views(data)
     print(f"current_version={version}")
-    print("已刷新 idea_tree/INDEX.md")
+    print("已刷新 idea_tree/INDEX.md 和 idea_tree/versions/")
     return 0
 
 
@@ -1038,6 +1138,8 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     version_entry = idea_version_entry(idea, base_version)
     if not str(version_entry.get("rationale", "")).strip():
         raise WorkflowError(f"{idea_id} must explain version_scores.{base_version}.rationale before trial")
+    if idea_version_stage(idea, base_version) not in TRIAL_READY_STATUSES:
+        raise WorkflowError(f"{idea_id} must be selected in idea_tree/versions/{base_version}.md before trial")
     if version_entry.get("applicability") not in TRIAL_ALLOWED_APPLICABILITIES:
         raise WorkflowError(f"{idea_id} applicability for {base_version} must be direct or needs_adaptation")
     if version_entry.get("blockers"):
@@ -1231,8 +1333,9 @@ missing/unexpected keys:
     trial_rel = rel(trial_dir)
     if trial_rel not in linked_trials:
         linked_trials.append(trial_rel)
+        version_entry["stage"] = "trialing"
         save_idea_tree(data)
-        write_idea_index(data)
+        write_idea_views(data)
 
     print(f"已创建 {rel(trial_dir)}")
     print(f"建议分支: {code_branch}")

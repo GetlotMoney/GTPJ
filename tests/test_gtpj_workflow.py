@@ -59,6 +59,12 @@ class WorkflowHelperTest(unittest.TestCase):
     def _write_minimal_repo(self) -> None:
         self._write("experiments/v1/config.yaml", "version: v1\n")
         self._write(
+            "idea_tree/idea_tree.json",
+            '{\n  "project": "GTPJ",\n  "version": "test",\n  "current_version": "v1",\n  "ideas": []\n}\n',
+        )
+        self._write("idea_tree/INDEX.md", "# 总创意清单\n\n")
+        self._write("idea_tree/versions/v1.md", "# v1 创意选择清单\n\n")
+        self._write(
             "experiments/EXPERIMENT_REGISTRY.md",
             "# Experiment Registry\n\n| Experiment | Version | Kind | Status | Directory | Note |\n"
             "|---|---|---|---|---|---|\n| 暂无 | - | - | - | - | - |\n",
@@ -81,6 +87,43 @@ class WorkflowHelperTest(unittest.TestCase):
 
     def _confirmation_index_text(self) -> str:
         return (self.repo / "experiments/v1/confirmation/INDEX.md").read_text(encoding="utf-8")
+
+    def test_new_idea_refreshes_global_and_version_views(self) -> None:
+        code, stdout, stderr = self._run_main(
+            "new-idea",
+            "--idea-id",
+            "IDEA-0001",
+            "--slug",
+            "token_router",
+            "--title",
+            "Token Router",
+            "--source-type",
+            "paper",
+            "--source-ref",
+            "paper-x",
+            "--source-status",
+            "verified",
+            "--base-version",
+            "v1",
+            "--global-score",
+            "80",
+            "--version-score",
+            "60",
+            "--applicability",
+            "direct",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("已创建 idea_tree/ideas/IDEA-0001_token_router", stdout)
+        idea_json = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
+        global_index = (self.repo / "idea_tree/INDEX.md").read_text(encoding="utf-8")
+        v1_view = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
+        self.assertIn('"stage": "candidate"', idea_json)
+        self.assertIn("总创意清单", global_index)
+        self.assertIn("IDEA-0001_token_router/IDEA.md", global_index)
+        self.assertIn("v1 创意选择清单", v1_view)
+        self.assertIn("IDEA-0001_token_router/IDEA.md", v1_view)
 
     def test_new_experiment_rejects_main_branch(self) -> None:
         registry_before = self._registry_text()
