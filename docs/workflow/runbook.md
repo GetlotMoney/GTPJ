@@ -41,7 +41,9 @@ validate-remote-ok
 
 ## 运行 v1 确认实验
 
-确认实验用于复验当前 baseline。临时分支从 `main` 开，`base_code_tag: v1` 记录代码来源。
+确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v1` 时，临时分支从 `main` 开，
+`base_code_tag: v1` 记录代码来源；如果未来当前 `main` 不是 `v1` 代码，则按
+`docs/workflow/experiment_protocol.md` 的历史版本 confirmation 规则从 `v1` tag 开只运行分支。
 
 ```bash
 git switch main

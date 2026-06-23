@@ -33,6 +33,7 @@ cache/
 .openclaw-workspace/
 .agent-state/
 experiments/.agent-state/
+.gtpj_runtime/
 
 # OS/editor
 .DS_Store

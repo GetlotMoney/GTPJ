@@ -262,9 +262,13 @@ trial/v1/idea-0003/trial-001
 普通实验分支：
 
 - `exp/...` 分支只承载 tune、ablation、confirmation 的实验记录。
-- `exp/...` 从当前 `main` 开出，继承最新账本；分支名里的 `v1` 是 `base_code_tag`。
-- 跑完后，把 README、config、日志路径、结果和结论合并回 `main`。
-- 实验记录合并回 `main` 后，可以删除这个 `exp/...` 分支。
+- 当前 `main` 代码就是目标 `vX` 时，`exp/...` 从当前 `main` 开出；分支名里的 `v1` 是
+  `base_code_tag`。
+- 历史版本 tune、ablation、confirmation 可以从 `vX` tag 开只运行代码的 `exp/...`
+  临时分支；该分支不合并进 `main`。
+- 历史版本跑完后，回当前 `main` 只把 README、config、日志路径、结果和结论写入
+  `experiments/vX/` 账本。
+- 实验记录入账后，可以删除这个 `exp/...` 临时分支。
 
 成功的模块 trial：
 
@@ -339,6 +343,7 @@ GitHub 远端应设置保护规则：
 | 普通实验协议 | `docs/workflow/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
 | 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料或不自动 push 边界时更新。 |
 | agent 编排 | `docs/workflow/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
+| 进度看板协议 | `docs/workflow/progress_dashboard.md` | 改本地网页看板、`.gtpj_runtime/` 状态文件、agent 进度、GPU/Runner 展示或只读边界时更新。 |
 
 ## 本地 skill 和 GitHub 的同步
 

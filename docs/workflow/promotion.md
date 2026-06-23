@@ -22,8 +22,13 @@ promote_to: vX
 
 全部通过才允许 promotion：
 
-- source experiment / trial 记录 `base_version`、`base_code_tag`、`code_branch`、`code_commit`。
-- 记录 `run_config`、`run_command`、`run_log`。
+- source experiment / trial 记录父版本、代码来源、分支、commit、配置、命令和日志。
+- 普通实验按 `docs/workflow/experiment_protocol.md` 的 promotion 字段映射读取：
+  `version -> base_version/parent_version`、`base_code_tag -> parent_tag`、
+  `run_commit -> code_commit`、`config -> run_config`、`command -> run_command`、
+  `copied_log -> run_log`、`original_log -> original_run_log`。
+- module trial 必须直接记录 `base_version`、`base_code_tag`、`code_branch`、`code_commit`、
+  `run_config`、`run_command` 和 `run_log`。
 - 结果包含 U、S、H、ZS、seed、best epoch 和日志路径。
 - `quality_check.md` 没有 blocking issue。
 - 改代码的实验必须有 `implementation.md` 和 `code.diff`。
@@ -52,9 +57,11 @@ promotion_decision: blocked
 7. 更新 `docs/PROJECT_STATUS.md`。
 8. 必要时更新 `README.md`。
 9. 如果结构或目录类型变化，更新 `docs/PROJECT_STRUCTURE.md`。
-10. 运行 `python workflow/gtpj_workflow.py validate`。
-11. 验证通过后，创建本地 tag `vX`。
-12. 不 push，除非用户明确说提交推送。
+10. 在 promotion 分支运行 `python workflow/gtpj_workflow.py validate`。
+11. 验证通过后，把 promotion 分支合并回当前 `main`。
+12. 在最终 `main` commit 上再次运行 `python workflow/gtpj_workflow.py validate`。
+13. 验证通过后，在最终 `main` commit 上创建本地 tag `vX`。
+14. 不 push，除非用户明确说提交推送。
 
 ## 分支规则
 

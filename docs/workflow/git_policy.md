@@ -18,7 +18,7 @@ H: 73.93
 
 ## 临时分支
 
-临时分支都从当前 `main` 开出，用来继承最新账本。
+临时分支默认从当前 `main` 开出，用来继承最新账本。
 
 ```text
 dev/v1-idea-0001-trial-001-short-name
@@ -92,7 +92,10 @@ promote/v1-idea-0003-to-v4
 - 不创建 `v1`、`v2` 这种长期版本分支。
 - 不创建 controller branch。
 - 不直接在 `main` 上做新模块开发或普通训练实验。
-- `exp/...`、`dev/...`、`promote/...` 都从当前 `main` 切出。
+- 默认 `exp/...`、`dev/...`、`promote/...` 都从当前 `main` 切出。
+- 历史版本 tune、ablation、confirmation 是例外：当当前 `main` 代码不是目标 `vX` 时，
+  可以从 `vX` tag 开 `exp/...` 只运行代码的临时分支；该分支不合并进 `main`，跑完回当前
+  `main` 写 `experiments/vX/` 账本并删除临时分支。
 - `base-version` 通过 `base_code_tag` 记录代码来源，例如 `v1`。
 - 当前 `main` 代码就是目标 base version 时，直接跑。
 - 当前 `main` 代码不是目标 base version 时，只恢复代码层到目标 tag，不能恢复账本层。

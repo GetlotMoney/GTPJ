@@ -102,6 +102,18 @@ Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinat
 - 非 Coordinator 删除分支、合并分支、创建 tag。
 - 非用户明确要求时 push 到 GitHub。
 
+## 进度看板联动
+
+真实实验运行时，Coordinator 负责按 `docs/workflow/progress_dashboard.md` 创建和更新：
+
+```text
+.gtpj_runtime/runs/<run_id>/status.json
+.gtpj_runtime/runs/<run_id>/events.jsonl
+```
+
+各 agent 在关键阶段向 Coordinator 汇报状态；Coordinator 收口写入 runtime 状态。
+网页看板只读这些状态和 GitHub 账本，不直接启动训练、删除分支、打 tag、执行 promotion 或 push。
+
 ## 同步规则
 
 修改 workflow agent 规范时：

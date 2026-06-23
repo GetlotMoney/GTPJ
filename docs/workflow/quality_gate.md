@@ -11,7 +11,10 @@
 运行实验前：
 
 1. 检查 Git status。
-2. 确认临时分支从当前 `main` 切出，并记录正确的 `base_code_tag`。
+2. 确认临时分支来源符合实验类型，并记录正确的 `base_code_tag` 和 `branch_source`。
+   当前版本实验从当前 `main` 切出；历史版本 tune、ablation、confirmation 可以从 `vX` tag
+   开只运行代码的临时分支，跑完后回当前 `main` 入账，不把该运行分支合并进 `main`。
+   module trial 和 promotion 分支仍从当前 `main` 切出，必要时只恢复代码层到目标 tag。
 3. 确认 config 改动只作用于当前实验。
 4. 确认模块改动由 off switch 控制。
 5. 如果有模块代码改动，确认满足 `docs/workflow/code_interface_contract.md`。
@@ -37,9 +40,11 @@ promote_to: vX
 
 随后自动执行 `docs/workflow/promotion.md` 的硬门。必须满足：
 
-- [ ] 父版本明确：`parent_version`、`parent_tag`、`base_code_tag` 已记录。
-- [ ] tag 明确：trial tag 指向 README 中记录的 `code_commit`。
-- [ ] 指标明确：父版本 H、trial H、delta H、U/S/ZS、best epoch 已记录。
+- [ ] 父版本明确：`parent_version`、`parent_tag`、`base_code_tag` 已记录；普通实验可按
+  `docs/workflow/experiment_protocol.md` 的 promotion 字段映射读取。
+- [ ] 来源 commit/tag 明确：module trial 的 trial tag 指向 README 中记录的 `code_commit`；
+  普通实验或 tuned configuration 必须记录 `run_commit`，并可映射为 `code_commit`。
+- [ ] 指标明确：父版本 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。
 - [ ] 对照明确：同 seed 对照已记录；高风险改动已说明是否需要多 seed。
 - [ ] 配置明确：trial config 和新版本 config 路径已记录。
 - [ ] 日志明确：原始日志路径和 Git 内日志副本路径已记录。

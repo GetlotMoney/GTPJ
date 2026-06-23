@@ -64,6 +64,24 @@ promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
 ```
 
+## Promotion 字段映射
+
+普通实验使用上面的轻量字段记录证据。进入 `docs/workflow/promotion.md` 时，Coordinator 按下面规则读取：
+
+```text
+base_version     = version
+parent_version   = version
+parent_tag       = base_code_tag
+code_commit      = run_commit
+run_config       = config
+run_command      = command
+run_log          = copied_log
+original_run_log = original_log
+```
+
+如果普通实验显式写了 `base_version`，它必须和 `version` 一致。`copied_log` 是长期证据路径；
+`original_log` 是原始日志路径，两者都应保留。
+
 失败运行也是证据，必须记录：
 
 - `failure_stage`: setup / data / forward / backward / eval / logging / unknown；
@@ -105,7 +123,7 @@ branch_source: main
 ```text
 从 vX tag 开 exp/vX-tune-XXX-xxx 临时运行分支
 只用于跑 vX 代码
-保存 run_config、run_command、run_log、结果
+保存 config、command、original_log、copied_log、结果
 回到当前 main
 只把实验证据写入 experiments/vX/tune/
 确认入账后删除本地临时运行分支
