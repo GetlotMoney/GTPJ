@@ -29,11 +29,17 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-i
 
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
+git switch main
+git status --short
+git switch -c dev/v1-idea-xxxx-trial-001-short-name
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
 ```
 
+`validate-remote` 核对远端 `main` 和 `v1` 是否分别对齐本地 `main` 和本地 `v1` tag，
+并确认本地 `main` 包含 `v1` 历史。它不要求 `main` 永远等于 `v1`。
+
 `new-experiment` 只允许在 clean working tree 和对应的 `exp/...` 分支上创建目录；
-它会拒绝直接在 `main` 或错误分支上落账本。
+它会拒绝直接在 `main`、错误分支，或不包含当前本地 `main` 历史的分支上落账本。
 
 `new-idea` 只创建候选节点。创建 trial 前必须人工补全 rationale、hypothesis、
 implementation_scope、risk，确认 blockers 为空，并把 idea 状态改为 `selected`。

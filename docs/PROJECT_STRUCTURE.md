@@ -11,8 +11,9 @@
   只有结构模式、入口职责或维护规则变化时才更新本文件。
 - 修改 GitHub 治理规范、实验记录规范、创意树规范、代码接口规范或未来 workflow 参考时，必须同步更新本文件中对应说明。
 - 只更新实验数值、日志路径或普通记录内容时，也要检查本文件是否需要更新；如果结构和职责没有变化，可以不改。
-- 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；需要确认 GitHub 远端基线时再运行
-  `python workflow/gtpj_workflow.py validate-remote`。当前阶段它们是结构辅助检查，不是完整 workflow。
+- 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；需要确认 GitHub 远端状态时再运行
+  `python workflow/gtpj_workflow.py validate-remote`。`validate-remote` 核对远端 `main`/`v1`
+  分别对齐本地 `main`/`v1`，并确认本地 `main` 包含 `v1` 历史。当前阶段它们是结构辅助检查，不是完整 workflow。
 
 ## 总体框架
 
@@ -119,7 +120,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1`，并生成带 base version 的分支/tag 建议。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |

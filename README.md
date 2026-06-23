@@ -111,8 +111,11 @@ python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-remote
 ```
 
+`validate-remote` 检查远端 `main` 是否等于本地 `main`、远端 `v1` tag 是否等于本地
+`v1` tag，并确认本地 `main` 包含 `v1` 历史；`main` 可以比 `v1` 多治理账本提交。
+
 需要创建标准目录时，可以使用 helper；当前它不是强制工作流。
-`new-experiment` 必须在 clean working tree 中运行，并且先从当前 `main` 切到 helper 建议的 `exp/...` 分支。
+`new-experiment` 必须在 clean working tree 中运行，并且先从当前 `main` 切到 helper 建议的 `exp/...` 分支；helper 会拒绝不包含当前本地 `main` 历史的实验分支。
 下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
 
 ```bash
@@ -128,6 +131,9 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-i
 
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
+git switch main
+git status --short
+git switch -c dev/v1-idea-xxxx-trial-001-short-name
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
 ```
 

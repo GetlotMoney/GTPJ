@@ -151,6 +151,30 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(registry_before, self._registry_text())
         self.assertEqual(index_before, self._confirmation_index_text())
 
+    def test_new_experiment_rejects_expected_branch_not_based_on_main(self) -> None:
+        self._git("checkout", "--orphan", "exp/v1-confirm-001-v1-seed5")
+        self._git("commit", "-m", "orphan experiment branch")
+        registry_before = self._registry_text()
+        index_before = self._confirmation_index_text()
+
+        code, _stdout, stderr = self._run_main(
+            "new-experiment",
+            "--version",
+            "v1",
+            "--kind",
+            "confirmation",
+            "--exp-id",
+            "CONFIRM-001",
+            "--slug",
+            "v1_seed5",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("new-experiment branch must contain current local main", stderr)
+        self.assertFalse((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5").exists())
+        self.assertEqual(registry_before, self._registry_text())
+        self.assertEqual(index_before, self._confirmation_index_text())
+
     def test_new_experiment_succeeds_on_expected_clean_branch(self) -> None:
         self._git("switch", "-c", "exp/v1-confirm-001-v1-seed5")
 
@@ -184,6 +208,54 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("validate-remote-ok", stdout)
 
+    def test_validate_remote_accepts_annotated_v1_tag(self) -> None:
+        self._git("tag", "-d", "v1")
+        self._git("tag", "-a", "v1", "-m", "annotated v1")
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("push", "origin", "main", "v1")
+
+            code, stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-remote-ok", stdout)
+
+    def test_validate_remote_accepts_main_ahead_of_v1_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._write("governance.md", "main ledger update\n")
+            self._git("add", "governance.md")
+            self._git("commit", "-m", "add governance ledger")
+            self._git("push", "origin", "main", "v1")
+
+            code, stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-remote-ok", stdout)
+
+    def test_validate_remote_uses_local_main_not_current_feature_head(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("push", "origin", "main", "v1")
+            self._git("switch", "-c", "feature/local-work")
+            self._write("feature.txt", "feature-only commit\n")
+            self._git("add", "feature.txt")
+            self._git("commit", "-m", "feature-only work")
+
+            code, stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-remote-ok", stdout)
+
     def test_validate_remote_rejects_branch_named_v1_without_local_tag(self) -> None:
         self._git("tag", "-d", "v1")
         self._git("branch", "v1")
@@ -193,7 +265,38 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("Missing local authoritative tag: v1", stderr)
 
-    def test_validate_remote_rejects_misaligned_origin_v1_tag(self) -> None:
+    def test_validate_remote_rejects_remote_branch_named_v1_without_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("push", "origin", "main")
+            self._git("push", "origin", "HEAD:refs/heads/v1")
+
+            code, _stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual(1, code)
+        self.assertIn("Missing remote ref: origin/v1 (refs/tags/v1)", stderr)
+
+    def test_validate_remote_rejects_origin_main_ahead_of_local_main(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("push", "origin", "main", "v1")
+            local_main = self._git("rev-parse", "main").stdout.strip()
+            self._write("remote-ahead.txt", "remote main ahead\n")
+            self._git("add", "remote-ahead.txt")
+            self._git("commit", "-m", "remote main ahead")
+            self._git("push", "origin", "HEAD:refs/heads/main")
+            self._git("reset", "--hard", local_main)
+
+            code, _stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual(1, code)
+        self.assertIn("origin/main", stderr)
+
+    def test_validate_remote_rejects_origin_main_not_matching_local_main(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:
             remote = Path(remote_tmp)
             self._git("init", "--bare", cwd=remote)
@@ -201,15 +304,47 @@ class WorkflowHelperTest(unittest.TestCase):
             self._git("push", "origin", "main", "v1")
             self._write("marker.txt", "new commit\n")
             self._git("add", "marker.txt")
-            self._git("commit", "-m", "move main only")
-            self._git("push", "origin", "main")
-            self._git("push", "--force", "origin", "HEAD:refs/tags/v1")
+            self._git("commit", "-m", "local main not pushed")
 
             code, _stdout, stderr = self._run_main("validate-remote")
 
         self.assertEqual(1, code)
         self.assertIn("origin/main", stderr)
+
+    def test_validate_remote_rejects_misaligned_origin_v1_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("push", "origin", "main", "v1")
+            self._git("switch", "-c", "move-v1-tag-source")
+            self._write("marker.txt", "remote tag moved\n")
+            self._git("add", "marker.txt")
+            self._git("commit", "-m", "move remote v1 tag only")
+            self._git("push", "--force", "origin", "HEAD:refs/tags/v1")
+            self._git("switch", "main")
+
+            code, _stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual(1, code)
         self.assertIn("origin/v1", stderr)
+
+    def test_validate_remote_rejects_local_main_not_containing_v1(self) -> None:
+        with tempfile.TemporaryDirectory() as remote_tmp:
+            remote = Path(remote_tmp)
+            self._git("init", "--bare", cwd=remote)
+            self._git("remote", "add", "origin", str(remote))
+            self._git("checkout", "--orphan", "rewritten-main")
+            self._write("replacement.txt", "replacement main without v1 history\n")
+            self._git("add", ".")
+            self._git("commit", "-m", "replace main history")
+            self._git("branch", "-M", "main")
+            self._git("push", "origin", "main", "v1")
+
+            code, _stdout, stderr = self._run_main("validate-remote")
+
+        self.assertEqual(1, code)
+        self.assertIn("local main must contain local v1 tag", stderr)
 
 
 if __name__ == "__main__":

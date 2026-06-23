@@ -165,6 +165,21 @@ def current_branch() -> str:
     return git(["branch", "--show-current"], check=False)
 
 
+def require_ancestor(ancestor_ref: str, descendant_ref: str, message: str) -> None:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor_ref, descendant_ref],
+        cwd=REPO_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip()
+        raise WorkflowError(f"{message}{': ' + detail if detail else ''}")
+
+
 def require_experiment_branch(expected_branch: str) -> None:
     branch = current_branch()
     if not branch:
@@ -177,6 +192,14 @@ def require_experiment_branch(expected_branch: str) -> None:
             f"new-experiment must run on expected branch {expected_branch}; "
             f"current branch is {branch}"
         )
+
+
+def require_current_branch_contains_main(command: str) -> None:
+    require_ancestor(
+        "refs/heads/main",
+        "HEAD",
+        f"{command} branch must contain current local main",
+    )
 
 
 def require_clean_id(value: str, pattern: str, label: str) -> str:
@@ -458,16 +481,25 @@ def cmd_validate(_: argparse.Namespace) -> int:
 def cmd_validate_remote(args: argparse.Namespace) -> int:
     remote = args.remote
     try:
-        expected = tag_commit("v1")
+        local_v1 = tag_commit("v1")
     except WorkflowError as exc:
         raise WorkflowError("Missing local authoritative tag: v1") from exc
+    try:
+        local_main = resolve_commit("refs/heads/main")
+    except WorkflowError as exc:
+        raise WorkflowError("Missing local main branch: refs/heads/main") from exc
+    require_ancestor(
+        "refs/tags/v1",
+        "refs/heads/main",
+        "local main must contain local v1 tag",
+    )
 
     checks = [
-        ("origin/main", "refs/heads/main"),
-        ("origin/v1", "refs/tags/v1"),
+        ("origin/main", "refs/heads/main", local_main),
+        ("origin/v1", "refs/tags/v1", local_v1),
     ]
     errors: list[str] = []
-    for label, ref in checks:
+    for label, ref, expected in checks:
         display_label = label.replace("origin", remote, 1)
         try:
             actual = remote_ref_commit(remote, ref, display_label)
@@ -476,7 +508,7 @@ def cmd_validate_remote(args: argparse.Namespace) -> int:
             continue
         if actual != expected:
             errors.append(
-                f"{display_label} must point to local v1 tag commit {expected}; "
+                f"{display_label} must point to local {ref} commit {expected}; "
                 f"got {actual}"
             )
     if errors:
@@ -686,8 +718,9 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     if exp_dir.exists():
         raise WorkflowError(f"Experiment already exists: {rel(exp_dir)}")
 
-    require_clean_worktree("new-experiment")
     require_experiment_branch(expected_branch)
+    require_clean_worktree("new-experiment")
+    require_current_branch_contains_main("new-experiment")
 
     ensure_dir(exp_dir / "logs")
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
@@ -1217,7 +1250,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)
 
-    validate_remote = sub.add_parser("validate-remote", help="校验远端 main 和 v1 tag")
+    validate_remote = sub.add_parser("validate-remote", help="校验远端 main/v1 与本地 main/v1")
     validate_remote.add_argument("--remote", default="origin")
     validate_remote.set_defaults(func=cmd_validate_remote)
 
