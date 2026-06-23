@@ -42,6 +42,16 @@ TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
 TRIAL_ALLOWED_APPLICABILITIES = {"direct", "needs_adaptation"}
 TRIAL_READY_STATUSES = {"selected"}
+IDEA_STATUSES = {
+    "candidate",
+    "selected",
+    "developing",
+    "testing",
+    "validated",
+    "weakened",
+    "rejected",
+    "blocked",
+}
 VERSION_STAGES = {
     "candidate",
     "selected",
@@ -274,6 +284,52 @@ def list_files_for_scan() -> Iterable[Path]:
         yield path
 
 
+def validate_idea_tree_data(data: object) -> tuple[str, list[dict]]:
+    if not isinstance(data, dict):
+        raise WorkflowError("idea_tree.json must be an object")
+    if data.get("project") != "GTPJ":
+        raise WorkflowError("idea_tree.json project must be GTPJ")
+    if not isinstance(data.get("version"), str) or not str(data.get("version")).strip():
+        raise WorkflowError("idea_tree.json version must be a non-empty string")
+    current_version = data.get("current_version")
+    if not isinstance(current_version, str) or not re.fullmatch(r"v[0-9]+", current_version):
+        raise WorkflowError("idea_tree.json current_version must look like v1")
+    ideas = data.get("ideas")
+    if not isinstance(ideas, list):
+        raise WorkflowError("idea_tree.json ideas must be a list")
+    for index, idea in enumerate(ideas, start=1):
+        if not isinstance(idea, dict):
+            raise WorkflowError(f"idea_tree.json ideas[{index}] must be an object")
+        idea_id = idea.get("idea_id", f"ideas[{index}]")
+        if idea.get("status") not in IDEA_STATUSES:
+            raise WorkflowError(f"{idea_id} has invalid status")
+        for field in [
+            "idea_id",
+            "idea_dir",
+            "title",
+            "source_type",
+            "source_ref",
+            "source_status",
+            "global_score",
+            "version_scores",
+            "base_versions",
+            "based_on_modules",
+            "target_component",
+            "hypothesis",
+            "implementation_scope",
+            "risk",
+            "transfer_notes",
+            "linked_trials",
+            "linked_versions",
+            "linked_experiments",
+            "evidence",
+            "next_action",
+        ]:
+            if field not in idea:
+                raise WorkflowError(f"{idea_id} missing required field: {field}")
+    return current_version, ideas
+
+
 def cmd_status(_: argparse.Namespace) -> int:
     branch = git(["branch", "--show-current"], check=False) or "(detached)"
     head = git(["rev-parse", "--short", "HEAD"], check=False)
@@ -351,16 +407,12 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
 
     idea_tree = json.loads(read_text(REPO_ROOT / "idea_tree" / "idea_tree.json"))
-    if idea_tree.get("project") != "GTPJ":
-        raise WorkflowError("idea_tree.json project must be GTPJ")
-    current_version = idea_tree.get("current_version")
-    if not isinstance(current_version, str) or not re.fullmatch(r"v[0-9]+", current_version):
-        raise WorkflowError("idea_tree.json current_version must look like v1")
+    current_version, ideas = validate_idea_tree_data(idea_tree)
 
     idea_index = read_text(REPO_ROOT / "idea_tree" / "INDEX.md")
     version_docs: dict[str, str] = {}
     expected_version_docs = {current_version}
-    for idea in idea_tree.get("ideas", []):
+    for idea in ideas:
         expected_version_docs.update(str(version) for version in idea.get("version_scores", {}).keys())
     for version in sorted(expected_version_docs):
         if not re.fullmatch(r"v[0-9]+", version):
@@ -369,7 +421,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if not version_path.exists():
             raise WorkflowError(f"Missing idea version view: {rel(version_path)}")
         version_docs[version] = read_text(version_path)
-    for idea in idea_tree.get("ideas", []):
+    for idea in ideas:
         idea_id = idea.get("idea_id", "")
         if not re.fullmatch(r"IDEA-[0-9]{4}", idea_id):
             raise WorkflowError(f"Invalid idea_id in idea_tree.json: {idea_id}")
@@ -785,8 +837,8 @@ def idea_score_for_version(idea: dict, version: str) -> float:
 
 def idea_version_stage(idea: dict, version: str) -> str:
     entry = idea_version_entry(idea, version)
-    stage = entry.get("stage") or idea.get("status", "")
-    return str(stage)
+    stage = entry.get("stage")
+    return str(stage) if stage is not None else ""
 
 
 def idea_versions(data: dict) -> list[str]:

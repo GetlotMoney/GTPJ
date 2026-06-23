@@ -96,6 +96,7 @@ OpenClaw 是未来实验运行的优先 runtime。Codex 需要兼容同一套仓
 优先阅读：
 
 - `NEXT_ACTIONS.md`
+- `docs/GITHUB_GOVERNANCE.md`
 - `docs/PROJECT_STRUCTURE.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/workflow/README.md`（未来 workflow 参考）

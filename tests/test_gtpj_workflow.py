@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -88,6 +89,69 @@ class WorkflowHelperTest(unittest.TestCase):
     def _confirmation_index_text(self) -> str:
         return (self.repo / "experiments/v1/confirmation/INDEX.md").read_text(encoding="utf-8")
 
+    def _selected_idea(self, *, stage: str | None = "selected") -> dict:
+        version_score = {
+            "score": 70,
+            "applicability": "direct",
+            "rationale": "Fits the current v1 bottleneck.",
+            "blockers": [],
+        }
+        if stage is not None:
+            version_score["stage"] = stage
+        return {
+            "idea_id": "IDEA-0001",
+            "idea_dir": "idea_tree/ideas/IDEA-0001_token_router/",
+            "title": "Token Router",
+            "status": "selected",
+            "source_type": "paper",
+            "source_ref": "paper-x",
+            "source_status": "verified",
+            "global_score": 80,
+            "version_scores": {"v1": version_score},
+            "base_versions": ["v1"],
+            "based_on_modules": [],
+            "target_component": "model",
+            "hypothesis": "Improve visual-text routing.",
+            "implementation_scope": "Small routing module.",
+            "risk": "May overfit.",
+            "transfer_notes": "",
+            "linked_trials": [],
+            "linked_versions": [],
+            "linked_experiments": [],
+            "evidence": [],
+            "next_action": "trial",
+        }
+
+    def _write_idea_tree(self, ideas: list[dict]) -> None:
+        payload = {
+            "project": "GTPJ",
+            "version": "test",
+            "current_version": "v1",
+            "ideas": ideas,
+        }
+        self._write("idea_tree/idea_tree.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+
+    def _write_selected_idea_files(self, *, stage: str | None = "selected") -> dict:
+        idea = self._selected_idea(stage=stage)
+        self._write("idea_tree/ideas/IDEA-0001_token_router/IDEA.md", "# IDEA-0001\n")
+        self._write_idea_tree([idea])
+        return idea
+
+    def test_validate_idea_tree_data_rejects_missing_ideas_list(self) -> None:
+        with self.assertRaisesRegex(self.module.WorkflowError, "ideas must be a list"):
+            self.module.validate_idea_tree_data(
+                {"project": "GTPJ", "version": "test", "current_version": "v1"}
+            )
+
+    def test_validate_idea_tree_data_rejects_invalid_idea_status(self) -> None:
+        idea = self._selected_idea()
+        idea["status"] = "ready-ish"
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "invalid status"):
+            self.module.validate_idea_tree_data(
+                {"project": "GTPJ", "version": "test", "current_version": "v1", "ideas": [idea]}
+            )
+
     def test_new_idea_refreshes_global_and_version_views(self) -> None:
         code, stdout, stderr = self._run_main(
             "new-idea",
@@ -124,6 +188,25 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("IDEA-0001_token_router/IDEA.md", global_index)
         self.assertIn("v1 创意选择清单", v1_view)
         self.assertIn("IDEA-0001_token_router/IDEA.md", v1_view)
+
+    def test_new_trial_requires_explicit_selected_version_stage(self) -> None:
+        self._write_selected_idea_files(stage=None)
+
+        code, _stdout, stderr = self._run_main(
+            "new-trial",
+            "--idea-id",
+            "IDEA-0001",
+            "--trial-id",
+            "TRIAL-001",
+            "--slug",
+            "token_router",
+            "--base-version",
+            "v1",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("must be selected in idea_tree/versions/v1.md", stderr)
+        self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
 
     def test_new_experiment_rejects_main_branch(self) -> None:
         registry_before = self._registry_text()

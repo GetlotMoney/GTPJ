@@ -33,13 +33,15 @@ idea_tree
 
 阅读顺序：
 
-1. `../PROJECT_STRUCTURE.md`
-2. `git_policy.md`
-3. `versioning.md`
-4. `idea_tree_protocol.md`
-5. `module_trial_protocol.md`
-6. `code_interface_contract.md`
-7. `experiment_protocol.md`
-8. `quality_gate.md`
-9. `runbook.md`
-10. `workflow/README.md`
+1. `../GITHUB_GOVERNANCE.md`
+2. `../PROJECT_STRUCTURE.md`
+3. `../PROJECT_STATUS.md`
+4. `git_policy.md`
+5. `versioning.md`
+6. `idea_tree_protocol.md`
+7. `module_trial_protocol.md`
+8. `code_interface_contract.md`
+9. `experiment_protocol.md`
+10. `quality_gate.md`
+11. `runbook.md`
+12. `../../workflow/README.md`
