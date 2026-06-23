@@ -126,13 +126,19 @@ based_on_trial:
 
 ## 提升规则
 
-只有成功且通过质量检查的 trial 才能成为新的 baseline。
+只有成功且通过自动 promotion gate 的实验才能成为新的 baseline。完整硬门见：
+
+```text
+docs/workflow/promotion.md
+```
 
 ```text
 GTPJ-v1 -> IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
 ```
 
-不要因为每个小尝试都创建一个新的 `vX`。
+不要因为每个小尝试都创建一个新的 `vX`。只有实验记录明确写
+`promotion_decision: promote`，并通过硬门后，才自动创建本地新版本材料和本地 tag。
+推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。
 
 `vX` 不要求严格线性继承。`v3` 可以基于 `v1` 的新 trial 产生，
 也可以基于 `v2` 的新 trial 产生。
@@ -159,7 +165,7 @@ v1
 
 `H` 提升是必要证据，但不是唯一标准。
 
-一个 trial 只有同时满足下面条件，才能提升为正式 `vX`：
+一个实验或 trial 只有同时满足下面条件，才能提升为正式 `vX`：
 
 - 指标有效：记录父版本 baseline H、trial H、delta H、U、S、ZS、best epoch。
 - 对照一致：至少同 seed 对照；高风险改动需要重复运行或多 seed 复核。
@@ -168,7 +174,7 @@ v1
 - 日志可追溯：原始日志路径和 Git 内日志副本路径明确。
 - 接口干净：输入输出 shape、loss、eval、checkpoint 变化已声明。
 - 关闭等价：模块 switch 关闭后回到 `parent_version` 行为。
-- 决策完整：`quality_check.md` 的 promotion decision 为 `ACCEPTED`。
+- 决策完整：实验记录和 `quality_check.md` 的 `promotion_decision` 为 `promote`。
 - 账本完整：`experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、
   `experiments/EXPERIMENT_REGISTRY.md`、`docs/PROJECT_STATUS.md`、`docs/PROJECT_STRUCTURE.md`、
   `README.md` 和 `idea_tree/idea_tree.json` 已同步更新。

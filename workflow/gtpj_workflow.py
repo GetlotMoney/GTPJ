@@ -1272,7 +1272,7 @@ run_log:
 - [ ] class order、split、logits shape、metric calculation 未改变。
 - [ ] switch off 能回到 `{base_version}` 行为。
 - [ ] 证据目录、日志副本和 code.diff 完整。
-- [ ] `promotion_decision` 为 `ACCEPTED` 后才允许提升为正式 vX。
+- [ ] `promotion_decision` 为 `promote` 后才允许进入自动 promotion gate。
 
 ## 决策
 

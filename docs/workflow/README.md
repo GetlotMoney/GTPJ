@@ -30,6 +30,7 @@ idea_tree
 - Codex 遵循相同仓库事实来源。
 - 仓库文件是两个 runtime 的唯一事实来源。
 - 结构性动作可以使用 `workflow/gtpj_workflow.py`，但当前阶段不强制。
+- GitHub 文档是 workflow 规范的权威来源；本地 `gtpj-workflow` skill 是执行副本，修改后必须同步。
 
 阅读顺序：
 
@@ -42,6 +43,8 @@ idea_tree
 7. `module_trial_protocol.md`
 8. `code_interface_contract.md`
 9. `experiment_protocol.md`
-10. `quality_gate.md`
-11. `runbook.md`
-12. `../../workflow/README.md`
+10. `promotion.md`
+11. `agent_orchestration.md`
+12. `quality_gate.md`
+13. `runbook.md`
+14. `../../workflow/README.md`

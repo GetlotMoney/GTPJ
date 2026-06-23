@@ -38,8 +38,9 @@ promotion_decision 只能是：
 
 ```text
 not_applicable
-ACCEPTED
-REJECTED
+promote
+blocked
+rejected
 ```
 
 ## 必须修复项

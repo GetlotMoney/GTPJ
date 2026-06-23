@@ -172,10 +172,11 @@ lambda_new_loss > 0 -> 新 loss 只按该权重贡献到 total loss
 
 ## Promotion Rule（提升规则）
 
-模块 trial 只有在满足以下条件时，才能提升为新的 baseline version：
+模块 trial 只有在满足以下条件时，才能进入自动 promotion 并提升为新的 baseline version：
 
 - implementation 满足本契约；
-- quality check decision 为 `ACCEPTED`；
+- `promotion_decision` 为 `promote`；
 - trial 已记录结果证据；
 - baseline-off path 仍然有效；
-- 新版本 config 与旧 base version config 分开创建。
+- 新版本 config 与旧 base version config 分开创建；
+- `docs/workflow/promotion.md` 的硬门通过。

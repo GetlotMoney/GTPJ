@@ -76,11 +76,12 @@ reject / revise / combine / promote
 `promotion_decision`：
 
 ```text
-not_applicable / ACCEPTED / REJECTED
+not_applicable / promote / blocked / rejected
 ```
 
-只有 `trial_decision: promote` 且 `promotion_decision: ACCEPTED` 时，trial 才能提升为正式 `vX`。
-`H` 提升但证据不完整时，必须写 `revise` 或 `REJECTED`，不能写 `promote`。
+只有 `trial_decision: promote` 且 `promotion_decision: promote` 时，trial 才会进入
+`docs/workflow/promotion.md` 的自动 promotion gate。
+`H` 提升但证据不完整时，必须写 `revise`、`blocked` 或 `rejected`，不能写 `promote`。
 
 Promotion 必填证据：
 

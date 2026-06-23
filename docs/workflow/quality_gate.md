@@ -1,12 +1,12 @@
 # 质量门
 
 普通实验的 `quality_check.md` 是证据完整性检查；baseline promotion 的
-`quality_check.md` 是强制门。
+`quality_check.md` 是强制门。自动 promotion 的完整规则见 `docs/workflow/promotion.md`。
 
 换句话说：
 
 - tune、ablation、confirmation：`quality_check.md` 帮助记录证据是否完整。
-- module trial 提升为正式 `vX`：必须通过 promotion quality gate。
+- module trial、ablation 或 tuned configuration 提升为正式 `vX`：必须通过 promotion quality gate。
 
 运行实验前：
 
@@ -28,7 +28,14 @@
 
 ## Promotion Quality Gate
 
-任何 trial 想提升为正式 `vX`，必须满足：
+任何实验想提升为正式 `vX`，必须先记录：
+
+```text
+promotion_decision: promote
+promote_to: vX
+```
+
+随后自动执行 `docs/workflow/promotion.md` 的硬门。必须满足：
 
 - [ ] 父版本明确：`parent_version`、`parent_tag`、`base_code_tag` 已记录。
 - [ ] tag 明确：trial tag 指向 README 中记录的 `code_commit`。
@@ -42,15 +49,18 @@
 - [ ] 账本完整：VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] 创意树同步：`idea_tree/idea_tree.json.current_version` 和必要的 `version_scores.vX` 已更新。
 - [ ] baseline tag 准备打在最终 `main` commit 上。
-- [ ] 最终决策：promotion decision 为 `ACCEPTED`。
+- [ ] 最终决策：`promotion_decision: promote`，且硬门未发现 blocking issue。
 
-只满足 `H` 提升，但上面任一关键项缺失时，不允许 promotion。
+只满足 `H` 提升，但上面任一关键项缺失时，不允许 promotion；应记录
+`promotion_decision: blocked` 或 `promotion_decision: rejected`。
 
 未来工作流可以使用的决策值：
 
 ```text
-ACCEPTED
-REJECTED
+not_applicable
+promote
+blocked
+rejected
 ```
 
 风险等级：

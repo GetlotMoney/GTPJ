@@ -285,11 +285,12 @@ Promotion 硬门：
 - 训练命令、seed、配置副本、日志路径、best epoch 和结果表完整。
 - evaluation 口径没有改变，包括 class order、seen/unseen split、logits shape 和 metric calculation。
 - 模块开关关闭时可以回到 `parent_version` 行为。
-- `quality_check.md` 的 promotion decision 必须是 `ACCEPTED`。
+- `quality_check.md` 的 `promotion_decision` 必须是 `promote`，并通过
+  `docs/workflow/promotion.md` 的自动 promotion gate。
 - `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`EXPERIMENT_REGISTRY.md`
   都已经更新。
 
-只有同时满足上面条件，trial 才能提升为正式 `vX`。
+只有同时满足上面条件，实验或 trial 才能提升为正式 `vX`。
 
 失败的模块 trial：
 
@@ -335,6 +336,27 @@ GitHub 远端应设置保护规则：
 | 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |
 | 代码接口契约 | `docs/workflow/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
 | Git 规则 | `docs/workflow/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
+| 普通实验协议 | `docs/workflow/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
+| 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料或不自动 push 边界时更新。 |
+| agent 编排 | `docs/workflow/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
+
+## 本地 skill 和 GitHub 的同步
+
+GitHub 文档是 GTPJ workflow 规范的权威来源。本地 Codex skill 只是执行副本：
+
+```text
+C:\Users\Administrator\.codex\skills\gtpj-workflow
+```
+
+修改 workflow 规范时必须同步两边：
+
+1. 先更新 GitHub 文档。
+2. 再同步更新本地 `gtpj-workflow` skill 的 `SKILL.md` 或 `references/`。
+3. 运行 skill 校验。
+4. 运行仓库验证。
+5. 用户明确要求后再提交推送。
+
+如果 GitHub 文档和本地 skill 冲突，以 GitHub 文档为准。
 
 你刚才说的“不同版本的创意权重不一样”属于创意树细则，所以主更新位置是：
 
@@ -383,12 +405,14 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 - 有没有改变 eval、class order、logits shape 或数据划分？
 - 如果是模块 trial，关闭开关后能不能回到 baseline？
 
-但 baseline promotion 是强制门。任何 trial 想成为正式 `vX`，必须通过
-promotion quality gate，不能只看一次 `H` 提升。
+但 baseline promotion 是强制门。任何 trial、ablation 或 tuned configuration 想成为正式
+`vX`，必须通过 `docs/workflow/promotion.md` 的自动 promotion gate，不能只看一次 `H` 提升。
 
 以后如果正式接入 OpenClaw/Codex 工作流，可以把 `quality_check` 升级成自动化质量门。
 在此之前，普通实验的 `quality_check` 是 GitHub 证据完整性的检查表；
-promotion 的 `quality_check` 是正式版本准入门。
+promotion 的 `quality_check` 是正式版本准入门。当实验记录明确写
+`promotion_decision: promote` 且硬门全部通过时，Coordinator 可以自动创建本地新版本材料和本地 tag；
+但不自动 push GitHub。
 
 ## 从旧 cv 实验工作流可以学习什么
 
@@ -404,7 +428,7 @@ promotion 的 `quality_check` 是正式版本准入门。
 暂时不接入的部分：
 
 - 固定多轮审查。
-- 强制 `ACCEPTED / REJECTED` 决策格式。
+- 旧工作流的固定 `ACCEPTED / REJECTED` 决策格式。
 - 自动选择下一个实验。
 - 自动调用 OpenClaw、Codex 或其他 agent。
 - 完整实验状态机。
