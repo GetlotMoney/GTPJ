@@ -96,7 +96,9 @@ v1 score 高不代表 v2 score 自动高。
 
 ## 当前版本处理
 
-当前激活框架由 `idea_tree.json.current_version` 声明。
+当前创意树视图由 `idea_tree.json.current_version` 声明。它只决定 idea 排序和
+`idea_tree/versions/vX.md` 的生成目标，不代表 `main` active code 已切换。
+`main` active code 只能由 owner 明确执行 `activate-version vX` 改变。
 
 选择下一个模块 trial 时：
 

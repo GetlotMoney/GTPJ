@@ -7,7 +7,7 @@
 
 - 每个正式版本必须有一个明确 `parent_version`。
 - `parent_version` 表示代码父节点，不表示实验账本父节点。
-- `main` 保存当前主版本代码，同时保存全部历史版本账本。
+- `main` 保存 owner 明确选择的 active code，同时保存全部历史版本账本。
 - 从旧父节点提升新版本时，代码层可以来自旧 tag，账本层必须来自提升时的当前 `main`。
 
 ## 当前版本树
@@ -37,4 +37,3 @@ v1
 - `config/versions/vX.yaml`
 - `docs/PROJECT_STATUS.md`
 - `README.md`
-

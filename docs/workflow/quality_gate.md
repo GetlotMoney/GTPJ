@@ -53,7 +53,8 @@ promote_to: vX
 - [ ] 关闭等价：switch off 能回到 `parent_version` 行为。
 - [ ] 账本完整：VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] 创意树同步：`idea_tree/idea_tree.json.current_version` 和必要的 `version_scores.vX` 已更新。
-- [ ] baseline tag 准备打在最终 `main` commit 上。
+- [ ] baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上；该 commit 不必是当前
+  `main` commit。
 - [ ] 最终决策：`promotion_decision: promote`，且硬门未发现 blocking issue。
 
 只满足 `H` 提升，但上面任一关键项缺失时，不允许 promotion；应记录

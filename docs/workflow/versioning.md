@@ -65,7 +65,7 @@ does_not_inherit: v2
 不表示 `v3` 继承了 `v2` 的代码。
 
 ```text
-main = 当前主版本代码 + 全部版本账本
+main = owner 明确选择的 active code + 全部版本账本
 ```
 
 全局版本树账本：
@@ -74,7 +74,7 @@ main = 当前主版本代码 + 全部版本账本
 experiments/VERSION_TREE.md
 ```
 
-因此，如果当前主版本从 `v2` 切换到 `v3`，而 `v3.parent_version = v1`：
+因此，如果 owner 明确执行 `activate-version v3`，而 `v3.parent_version = v1`：
 
 - `model/`、`tools/`、`train_*.py` 等代码层应反映 `v3`；
 - `experiments/v2/` 仍然保留，作为 `v2` 历史记录；
@@ -110,7 +110,10 @@ experiments/VERSION_TREE.md
 8. promote 分支把成功 trial 的证据回流到当前账本。
 9. promote 分支新增 experiments/v4/ 和 config/versions/v4.yaml。
 10. promote 分支更新 experiments/VERSION_TREE.md、全局索引、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
-11. 通过验证后，promote 合并为 main，最终 main commit 打 tag v4。
+11. 通过验证后，在 promote 分支的版本代码 commit 上打 tag v4。
+12. 回到当前 main，只把 `experiments/v4/`、`config/versions/v4.yaml`、VERSION_TREE、
+    REGISTRY、PROJECT_STATUS、README、idea_tree 等账本层回流到 main。
+13. main 当前代码保持原 active version，除非 owner 明确执行 `activate-version v4`。
 ```
 
 每个 `experiments/vX/VERSION.md` 必须记录：
@@ -138,7 +141,7 @@ GTPJ-v1 -> IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
 
 不要因为每个小尝试都创建一个新的 `vX`。只有实验记录明确写
 `promotion_decision: promote`，并通过硬门后，才自动创建本地新版本材料和本地 tag。
-推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。
+推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。promotion 不自动切换 `main` 当前代码。
 
 `vX` 不要求严格线性继承。`v3` 可以基于 `v1` 的新 trial 产生，
 也可以基于 `v2` 的新 trial 产生。
@@ -152,6 +155,7 @@ v1
 规则：
 
 - `main` 永远代表最新稳定项目，不要为了重新基于 `v1` 做实验而把 `main` 回退到 `v1`。
+- `main` 当前代码由 owner 明确选择；promotion 只创建正式版本，不自动改变 active code。
 - 想从哪个 baseline 做新模块，就在临时分支名和记录中写清楚 `base_code_tag`。
 - 临时分支从当前 `main` 开出，以继承最新账本；必要时只把代码层恢复到目标 baseline tag。
 - 分支名里的 `v1`、`v2` 是来源版本；提升后的 `vX` 是新的正式版本。
@@ -178,7 +182,8 @@ v1
 - 账本完整：`experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、
   `experiments/EXPERIMENT_REGISTRY.md`、`docs/PROJECT_STATUS.md`、`docs/PROJECT_STRUCTURE.md`、
   `README.md` 和 `idea_tree/idea_tree.json` 已同步更新。
-- tag 正确：新 `vX` tag 指向最终 `main` commit，trial tag 指向记录的 `code_commit`。
+- tag 正确：新 `vX` tag 指向包含正式版本代码和版本材料的明确 commit，trial tag 指向记录的
+  `code_commit`。`vX` tag 不要求指向当前 `main` commit。
 
 如果只满足 `H` 提升，但无法证明口径一致或关闭等价，结论只能是 `revise`，
 不能是 `promote`。

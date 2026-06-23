@@ -2,7 +2,7 @@
 
 ## 永久对象
 
-- `main`：唯一长期分支，保存当前稳定代码和全部实验账本。
+- `main`：唯一长期分支，保存 owner 明确选择的 active code 和全部实验账本。
 - `v1`、`v2`、`v3`：永久 baseline tag，不是分支。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
@@ -166,7 +166,8 @@ trial/v1/idea-0003/trial-001
 - tag 必须打在明确 commit 上，不打在 dirty working tree 上。
 - 打 trial tag 前，先把 trial README 的 `code_commit` 填成 `git rev-parse HEAD`。
 - 命令使用 `git tag <tag-name> <code_commit>`，不要省略 `<code_commit>`。
-- 新 `vX` tag 必须打在最终 `main` commit 上，而不是打在中间 trial commit 上。
+- 新 `vX` tag 必须打在包含正式版本代码和版本材料的明确 commit 上，而不是打在中间 trial
+  commit 或 dirty working tree 上；该 commit 不必是当前 `main` commit。
 - 推送后的 `vX` 和 `trial/...` tag 视为不可移动对象。
 
 ## 合并和删除
@@ -174,7 +175,9 @@ trial/v1/idea-0003/trial-001
 - `exp/...`：实验记录合并回 `main` 后可以删除。
 - 失败 `dev/...`：先打 `trial/...` tag，再把失败证据记录回 `main`，然后可以删除。
 - 成功 `dev/...`：先打 `trial/...` tag，再通过 `promote/...` 提升为新 `vX`。
-- `promote/...`：从当前 `main` 开出，保留最新账本，只移植代码层和新增版本账本。合并回 `main` 并打好新 `vX` tag 后可以删除。
+- `promote/...`：从当前 `main` 开出，保留最新账本，整理正式版本代码和新增版本账本。
+  tag `vX` 打好后，只把账本层回流到 `main`；代码层是否回流由 owner 通过 `activate-version`
+  明确决定。账本回流完成后可以删除 promotion 分支。
 - 不删除 `main`。
 - 不删除已推送的 `vX` baseline tag。
 - 不删除已推送的 `trial/...` 永久快照 tag。

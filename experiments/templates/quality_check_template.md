@@ -32,7 +32,8 @@ promotion_decision: not_applicable
 - [ ] switch off 能回到 parent_version 行为。
 - [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
-- [ ] 新 baseline tag 准备打在最终 main commit 上。
+- [ ] 新 baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上。
+- [ ] main 当前代码只有 owner 明确执行 activate-version vX 时才切换；默认不切换。
 
 promotion_decision 只能是：
 

@@ -47,12 +47,12 @@ idea_tree/                 # 创意来源、评分、排序
 代码层和实验层不要混淆：
 
 ```text
-代码层跟随当前主版本，例如 v3。
+代码层跟随 owner 明确选择的 active version，例如 v3。
 实验层是全局账本，必须同时保留 experiments/v1/、experiments/v2/、experiments/v3/。
 ```
 
 `experiments/v2/` 出现在最新 `main` 中，只表示 v2 历史记录仍被保存，
-不表示当前主版本 v3 继承了 v2 的代码。
+不表示 active version v3 继承了 v2 的代码。
 
 ## 顶层文件
 
@@ -75,7 +75,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `config/README.md` | 配置策略说明，解释版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
-| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与当前主版本的 `config/versions/vX.yaml` 保持一致；现在对应 `v1`。 |
+| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v1`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
 
@@ -84,7 +84,9 @@ idea_tree/                 # 创意来源、评分、排序
 - 临时调参不要直接改 `config/versions/v1.yaml`。
 - 实验应复制版本配置到对应实验目录后再修改。
 - 未启用候选模块不进入版本配置，先进入 `idea_tree/`。
-- `config/versions/` 属于账本层；`config/GTPJ_*.yaml` 属于当前运行别名，提升新版本时必须明确同步。
+- `config/versions/` 属于账本层；`config/GTPJ_*.yaml` 属于当前运行别名。promotion 分支可以为
+  新版本准备运行别名，但回流 `main` 时默认不同步运行别名；只有 owner 明确执行
+  `activate-version` 时，才把 `config/GTPJ_*.yaml` 切到对应版本。
 
 ## `docs/`
 
@@ -110,7 +112,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
-| `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建和不自动 push 边界。 |
+| `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
 | `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
 | `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
 | `docs/workflow/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
@@ -124,7 +126,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议和创意树版本视图。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
@@ -140,6 +142,8 @@ idea_tree/                 # 创意来源、评分、排序
 - 创建 trial 时同步更新 module trial 索引和 idea 的 `linked_trials`。
 - 根据 `idea_tree.json.current_version` 和每个创意的 `version_scores` 重新生成
   `idea_tree/INDEX.md` 与 `idea_tree/versions/vX.md`。
+- `set-current-version` 只改变创意树视图；`main` active code 只能由 owner 明确执行
+  `activate-version vX` 改变。
 
 ## `model/`
 

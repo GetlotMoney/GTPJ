@@ -83,8 +83,11 @@ does_not_inherit: v2
 `main` 的含义是：
 
 ```text
-main = 当前选中的主版本代码 + 全部历史版本的全局账本
+main = owner 明确选择的 active code + 全部历史版本的全局账本
 ```
+
+promotion 只表示新 baseline 被正式保存，不表示 `main` 当前代码自动切到该版本。
+`main` 当前代码是否切到 `vX`，必须由 owner 在实验完成后明确执行 `activate-version vX`。
 
 全局版本树账本放在：
 
@@ -113,7 +116,7 @@ v3 不继承 v2 代码
 experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 ```
 
-## 从旧父节点提升新主版本
+## 从旧父节点提升新正式版本
 
 当当前 `main` 已经包含较新的账本，但新版本代码要从旧父节点产生时，必须按“两条来源”
 处理：
@@ -139,7 +142,9 @@ experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 7. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
 8. 新增 experiments/vX/ 和 config/versions/vX.yaml。
 9. 更新 VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
-10. 验证通过后，合并 promote 分支为 main，并在最终 main commit 上打 vX tag。
+10. 验证通过后，在 promote 分支的版本代码 commit 上打 vX tag。
+11. 回到当前 main，只把版本账本层回流到 main。
+12. main 当前代码保持原 active version，除非 owner 明确执行 activate-version vX。
 ```
 
 代码层包括：
@@ -278,7 +283,9 @@ trial/v1/idea-0003/trial-001
   只切换代码层，不能删除或回退全局账本层。
 - `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
 - 成功 trial 的证据目录、日志副本、quality_check、result 和 code.diff 必须回流到当前 `main` 账本。
-- 合并后打新的 baseline tag，例如 `v2` 或 `v3`。
+- 在包含正式版本代码和版本材料的明确 commit 上打新的 baseline tag，例如 `v2` 或 `v3`；
+  这个 commit 不必是当前 `main` commit。
+- `main` 代码是否切到新 baseline，必须由 owner 明确执行 `activate-version` 决定。
 - 新 baseline tag 打好后，可以删除对应 `dev/...` 分支。
 
 Promotion 硬门：
@@ -341,7 +348,7 @@ GitHub 远端应设置保护规则：
 | 代码接口契约 | `docs/workflow/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
 | Git 规则 | `docs/workflow/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
 | 普通实验协议 | `docs/workflow/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
-| 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料或不自动 push 边界时更新。 |
+| 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料、账本回流、main active code 或不自动 push 边界时更新。 |
 | agent 编排 | `docs/workflow/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
 | 进度看板协议 | `docs/workflow/progress_dashboard.md` | 改本地网页看板、`.gtpj_runtime/` 状态文件、agent 进度、GPU/Runner 展示或只读边界时更新。 |
 
@@ -416,8 +423,8 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 以后如果正式接入 OpenClaw/Codex 工作流，可以把 `quality_check` 升级成自动化质量门。
 在此之前，普通实验的 `quality_check` 是 GitHub 证据完整性的检查表；
 promotion 的 `quality_check` 是正式版本准入门。当实验记录明确写
-`promotion_decision: promote` 且硬门全部通过时，Coordinator 可以自动创建本地新版本材料和本地 tag；
-但不自动 push GitHub。
+`promotion_decision: promote` 且硬门全部通过时，Coordinator 可以自动创建本地新版本材料和本地 tag，
+并把版本账本回流到 `main`；但不自动切换 `main` 当前代码，也不自动 push GitHub。
 
 ## 从旧 cv 实验工作流可以学习什么
 

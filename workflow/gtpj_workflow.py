@@ -631,7 +631,8 @@ status: planned
 
 ## 运行前检查
 
-- [ ] 临时分支从当前 `main` 切出，用 `base_code_tag: {version}` 固定代码来源。
+- [ ] 临时分支来源符合实验类型；当前版本从 `main` 切出，历史版本可从 `{version}` tag 开只运行分支。
+- [ ] `base_code_tag: {version}` 和 `branch_source` 已记录。
 - [ ] 配置复制自 `experiments/{version}/config.yaml`。
 - [ ] 只改变声明过的变量或开关。
 - [ ] `quality_check.md` 已创建；实验完成后再填写 decision。
@@ -721,7 +722,8 @@ promotion_decision: not_applicable
 - [ ] switch off 能回到 parent_version 行为。
 - [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
-- [ ] 新 baseline tag 准备打在最终 main commit 上。
+- [ ] 新 baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上。
+- [ ] main 当前代码只有 owner 明确执行 activate-version vX 时才切换；默认不切换。
 
 ## 决策
 

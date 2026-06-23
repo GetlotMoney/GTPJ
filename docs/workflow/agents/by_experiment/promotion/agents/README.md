@@ -23,5 +23,7 @@ Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinat
 - Interface Checker 只在来源为消融或创新等代码改动时必须启用。
 - Result Analyst 确认指标、delta、U/S/ZS、seed、best epoch 和目标版本合理。
 - Coordinator 硬门通过后自动创建本地版本材料和本地 tag。
+- Coordinator 默认只把版本账本回流到 `main`。
+- `main` 当前代码是否切到新版本，必须由 owner 明确执行 `activate-version`。
 - 不自动 push GitHub。
-- promotion 分支从当前 `main` 开，不整体合并旧实验分支。
+- promotion 分支从当前 `main` 开，不整体合并旧实验分支，也不默认整体合并回 `main`。

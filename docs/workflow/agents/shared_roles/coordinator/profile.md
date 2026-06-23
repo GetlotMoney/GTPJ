@@ -12,12 +12,14 @@
 - 写最终账本。
 - 删除临时分支。
 - 在自动 promotion 硬门通过后创建本地版本材料和本地 tag。
+- 在 promotion 后只回流账本层到 `main`，除非 owner 明确要求 `activate-version`。
 
 ## 禁止做
 
 - 未经用户明确要求 push 到 GitHub。
 - 跳过证据硬门创建正式版本。
 - 让多个 agents 同时写同一份账本。
+- 未经 owner 明确要求改变 `main` 当前代码。
 
 ## 输出
 

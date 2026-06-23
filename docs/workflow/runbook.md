@@ -11,7 +11,8 @@ baseline H: 73.93
 长期分支: main
 ```
 
-`v1` 是代码快照 tag，不是分支。`main` 是唯一长期分支，保存当前稳定代码和全部实验账本。
+`v1` 是代码快照 tag，不是分支。`main` 是唯一长期分支，保存 owner 明确选择的 active code
+和全部实验账本。
 
 如果本地 `v1` tag 不是 `H=73.93` 对应的代码快照，必须先修正 tag，不能继续跑实验。
 
@@ -64,7 +65,8 @@ experiments/v1/confirmation/INDEX.md
 
 日志原始位置如果在 `train_log/`，必须复制一份到实验目录的 `logs/`，并在 README 里同时记录 `original_log` 和 `copied_log`。
 
-确认实验记录完成后，合并回 `main`，然后可以删除 `exp/...` 临时分支。
+确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
+历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。
 
 ## 运行 v1 调参实验
 
@@ -166,17 +168,20 @@ git switch -c promote/v1-idea-xxxx-to-v2
 6. 更新 experiments/VERSION_TREE.md。
 7. 更新 experiments/EXPERIMENT_REGISTRY.md、docs/PROJECT_STATUS.md、docs/PROJECT_STRUCTURE.md、README.md。
 8. 更新 idea_tree/idea_tree.json 的 current_version 和必要的 version_scores.v2。
-9. 通过 validate 和 promotion quality gate 后，合并 promote 分支到 main。
-10. 在最终 main commit 上打 tag v2。
+9. 通过 validate 和 promotion quality gate 后，在 promote 分支的版本代码 commit 上打 tag v2。
+10. 回到当前 main，只把 v2 账本层回流到 main；不要默认回流代码层。
+11. main 当前代码是否切到 v2，必须由 owner 明确执行 activate-version v2。
 ```
 
-新 `vX` tag 必须指向最终 `main` commit。不能指向 dirty tree，也不能指向只含 trial 证据但未完成版本账本的中间 commit。
+新 `vX` tag 必须指向包含正式版本代码和版本材料的明确 commit。不能指向 dirty tree，
+也不能指向只含 trial 证据但未完成版本账本的中间 commit。这个 commit 不必是当前 `main` commit。
 
 ## 分支删除规则
 
 - `exp/...`：实验记录合并回 `main` 后可以删除。
 - 失败 `dev/...`：先打 `trial/...` tag，再把失败证据记录回 `main`，然后可以删除。
 - 成功 `dev/...`：先打 `trial/...` tag，再通过 `promote/...` 生成新 `vX`，最后可以删除。
-- `promote/...`：新版本合并回 `main` 并打好 `vX` tag 后可以删除。
+- `promote/...`：新版本 tag 打好、版本账本回流到 `main` 后可以删除；代码层是否回流由
+  owner 通过 `activate-version` 明确决定。
 - 永远不要删除 `main`。
 - 推送后的 `vX` 和 `trial/...` tag 默认不可移动。

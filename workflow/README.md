@@ -44,6 +44,10 @@ python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-
 `new-idea` 只创建候选节点。创建 trial 前必须人工补全 rationale、hypothesis、
 implementation_scope、risk，确认 blockers 为空，并把 idea 状态改为 `selected`。
 
+`set-current-version` 只切换创意树视图和排序，刷新 `idea_tree/INDEX.md` 与
+`idea_tree/versions/vX.md`；它不会切换 `main` active code。`main` 代码只能由
+owner 明确执行 `activate-version vX` 改变。
+
 ## 未来 Runtime 入口
 
 - `openclaw/README.md`：OpenClaw 优先的执行规则。
