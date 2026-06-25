@@ -1,0 +1,43 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: GTPJ-v1
+  name: GTPJ-v1-baseline
+  kind: baseline
+  status: accepted
+  attempt_id: legacy-v1
+  created_or_recorded_at: "2026-06-25T00:00:00Z"
+version:
+  base_version: v1
+  base_code_tag: v1
+  code_branch: main
+  code_commit: unknown
+  git_dirty: unknown
+reproducibility:
+  config_file: experiments/v1/baseline/config.yaml
+  config_sha256: unknown
+  command: legacy local archive
+  seed: "5"
+  dataset: CUB GZSL
+  split_id: standard_v1
+  class_order_id: standard_v1
+  label_mapping_id: standard_v1
+  metric_contract_id: gzsl_u_s_h_zs_v1
+idea:
+  idea_id: ""
+  uri: ""
+  title: Accepted v1 baseline
+  hypothesis: Historical baseline migrated from Git-tracked raw log to external warehouse artifact pointer.
+artifacts:
+  train_log:
+    artifact_id: log:legacy:v1_baseline:GTPJ-v1_CUB_seed5_20260613-145232
+    role: training_log
+    uri: warehouse://logs/legacy/v1_baseline/GTPJ-v1_CUB_seed5_20260613-145232.txt
+    sha256: 850a01a5c1500f75fef3d9729b8e89b47c78aa40203792341b03515ddc5edfb9
+    size_bytes: "139148"
+    required_for: audit
+    status: legacy
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: false
+  evaluation_semantics_verified: true

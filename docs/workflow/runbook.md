@@ -57,13 +57,16 @@ python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_v1_see
 
 ```text
 experiments/v1/confirmation/CONFIRM-001_v1_seed5/README.md
+experiments/v1/confirmation/CONFIRM-001_v1_seed5/manifest.yaml
+experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml
+experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md
 experiments/v1/confirmation/CONFIRM-001_v1_seed5/quality_check.md
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/logs/
 experiments/EXPERIMENT_REGISTRY.md
 experiments/v1/confirmation/INDEX.md
 ```
 
-日志原始位置如果在 `train_log/`，必须复制一份到实验目录的 `logs/`，并在 README 里同时记录 `original_log` 和 `copied_log`。
+日志原始位置如果在 `train_log/`，必须登记或复制到外部 `GTPJ_Warehouse`，GitHub 只记录
+`log_artifact_id`、`warehouse://` URI、sha256、size 和指标摘要。
 
 确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
 历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。
@@ -72,10 +75,24 @@ experiments/v1/confirmation/INDEX.md
 
 tune run 属于 `experiments/v1/tune/`，不要放到 `confirmation/`。
 
+调参前先生成最多 3 个候选。这个命令只读配置和 tune 索引，不会改文件，也不会启动训练：
+
+```bash
+python workflow/gtpj_workflow.py tune-suggest --version v1
+```
+
+用户明确选择 1 个候选后，再开临时分支、创建实验目录、修改该实验目录里的配置副本：
+
 ```bash
 git switch main
 git switch -c exp/v1-tune-001-topo008
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+```
+
+Runner 开始前用本地文件锁占用 GPU，避免同一时间跑多个训练：
+
+```bash
+python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
 python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
 ```
 
@@ -84,10 +101,25 @@ python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.ya
 ```text
 README.md: 本次调了什么、old/new value、search space、结果和结论
 quality_check.md: 证据是否完整、有没有改 eval 口径
-logs/: 日志副本
+manifest.yaml: config、command、seed、dataset、split、class order 和 artifact identity
+result.yaml: U/S/H/ZS、best epoch、decision 和 evidence
+result.md: 人类可读结果解释
 experiments/v1/tune/INDEX.md: 实验索引
 experiments/EXPERIMENT_REGISTRY.md: 全局登记
 ```
+
+可以用 helper 解析训练日志并入账：
+
+```bash
+python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
+```
+
+`record-result` 会读取外部日志、解析指标、计算 sha256/size，更新实验 README、`manifest.yaml`、
+`result.yaml`、`result.md`、`experiments/v1/tune/INDEX.md` 和
+`experiments/EXPERIMENT_REGISTRY.md`，并提示何时清理临时分支。
+它不会把 raw log 复制到 GitHub。
+它不提交、不 push、不删除分支。
 
 tune 不会产生新的 `vX`。只有模块组合或模块替换通过 promotion gate 后，才会新增正式版本。
 

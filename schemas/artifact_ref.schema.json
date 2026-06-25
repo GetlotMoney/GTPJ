@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gtpj.local/schemas/artifact_ref.schema.json",
+  "title": "GTPJ Artifact Reference",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "role",
+    "uri",
+    "sha256",
+    "size_bytes",
+    "required_for",
+    "status"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "training_log",
+        "checkpoint",
+        "generated_figure",
+        "table",
+        "metrics_export",
+        "paper_note",
+        "manuscript_asset"
+      ]
+    },
+    "uri": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": "string"
+    },
+    "size_bytes": {
+      "type": ["integer", "string"]
+    },
+    "required_for": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "available", "missing", "legacy", "redacted"]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": ["available", "legacy"]
+          }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "artifact_id": {
+            "minLength": 1
+          },
+          "uri": {
+            "pattern": "^(warehouse|research|manuscript)://"
+          },
+          "sha256": {
+            "pattern": "^[a-fA-F0-9]{64}$"
+          },
+          "size_bytes": {
+            "pattern": "^[0-9]+$"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

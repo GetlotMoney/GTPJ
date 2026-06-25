@@ -1,0 +1,135 @@
+# GTPJ 规范落地状态清单
+
+本文件回答一个问题：规范里写到的东西，哪些已经有实体文件，哪些还只是设计或按需创建。
+
+维护规则：
+
+- 新增规范时，必须在这里标注落地状态。
+- 新建本地外部文件时，必须在这里记录路径。
+- 暂不创建的未来文件，必须写明触发条件，不能只写“以后再说”。
+- 本文件只记录状态，不替代具体规范；具体规则仍以 `GTPJ_WORKFLOW_SPEC.md` 和对应协议文件为准。
+
+## 0. 状态定义
+
+| 状态 | 含义 |
+|---|---|
+| `已落地` | 已有真实文件或目录，可以直接使用。 |
+| `部分落地` | 顶层结构存在，但细分内容或自动化还不完整。 |
+| `按需创建` | 不应提前创建，触发条件满足时再建。 |
+| `设计中` | 只有规范或草案，还没有稳定文件/工具入口。 |
+| `不创建` | 明确不应该创建，避免污染边界。 |
+
+## 1. GitHub 规范与控制面
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| 总工作流规范 | 已落地 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
+| workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |
+| 仓库结构总账本 | 已落地 | `docs/PROJECT_STRUCTURE.md` | 记录稳定目录和文件职责。 |
+| GitHub 治理 | 已落地 | `docs/GITHUB_GOVERNANCE.md` | 记录 main/tag/版本树/轻量边界。 |
+| agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；真正运行时仍由 Codex/OpenClaw 按任务调用。 |
+| 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
+| 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
+| 质量门 | 已落地 | `docs/workflow/quality_gate.md` | 普通实验和 promotion gate 的检查规则。 |
+| promotion | 已落地 | `docs/workflow/promotion.md` | promotion 规则已写；只有实验记录明确 `promotion_decision: promote` 才触发。 |
+| 看板 runtime | 设计中 | `docs/workflow/progress_dashboard.md` | `.gtpj_runtime/` 只在真实运行时创建，纯规划不创建。 |
+
+## 2. GitHub 轻量创意树
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| 机器总索引 | 已落地 | `idea_tree/idea_tree.json` | GitHub 里的轻量事实源。 |
+| 人类总索引 | 已落地 | `idea_tree/INDEX.md` | 由轻量索引派生的人读清单。 |
+| v1 版本视图 | 已落地 | `idea_tree/versions/v1.md` | v1 视角下的轻量创意清单。 |
+| idea 目录 | 已落地 | `idea_tree/ideas/.gitkeep` | 具体 idea 只有来源明确后再创建。 |
+| v2 版本视图 | 按需创建 | `idea_tree/versions/v2.md` | 只有正式产生 `v2` 后再创建。 |
+
+## 3. 本地 Research
+
+根目录：
+
+```text
+D:\backup\Documents\Myself\GTPJ_Research
+```
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| Research 顶层说明 | 已落地 | `README.md` | 说明本地研究材料库职责。 |
+| 本地 idea 注册表 | 已落地 | `IDEA_REGISTRY.yaml` | 当前为空，等正式 idea 进入后填写。 |
+| 完整创意树总入口 | 已落地 | `ideas/MASTER_IDEA_TREE.md` | 保存长版推理、失败路线、跨版本判断。 |
+| Research ideas 说明 | 已落地 | `ideas/README.md` | 说明本地完整创意树和 GitHub 轻量索引的关系。 |
+| v1 本地创意视图 | 已落地 | `ideas/versions/v1.md` | `GTPJ-v1` 视角的长版创意筛选文件。 |
+| 未来版本模板 | 已落地 | `ideas/versions/_template.md` | `v2`、`v3` 产生后从这里复制。 |
+| v2 本地创意视图 | 按需创建 | `ideas/versions/v2.md` | 只有 `v2` tag 和 `experiments/v2/` 正式产生后再创建。 |
+| 论文索引 | 已落地 | `papers/PAPERS_INDEX.md` | 记录论文、阅读状态和关联 idea。 |
+| papers 说明 | 已落地 | `papers/README.md` | 说明 PDF 和补充材料的放置边界。 |
+| 阅读笔记说明 | 已落地 | `notes/README.md` | 说明 `paper_notes/` 和 `method_notes/`。 |
+| 来源复核索引 | 已落地 | `source_reviews/SOURCE_REVIEW_INDEX.md` | 记录来源复核和是否进入 idea tree。 |
+| source_reviews 说明 | 已落地 | `source_reviews/README.md` | 说明复核内容和 trial 前置要求。 |
+
+## 4. 本地 Warehouse
+
+根目录：
+
+```text
+D:\backup\Documents\Myself\GTPJ_Warehouse
+```
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| Warehouse 顶层说明 | 已落地 | `README.md` | 说明 raw logs、checkpoint、generated figures、tables、failure cases 不进 GitHub。 |
+| artifact 注册表 | 已落地 | `ARTIFACT_REGISTRY.yaml` | 已登记迁出的 v1 baseline log。 |
+| raw logs 目录 | 已落地 | `logs/` | 真实实验日志写这里。 |
+| checkpoint 目录 | 已落地 | `checkpoints/` | 权重和 checkpoint 写这里。 |
+| figures 目录 | 已落地 | `figures/` | 实验生成图写这里；投稿最终图放 Manuscript。 |
+| tables 目录 | 已落地 | `tables/` | 大表格和导出统计写这里。 |
+| failure cases 目录 | 已落地 | `failure_cases/` | 失败样本和诊断材料写这里。 |
+| run 细分目录 | 按需创建 | `runs/<run_id>/` | 只有真实实验运行时创建。 |
+
+## 5. 本地 Manuscript
+
+根目录：
+
+```text
+D:\backup\Documents\Myself\GTPJ_Manuscript
+```
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| Manuscript 顶层说明 | 已落地 | `README.md` | 说明论文正文、图、表、caption 的写作资产边界。 |
+| 写作资产注册表 | 已落地 | `MANUSCRIPT_ASSET_REGISTRY.yaml` | 当前为空，等产生论文图表后填写。 |
+| draft 目录 | 已落地 | `draft/` | 论文正文草稿。 |
+| figures 目录 | 已落地 | `figures/` | 投稿图、可编辑图源和最终导出图。 |
+| tables 目录 | 已落地 | `tables/` | 论文最终表格。 |
+| captions 目录 | 已落地 | `captions/` | 图注和表注。 |
+| 具体论文稿件 | 按需创建 | `draft/*.md` 或其他写作文件 | 进入写作阶段后创建，不提前制造空稿。 |
+
+## 6. 本地路径映射
+
+| 模块 | 状态 | 已有文件 | 说明 |
+|---|---|---|---|
+| 示例路径配置 | 已落地 | `.gtpj/local_paths.example.yaml` | 可提交的示例。 |
+| 本机路径配置 | 已落地 | `.gtpj/local_paths.yaml` | 本机真实路径，不应提交。 |
+
+## 7. 不应该创建的文件
+
+| 文件类型 | 状态 | 原因 |
+|---|---|---|
+| GitHub 内 raw logs | 不创建 | raw logs 属于 Warehouse。 |
+| GitHub 内 checkpoint | 不创建 | checkpoint 属于 Warehouse。 |
+| GitHub 内 generated figures | 不创建 | 实验生成图属于 Warehouse，投稿图属于 Manuscript。 |
+| 未产生正式版本的 `vX.md` | 不提前创建 | 避免把未来版本误认为真实状态。 |
+| 空的实验 run 目录 | 不提前创建 | run 目录必须对应真实运行。 |
+
+## 8. 下次任务前的读取顺序
+
+GTPJ 任务开始前，优先读取：
+
+1. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
+2. `docs/workflow/IMPLEMENTATION_STATUS.md`
+3. `docs/workflow/README.md`
+4. 与任务类型相关的具体协议文件
+5. `.gtpj/local_paths.yaml`
+6. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
+
+这样不需要 owner 每次口述哪些文件已经落地。

@@ -17,9 +17,15 @@ experiments/v1/confirmation/CONFIRM-001_v1_seed5/
 ```text
 README.md
 config.yaml
+manifest.yaml
+result.yaml
+result.md
 quality_check.md
-logs/
 ```
+
+普通实验目录不得新增 raw logs、checkpoint、feature cache 或 generated figures。
+这些资产必须写入外部 `GTPJ_Warehouse`，GitHub 只通过 `manifest.yaml` 和
+`result.yaml` 保存 artifact identity、URI、hash 和结果摘要。
 
 如果实验改代码，必须额外包含：
 
@@ -49,9 +55,13 @@ python_env:
 torch_cuda:
 dataset_split:
 cache_fingerprint:
-original_log:
-copied_log:
-artifact_manifest:
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
 attempt_id:
 failure_stage:
 U:
@@ -60,6 +70,7 @@ H:
 ZS:
 best_epoch:
 decision: keep | reject | rerun | needs_confirmation
+decision: keep | reject | rejected | rerun | needs_confirmation | blocked
 promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
 ```
@@ -75,12 +86,14 @@ parent_tag       = base_code_tag
 code_commit      = run_commit
 run_config       = config
 run_command      = command
-run_log          = copied_log
-original_run_log = original_log
+run_log_artifact = log_artifact_id
+run_log_uri      = log_uri
+run_log_sha256   = log_sha256
 ```
 
-如果普通实验显式写了 `base_version`，它必须和 `version` 一致。`copied_log` 是长期证据路径；
-`original_log` 是原始日志路径，两者都应保留。
+如果普通实验显式写了 `base_version`，它必须和 `version` 一致。GitHub 不保存 raw log；
+长期证据是 `manifest.yaml` 中的 artifact identity，以及 `result.yaml` 中的
+`evidence.log_artifact_id`。
 
 失败运行也是证据，必须记录：
 
@@ -123,7 +136,7 @@ branch_source: main
 ```text
 从 vX tag 开 exp/vX-tune-XXX-xxx 临时运行分支
 只用于跑 vX 代码
-保存 config、command、original_log、copied_log、结果
+保存 config、command、log_artifact_id、log_uri、log_sha256、result.yaml 和 result.md
 回到当前 main
 只把实验证据写入 experiments/vX/tune/
 确认入账后删除本地临时运行分支

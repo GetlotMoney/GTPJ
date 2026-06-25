@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gtpj.local/schemas/result.schema.json",
+  "title": "GTPJ Experiment Result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "kind",
+    "version",
+    "metrics",
+    "decision",
+    "evidence",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "gtpj-result/v1"
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["U", "S", "H", "ZS", "best_epoch", "baseline_H", "delta_H", "seed", "source", "metric_semantics"]
+    },
+    "decision": {
+      "type": "object",
+      "required": ["status", "promotion_decision"]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["log_artifact_id", "manifest", "label_mapping_id", "split_id", "class_order_id"]
+    },
+    "quality": {
+      "type": "object",
+      "required": ["manifest_verified", "boundary_audit_passed", "interface_contract_checked", "evaluation_semantics_verified"]
+    }
+  },
+  "additionalProperties": true
+}

@@ -9,12 +9,14 @@ not run training, push to GitHub, or mutate Git history.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterable
 
@@ -96,6 +98,88 @@ CANONICAL_BASELINES = {
         "version_file": "experiments/v1/VERSION.md",
     }
 }
+TUNE_CANDIDATE_RULES = [
+    {
+        "parameter": "conditional_text_ratio",
+        "suggested_value": "0.006",
+        "why": "降低条件文本注入强度，检查当前 v1 是否对文本条件过敏。",
+        "risk": "过低可能削弱 unseen 类别收益。",
+        "cost": "1 个 CUB seed 训练。",
+    },
+    {
+        "parameter": "lambda_topo_pearson",
+        "suggested_value": "0.08",
+        "why": "轻微降低拓扑约束权重，观察 H 是否被过强正则压住。",
+        "risk": "可能牺牲 seen/unseen 结构一致性。",
+        "cost": "1 个 CUB seed 训练。",
+    },
+    {
+        "parameter": "adapter_ratio",
+        "suggested_value": "0.15",
+        "why": "缩小 adapter 容量，验证当前配置是否有过拟合迹象。",
+        "risk": "容量不足会同时压低 U/S。",
+        "cost": "1 个 CUB seed 训练。",
+    },
+    {
+        "parameter": "tf_dropout",
+        "suggested_value": "0.15",
+        "why": "提高 Transformer dropout，测试泛化稳定性。",
+        "risk": "dropout 过高会拖慢收敛。",
+        "cost": "1 个 CUB seed 训练。",
+    },
+]
+METRIC_NAMES = ("U", "S", "H", "ZS")
+FORBIDDEN_EXPERIMENT_SUFFIXES = {
+    ".log",
+    ".txt",
+    ".pt",
+    ".pth",
+    ".ckpt",
+    ".npy",
+    ".npz",
+    ".onnx",
+}
+FORBIDDEN_EXPERIMENT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+LEGACY_EXPERIMENT_ARTIFACT_ALLOWLIST = set()
+ALLOWED_EXPERIMENT_TEXT_FILES = {
+    "README.md",
+    "VERSION.md",
+    "INDEX.md",
+    "IDEA.md",
+    "TRIAL_README_template.md",
+    "VERSION_template.md",
+    "experiment_README_template.md",
+    "implementation_template.md",
+    "quality_check_template.md",
+    "quality_check.md",
+    "implementation.md",
+    "interface_check.md",
+    "code.diff",
+    "config.yaml",
+    "manifest.yaml",
+    "result.yaml",
+    "result.md",
+}
+
+
+def yaml_scalar(value: object) -> str:
+    text = "" if value is None else str(value)
+    if text == "":
+        return '""'
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def rel(path: Path) -> str:
@@ -124,6 +208,87 @@ def copy_new(src: Path, dst: Path) -> None:
         raise WorkflowError(f"Refusing to overwrite existing file: {rel(dst)}")
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, dst)
+
+
+def display_path(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def runtime_lock_file() -> Path:
+    return REPO_ROOT / ".gtpj_runtime" / "gpu_runner.lock"
+
+
+def read_config_values(config_path: Path) -> dict[str, str]:
+    if not config_path.exists():
+        raise WorkflowError(f"Missing config file: {rel(config_path)}")
+    values: dict[str, str] = {}
+    current_key = ""
+    for raw_line in read_text(config_path).splitlines():
+        key_match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):\s*$", raw_line)
+        if key_match:
+            current_key = key_match.group(1)
+            continue
+        value_match = re.match(r"^\s+value:\s*(.+?)\s*$", raw_line)
+        if current_key and value_match:
+            values[current_key] = value_match.group(1).strip().strip("'\"")
+            current_key = ""
+    return values
+
+
+def set_readme_field(content: str, field: str, value: str) -> str:
+    line = f"{field}: {value}"
+    pattern = rf"(?m)^{re.escape(field)}:.*$"
+    if re.search(pattern, content):
+        return re.sub(pattern, line, content, count=1)
+
+    start = content.find("```text")
+    if start == -1:
+        return content.rstrip() + "\n" + line + "\n"
+    end = content.find("```", start + len("```text"))
+    if end == -1:
+        return content.rstrip() + "\n" + line + "\n"
+    return content[:end] + line + "\n" + content[end:]
+
+
+def append_readme_result_row(readme: Path, row: str) -> None:
+    content = read_text(readme)
+    if row in content:
+        return
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith("|---") and index > 0 and "数据集" in lines[index - 1]:
+            lines.insert(index + 1, row)
+            readme.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+            return
+    readme.write_text(content.rstrip() + "\n\n" + row + "\n", encoding="utf-8")
+
+
+def parse_training_log(log_path: Path) -> dict[str, str]:
+    text = read_text(log_path)
+    best_start = text.rfind("Best Results")
+    metric_text = text[best_start:] if best_start != -1 else text
+    metrics: dict[str, str] = {}
+    best_epoch_match = re.search(r"Best Results\s*@\s*Epoch\s+([0-9]+)", metric_text)
+    metrics["best_epoch"] = best_epoch_match.group(1) if best_epoch_match else ""
+    patterns = {
+        "U": r"GZSL-U[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "S": r"GZSL-S[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "H": r"GZSL-H[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "ZS": r"ZSL[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+    }
+    for name, pattern in patterns.items():
+        matches = re.findall(pattern, metric_text)
+        metrics[name] = matches[-1] if matches else ""
+    missing = [name for name in (*METRIC_NAMES, "best_epoch") if not metrics.get(name)]
+    if missing:
+        raise WorkflowError(
+            f"Unable to parse training log metrics from {display_path(log_path)}: "
+            + ", ".join(missing)
+        )
+    return metrics
 
 
 def git(args: list[str], check: bool = True) -> str:
@@ -199,18 +364,26 @@ def require_ancestor(ancestor_ref: str, descendant_ref: str, message: str) -> No
         raise WorkflowError(f"{message}{': ' + detail if detail else ''}")
 
 
-def require_experiment_branch(expected_branch: str) -> None:
+def require_expected_branch(expected_branch: str, command_name: str) -> None:
     branch = current_branch()
     if not branch:
         raise WorkflowError(
-            "new-experiment requires a named experiment branch "
+            f"{command_name} requires a named branch "
             f"{expected_branch}; current HEAD is detached"
         )
     if branch != expected_branch:
         raise WorkflowError(
-            f"new-experiment must run on expected branch {expected_branch}; "
+            f"{command_name} must run on expected branch {expected_branch}; "
             f"current branch is {branch}"
         )
+
+
+def require_experiment_branch(expected_branch: str) -> None:
+    require_expected_branch(expected_branch, "new-experiment")
+
+
+def require_trial_branch(expected_branch: str) -> None:
+    require_expected_branch(expected_branch, "new-trial")
 
 
 def require_current_branch_contains_main(command: str) -> None:
@@ -367,7 +540,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/versioning.md",
         "docs/workflow/module_trial_protocol.md",
         "docs/workflow/code_interface_contract.md",
+        "docs/workflow/code_interface.md",
         "docs/workflow/experiment_protocol.md",
+        "docs/workflow/artifact_policy.md",
+        "docs/workflow/result_index_protocol.md",
+        "docs/workflow/agent_contracts.md",
         "docs/workflow/idea_tree_protocol.md",
         "docs/workflow/quality_gate.md",
         "docs/workflow/runbook.md",
@@ -384,6 +561,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/README.md",
         "experiments/EXPERIMENT_REGISTRY.md",
         "experiments/VERSION_TREE.md",
+        "experiments/LEGACY_POLICY.md",
         "experiments/module_trials/INDEX.md",
         "experiments/templates/IDEA_template.md",
         "experiments/templates/TRIAL_README_template.md",
@@ -401,6 +579,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/v1/ablation/INDEX.md",
         "experiments/v1/confirmation/INDEX.md",
         "config/versions/v1.yaml",
+        "schemas/manifest.schema.json",
+        "schemas/result.schema.json",
+        "schemas/artifact_ref.schema.json",
     ]
     missing = [item for item in required if not (REPO_ROOT / item).exists()]
     if missing:
@@ -525,6 +706,30 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in contract:
             raise WorkflowError(f"code_interface_contract.md missing section: {marker}")
 
+    artifact_policy = read_text(REPO_ROOT / "docs" / "workflow" / "artifact_policy.md")
+    for marker in [
+        "GitHub Boundary",
+        "External Stores",
+        "Artifact Identity",
+        "Forbidden GitHub Artifacts",
+    ]:
+        if marker not in artifact_policy:
+            raise WorkflowError(f"artifact_policy.md missing section: {marker}")
+
+    agent_contracts = read_text(REPO_ROOT / "docs" / "workflow" / "agent_contracts.md")
+    for marker in [
+        "Coordinator",
+        "Runner",
+        "Log Analyst",
+        "Quality Checker",
+        "Interface Checker",
+        "Inputs",
+        "Forbidden Writes",
+        "Failure Conditions",
+    ]:
+        if marker not in agent_contracts:
+            raise WorkflowError(f"agent_contracts.md missing section: {marker}")
+
     implementation_template = read_text(
         REPO_ROOT / "experiments" / "templates" / "implementation_template.md"
     )
@@ -602,9 +807,11 @@ def make_experiment_readme(version: str, kind: ExperimentKind, exp_id: str, slug
 
 ```text
 experiment_id: {exp_id}
+kind: {kind.name}
 version: {version}
 base_code_tag: {version}
 branch_source: main
+code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: {kind.default_check}
 run_commit:
@@ -616,12 +823,23 @@ python_env:
 torch_cuda:
 dataset_split:
 cache_fingerprint:
-original_log:
-copied_log:
-artifact_manifest:
-attempt_id:
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
+attempt_id: attempt-001
 failure_stage:
+U:
+S:
+H:
+ZS:
+best_epoch:
 decision:
+promotion_decision: not_applicable
+promote_to:
 status: planned
 ```
 
@@ -635,6 +853,9 @@ status: planned
 - [ ] `base_code_tag: {version}` 和 `branch_source` 已记录。
 - [ ] 配置复制自 `experiments/{version}/config.yaml`。
 - [ ] 只改变声明过的变量或开关。
+- [ ] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
+- [ ] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
+- [ ] `manifest.yaml` 中的 artifact URI、hash、size 能对应外部资产。
 - [ ] `quality_check.md` 已创建；实验完成后再填写 decision。
 
 ## 变量
@@ -667,7 +888,7 @@ ablation_delta:
 
 ## 结果
 
-| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log artifact |
 |---|---:|---:|---:|---:|---:|---:|---|
 
 ## 失败记录
@@ -704,9 +925,11 @@ promotion_decision: not_applicable
 
 - [ ] 代码快照或 base version 明确。
 - [ ] 配置副本保存在实验目录。
-- [ ] 日志路径明确。
+- [ ] 外部日志 artifact URI、sha256、size 明确。
 - [ ] 结果口径明确。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
+- [ ] seen/unseen split、label mapping、class order 和 metric calculation 未改变或已按高风险记录。
+- [ ] GitHub 目录中没有新增 raw log、checkpoint、generated figures。
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
@@ -716,7 +939,7 @@ promotion_decision: not_applicable
 - [ ] U/S/ZS、best epoch、seed 明确。
 - [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
 - [ ] trial config 和新版本 config 路径明确。
-- [ ] 原始日志路径和 Git 内日志副本路径明确。
+- [ ] 外部日志 artifact URI、sha256、size、保留位置明确。
 - [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] input/output shape、loss、eval、checkpoint 变化已声明。
 - [ ] switch off 能回到 parent_version 行为。
@@ -728,6 +951,190 @@ promotion_decision: not_applicable
 ## 决策
 
 PENDING
+"""
+
+
+def default_log_uri(version: str, kind: ExperimentKind, exp_id: str, slug: str, attempt_id: str, log_name: str) -> str:
+    experiment_name = f"{exp_id}_{slug}"
+    return (
+        f"warehouse://gtpj/runs/{version}/{kind.folder}/"
+        f"{experiment_name}/{attempt_id}/logs/{log_name}"
+    )
+
+
+def default_log_artifact_id(exp_id: str, slug: str, attempt_id: str) -> str:
+    return f"log:{exp_id}_{slug}:{attempt_id}"
+
+
+def make_experiment_manifest(
+    *,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    config_path: Path,
+    status: str,
+    attempt_id: str = "attempt-001",
+    command: str = "",
+    seed: str = "",
+    dataset: str = "CUB GZSL",
+    log_artifact_id: str = "",
+    log_uri: str = "",
+    log_sha256: str = "",
+    log_size_bytes: str = "",
+    recorded_at: str = "",
+    code_branch: str = "",
+    git_dirty: str | None = None,
+    idea_id: str = "",
+    idea_uri: str = "",
+    idea_title: str = "",
+    hypothesis: str = "Tune hyperparameters without changing code.",
+) -> str:
+    config_rel = rel(config_path)
+    return f"""schema_version: gtpj-manifest/v1
+experiment:
+  id: {yaml_scalar(exp_id)}
+  name: {yaml_scalar(f"{exp_id}_{slug}")}
+  kind: {yaml_scalar(kind.name)}
+  status: {yaml_scalar(status)}
+  attempt_id: {yaml_scalar(attempt_id)}
+  created_or_recorded_at: {yaml_scalar(recorded_at or utc_now())}
+version:
+  base_version: {yaml_scalar(version)}
+  base_code_tag: {yaml_scalar(version)}
+  code_branch: {yaml_scalar(code_branch or experiment_branch_name(version, kind, exp_id, slug))}
+  code_commit: {yaml_scalar(git(["rev-parse", "--short", "HEAD"], check=False))}
+  git_dirty: {yaml_scalar(git_dirty if git_dirty is not None else ("true" if git(["status", "--short"], check=False) else "false"))}
+reproducibility:
+  config_file: {yaml_scalar(config_rel)}
+  config_sha256: {yaml_scalar(sha256_file(config_path) if config_path.exists() else "")}
+  command: {yaml_scalar(command)}
+  seed: {yaml_scalar(seed)}
+  dataset: {yaml_scalar(dataset)}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  metric_contract_id: {yaml_scalar("gzsl_u_s_h_zs_v1")}
+idea:
+  idea_id: {yaml_scalar(idea_id)}
+  uri: {yaml_scalar(idea_uri)}
+  title: {yaml_scalar(idea_title)}
+  hypothesis: {yaml_scalar(hypothesis)}
+artifacts:
+  train_log:
+    artifact_id: {yaml_scalar(log_artifact_id)}
+    role: {yaml_scalar("training_log")}
+    uri: {yaml_scalar(log_uri)}
+    sha256: {yaml_scalar(log_sha256)}
+    size_bytes: {yaml_scalar(log_size_bytes)}
+    required_for: {yaml_scalar("audit")}
+    status: {yaml_scalar("available" if log_uri else "pending")}
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: {yaml_scalar("false" if kind.name == "tune" else "true")}
+  evaluation_semantics_verified: {yaml_scalar("false")}
+"""
+
+
+def make_result_yaml(
+    *,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    metrics: dict[str, str] | None = None,
+    seed: str = "",
+    decision: str = "pending",
+    promotion_decision: str = "not_applicable",
+    promote_to: str = "",
+    log_artifact_id: str = "",
+    recorded_at: str = "",
+) -> str:
+    metrics = metrics or {}
+    baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
+    h_value = metrics.get("H", "")
+    delta_h = ""
+    if baseline_h and h_value:
+        try:
+            delta_h = f"{float(h_value) - float(baseline_h):+.2f}"
+        except ValueError:
+            delta_h = ""
+    return f"""schema_version: gtpj-result/v1
+experiment_id: {yaml_scalar(exp_id)}
+experiment_name: {yaml_scalar(f"{exp_id}_{slug}")}
+kind: {yaml_scalar(kind.name)}
+version: {yaml_scalar(version)}
+metrics:
+  U: {yaml_scalar(metrics.get("U", ""))}
+  S: {yaml_scalar(metrics.get("S", ""))}
+  H: {yaml_scalar(metrics.get("H", ""))}
+  ZS: {yaml_scalar(metrics.get("ZS", ""))}
+  best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
+  baseline_H: {yaml_scalar(baseline_h)}
+  delta_H: {yaml_scalar(delta_h)}
+  seed: {yaml_scalar(seed)}
+  source: {yaml_scalar("training_log")}
+  metric_semantics: {yaml_scalar("GZSL U/S/H/ZS from protected evaluator")}
+baseline:
+  version: {yaml_scalar(version)}
+  H: {yaml_scalar(baseline_h)}
+delta:
+  H: {yaml_scalar(delta_h)}
+run:
+  seed: {yaml_scalar(seed)}
+decision:
+  status: {yaml_scalar(decision)}
+  promotion_decision: {yaml_scalar(promotion_decision)}
+  promote_to: {yaml_scalar(promote_to)}
+evidence:
+  log_artifact_id: {yaml_scalar(log_artifact_id)}
+  manifest: {yaml_scalar("manifest.yaml")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+quality:
+  manifest_verified: {yaml_scalar("false")}
+  boundary_audit_passed: {yaml_scalar("false")}
+  interface_contract_checked: {yaml_scalar("false")}
+  evaluation_semantics_verified: {yaml_scalar("false")}
+recorded_at: {yaml_scalar(recorded_at or utc_now())}
+"""
+
+
+def make_result_md(
+    *,
+    exp_id: str,
+    slug: str,
+    kind: ExperimentKind,
+    metrics: dict[str, str] | None = None,
+    decision: str = "pending",
+    log_artifact_id: str = "",
+    log_uri: str = "",
+) -> str:
+    metrics = metrics or {}
+    return f"""# {exp_id}_{slug} Result
+
+## Summary
+
+Kind: `{kind.name}`.
+
+## Metrics
+
+| U | S | H | ZS | Best epoch |
+|---:|---:|---:|---:|---:|
+| {metrics.get("U", "-")} | {metrics.get("S", "-")} | {metrics.get("H", "-")} | {metrics.get("ZS", "-")} | {metrics.get("best_epoch", "-")} |
+
+## Evidence
+
+```text
+log_artifact_id: {log_artifact_id}
+log_uri: {log_uri}
+```
+
+## Decision
+
+{decision}
 """
 
 
@@ -751,6 +1158,33 @@ def append_version_experiment_registry(
     ]
     content = "\n".join(lines).rstrip() + "\n" + row + "\n"
     registry.write_text(content, encoding="utf-8")
+
+
+def update_version_experiment_registry_status(
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    status: str,
+    note: str,
+) -> None:
+    registry = REPO_ROOT / "experiments" / "EXPERIMENT_REGISTRY.md"
+    content = read_text(registry)
+    experiment_name = f"{exp_id}_{slug}"
+    prefix = f"| `{experiment_name}` | `{version}` | `{kind.name}` |"
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith(prefix):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 6:
+            raise WorkflowError(f"Malformed registry row for {experiment_name}")
+        cells[3] = status
+        cells[5] = note
+        lines[index] = "| " + " | ".join(cells) + " |"
+        registry.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        return
+    raise WorkflowError(f"Missing registry row for {experiment_name}")
 
 
 def append_kind_index(
@@ -803,15 +1237,454 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     require_clean_worktree("new-experiment")
     require_current_branch_contains_main("new-experiment")
 
-    ensure_dir(exp_dir / "logs")
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     copy_new(src_config, exp_dir / "config.yaml")
+    write_new(
+        exp_dir / "manifest.yaml",
+        make_experiment_manifest(
+            version=version,
+            kind=kind,
+            exp_id=exp_id,
+            slug=slug,
+            config_path=exp_dir / "config.yaml",
+            status="planned",
+            git_dirty="false",
+        ),
+    )
+    write_new(
+        exp_dir / "result.yaml",
+        make_result_yaml(
+            version=version,
+            kind=kind,
+            exp_id=exp_id,
+            slug=slug,
+        ),
+    )
+    write_new(
+        exp_dir / "result.md",
+        make_result_md(exp_id=exp_id, slug=slug, kind=kind),
+    )
     append_version_experiment_registry(version, kind, exp_id, slug, exp_dir)
     append_kind_index(version, kind, exp_id, slug, exp_dir)
 
     print(f"已创建 {rel(exp_dir)}")
     print(f"建议分支: {expected_branch}")
+    return 0
+
+
+def cmd_tune_suggest(args: argparse.Namespace) -> int:
+    version = require_clean_id(args.version, r"v[0-9]+", "version")
+    limit = min(max(args.limit, 1), 3)
+    config_path = REPO_ROOT / "experiments" / version / "config.yaml"
+    index_path = REPO_ROOT / "experiments" / version / "tune" / "INDEX.md"
+    if not index_path.exists():
+        raise WorkflowError(f"Missing tune index: {rel(index_path)}")
+    values = read_config_values(config_path)
+    tried_text = read_text(index_path)
+    candidates = []
+    for rule in TUNE_CANDIDATE_RULES:
+        parameter = rule["parameter"]
+        if parameter not in values:
+            continue
+        suggested = rule["suggested_value"]
+        already_tried = parameter in tried_text and suggested in tried_text
+        candidates.append((rule, values[parameter], already_tried))
+        if len(candidates) == limit:
+            break
+
+    print(f"Tune suggestions for {version} (最多 3 个；用户选择 1 个候选后再运行)")
+    print(f"index: {rel(index_path)}")
+    if not candidates:
+        print("没有找到可自动建议的参数；请先在 config 中确认可调参数。")
+        return 0
+    for number, (rule, current_value, already_tried) in enumerate(candidates, start=1):
+        print(f"\n候选 {number}")
+        print(f"parameter: {rule['parameter']}")
+        print(f"current_value: {current_value}")
+        print(f"suggested_value: {rule['suggested_value']}")
+        print(f"why: {rule['why']}")
+        print(f"risk: {rule['risk']}")
+        print(f"cost: {rule['cost']}")
+        print(f"already_tried: {'yes' if already_tried else 'no'}")
+    return 0
+
+
+def append_tune_result_index(
+    *,
+    version: str,
+    exp_id: str,
+    slug: str,
+    folder: Path,
+    parameter: str,
+    old_value: str,
+    new_value: str,
+    seed: str,
+    metrics: dict[str, str],
+    decision: str,
+) -> None:
+    index = REPO_ROOT / "experiments" / version / "tune" / "INDEX.md"
+    if not index.exists():
+        raise WorkflowError(f"Missing tune index: {rel(index)}")
+    experiment_name = f"{exp_id}_{slug}"
+    baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
+    result_text = "recorded"
+    if baseline_h:
+        try:
+            delta = float(metrics["H"]) - float(baseline_h)
+            result_text = f"H {metrics['H']} (delta {delta:+.2f})"
+        except ValueError:
+            result_text = f"H {metrics['H']}"
+    row = (
+        f"| `{experiment_name}` | `{parameter}` | {old_value} | {new_value} | {seed or '-'} | "
+        f"{metrics['U']} | {metrics['S']} | {metrics['H']} | {metrics['ZS']} | "
+        f"{result_text} | {decision} | `{rel(folder)}` |"
+    )
+    content = read_text(index)
+    if row in content:
+        return
+    lines = [
+        line
+        for line in content.splitlines()
+        if "| 暂无 |" not in line and "由 `workflow/gtpj_workflow.py new-experiment` 创建后追加" not in line
+    ]
+    content = "\n".join(lines).rstrip()
+    section = (
+        "\n\n## 结果记录\n\n"
+        "| Tune ID | 参数 | 原值 | 新值 | Seed | U | S | H | ZS | 结果 | 决策 | 目录 |\n"
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|\n"
+    )
+    if "## 结果记录" not in content:
+        content = content + section + row + "\n"
+    else:
+        content = content + "\n" + row + "\n"
+    index.write_text(content, encoding="utf-8")
+
+
+def resolve_existing_path(path_text: str, label: str) -> Path:
+    source = Path(path_text)
+    if not source.is_absolute():
+        source = REPO_ROOT / source
+    if not source.exists():
+        raise WorkflowError(f"Missing {label}: {display_path(source)}")
+    if not source.is_file():
+        raise WorkflowError(f"{label} must be a file: {display_path(source)}")
+    return source
+
+
+def update_manifest_and_result_files(
+    *,
+    exp_dir: Path,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    config_path: Path,
+    command: str,
+    seed: str,
+    metrics: dict[str, str],
+    decision: str,
+    promotion_decision: str,
+    promote_to: str,
+    attempt_id: str,
+    log_artifact_id: str,
+    log_uri: str,
+    log_sha256: str,
+    log_size_bytes: str,
+    git_dirty: str,
+) -> None:
+    recorded_at = utc_now()
+    manifest = make_experiment_manifest(
+        version=version,
+        kind=kind,
+        exp_id=exp_id,
+        slug=slug,
+        config_path=config_path,
+        status="recorded",
+        attempt_id=attempt_id,
+        command=command,
+        seed=seed,
+        log_artifact_id=log_artifact_id,
+        log_uri=log_uri,
+        log_sha256=log_sha256,
+        log_size_bytes=log_size_bytes,
+        git_dirty=git_dirty,
+        recorded_at=recorded_at,
+    )
+    result_yaml = make_result_yaml(
+        version=version,
+        kind=kind,
+        exp_id=exp_id,
+        slug=slug,
+        metrics=metrics,
+        seed=seed,
+        decision=decision,
+        promotion_decision=promotion_decision,
+        promote_to=promote_to,
+        log_artifact_id=log_artifact_id,
+        recorded_at=recorded_at,
+    )
+    result_md = make_result_md(
+        exp_id=exp_id,
+        slug=slug,
+        kind=kind,
+        metrics=metrics,
+        decision=decision,
+        log_artifact_id=log_artifact_id,
+        log_uri=log_uri,
+    )
+    (exp_dir / "manifest.yaml").write_text(manifest.rstrip() + "\n", encoding="utf-8")
+    (exp_dir / "result.yaml").write_text(result_yaml.rstrip() + "\n", encoding="utf-8")
+    (exp_dir / "result.md").write_text(result_md.rstrip() + "\n", encoding="utf-8")
+
+
+def forbid_log_copy_target(exp_dir: Path) -> None:
+    log_dir = exp_dir / "logs"
+    if log_dir.exists() and any(log_dir.iterdir()):
+        raise WorkflowError(
+            f"GitHub experiment logs directory must stay empty under new boundary: {rel(log_dir)}"
+        )
+
+
+def artifact_uri_for_log(
+    source_text: str,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    attempt_id: str,
+    explicit_uri: str,
+) -> str:
+    if explicit_uri:
+        if not re.fullmatch(r"(warehouse|research|manuscript)://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+", explicit_uri):
+            raise WorkflowError("artifact URI must use warehouse://, research://, or manuscript://")
+        return explicit_uri
+    source = Path(source_text)
+    return default_log_uri(version, kind, exp_id, slug, attempt_id, source.name or "train.log")
+
+
+def cmd_record_result(args: argparse.Namespace) -> int:
+    version = require_clean_id(args.version, r"v[0-9]+", "version")
+    kind = KINDS[args.kind]
+    exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
+    slug = require_slug(args.slug)
+    exp_dir = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}"
+    if not exp_dir.exists():
+        raise WorkflowError(f"Missing experiment directory: {rel(exp_dir)}")
+    if args.kind == "tune":
+        if not args.parameter or not args.old_value or not args.new_value:
+            raise WorkflowError("record-result --kind tune requires --parameter, --old-value, and --new-value")
+    forbid_log_copy_target(exp_dir)
+    log_path = resolve_existing_path(args.log, "log file")
+    metrics = parse_training_log(log_path)
+    log_sha256 = sha256_file(log_path)
+    log_size_bytes = str(log_path.stat().st_size)
+    log_uri = artifact_uri_for_log(
+        args.log,
+        version,
+        kind,
+        exp_id,
+        slug,
+        args.attempt_id,
+        args.artifact_uri,
+    )
+    log_artifact_id = args.log_artifact_id or default_log_artifact_id(exp_id, slug, args.attempt_id)
+    dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
+    readme_path = exp_dir / "README.md"
+    content = read_text(readme_path)
+    fields = {
+        "kind": kind.name,
+        "run_commit": git(["rev-parse", "--short", "HEAD"], check=False),
+        "dirty_state": dirty_before,
+        "command": args.command,
+        "seed": args.seed,
+        "log_artifact_id": log_artifact_id,
+        "log_uri": log_uri,
+        "log_sha256": log_sha256,
+        "log_size_bytes": log_size_bytes,
+        "manifest": "manifest.yaml",
+        "result_yaml": "result.yaml",
+        "result_md": "result.md",
+        "attempt_id": args.attempt_id,
+        "failure_stage": "",
+        "U": metrics["U"],
+        "S": metrics["S"],
+        "H": metrics["H"],
+        "ZS": metrics["ZS"],
+        "best_epoch": metrics["best_epoch"],
+        "decision": args.decision,
+        "promotion_decision": args.promotion_decision,
+        "promote_to": args.promote_to,
+        "status": "recorded",
+    }
+    if args.kind == "tune":
+        fields.update(
+            {
+                "tuned_parameter": args.parameter,
+                "old_value": args.old_value,
+                "new_value": args.new_value,
+                "single_variable": "yes",
+            }
+        )
+    for field, value in fields.items():
+        content = set_readme_field(content, field, value)
+    readme_path.write_text(content, encoding="utf-8")
+    update_manifest_and_result_files(
+        exp_dir=exp_dir,
+        version=version,
+        kind=kind,
+        exp_id=exp_id,
+        slug=slug,
+        config_path=exp_dir / "config.yaml",
+        command=args.command,
+        seed=args.seed,
+        metrics=metrics,
+        decision=args.decision,
+        promotion_decision=args.promotion_decision,
+        promote_to=args.promote_to,
+        attempt_id=args.attempt_id,
+        log_artifact_id=log_artifact_id,
+        log_uri=log_uri,
+        log_sha256=log_sha256,
+        log_size_bytes=log_size_bytes,
+        git_dirty="true" if dirty_before == "dirty" else "false",
+    )
+    append_readme_result_row(
+        readme_path,
+        f"| CUB | {args.seed or '-'} | {metrics['U']} | {metrics['S']} | "
+        f"{metrics['H']} | {metrics['ZS']} | {metrics['best_epoch']} | `{log_artifact_id}` |",
+    )
+
+    if args.kind == "tune":
+        append_tune_result_index(
+            version=version,
+            exp_id=exp_id,
+            slug=slug,
+            folder=exp_dir,
+            parameter=args.parameter,
+            old_value=args.old_value,
+            new_value=args.new_value,
+            seed=args.seed,
+            metrics=metrics,
+            decision=args.decision,
+        )
+    update_version_experiment_registry_status(
+        version,
+        kind,
+        exp_id,
+        slug,
+        args.decision,
+        "record-result 已解析日志并入账。",
+    )
+
+    print("record-result-ok")
+    print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
+    print(f"log_artifact_id: {log_artifact_id}")
+    print(f"log_uri: {log_uri}")
+    print(f"log_sha256: {log_sha256}")
+    print("临时分支清理提示: 结果入账、review 和必要提交完成后，再回到 main 并删除 exp/... 临时分支；不要 push，除非 owner 明确要求。")
+    return 0
+
+
+def cmd_runner_lock(args: argparse.Namespace) -> int:
+    lock_path = runtime_lock_file()
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    branch = args.branch or current_branch() or "(detached)"
+    if lock_path.exists():
+        try:
+            current = json.loads(read_text(lock_path))
+        except json.JSONDecodeError as exc:
+            raise WorkflowError(f"GPU Runner lock file is unreadable: {display_path(lock_path)}") from exc
+        if current.get("run_id") != args.run_id:
+            raise WorkflowError(
+                "GPU Runner is already locked by "
+                f"{current.get('run_id', 'unknown')} ({current.get('experiment_id', 'unknown')})"
+            )
+        print("gpu-runner-locked")
+        print(f"lock_file: {display_path(lock_path)}")
+        return 0
+    payload = {
+        "run_id": args.run_id,
+        "experiment_id": args.experiment_id,
+        "branch": branch,
+        "locked_at": datetime.now(UTC).isoformat(),
+    }
+    lock_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("gpu-runner-locked")
+    print(f"lock_file: {display_path(lock_path)}")
+    return 0
+
+
+def cmd_runner_unlock(args: argparse.Namespace) -> int:
+    lock_path = runtime_lock_file()
+    if not lock_path.exists():
+        print("gpu-runner-free")
+        return 0
+    try:
+        current = json.loads(read_text(lock_path))
+    except json.JSONDecodeError as exc:
+        raise WorkflowError(f"GPU Runner lock file is unreadable: {display_path(lock_path)}") from exc
+    if current.get("run_id") != args.run_id:
+        raise WorkflowError(
+            "Refusing to unlock GPU Runner owned by "
+            f"{current.get('run_id', 'unknown')} with run {args.run_id}"
+        )
+    lock_path.unlink()
+    print("gpu-runner-free")
+    return 0
+
+
+def tracked_and_candidate_files() -> list[str]:
+    output = git(["ls-files", "--cached", "--others", "--exclude-standard"], check=False)
+    return sorted(line.strip().replace("\\", "/") for line in output.splitlines() if line.strip())
+
+
+def is_forbidden_experiment_artifact(path_text: str) -> bool:
+    path = Path(path_text)
+    parts = path_text.split("/")
+    if not parts or parts[0] != "experiments":
+        return False
+    if path_text in LEGACY_EXPERIMENT_ARTIFACT_ALLOWLIST:
+        return False
+    if path.name == ".gitkeep":
+        return False
+    if path.name in ALLOWED_EXPERIMENT_TEXT_FILES:
+        return False
+    suffix = path.suffix.lower()
+    if suffix in FORBIDDEN_EXPERIMENT_SUFFIXES:
+        return True
+    if "logs" in parts or "checkpoints" in parts:
+        return True
+    if suffix in FORBIDDEN_EXPERIMENT_IMAGE_SUFFIXES:
+        return True
+    return False
+
+
+def cmd_audit_boundary(_: argparse.Namespace) -> int:
+    offenders = [path for path in tracked_and_candidate_files() if is_forbidden_experiment_artifact(path)]
+    copied_log_refs: list[str] = []
+    for path_text in tracked_and_candidate_files():
+        path = REPO_ROOT / path_text
+        if not path.is_file() or path.suffix.lower() not in {".md", ".yaml", ".yml", ".json", ".py"}:
+            continue
+        try:
+            text = read_text(path)
+        except UnicodeDecodeError:
+            continue
+        legacy_field = "copied" + "_log:"
+        if legacy_field in text and path_text not in {
+            "docs/workflow/experiment_protocol.md",
+            "workflow/gtpj_workflow.py",
+        }:
+            copied_log_refs.append(path_text)
+    errors = []
+    if offenders:
+        errors.append("Forbidden raw experiment artifacts:\n" + "\n".join(offenders))
+    if copied_log_refs:
+        errors.append("Forbidden copied_log references:\n" + "\n".join(sorted(set(copied_log_refs))))
+    if errors:
+        raise WorkflowError("Boundary audit failed:\n" + "\n\n".join(errors))
+    print("audit-boundary-ok")
     return 0
 
 
@@ -1204,6 +2077,11 @@ def cmd_new_trial(args: argparse.Namespace) -> int:
     source_idea_file = REPO_ROOT / str(idea.get("idea_dir", "")) / "IDEA.md"
     if not source_idea_file.exists():
         raise WorkflowError(f"Missing source idea file: {rel(source_idea_file)}")
+    code_branch = trial_branch_name(base_version, idea_id, trial_id, slug)
+
+    require_trial_branch(code_branch)
+    require_clean_worktree("new-trial")
+    require_current_branch_contains_main("new-trial")
 
     idea_dir = REPO_ROOT / "experiments" / "module_trials" / idea_folder_name(idea)
     ensure_dir(idea_dir)
@@ -1227,10 +2105,9 @@ trial_folder: {rel(idea_dir)}
     if trial_dir.exists():
         raise WorkflowError(f"Trial already exists: {rel(trial_dir)}")
 
-    ensure_dir(trial_dir / "logs")
+    ensure_dir(trial_dir)
     copy_new(REPO_ROOT / "experiments" / base_version / "config.yaml", trial_dir / "config.yaml")
     write_new(trial_dir / "code.diff", "")
-    code_branch = trial_branch_name(base_version, idea_id, trial_id, slug)
     code_tag = trial_tag_name(base_version, idea_id, trial_id)
     write_new(
         trial_dir / "README.md",
@@ -1254,7 +2131,13 @@ promotion_decision: not_applicable
 promote_to:
 changed_files:
 run_config: config.yaml
-run_log:
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
 ```
 
 ## 改动文件
@@ -1273,7 +2156,7 @@ run_log:
 - [ ] U/S/ZS 没有不可接受退化。
 - [ ] class order、split、logits shape、metric calculation 未改变。
 - [ ] switch off 能回到 `{base_version}` 行为。
-- [ ] 证据目录、日志副本和 code.diff 完整。
+- [ ] 证据目录、外部 artifact 指针和 code.diff 完整。
 - [ ] `promotion_decision` 为 `promote` 后才允许进入自动 promotion gate。
 
 ## 决策
@@ -1319,7 +2202,7 @@ docs/workflow/code_interface_contract.md
 
 - [ ] Batch dimension 保持不变。
 - [ ] Class dimension 保持不变。
-- [ ] Logits shape 保持 `[B, C]`。
+- [ ] Logits shape 保持 `[B（图片/样本数量）, C（类别数量）]`。
 - [ ] Visual/text embedding dimensions 仍与 scorer 兼容。
 - [ ] Seen/unseen 类别顺序不变。
 - [ ] 没有引入意外 broadcasting。
@@ -1381,7 +2264,36 @@ missing/unexpected keys:
         trial_dir / "quality_check.md",
         make_quality_check(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")),
     )
-    write_new(trial_dir / "result.md", "# 结果\n\n待记录。\n")
+    trial_kind = ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")
+    write_new(
+        trial_dir / "manifest.yaml",
+        make_experiment_manifest(
+            version=base_version,
+            kind=trial_kind,
+            exp_id=trial_id,
+            slug=slug,
+            config_path=trial_dir / "config.yaml",
+            status="planned",
+            code_branch=code_branch,
+            idea_id=idea_id,
+            idea_uri=f"research://ideas/{idea_id}.md",
+            idea_title=str(idea.get("title", "")),
+            hypothesis=str(idea.get("hypothesis", "")),
+        ),
+    )
+    write_new(
+        trial_dir / "result.yaml",
+        make_result_yaml(
+            version=base_version,
+            kind=trial_kind,
+            exp_id=trial_id,
+            slug=slug,
+        ),
+    )
+    write_new(
+        trial_dir / "result.md",
+        make_result_md(exp_id=trial_id, slug=slug, kind=trial_kind),
+    )
     append_module_trial_index(idea_id, trial_id, slug, trial_dir)
     linked_trials = idea.setdefault("linked_trials", [])
     trial_rel = rel(trial_dir)
@@ -1411,12 +2323,53 @@ def build_parser() -> argparse.ArgumentParser:
     validate_remote.add_argument("--remote", default="origin")
     validate_remote.set_defaults(func=cmd_validate_remote)
 
+    audit_boundary = sub.add_parser("audit-boundary", help="检查 GitHub 轻量边界，禁止 raw artifacts 入仓库")
+    audit_boundary.set_defaults(func=cmd_audit_boundary)
+
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)
     new_exp.add_argument("--kind", required=True, choices=sorted(KINDS))
     new_exp.add_argument("--exp-id", required=True)
     new_exp.add_argument("--slug", required=True)
     new_exp.set_defaults(func=cmd_new_experiment)
+
+    tune_suggest = sub.add_parser("tune-suggest", help="生成最多 3 个调参候选，不启动训练")
+    tune_suggest.add_argument("--version", required=True)
+    tune_suggest.add_argument("--limit", type=int, default=3)
+    tune_suggest.set_defaults(func=cmd_tune_suggest)
+
+    runner_lock = sub.add_parser("runner-lock", help="占用本地 GPU Runner 文件锁")
+    runner_lock.add_argument("--run-id", required=True)
+    runner_lock.add_argument("--experiment-id", required=True)
+    runner_lock.add_argument("--branch", default="")
+    runner_lock.set_defaults(func=cmd_runner_lock)
+
+    runner_unlock = sub.add_parser("runner-unlock", help="释放本地 GPU Runner 文件锁")
+    runner_unlock.add_argument("--run-id", required=True)
+    runner_unlock.set_defaults(func=cmd_runner_unlock)
+
+    record = sub.add_parser("record-result", help="解析日志并把实验结果写回账本")
+    record.add_argument("--version", required=True)
+    record.add_argument("--kind", required=True, choices=sorted(KINDS))
+    record.add_argument("--exp-id", required=True)
+    record.add_argument("--slug", required=True)
+    record.add_argument("--log", required=True)
+    record.add_argument("--command", default="")
+    record.add_argument("--seed", default="")
+    record.add_argument(
+        "--decision",
+        default="keep",
+        choices=["keep", "reject", "rejected", "rerun", "needs_confirmation", "blocked"],
+    )
+    record.add_argument("--attempt-id", default="attempt-001")
+    record.add_argument("--artifact-uri", default="")
+    record.add_argument("--log-artifact-id", default="")
+    record.add_argument("--promotion-decision", default="not_applicable", choices=["not_applicable", "promote", "blocked", "rejected"])
+    record.add_argument("--promote-to", default="")
+    record.add_argument("--parameter", default="")
+    record.add_argument("--old-value", default="")
+    record.add_argument("--new-value", default="")
+    record.set_defaults(func=cmd_record_result)
 
     new_idea = sub.add_parser("new-idea", help="创建新的 idea 节点和目录")
     new_idea.add_argument("--idea-id", required=True)

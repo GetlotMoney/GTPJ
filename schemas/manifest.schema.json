@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gtpj.local/schemas/manifest.schema.json",
+  "title": "GTPJ Experiment Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "experiment",
+    "version",
+    "reproducibility",
+    "artifacts",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "gtpj-manifest/v1"
+    },
+    "experiment": {
+      "type": "object",
+      "required": ["id", "name", "kind", "status", "attempt_id"]
+    },
+    "version": {
+      "type": "object",
+      "required": ["base_version", "base_code_tag", "code_commit", "git_dirty"]
+    },
+    "reproducibility": {
+      "type": "object",
+      "required": [
+        "config_file",
+        "config_sha256",
+        "command",
+        "seed",
+        "dataset",
+        "split_id",
+        "class_order_id",
+        "label_mapping_id",
+        "metric_contract_id"
+      ]
+    },
+    "idea": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "object"
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "boundary_audit_required",
+        "raw_artifacts_in_git",
+        "interface_contract_required",
+        "evaluation_semantics_verified"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

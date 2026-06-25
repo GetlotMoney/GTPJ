@@ -5,20 +5,24 @@ runtime: local archive
 decision: ACCEPTED
 ```
 
-## 范围
+## Scope
 
-- 确认 `GTPJ-v1` 第一版基准配置。
-- 确认当前 baseline 使用 `conditional_text_ratio=0.008`。
-- 不修改模型代码、训练脚本、数据划分、评估逻辑或损失结构。
+- Confirm `GTPJ-v1` as the first accepted baseline configuration.
+- Confirm the baseline uses `conditional_text_ratio=0.008`.
+- Do not modify model code, training scripts, dataset splits, evaluation logic, or loss structure.
 
-## 发现
+## Findings
 
-- 任务口径：CUB GZSL，seed=5。
-- 训练契约：SGDR 20+20+10，三个 stage 均设置非零 `eta_min`，后两段 `restart_from_best=False`。
-- 结果：U=72.36、S=75.57、H=73.93、ZS=81.62，best epoch=26。
-- 配置副本保存在 `experiments/v1/baseline/config.yaml`。
-- 日志副本保存在 `experiments/v1/baseline/logs/GTPJ-v1_CUB_seed5_20260613-145232.txt`。
+- Task path: CUB GZSL, seed=5.
+- Training schedule: SGDR 20+20+10; all three stages use non-zero `eta_min`; stages 2 and 3 use `restart_from_best=False`.
+- Result: U=72.36, S=75.57, H=73.93, ZS=81.62, best epoch=26.
+- Config snapshot: `experiments/v1/baseline/config.yaml`.
+- Raw log artifact:
+  - `artifact_id: log:legacy:v1_baseline:GTPJ-v1_CUB_seed5_20260613-145232`
+  - `artifact_uri: warehouse://logs/legacy/v1_baseline/GTPJ-v1_CUB_seed5_20260613-145232.txt`
+  - `sha256: 850a01a5c1500f75fef3d9729b8e89b47c78aa40203792341b03515ddc5edfb9`
+  - `size_bytes: 139148`
 
-## 决策
+## Decision
 
 ACCEPTED

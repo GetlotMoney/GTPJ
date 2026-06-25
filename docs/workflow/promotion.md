@@ -28,14 +28,15 @@ promote_to: vX
 - 普通实验按 `docs/workflow/experiment_protocol.md` 的 promotion 字段映射读取：
   `version -> base_version/parent_version`、`base_code_tag -> parent_tag`、
   `run_commit -> code_commit`、`config -> run_config`、`command -> run_command`、
-  `copied_log -> run_log`、`original_log -> original_run_log`。
+  `log_artifact_id -> run_log_artifact`、`log_uri -> run_log_uri`。
 - module trial 必须直接记录 `base_version`、`base_code_tag`、`code_branch`、`code_commit`、
-  `run_config`、`run_command` 和 `run_log`。
-- 结果包含 U、S、H、ZS、seed、best epoch 和日志路径。
+  `run_config`、`run_command` 和 `run_log_artifact`。
+- 结果包含 U、S、H、ZS、seed、best epoch、log artifact id、URI、sha256 和 size。
 - `quality_check.md` 没有 blocking issue。
 - 改代码的实验必须有 `implementation.md` 和 `code.diff`。
 - 消融和创新必须有 `interface_check.md`。
-- class order、seen/unseen split、logits shape、metric calculation 没有未声明变化。
+- class order、seen/unseen split、label mapping、logits shape、metric calculation 没有未声明变化。
+- GitHub 边界通过：raw logs、checkpoint、generated figures、feature cache 没有进入 GitHub。
 - 目标 config 可以冻结到 `config/versions/vX.yaml`。
 - 当前 `main` clean。
 - 新版本父节点和来源实验明确。
@@ -111,6 +112,20 @@ activate-version vX
 
 如果 owner 没有明确执行 `activate-version`，promotion 后 `main` 代码仍然停在原 active version，
 可以继续基于该框架寻找其他创新。
+
+## Artifact Resolution
+
+Promotion must resolve raw evidence through `result.yaml` and `manifest.yaml` together:
+
+```text
+artifact_id = result.evidence.log_artifact_id
+artifact    = manifest.artifacts[artifact_id]
+uri         = artifact.uri
+sha256      = artifact.sha256
+size_bytes  = artifact.size_bytes
+```
+
+If `uri`, `sha256`, or `size_bytes` is missing, the promotion gate is blocked. GitHub must not use a copied raw log as promotion evidence.
 
 ## 版本记录
 

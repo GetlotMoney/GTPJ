@@ -21,8 +21,16 @@ GTPJ 仓库分成三层：
 
 ```text
 代码层：model/、tools/、train_*.py、当前运行别名 config/GTPJ_*.yaml
-治理层：docs/、workflow/、AGENTS.md、NEXT_ACTIONS.md
-实验层：idea_tree/、experiments/、config/versions/
+治理与复现控制层：docs/、workflow/、schemas/、AGENTS.md、NEXT_ACTIONS.md
+轻量实验索引层：experiments/、config/versions/、idea_tree/ 的索引视图
+```
+
+完整材料和大型资产在 GitHub 外：
+
+```text
+GTPJ_Research：论文、完整阅读笔记、完整创意树和来源复核。
+GTPJ_Warehouse：raw logs、checkpoint、generated figures、tables、failure cases。
+GTPJ_Manuscript：论文正文、图注、投稿图、最终表格和写作材料。
 ```
 
 核心关系：
@@ -106,12 +114,17 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `docs/workflow/README.md` | 未来 workflow 参考入口，说明哪些规则只是后续接入素材。 |
+| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | CV 论文研发系统总规范审阅版，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和完整闭环。 |
+| `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
+| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse/Manuscript 外部资产职责。 |
+| `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
+| `docs/workflow/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
 | `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
 | `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
 | `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
@@ -126,7 +139,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`new-experiment`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
+| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
 | `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
@@ -138,6 +151,10 @@ idea_tree/                 # 创意来源、评分、排序
 - 检查创意树、版本配置和接口规范关键章节。
 - 创建实验目录和标准模板。
 - 创建实验时同步更新全局登记表和版本索引。
+- 生成最多 3 个 tune 候选建议；用户选择前不启动训练、不落账本。
+- 通过 `.gtpj_runtime/gpu_runner.lock` 提供本地 GPU Runner 文件锁，避免同时启动多个训练。
+- 解析外部训练日志中的 U/S/H/ZS 和 best epoch，计算 artifact hash/size，并把 tune 结果写回实验 README、`manifest.yaml`、`result.yaml`、`result.md`、`experiments/vX/tune/INDEX.md` 与 `experiments/EXPERIMENT_REGISTRY.md`。
+- 通过 `audit-boundary` 检查新实验没有 raw logs、checkpoint、generated figures 或 cache 进入 GitHub。
 - 创建 idea 节点和 trial 目录。
 - 创建 trial 时同步更新 module trial 索引和 idea 的 `linked_trials`。
 - 根据 `idea_tree.json.current_version` 和每个创意的 `version_scores` 重新生成
@@ -214,13 +231,14 @@ idea_tree/                 # 创意来源、评分、排序
 
 ## `experiments/`
 
-实验记录目录。这里保存轻量证据，不保存原始数据、大型日志、checkpoint 或 cache。
+实验记录目录。这里保存轻量证据，不保存原始数据、大型日志、checkpoint、generated figures 或 cache。
 
 | 路径 | 用途 |
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
 | `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
+| `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
 
 ### `experiments/templates/`
 
@@ -252,9 +270,10 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |-- implementation.md
 |-- code.diff
 |-- config.yaml
+|-- manifest.yaml
+|-- result.yaml
 |-- quality_check.md
-|-- result.md
-`-- logs/
+`-- result.md
 ```
 
 ### `experiments/v1/`
@@ -265,15 +284,15 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |---|---|
 | `experiments/v1/VERSION.md` | v1 版本说明，记录 baseline、启用模块和训练策略。 |
 | `experiments/v1/config.yaml` | v1 配置归档副本，应与 `config/versions/v1.yaml` 保持一致。 |
-| `experiments/v1/result.md` | v1 结果记录，保存第一版正式 baseline 指标。 |
+| `experiments/v1/result.md` | v1 结果记录，保存第一版正式 baseline 指标和外部日志 artifact 证据。 |
 | `experiments/v1/baseline/README.md` | `GTPJ-v1` 第一版正式 baseline 证据说明。 |
 | `experiments/v1/baseline/config.yaml` | `GTPJ-v1` baseline 配置副本，`conditional_text_ratio=0.008`。 |
+| `experiments/v1/baseline/manifest.yaml` | `GTPJ-v1` baseline 复现地图，记录外部日志 artifact URI、hash、size 和评估契约。 |
+| `experiments/v1/baseline/result.yaml` | `GTPJ-v1` baseline 机器可读结果，供 helper、agent 和 promotion gate 读取。 |
 | `experiments/v1/baseline/quality_check.md` | `GTPJ-v1` baseline 轻量质量检查记录。 |
-| `experiments/v1/baseline/logs/` | `GTPJ-v1` baseline 日志副本目录。 |
 | `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
-| `experiments/v1/logs/` | 预留版本级日志目录。 |
 
 ## 更新本文件的判断标准
 
@@ -290,7 +309,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 - 在已有 `idea_tree/ideas/` 下新增一个具体 `IDEA-xxxx_slug/`。
 - 在已有 `experiments/module_trials/` 下新增一个具体 trial 目录。
 - 只在已有实验 README 中补充一次运行结果。
-- 只在已有日志目录中增加日志副本。
+- 在外部 Warehouse 增加 raw log、checkpoint 或 generated figure，但 GitHub 结构和职责不变。
 - 只修改配置数值，但配置文件职责不变。
 
 即使通常不需要，也必须在提交前检查本文件是否仍然准确。

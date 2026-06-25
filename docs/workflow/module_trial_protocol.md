@@ -40,9 +40,10 @@ experiments/module_trials/IDEA-xxxx_short_name/
     |-- implementation.md
     |-- code.diff
     |-- config.yaml
+    |-- manifest.yaml
+    |-- result.yaml
     |-- quality_check.md
     |-- result.md
-    `-- logs/
 ```
 
 每个 trial 必须记录：
@@ -91,7 +92,7 @@ Promotion 必填证据：
 - baseline H、trial H、delta H；
 - U/S/ZS、best epoch、seed；
 - config 副本路径；
-- 原始日志路径和 Git 内日志副本路径；
+- 外部日志 artifact id、URI、sha256、size 和保留位置；
 - class order、seen/unseen split、logits shape、metric calculation 未改变的说明；
 - switch-off 等价检查；
 - `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`docs/PROJECT_STRUCTURE.md`

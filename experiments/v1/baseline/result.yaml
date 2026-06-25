@@ -1,0 +1,39 @@
+schema_version: gtpj-result/v1
+experiment_id: GTPJ-v1
+experiment_name: GTPJ-v1-baseline
+kind: baseline
+version: v1
+metrics:
+  U: "72.36"
+  S: "75.57"
+  H: "73.93"
+  ZS: "81.62"
+  best_epoch: "26"
+  baseline_H: "73.93"
+  delta_H: "+0.00"
+  seed: "5"
+  source: training_log
+  metric_semantics: GZSL U/S/H/ZS from protected evaluator
+baseline:
+  version: v1
+  H: "73.93"
+delta:
+  H: "+0.00"
+run:
+  seed: "5"
+decision:
+  status: accepted
+  promotion_decision: promote
+  promote_to: v1
+evidence:
+  log_artifact_id: log:legacy:v1_baseline:GTPJ-v1_CUB_seed5_20260613-145232
+  manifest: manifest.yaml
+  label_mapping_id: standard_v1
+  split_id: standard_v1
+  class_order_id: standard_v1
+quality:
+  manifest_verified: true
+  boundary_audit_passed: true
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+recorded_at: "2026-06-25T00:00:00Z"

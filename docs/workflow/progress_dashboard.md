@@ -5,7 +5,8 @@ GTPJ 可以使用一个本地网页看板展示实验进度、agent 进度、GPU
 核心边界：
 
 ```text
-GitHub 文档和 experiments/ = 长期事实源
+GitHub 文档和 experiments/ = 长期治理事实源和轻量结果索引
+GTPJ_Warehouse = raw artifacts 长期事实源
 agents = 执行者
 .gtpj_runtime/ = 运行中状态
 网页看板 = 只读展示层
@@ -27,7 +28,7 @@ agents = 执行者
 
 `.gtpj_runtime/` 是本地生成状态目录，不进入 Git。
 
-实验结束后，长期证据必须写回仓库账本：
+实验结束后，长期轻量证据必须写回仓库账本，raw artifacts 留在 Warehouse：
 
 ```text
 experiments/vX/tune/
@@ -48,7 +49,8 @@ docs/
 4. 创建 `.gtpj_runtime/runs/<run_id>/events.jsonl`。
 5. 在每个关键阶段更新 `status.json`。
 6. 在每个关键动作后追加 `events.jsonl`。
-7. 实验结束后，把长期证据写回 `experiments/`、`idea_tree/` 或 `docs/`。
+7. 实验结束后，把长期轻量证据写回 `experiments/`、`idea_tree/` 或 `docs/`；
+   raw logs、checkpoint 和 generated figures 只写 Warehouse。
 
 如果当前任务只是规划、审查或解释，不真正启动实验，不得创建 runtime run。
 
@@ -74,9 +76,10 @@ docs/
   "evidence": {
     "readme": "missing",
     "config": "present",
-    "logs": "pending",
+    "log_artifact": "pending",
+    "manifest": "pending",
     "quality_check": "pending",
-    "result": "pending"
+    "result_yaml": "pending"
   },
   "metrics": {
     "U": null,
@@ -180,7 +183,7 @@ Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality
 - 最多 3 个候选建议；
 - 用户选择的一个候选；
 - Runner 串行和 GPU lock；
-- `experiments/vX/tune/` 证据完整性。
+- `experiments/vX/tune/` 轻量证据完整性和 Warehouse artifact 状态。
 
 消融：
 
@@ -194,7 +197,7 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> L
 - `switch_key` 或旁路位置；
 - `implementation.md`、`code.diff`、`interface_check.md` 是否存在；
 - 接口检查是否通过；
-- `experiments/vX/ablation/` 证据完整性。
+- `experiments/vX/ablation/` 轻量证据完整性和 Warehouse artifact 状态。
 
 创新：
 
@@ -207,7 +210,7 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 - `idea_id`、`trial_id` 和 base version；
 - 是否来自 `idea_tree/versions/<base_version>.md` 的 selected idea；
 - off switch、shape、loss、eval、logits 和 class order 检查；
-- `experiments/module_trials/` 证据完整性；
+- `experiments/module_trials/` 轻量证据完整性；
 - `trial_decision` 和 `promotion_decision`。
 
 重新复现：
@@ -219,8 +222,8 @@ Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
 看板重点显示：
 
 - 固定 `base_code_tag`、config、seed、split 和 cache 口径；
-- U/S/H/ZS、best epoch、日志路径；
-- `experiments/vX/confirmation/` 证据完整性；
+- U/S/H/ZS、best epoch、log artifact；
+- `experiments/vX/confirmation/` 轻量证据完整性；
 - 复现失败原因和下一步建议。
 
 ## GPU / Runner 规则

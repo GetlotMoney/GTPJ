@@ -14,9 +14,13 @@ python_env:
 torch_cuda:
 dataset_split:
 cache_fingerprint:
-original_log:
-copied_log:
-artifact_manifest:
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
 attempt_id:
 failure_stage:
 decision:
@@ -58,7 +62,7 @@ ablation_delta:
 
 ## 结果
 
-| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log artifact |
 |---|---:|---:|---:|---:|---:|---:|---|
 
 ## 失败记录

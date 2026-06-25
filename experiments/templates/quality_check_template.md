@@ -14,9 +14,11 @@ promotion_decision: not_applicable
 
 - [ ] 代码快照或 base version 明确。
 - [ ] 配置副本保存在实验目录。
-- [ ] 日志路径明确。
+- [ ] 外部日志 artifact id、URI、sha256、size 和保留位置明确。
 - [ ] 结果口径明确。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
+- [ ] class order、seen/unseen split、label mapping、logits shape、metric calculation 未改变或已按高风险记录。
+- [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
@@ -26,7 +28,7 @@ promotion_decision: not_applicable
 - [ ] U/S/ZS、best epoch、seed 明确。
 - [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
 - [ ] trial config 和新版本 config 路径明确。
-- [ ] 原始日志路径和 Git 内日志副本路径明确。
+- [ ] 外部日志 artifact id、URI、sha256、size 和保留位置明确。
 - [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] input/output shape、loss、eval、checkpoint 变化已声明。
 - [ ] switch off 能回到 parent_version 行为。

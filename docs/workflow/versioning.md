@@ -175,7 +175,7 @@ v1
 - 对照一致：至少同 seed 对照；高风险改动需要重复运行或多 seed 复核。
 - 口径一致：class order、seen/unseen split、logits shape、metric calculation 不变。
 - 配置可追溯：使用的 config 副本保存在 trial 或新版本目录。
-- 日志可追溯：原始日志路径和 Git 内日志副本路径明确。
+- 日志可追溯：外部 log artifact id、URI、sha256、size 和保留位置明确。
 - 接口干净：输入输出 shape、loss、eval、checkpoint 变化已声明。
 - 关闭等价：模块 switch 关闭后回到 `parent_version` 行为。
 - 决策完整：实验记录和 `quality_check.md` 的 `promotion_decision` 为 `promote`。

@@ -1,45 +1,50 @@
-# 实现记录
+# Implementation Record
 
-参考契约：
+Reference contract:
 
 ```text
 docs/workflow/code_interface_contract.md
 ```
 
-## 新模块
+Hard gate: if interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence.
 
-## 基于什么
+## Module
 
-## 接入点
+## Motivation
 
-| 项目 | 值 |
+## Attachment Point
+
+| Item | Value |
 |---|---|
 | File | |
 | Class/function | |
-| 接入前/后 | |
+| Before/after | |
 | Consumes | |
 | Produces | |
 
-## Input Contract（输入契约）
+## Input Contract
 
-| 名称 | Shape | Dtype | Device | 含义 | Gradients |
+| Name | Shape | Dtype | Device | Meaning | Gradients |
 |---|---|---|---|---|---|
 
-## Output Contract（输出契约）
+Shape must be written with readable meanings, for example `[B（图片/样本数量）, C（类别数量）]`; do not use unexplained dimension abbreviations.
 
-| 名称 | Shape | Dtype | Device | 含义 | 是否替换已有变量 |
+## Output Contract
+
+| Name | Shape | Dtype | Device | Meaning | Replaces existing variable? |
 |---|---|---|---|---|---|
 
-## Shape Invariants（形状不变量）
+## Shape Invariants
 
-- [ ] Batch dimension 保持不变。
-- [ ] Class dimension 保持不变。
-- [ ] Logits shape 保持 `[B, C]`。
-- [ ] Visual/text embedding dimensions 仍与 scorer 兼容。
-- [ ] Seen/unseen 类别顺序不变。
-- [ ] 没有引入意外 broadcasting。
+- [ ] Batch dimension is unchanged.
+- [ ] Class dimension is unchanged.
+- [ ] Logits shape remains `[B（图片/样本数量）, C（类别数量）]`.
+- [ ] Visual/text embedding dimensions remain compatible with the base scorer.
+- [ ] Seen/unseen class order is unchanged.
+- [ ] Label mapping is unchanged.
+- [ ] No unexpected broadcasting is introduced.
 
-## 配置开关
+## Config Switch
 
 ```text
 switch:
@@ -48,11 +53,11 @@ trial config path:
 base config affected: no
 ```
 
-## Baseline-Off Path（基线关闭路径）
+## Baseline-Off Path
 
-解释为什么模块关闭路径等价于选定 base version。
+Explain why switching the module off is equivalent to the selected base version.
 
-## Loss Contract（Loss 契约）
+## Loss Contract
 
 ```text
 new loss:
@@ -61,16 +66,19 @@ lambda=0 behavior:
 normalization/reduction changes:
 ```
 
-## Evaluation Contract（评估契约）
+## Evaluation Contract
 
 ```text
 eval path changed: yes/no
 logits shape:
 class order:
+label mapping:
+seen/unseen split:
 metric calculation:
+metric semantics:
 ```
 
-## Checkpoint Contract（Checkpoint 契约）
+## Checkpoint Contract
 
 ```text
 new state_dict keys:
@@ -78,15 +86,17 @@ old checkpoint load behavior:
 missing/unexpected keys:
 ```
 
-## 风险
+## Risk
 
-## Minimum Verification（最低验证）
+## Minimum Verification
 
-- [ ] Switch-off forward pass。
-- [ ] Switch-on forward pass。
-- [ ] Logits shape check。
-- [ ] Loss scalar 和 backward check。
-- [ ] Evaluation 输出 class-count 检查。
-- [ ] Base config files 没有变化。
+- [ ] Switch-off forward pass.
+- [ ] Switch-on forward pass.
+- [ ] Logits shape check.
+- [ ] Loss scalar and backward check.
+- [ ] Evaluation output class-count check.
+- [ ] Label mapping check.
+- [ ] Seen/unseen split check.
+- [ ] Base config files did not change unexpectedly.
 
-## 验证命令
+## Verification Command

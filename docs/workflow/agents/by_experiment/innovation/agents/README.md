@@ -26,8 +26,9 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 - 只读取 `idea_tree/versions/<base_version>.md` 中已选中的 idea。
 - 不从总创意表直接启动 trial。
 - Implementer 只改当前 trial 代码路径。
-- Interface Checker 必须检查 off switch、shape、loss、eval、logits 和 class order。
+- Interface Checker 必须检查 off switch、shape、loss、eval、logits、label mapping、seen/unseen split 和 class order。
 - Runner 串行运行。
+- Runner 只写 Warehouse raw artifacts，GitHub 只保存 manifest/result/quality/code.diff 等轻量证据。
 - Reviewer 独立检查污染、遗漏和误判。
 - 失败 trial 保留证据，不合并失败代码。
 - `trial_decision: promote` 且 `promotion_decision: promote` 时，转交 promotion agents。

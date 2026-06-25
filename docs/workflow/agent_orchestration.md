@@ -1,6 +1,7 @@
 # Agent 编排和长期管理
 
-GitHub 保存长期规则。本地 `gtpj-workflow` skill 保存执行入口。两边规则必须同步。
+GitHub 保存长期规则和 agent IO 契约。本地 `gtpj-workflow` skill 保存执行入口。
+两边规则必须同步。
 
 ## 核心结构
 
@@ -12,7 +13,7 @@ docs/workflow/agents/
 `-- by_experiment/
 ```
 
-`shared_roles/` 只定义 agent 的长期身份、权限和输出边界。
+`shared_roles/` 只定义 agent 的长期身份、自我介绍、权限、读写边界、输出和失败条件。
 
 `by_experiment/` 只定义某类实验如何调用这些共享角色，不重复定义角色本身。
 
@@ -61,6 +62,10 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
 
 长期保存的是角色说明、读写边界、检查清单和交接格式。每次实验启动的 agent 实例可以是临时的，
 但必须按照长期角色文件工作。
+
+新边界下，GitHub 只保存轻量 config / manifest / result / version ledger。Runner 写
+Warehouse，Reader / Planner 读 Research，Manuscript 通过 artifact id 引用结果。
+任何 agent 都不能把 raw logs、checkpoint、generated figures、完整论文笔记或完整创意树写入 GitHub。
 
 ## 四类实验编排
 
@@ -122,4 +127,4 @@ Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinat
 2. 同步更新本地 `gtpj-workflow` skill 的 `references/agents/`。
 3. 运行 skill 校验。
 4. 运行仓库验证。
-5. 提交并推送 GitHub 文档。
+5. 提交 GitHub 文档；只有 owner 明确要求时才 push。

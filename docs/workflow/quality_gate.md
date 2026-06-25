@@ -8,6 +8,8 @@
 - tune、ablation、confirmation：`quality_check.md` 帮助记录证据是否完整。
 - module trial、ablation 或 tuned configuration 提升为正式 `vX`：必须通过 promotion quality gate。
 
+全局硬门：接口、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 任一不清，实验结果无效。该结果只能标记为 `blocked`、`rerun` 或 `rejected`，不得标记为 `keep` 或 `promote`，也不得作为 baseline 可比证据。
+
 运行实验前：
 
 1. 检查 Git status。
@@ -18,7 +20,8 @@
 3. 确认 config 改动只作用于当前实验。
 4. 确认模块改动由 off switch 控制。
 5. 如果有模块代码改动，确认满足 `docs/workflow/code_interface_contract.md`。
-6. 确认日志和结果路径已经准备好。
+6. 确认外部日志 artifact URI、hash、size 和结果路径已经准备好。
+7. 确认 raw logs、checkpoint、generated figures 不会写入 GitHub。
 
 模块接口检查：
 
@@ -27,7 +30,11 @@
 - 除非明确记录为接口变更，否则 logits shape 和 class order 不变；
 - 新 loss 默认关闭，并由 config 权重控制；
 - 除非 trial 明确就是 evaluation 实验，否则 evaluation 语义不变；
+- seen/unseen split、label mapping、class order、logits shape 和 metric calculation
+  不允许静默改变；
 - 训练前已记录最低验证证据。
+
+如果上述任一项无法确认，Runner 必须拒跑；如果是在运行后发现，Result Analyst 必须把结果降级为 `blocked`、`rerun` 或 `rejected`。
 
 ## Promotion Quality Gate
 
@@ -47,9 +54,11 @@ promote_to: vX
 - [ ] 指标明确：父版本 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。
 - [ ] 对照明确：同 seed 对照已记录；高风险改动已说明是否需要多 seed。
 - [ ] 配置明确：trial config 和新版本 config 路径已记录。
-- [ ] 日志明确：原始日志路径和 Git 内日志副本路径已记录。
+- [ ] 日志明确：外部日志 artifact id、URI、sha256、size 和保留位置已记录。
 - [ ] 口径不变：class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] 接口不乱：input/output shape、loss、eval、checkpoint 变化已声明。
+- [ ] 标注不乱：label mapping、seen/unseen split 和 class order 与 baseline 可比。
+- [ ] GitHub 边界通过：没有新增 raw logs、checkpoint、generated figures 或 cache。
 - [ ] 关闭等价：switch off 能回到 `parent_version` 行为。
 - [ ] 账本完整：VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] 创意树同步：`idea_tree/idea_tree.json.current_version` 和必要的 `version_scores.vX` 已更新。

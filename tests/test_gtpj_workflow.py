@@ -58,7 +58,18 @@ class WorkflowHelperTest(unittest.TestCase):
         path.write_text(content, encoding="utf-8")
 
     def _write_minimal_repo(self) -> None:
-        self._write("experiments/v1/config.yaml", "version: v1\n")
+        self._write(
+            "experiments/v1/config.yaml",
+            "version: v1\n"
+            "conditional_text_ratio:\n"
+            "  value: 0.008\n"
+            "lambda_topo_pearson:\n"
+            "  value: 0.10\n"
+            "adapter_ratio:\n"
+            "  value: 0.2\n"
+            "tf_dropout:\n"
+            "  value: 0.1\n",
+        )
         self._write(
             "idea_tree/idea_tree.json",
             '{\n  "project": "GTPJ",\n  "version": "test",\n  "current_version": "v1",\n  "ideas": []\n}\n',
@@ -75,6 +86,11 @@ class WorkflowHelperTest(unittest.TestCase):
             "# Confirmation Index\n\n| 实验 | 状态 | 目录 | 说明 |\n"
             "|---|---|---|---|\n| 暂无 | - | - | - |\n",
         )
+        self._write(
+            "experiments/v1/tune/INDEX.md",
+            "# Tune Index\n\n| 实验 | 状态 | 目录 | 说明 |\n"
+            "|---|---|---|---|\n| 暂无 | - | - | - |\n",
+        )
 
     def _run_main(self, *args: str) -> tuple[int, str, str]:
         stdout = io.StringIO()
@@ -88,6 +104,9 @@ class WorkflowHelperTest(unittest.TestCase):
 
     def _confirmation_index_text(self) -> str:
         return (self.repo / "experiments/v1/confirmation/INDEX.md").read_text(encoding="utf-8")
+
+    def _tune_index_text(self) -> str:
+        return (self.repo / "experiments/v1/tune/INDEX.md").read_text(encoding="utf-8")
 
     def _selected_idea(self, *, stage: str | None = "selected") -> dict:
         version_score = {
@@ -208,6 +227,71 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("must be selected in idea_tree/versions/v1.md", stderr)
         self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
 
+    def test_new_trial_rejects_main_branch(self) -> None:
+        self._write_selected_idea_files()
+
+        code, _stdout, stderr = self._run_main(
+            "new-trial",
+            "--idea-id",
+            "IDEA-0001",
+            "--trial-id",
+            "TRIAL-001",
+            "--slug",
+            "token_router",
+            "--base-version",
+            "v1",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("expected branch dev/v1-idea-0001-trial-001-token-router", stderr)
+        self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
+
+    def test_new_trial_rejects_dirty_expected_branch(self) -> None:
+        self._write_selected_idea_files()
+        self._git("add", ".")
+        self._git("commit", "-m", "select idea")
+        self._git("switch", "-c", "dev/v1-idea-0001-trial-001-token-router")
+        self._write("scratch.txt", "dirty\n")
+
+        code, _stdout, stderr = self._run_main(
+            "new-trial",
+            "--idea-id",
+            "IDEA-0001",
+            "--trial-id",
+            "TRIAL-001",
+            "--slug",
+            "token_router",
+            "--base-version",
+            "v1",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("Working tree must be clean", stderr)
+        self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
+
+    def test_new_trial_rejects_expected_branch_not_based_on_main(self) -> None:
+        self._write_selected_idea_files()
+        self._git("add", ".")
+        self._git("commit", "-m", "select idea")
+        self._git("checkout", "--orphan", "dev/v1-idea-0001-trial-001-token-router")
+        self._git("commit", "-m", "orphan trial branch")
+
+        code, _stdout, stderr = self._run_main(
+            "new-trial",
+            "--idea-id",
+            "IDEA-0001",
+            "--trial-id",
+            "TRIAL-001",
+            "--slug",
+            "token_router",
+            "--base-version",
+            "v1",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("new-trial branch must contain current local main", stderr)
+        self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
+
     def test_new_experiment_rejects_main_branch(self) -> None:
         registry_before = self._registry_text()
         index_before = self._confirmation_index_text()
@@ -320,6 +404,265 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("已创建 experiments/v1/confirmation/CONFIRM-001_v1_seed5", stdout)
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/README.md").exists())
+        self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/manifest.yaml").exists())
+        self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml").exists())
+        self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md").exists())
+
+    def test_tune_suggest_lists_at_most_three_candidates_without_writing(self) -> None:
+        index_before = self._tune_index_text()
+        registry_before = self._registry_text()
+
+        code, stdout, stderr = self._run_main("tune-suggest", "--version", "v1")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertEqual(3, stdout.count("parameter:"))
+        self.assertIn("conditional_text_ratio", stdout)
+        self.assertIn("lambda_topo_pearson", stdout)
+        self.assertIn("adapter_ratio", stdout)
+        self.assertIn("用户选择 1 个候选后再运行", stdout)
+        self.assertEqual(index_before, self._tune_index_text())
+        self.assertEqual(registry_before, self._registry_text())
+
+    def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
+        code, stdout, stderr = self._run_main(
+            "runner-lock",
+            "--run-id",
+            "RUN-20260625-001",
+            "--experiment-id",
+            "TUNE-001",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("gpu-runner-locked", stdout)
+        self.assertTrue((self.repo / ".gtpj_runtime/gpu_runner.lock").exists())
+
+        code, _stdout, stderr = self._run_main(
+            "runner-lock",
+            "--run-id",
+            "RUN-20260625-002",
+            "--experiment-id",
+            "TUNE-002",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("GPU Runner is already locked", stderr)
+
+        code, stdout, stderr = self._run_main("runner-unlock", "--run-id", "RUN-20260625-001")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("gpu-runner-free", stdout)
+        self.assertFalse((self.repo / ".gtpj_runtime/gpu_runner.lock").exists())
+
+    def test_tune_record_result_parses_log_updates_index_and_cleanup_prompt(self) -> None:
+        self._git("switch", "-c", "exp/v1-tune-001-topo008")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-001",
+            "--slug",
+            "topo008",
+        )
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self._write(
+            "train_log/tune.log",
+            "Best Results @ Epoch 26\n"
+            "  GZSL-U : 72.36%\n"
+            "  GZSL-S : 75.57%\n"
+            "  GZSL-H : 73.93%\n"
+            "  ZSL    : 81.62%\n",
+        )
+
+        code, stdout, stderr = self._run_main(
+            "record-result",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-001",
+            "--slug",
+            "topo008",
+            "--parameter",
+            "conditional_text_ratio",
+            "--old-value",
+            "0.008",
+            "--new-value",
+            "0.006",
+            "--seed",
+            "5",
+            "--log",
+            "train_log/tune.log",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
+            "--decision",
+            "keep",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("record-result-ok", stdout)
+        self.assertIn("临时分支清理提示", stdout)
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-001_topo008"
+        readme = (exp_dir / "README.md").read_text(encoding="utf-8")
+        self.assertIn("kind: tune", readme)
+        self.assertIn("tuned_parameter: conditional_text_ratio", readme)
+        self.assertIn("old_value: 0.008", readme)
+        self.assertIn("new_value: 0.006", readme)
+        self.assertIn("U: 72.36", readme)
+        self.assertIn("S: 75.57", readme)
+        self.assertIn("H: 73.93", readme)
+        self.assertIn("ZS: 81.62", readme)
+        self.assertIn("best_epoch: 26", readme)
+        self.assertIn("decision: keep", readme)
+        self.assertIn("log_artifact_id: log:TUNE-001_topo008:attempt-001", readme)
+        self.assertIn("log_uri: warehouse://gtpj/runs/v1/tune/TUNE-001_topo008/attempt-001/logs/tune.log", readme)
+        self.assertIn("log_sha256:", readme)
+        self.assertFalse((exp_dir / "logs/tune.log").exists())
+        manifest = (exp_dir / "manifest.yaml").read_text(encoding="utf-8")
+        result_yaml = (exp_dir / "result.yaml").read_text(encoding="utf-8")
+        result_md = (exp_dir / "result.md").read_text(encoding="utf-8")
+        self.assertIn("schema_version: gtpj-manifest/v1", manifest)
+        self.assertIn("warehouse://gtpj/runs/v1/tune/TUNE-001_topo008/attempt-001/logs/tune.log", manifest)
+        self.assertIn('label_mapping_id: "standard_v1"', manifest)
+        self.assertIn('metric_contract_id: "gzsl_u_s_h_zs_v1"', manifest)
+        self.assertIn("schema_version: gtpj-result/v1", result_yaml)
+        self.assertIn('H: "73.93"', result_yaml)
+        self.assertIn('metric_semantics: "GZSL U/S/H/ZS from protected evaluator"', result_yaml)
+        self.assertIn('label_mapping_id: "standard_v1"', result_yaml)
+        self.assertIn('split_id: "standard_v1"', result_yaml)
+        self.assertIn('class_order_id: "standard_v1"', result_yaml)
+        self.assertIn("log:TUNE-001_topo008:attempt-001", result_md)
+        index = self._tune_index_text()
+        self.assertIn("## 结果记录", index)
+        self.assertIn("`TUNE-001_topo008` | `conditional_text_ratio` | 0.008 | 0.006 | 5 | 72.36", index)
+        registry = self._registry_text()
+        self.assertIn("| `TUNE-001_topo008` | `v1` | `tune` | keep |", registry)
+
+    def test_record_result_uses_entry_dirty_state_for_readme_and_manifest(self) -> None:
+        self._git("switch", "-c", "exp/v1-tune-001-topo008")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-001",
+            "--slug",
+            "topo008",
+        )
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self._git("add", ".")
+        self._git("commit", "-m", "add planned tune")
+
+        with tempfile.TemporaryDirectory() as log_tmp:
+            log_path = Path(log_tmp) / "tune.log"
+            log_path.write_text(
+                "Best Results @ Epoch 26\n"
+                "  GZSL-U : 72.36%\n"
+                "  GZSL-S : 75.57%\n"
+                "  GZSL-H : 73.93%\n"
+                "  ZSL    : 81.62%\n",
+                encoding="utf-8",
+            )
+
+            code, _stdout, stderr = self._run_main(
+                "record-result",
+                "--version",
+                "v1",
+                "--kind",
+                "tune",
+                "--exp-id",
+                "TUNE-001",
+                "--slug",
+                "topo008",
+                "--parameter",
+                "conditional_text_ratio",
+                "--old-value",
+                "0.008",
+                "--new-value",
+                "0.006",
+                "--seed",
+                "5",
+                "--log",
+                str(log_path),
+                "--command",
+                "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
+            )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-001_topo008"
+        readme = (exp_dir / "README.md").read_text(encoding="utf-8")
+        manifest = (exp_dir / "manifest.yaml").read_text(encoding="utf-8")
+        self.assertIn("dirty_state: clean", readme)
+        self.assertIn('git_dirty: "false"', manifest)
+
+    def test_audit_boundary_rejects_raw_experiment_log(self) -> None:
+        self._write("experiments/v1/tune/TUNE-999_bad/logs/train.log", "raw log\n")
+
+        code, _stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual(1, code)
+        self.assertIn("Forbidden raw experiment artifacts", stderr)
+
+    def test_audit_boundary_rejects_root_level_txt_raw_log(self) -> None:
+        self._write("experiments/v1/tune/TUNE-999_bad/train.txt", "raw log\n")
+
+        code, _stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual(1, code)
+        self.assertIn("Forbidden raw experiment artifacts", stderr)
+        self.assertIn("train.txt", stderr)
+
+    def test_audit_boundary_rejects_experiment_image_outside_figures_dir(self) -> None:
+        self._write("experiments/v1/tune/TUNE-999_bad/plot.png", "raw figure\n")
+
+        code, _stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual(1, code)
+        self.assertIn("Forbidden raw experiment artifacts", stderr)
+        self.assertIn("plot.png", stderr)
+
+    def test_audit_boundary_rejects_experiment_checkpoint(self) -> None:
+        self._write("experiments/v1/tune/TUNE-999_bad/model.pth", "checkpoint\n")
+
+        code, _stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual(1, code)
+        self.assertIn("Forbidden raw experiment artifacts", stderr)
+        self.assertIn("model.pth", stderr)
+
+    def test_audit_boundary_accepts_manifest_result_without_raw_artifacts(self) -> None:
+        self._write(
+            "experiments/v1/tune/TUNE-999_ok/manifest.yaml",
+            "schema_version: gtpj-manifest/v1\n"
+            "artifacts:\n"
+            "  train_log:\n"
+            "    artifact_id: log:TUNE-999_ok:attempt-001\n"
+            "    uri: warehouse://gtpj/runs/v1/tune/TUNE-999_ok/attempt-001/logs/train.log\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-999_ok/result.yaml",
+            "schema_version: gtpj-result/v1\n"
+            "evidence:\n"
+            "  log_artifact_id: log:TUNE-999_ok:attempt-001\n",
+        )
+
+        code, stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("audit-boundary-ok", stdout)
 
     def test_validate_remote_accepts_origin_refs_matching_local_v1_tag(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:

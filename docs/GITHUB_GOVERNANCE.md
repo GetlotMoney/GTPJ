@@ -31,6 +31,56 @@ baseline H: 73.93
 - 证据目录：代码验证、trial 记录、调参、消融和确认实验都放在 `experiments/`。
 - 大文件边界：数据集、cache、checkpoint、大日志不进入 Git。
 
+## GitHub 轻量边界
+
+GitHub 只回答：
+
+```text
+怎么复现？
+结果是什么？
+为什么保留、放弃、重跑或提升？
+是否满足 promotion / activate-version / set-current-version 的治理边界？
+```
+
+GitHub 保存：
+
+```text
+code
+config
+schema
+manifest.yaml
+result.yaml
+result.md
+quality_check.md
+EXPERIMENT_REGISTRY
+VERSION_TREE
+轻量 idea index
+agent contracts
+```
+
+GitHub 不保存：
+
+```text
+raw logs
+checkpoint
+generated figures
+feature cache
+完整论文阅读材料
+完整创意树
+论文草稿和投稿资产
+```
+
+这些外部资产分别放在：
+
+```text
+GTPJ_Research
+GTPJ_Warehouse
+GTPJ_Manuscript
+```
+
+GitHub 使用 `warehouse://`、`research://`、`manuscript://` URI 和 sha256/size 引用它们。
+本地真实路径只写入 ignored 的 `.gtpj/local_paths.yaml`。
+
 ## 当前阶段不强制什么
 
 - 不强制运行完整 OpenClaw 工作流。
@@ -282,7 +332,7 @@ trial/v1/idea-0003/trial-001
 - 如果新 `vX` 的父节点不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
   只切换代码层，不能删除或回退全局账本层。
 - `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
-- 成功 trial 的证据目录、日志副本、quality_check、result 和 code.diff 必须回流到当前 `main` 账本。
+- 成功 trial 的轻量证据目录、artifact 指针、quality_check、result 和 code.diff 必须回流到当前 `main` 账本；raw logs、checkpoint 和 generated figures 留在 Warehouse。
 - 在包含正式版本代码和版本材料的明确 commit 上打新的 baseline tag，例如 `v2` 或 `v3`；
   这个 commit 不必是当前 `main` commit。
 - `main` 代码是否切到新 baseline，必须由 owner 明确执行 `activate-version` 决定。

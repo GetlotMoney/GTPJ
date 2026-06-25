@@ -9,6 +9,8 @@
 新增模块可以测试一个假设，但不能静默改变 baseline 接口、tensor shape 或评估语义。
 ```
 
+Hard gate: if the interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence. It cannot enter Runner, cannot be marked `keep`, and cannot be promoted.
+
 ## Baseline-Off Equivalence（基线关闭等价）
 
 每个新模块都必须有明确的 config switch。
@@ -19,6 +21,7 @@
 - forward 输出相同；
 - logits shape 相同；
 - class order 相同；
+- label mapping 相同；
 - 启用的 loss 和 loss weight 相同；
 - evaluation 输入/输出格式相同；
 - base version 的 config 默认值相同。
@@ -81,9 +84,10 @@ baseline path affected: yes/no
 
 - batch 维 `B` 保持不变；
 - class 维 `C` 保持不变；
-- logits shape 保持 `[B, C]`；
+- logits shape 保持 `[B（图片/样本数量）, C（类别数量）]`；
 - visual/text embedding 维度仍与 base scorer 兼容；
 - seen/unseen class order 不变；
+- label mapping 不变；
 - score、loss 或 calibration 逻辑中不允许意外 broadcasting。
 
 任何有意破坏不变量的改动都必须按高风险质量检查处理，并且没有 version bump
@@ -137,6 +141,7 @@ lambda_new_loss > 0 -> 新 loss 只按该权重贡献到 total loss
 
 - class order；
 - seen/unseen split；
+- label mapping；
 - logits shape；
 - calibration path；
 - metric calculation；

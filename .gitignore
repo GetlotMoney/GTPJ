@@ -34,6 +34,17 @@ cache/
 .agent-state/
 experiments/.agent-state/
 .gtpj_runtime/
+.gtpj/local_paths.yaml
+.gtpj/locks/
+
+# GitHub is the lightweight control plane; raw experiment artifacts stay external.
+experiments/**/logs/*
+experiments/**/checkpoints/*
+experiments/**/figures/*
+experiments/**/*.png
+experiments/**/*.jpg
+experiments/**/*.jpeg
+experiments/**/*.webp
 
 # OS/editor
 .DS_Store

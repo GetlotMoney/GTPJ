@@ -12,7 +12,13 @@ code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:
 run_config:
-run_log:
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
 trial_decision:
 promote_to:
 promotion_decision:
@@ -38,8 +44,9 @@ delta_H:
 same_seed_control:
 multi_seed_required:
 config_snapshot:
-original_log:
-copied_log:
+log_artifact_id:
+log_uri:
+log_sha256:
 eval_contract_changed: yes/no
 switch_off_equivalent: yes/no
 version_tree_updated: yes/no
