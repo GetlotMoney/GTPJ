@@ -32,6 +32,10 @@ CACHE_CLASS_TEXT      = os.path.join(CACHE_DIR, 'CUB_class_text_embeds.pt')     
 def _gpt_embed_cache_path(text_source):
     return os.path.join(CACHE_DIR, f'CUB_{text_source}_text_embeds.pt')
 
+
+def _gpt_sentence_cache_path(text_source):
+    return os.path.join(CACHE_DIR, f'CUB_{text_source}_sentence_embeds.pt')
+
 # ==========================================
 #   日志
 # ==========================================
@@ -94,6 +98,11 @@ print_log(f"│  use_aug_cache : {getattr(config, 'use_aug_cache', False)}")
 print_log("├─ Architecture ──────────────────────────────────────────┤")
 print_log(f"│  use_fae       : {getattr(config, 'use_fae', True)}")
 print_log(f"│  adapter_ratio : {getattr(config, 'adapter_ratio', 0.2)}")
+print_log(f"│  use_clip_a_self: {getattr(config, 'use_clip_a_self', False)}")
+if getattr(config, 'use_clip_a_self', False):
+    print_log(f"│  clip_a_self_apply_unseen: {getattr(config, 'clip_a_self_apply_unseen', False)}")
+    print_log(f"│  clip_a_self_outer_ratio : {getattr(config, 'clip_a_self_outer_ratio', getattr(config, 'adapter_ratio', 0.2))}")
+    print_log(f"│  clip_a_self_inner_ratio : {getattr(config, 'clip_a_self_inner_ratio', 0.5)}")
 print_log(f"│  tf_common_dim : {getattr(config, 'tf_common_dim', 512)}")
 print_log(f"│  tf_heads      : {getattr(config, 'tf_heads', 4)}")
 print_log(f"│  tf_dropout    : {getattr(config, 'tf_dropout', 0.1)}")
@@ -253,6 +262,7 @@ else:
 #   加载 GPT-4 描述并编码
 # ==========================================
 gpt_text_embeds = None
+gpt_sentence_embeds = None
 # 文本数据来源切换:
 #   'gpt4'     → cub.pt          (GPT-4, 7 句/类)
 #   'claude'   → cub_claude.pt   (Claude, 7 句/类)
@@ -282,7 +292,34 @@ def _encode_descriptions(file_path, dataloader, clip_model, device, class_text_e
     return torch.stack(embeds_list), hit, len(sentences_dict)
 
 
+def _encode_description_sentences(file_path, dataloader, clip_model, device, class_text_embeds):
+    """加载并 CLIP 编码描述文件 → 返回 [200, M, 768] 句级嵌入"""
+    sentences_dict = torch.load(file_path, map_location='cpu', weights_only=False)
+    max_sentences = max(len(v) for v in sentences_dict.values()) if sentences_dict else 1
+    embeds_list = []
+    hit = 0
+    for cls_idx, cls_name in enumerate(dataloader.class_names):
+        gpt_key = '.'.join(cls_name.split('.')[1:]).lower()
+        if gpt_key in sentences_dict:
+            sentences = list(sentences_dict[gpt_key])
+            tokens = torch.cat([clip.tokenize(s) for s in sentences]).to(device)
+            with torch.no_grad():
+                feats = clip_model.encode_text(tokens).float()
+            if feats.size(0) < max_sentences:
+                pad = feats[-1:].expand(max_sentences - feats.size(0), -1)
+                feats = torch.cat([feats, pad], dim=0)
+            elif feats.size(0) > max_sentences:
+                feats = feats[:max_sentences]
+            hit += 1
+        else:
+            feats = class_text_embeds[cls_idx].unsqueeze(0).expand(max_sentences, -1)
+        embeds_list.append(feats)
+    return torch.stack(embeds_list), hit, len(sentences_dict)
+
+
 if text_source == 'weighted':
+    if bool(getattr(config, 'use_clip_a_self', False)):
+        raise ValueError("use_clip_a_self=True does not support text_source='weighted' in TRIAL-001.")
     text_alpha = getattr(config, 'text_alpha', 1.0)
     gpt_path    = os.path.join('.', 'data', 'gpt4_data', 'cub.pt')
     claude_path = os.path.join('.', 'data', 'gpt4_data', 'cub_claude.pt')
@@ -327,22 +364,41 @@ else:
     # ★ 加速优化 (方案 2a): GPT 文本嵌入缓存 (200 类 × 7 句 = 1400 个 CLIP encode_text)
     # 启动省 ~10 秒 (CLIP ViT-L/14 文本编码慢, 7 次 encode_text)
     embed_cache = _gpt_embed_cache_path(text_source)
-    if os.path.exists(embed_cache):
+    sentence_cache = _gpt_sentence_cache_path(text_source)
+    use_clip_a_self = bool(getattr(config, 'use_clip_a_self', False))
+    if use_clip_a_self and os.path.exists(sentence_cache):
+        gpt_sentence_embeds = torch.load(sentence_cache, map_location=config.device,
+                                        weights_only=True)
+        gpt_text_embeds = gpt_sentence_embeds.mean(dim=1)
+        print_log(f"      ★ gpt_sentence_embeds loaded from cache: {gpt_sentence_embeds.shape}")
+        print_log(f"      gpt_text_embeds derived by mean: {gpt_text_embeds.shape}")
+    elif (not use_clip_a_self) and os.path.exists(embed_cache):
         gpt_text_embeds = torch.load(embed_cache, map_location=config.device,
                                       weights_only=True)
         print_log(f"      ★ gpt_text_embeds loaded from cache: {gpt_text_embeds.shape}")
     elif os.path.exists(gpt4_data_path):
         print_log(f"      Loading text descriptions from {gpt4_data_path}...")
-        gpt_text_embeds, hit, n_cls = _encode_descriptions(
-            gpt4_data_path, dataloader, clip_model, config.device, class_text_embeds)
+        if use_clip_a_self:
+            gpt_sentence_embeds, hit, n_cls = _encode_description_sentences(
+                gpt4_data_path, dataloader, clip_model, config.device, class_text_embeds)
+            gpt_text_embeds = gpt_sentence_embeds.mean(dim=1)
+        else:
+            gpt_text_embeds, hit, n_cls = _encode_descriptions(
+                gpt4_data_path, dataloader, clip_model, config.device, class_text_embeds)
         n_desc = len(list(torch.load(gpt4_data_path, map_location='cpu',
                                      weights_only=False).values())[0])
         print_log(f"      {n_cls} classes × {n_desc} descriptions/class")
         print_log(f"      GPT hit: {hit} classes | fallback: {n_cls - hit} classes")
         try:
             torch.save(gpt_text_embeds.cpu(), embed_cache)
+            if use_clip_a_self and gpt_sentence_embeds is not None:
+                torch.save(gpt_sentence_embeds.cpu(), sentence_cache)
             print_log(f"      gpt_text_embeds: {gpt_text_embeds.shape}  (cached for next run)")
+            if use_clip_a_self:
+                print_log(f"      gpt_sentence_embeds: {gpt_sentence_embeds.shape}  (cached for next run)")
             gpt_text_embeds = gpt_text_embeds.to(config.device)
+            if gpt_sentence_embeds is not None:
+                gpt_sentence_embeds = gpt_sentence_embeds.to(config.device)
         except Exception as e:
             print_log(f"      gpt_text_embeds: {gpt_text_embeds.shape}  "
                       f"(cache save failed: {e})")
@@ -362,6 +418,10 @@ seen_gpt_embeds = gpt_text_embeds[dataloader.seenclasses] \
 # GPT 描述是纯文本语义，不含视觉监督信号，不算信息泄露
 unseen_clip_embeds = gpt_text_embeds[dataloader.unseenclasses] \
     if gpt_text_embeds is not None else class_text_embeds[dataloader.unseenclasses]
+seen_sentence_embeds = gpt_sentence_embeds[dataloader.seenclasses] \
+    if gpt_sentence_embeds is not None else None
+unseen_sentence_embeds = gpt_sentence_embeds[dataloader.unseenclasses] \
+    if gpt_sentence_embeds is not None else None
 
 model = GTPJ(
     config,
@@ -371,6 +431,8 @@ model = GTPJ(
     unseen_text_embeds=unseen_clip_embeds,  # [50, 768]  unseen 类原始 CLIP 文本
     class_attr=dataloader.att,              # [200, 312] CUB 专家属性
     attr_text_embeds=dataloader.clip_att,    # [312, 768] CLIP 属性文本原型
+    seen_sentence_embeds=seen_sentence_embeds,
+    unseen_sentence_embeds=unseen_sentence_embeds,
 ).to(config.device)
 
 total_params = sum(p.numel() for p in model.parameters())

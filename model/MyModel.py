@@ -83,6 +83,29 @@ class Adapter(nn.Module):
         return self.fc(x)
 
 
+class CLIPASelfAdapter(nn.Module):
+    """Sentence-level self-attention adapter for per-class VDT features."""
+
+    def __init__(self, dim, heads=1, dropout=0.5, inner_ratio=0.5):
+        super().__init__()
+        self.inner_ratio = float(inner_ratio)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=dim,
+            num_heads=int(heads),
+            dropout=float(dropout),
+            batch_first=True,
+        )
+        self.proj = nn.Linear(dim, dim)
+        self.dropout = nn.Dropout(float(dropout))
+        self.layer_norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        attn_out, _ = self.attn(x, x, x, need_weights=False)
+        attn_out = self.dropout(self.proj(attn_out))
+        mixed = self.inner_ratio * attn_out + (1.0 - self.inner_ratio) * x
+        return self.layer_norm(2.0 * mixed)
+
+
 class BoxRelationalEmbedding(nn.Module):
     """Precomputed 24x24 patch-grid relational geometry embedding."""
 
@@ -311,6 +334,8 @@ class GTPJ(nn.Module):
         unseen_text_embeds,
         class_attr=None,
         attr_text_embeds=None,
+        seen_sentence_embeds=None,
+        unseen_sentence_embeds=None,
     ):
         super().__init__()
         self.config = config
@@ -333,7 +358,37 @@ class GTPJ(nn.Module):
         )
 
         self.adapter_ratio = float(getattr(config, "adapter_ratio", 0.2))
-        self.text_adapter = Adapter(self.dim_f, reduction=4)
+        self.use_clip_a_self = bool(getattr(config, "use_clip_a_self", False))
+        self.clip_a_self_apply_unseen = bool(
+            getattr(config, "clip_a_self_apply_unseen", False)
+        )
+        self.clip_a_self_outer_ratio = float(
+            getattr(config, "clip_a_self_outer_ratio", self.adapter_ratio)
+        )
+        if self.use_clip_a_self:
+            if seen_sentence_embeds is None:
+                raise ValueError("use_clip_a_self=True requires seen_sentence_embeds.")
+            if seen_sentence_embeds.dim() != 3 or seen_sentence_embeds.size(-1) != self.dim_f:
+                raise ValueError("seen_sentence_embeds must have shape [C_seen, M, D].")
+            self.seen_sentence_embeds = nn.Parameter(
+                F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
+            )
+            if unseen_sentence_embeds is not None:
+                if unseen_sentence_embeds.dim() != 3 or unseen_sentence_embeds.size(-1) != self.dim_f:
+                    raise ValueError("unseen_sentence_embeds must have shape [C_unseen, M, D].")
+                self.unseen_sentence_embeds = nn.Parameter(
+                    F.normalize(unseen_sentence_embeds, dim=-1), requires_grad=False
+                )
+            else:
+                self.unseen_sentence_embeds = None
+            self.clip_a_self_adapter = CLIPASelfAdapter(
+                dim=self.dim_f,
+                heads=int(getattr(config, "clip_a_self_heads", 1)),
+                dropout=float(getattr(config, "clip_a_self_dropout", 0.5)),
+                inner_ratio=float(getattr(config, "clip_a_self_inner_ratio", 0.5)),
+            )
+        else:
+            self.text_adapter = Adapter(self.dim_f, reduction=4)
 
         tf_common_dim = int(getattr(config, "tf_common_dim", 512))
         tf_heads = int(getattr(config, "tf_heads", 4))
@@ -453,13 +508,33 @@ class GTPJ(nn.Module):
                 raise ValueError(f"MyModel.py is baseline-only; unsupported loss weight {key}.")
 
     def get_adapted_seen_text(self):
+        if self.use_clip_a_self:
+            sentence_embeds = self.seen_sentence_embeds
+            base = sentence_embeds.mean(dim=1)
+            attn = self.clip_a_self_adapter(sentence_embeds).mean(dim=1)
+            ratio = self.clip_a_self_outer_ratio
+            adapted = ratio * attn + (1.0 - ratio) * base
+            return F.normalize(adapted, dim=1)
         x = self.seen_text_embeds
         adapted = self.adapter_ratio * self.text_adapter(x) + (1.0 - self.adapter_ratio) * x
         return F.normalize(adapted, dim=1)
 
+    def get_adapted_unseen_text(self):
+        if (
+            self.use_clip_a_self
+            and self.clip_a_self_apply_unseen
+            and self.unseen_sentence_embeds is not None
+        ):
+            sentence_embeds = self.unseen_sentence_embeds
+            base = sentence_embeds.mean(dim=1)
+            attn = self.clip_a_self_adapter(sentence_embeds).mean(dim=1)
+            ratio = self.clip_a_self_outer_ratio
+            return F.normalize(ratio * attn + (1.0 - ratio) * base, dim=1)
+        return self.unseen_text_embeds
+
     def _make_all_text(self, device, dtype):
         seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)
-        unseen_text = self.unseen_text_embeds.to(device=device, dtype=dtype)
+        unseen_text = self.get_adapted_unseen_text().to(device=device, dtype=dtype)
         all_text = torch.zeros(self.nclass, self.dim_f, device=device, dtype=dtype)
         all_text[self.seenclass.to(device)] = seen_text
         all_text[self.unseenclass.to(device)] = unseen_text

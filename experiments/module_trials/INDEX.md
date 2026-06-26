@@ -15,3 +15,9 @@
 - 在 `idea_tree/INDEX.md` 中确认被选版本的分数；
 - 通过 workflow helper 创建 `TRIAL-001_<slug>/`；
 - 保证 default-off path 等价于选定 base version。
+
+## Trial 记录
+
+| Idea | Trial | 状态 | 目录 | 说明 |
+|---|---|---|---|---|
+| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | planned | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | 待运行。 |

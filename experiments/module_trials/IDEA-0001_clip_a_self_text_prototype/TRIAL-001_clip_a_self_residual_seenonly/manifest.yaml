@@ -1,0 +1,43 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_clip_a_self_residual_seenonly"
+  kind: "module-trial"
+  status: "planned"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-06-26T08:35:59+00:00"
+version:
+  base_version: "v1"
+  base_code_tag: "v1"
+  code_branch: "dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly"
+  code_commit: "83649f0"
+  git_dirty: "true"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/config.yaml"
+  config_sha256: "e16c7cbab967e079717893262c3c7a686bb343b1def4b09ddd9ec4288b949d28"
+  command: ""
+  seed: ""
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: "IDEA-0001"
+  uri: "research://ideas/IDEA-0001.md"
+  title: "CLIP-A-self text prototype adapter"
+  hypothesis: "Replacing the v1 MLP seen-text adapter with a sentence-level CLIP-A-self adapter can learn a better aggregation of GPT/VDT descriptions for seen classes, improving GZSL H or ZS without changing class order, seen/unseen split, label mapping, logits shape, or evaluation semantics."
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "false"

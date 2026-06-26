@@ -16,7 +16,7 @@
         "v1": {
           "score": 78.0,
           "applicability": "needs_adaptation",
-          "stage": "selected",
+          "stage": "trialing",
           "rationale": "v1 already uses GPT/VDT sentence averages and an MLP text adapter for seen prototypes. CLIP-A-self can test whether sentence-level self-attention selects more useful VDT cues while preserving the existing GZSL label mapping, class order, logits shape, and seen-only CE training path.",
           "blockers": []
         }
@@ -40,7 +40,9 @@
       "compatibility": "The switch-off path must keep the existing v1 MLP adapter behavior and the same forward/loss/eval interfaces. New parameters are trial-local and should load older checkpoints with strict=False only when intentionally used.",
       "transfer_notes": "For future versions, re-check whether the text prototype owner is still model/MyModel.py and whether v2 keeps the same GPT/VDT sentence source and seen/unseen split semantics before reusing this idea.",
       "priority": 0.78,
-      "linked_trials": [],
+      "linked_trials": [
+        "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly"
+      ],
       "linked_versions": [],
       "linked_experiments": [],
       "evidence": [

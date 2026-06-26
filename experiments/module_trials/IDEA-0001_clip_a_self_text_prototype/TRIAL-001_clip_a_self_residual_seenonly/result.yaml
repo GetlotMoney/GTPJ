@@ -1,0 +1,40 @@
+schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+experiment_name: "TRIAL-001_clip_a_self_residual_seenonly"
+kind: "module-trial"
+version: "v1"
+metrics:
+  U: ""
+  S: ""
+  H: ""
+  ZS: ""
+  best_epoch: ""
+  baseline_H: "73.93"
+  delta_H: ""
+  seed: ""
+  source: "training_log"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: "v1"
+  H: "73.93"
+delta:
+  H: ""
+run:
+  seed: ""
+decision:
+  status: "pending"
+  promotion_decision: "not_applicable"
+  promote_to: ""
+evidence:
+  log_artifact_id: ""
+  manifest: "manifest.yaml"
+  agent_summary: "agent_summary.md"
+  label_mapping_id: "standard_v1"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+quality:
+  manifest_verified: "false"
+  boundary_audit_passed: "false"
+  interface_contract_checked: "false"
+  evaluation_semantics_verified: "false"
+recorded_at: "2026-06-26T08:35:59+00:00"
