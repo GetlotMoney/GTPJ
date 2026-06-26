@@ -268,6 +268,7 @@ GitHub 里的 `experiments/` 是轻量实验索引，不是实验资产仓库。
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板。 |
 | `experiments/templates/agent_summary_template.md` | agent 工作凭证模板。 |
 | `experiments/templates/TRIAL_README_template.md` | trial README 模板。 |
+| `experiments/templates/TRIAL_ATTEMPTS_template.md` | module trial 内部多次 attempt 总表模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
@@ -648,6 +649,11 @@ innovation 的硬规则：
 - 关闭开关必须回到 base behavior。
 - 接口语义不清楚时不能跑正式结果。
 - trial 通过不等于自动成为新版本。
+- 同一个 `TRIAL-001` 可以有多个 `ATTEMPT-xxx`，用于记录同一实现假设下的参数尝试、小范围 follow-up ablation、rerun 或 debug-fix。
+- `ATTEMPTS.md` 是 trial 内部的人读总表；单次 attempt 的复现证据放在 `attempts/ATTEMPT-xxx/`。
+- trial 根目录的 `README.md`、`result.yaml`、`quality_check.md` 只汇总当前用于决策的 `best_attempt_id`。
+- 如果变化已经超出小范围参数或局部诊断，形成新的实现假设，就新开 `TRIAL-002`，不要继续堆在 `TRIAL-001`。
+- 旧 trial 如果只有一次 root-level attempt，可以作为历史证据保留；但从这条规则开始新增的 attempt 必须进入 `ATTEMPTS.md`。
 
 ### 7.4 confirmation
 

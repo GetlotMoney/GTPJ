@@ -11,30 +11,42 @@ code_branch: dev/v1-idea-xxxx-trial-001-short-name
 code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:
+attempts_table: ATTEMPTS.md
+best_attempt_id:
+best_attempt_dir:
 run_config:
 log_artifact_id:
 log_uri:
 log_sha256:
 log_size_bytes:
-manifest: manifest.yaml
-result_yaml: result.yaml
-result_md: result.md
+manifest:
+result_yaml:
+result_md:
 agent_summary: agent_summary.md
 trial_decision:
 promote_to:
 promotion_decision:
 ```
 
-`code_branch` 从当前 `main` 开出，`base_code_tag` 才是代码来源。
+`code_branch` is cut from current `main`. `base_code_tag` is the true code source.
 
-## 结果
+## Changed Files
 
-| 数据集 | Seed | U | S | H | ZS | Best epoch |
-|---|---:|---:|---:|---:|---:|---:|
+| File | Change | Code layer |
+|---|---|---|
+
+## Result
+
+| Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch | Log artifact |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+
+## Attempts
+
+Detailed attempt records live in `ATTEMPTS.md`. Reproducibility evidence for each attempt should live in `attempts/ATTEMPT-xxx/`, unless this is a legacy single-attempt trial.
 
 ## Promotion Gate
 
-仅当 `decision: promote` 时填写：
+Fill only when `trial_decision: promote`:
 
 ```text
 parent_version:
