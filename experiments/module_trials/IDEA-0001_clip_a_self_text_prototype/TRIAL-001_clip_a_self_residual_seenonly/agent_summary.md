@@ -2,99 +2,160 @@
 
 ```text
 experiment_id: TRIAL-001
-run_id: RUN-20260626-163348-module-trial-clip-a-self
+run_id: RUN-20260626-ATTEMPT-002..006-head-sweep
 base_version: v1
 code_branch: dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly
 code_commit: da2e295cb15b0d55afdcf4785bce4bc6a4bff80e
-agent_set: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Quality Checker, Result Analyst, Reviewer
-serial_agents: Coordinator -> Implementer -> Runner
-parallel_agents: Reader/Planner + Interface Checker
-disabled_agents:
-runtime_state: .gtpj_runtime/runs/RUN-20260626-163348-module-trial-clip-a-self/
-warehouse_report_artifacts: log:v1:module_trial:TRIAL-001:attempt-001
-final_decision: revise
+activation_mode: role_only
+activation_reason: ATTEMPT-002..006 were executed as a single serial head/dropout/ratio sweep before the real-multi-agent activation rule was formalized; results are kept as revise evidence only.
+required_roles: Coordinator, Reader/Planner, Runner, Result Analyst, Quality Checker, Reviewer
+required_real_agents: []
+agent_set: Coordinator, Reader/Planner, Runner, Quality Checker, Result Analyst, Reviewer
+serial_agents: Coordinator -> Runner
+parallel_agents: Reader/Planner + Quality Checker
+disabled_agents: Implementer, Interface Checker (no post-implementation code change during this sweep)
+tool_support: real_multi_agent_available=not_checked_for_this_historical_sweep; fallback_mode=role_only; checked_by=Coordinator
+memory_policy: repo_state_required=yes; memory_used=no; memory_sources=[]; verified_against_current_repo=README.md, ATTEMPTS.md, manifest.yaml, result.yaml, quality_check.md
+memory_used: no
+memory_sources: []
+verified_against_current_repo: README.md, ATTEMPTS.md, manifest.yaml, result.yaml, quality_check.md
+runtime_state:
+warehouse_report_artifacts: log:v1:module_trial:TRIAL-001:attempt-002, log:v1:module_trial:TRIAL-001:attempt-003, log:v1:module_trial:TRIAL-001:attempt-004, log:v1:module_trial:TRIAL-001:attempt-005, log:v1:module_trial:TRIAL-001:attempt-006
+final_decision: revise; ATTEMPT-003 is current best, promotion blocked pending clean confirmation
 ```
 
 ## Coordinator
 
 ```text
 role: workflow coordinator
-inputs_checked: v1 baseline, IDEA-0001, source status, trial branch, workflow router, module trial protocol
-actions: Created idea/trial records, coordinated subagents, committed implementation, ran validation, locked/unlocked Runner, registered artifacts
-outputs: Trial ledger, config, code.diff, result, manifest, quality check
-issues: Default Python lacked clip; successful run used conda:dvsr_gpu
-decision: revise; do not promote
-evidence_refs: result.yaml, manifest.yaml, quality_check.md
+agent_instance_type: main_agent
+independence_scope: routing, run sequencing, artifact registration, ledger updates
+inputs_checked: current trial ledger, attempt queue, branch cleanliness before sweep, Runner lock discipline
+actions: created ATTEMPT-002..006 configs, fixed the conda Unicode wrapper issue, ran five serial sweeps, copied artifacts to Warehouse, updated trial ledgers
+outputs: ATTEMPTS.md, per-attempt manifests/results, updated root trial summary
+issues: the sweep was executed before the new attempt configs were committed, so the worktree was dirty during the runs
+decision: keep ATTEMPT-003 as the leading setting
+evidence_refs: README.md, ATTEMPTS.md, result.yaml
+memory_used: no
+memory_sources: []
+verified_against_current_repo: README.md, ATTEMPTS.md, result.yaml
 ```
 
-## Reader / Planner
+## Reader/Planner
 
 ```text
-role: source verifier
-inputs_checked: local PDF, official VDT-Adapter repository, clip_adapter_gpt.py
-actions: Verified paper/code source and CLIP-A-self implementation口径
-outputs: source_status=verified recommendation
+role: experiment planner
+agent_instance_type: role_checklist
+independence_scope: parameter plan only
+inputs_checked: ATTEMPT-001 result, baseline H=73.93, confirmation H=73.77, parameter roles for heads/dropout/ratios
+actions: planned the five-attempt sequence and ranked the candidate knobs by expected impact
+outputs: ATTEMPT-002..006 plan
 issues: none
-decision: source can support IDEA-0001
-evidence_refs: idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md
+decision: test pure head count first, then head-aware follow-ups
+evidence_refs: ATTEMPTS.md
+memory_used: no
+memory_sources: []
+verified_against_current_repo: ATTEMPTS.md
 ```
 
 ## Implementer
 
 ```text
-role: trial implementer
-inputs_checked: Interface Checker report, v1 text adapter path, trial config
-actions: Added sentence-level text encoding and CLIPASelfAdapter behind use_clip_a_self
-outputs: train_GTPJ_CUB.py, model/MyModel.py, trial config
-issues: current baseline only preserved class-level text, so sentence-level cache was added
-decision: implementation complete for TRIAL-001
-evidence_refs: implementation.md, code.diff
-```
-
-## Interface Checker
-
-```text
-role: interface checker
-inputs_checked: text feature flow, seen/unseen split, label mapping, class order, logits shape, loss keys, eval path
-actions: Ran read-only interface scan and dry shape/backward probe
-outputs: switch_off_max_abs_diff=0.0; switch_on logits [2,150], logits_200 [2,200]; loss keys unchanged
-issues: sentence-level flow must remain guarded by use_clip_a_self
-decision: interface precheck passed
-evidence_refs: implementation.md, quality_check.md
+role: not activated
+agent_instance_type: not_applicable
+independence_scope: no code changes during ATTEMPT-002..006 sweep
+inputs_checked: none
+actions: none
+outputs: none
+issues: none
+decision: disabled
+evidence_refs: manifest.yaml
+memory_used: no
+memory_sources: []
+verified_against_current_repo: manifest.yaml
 ```
 
 ## Runner
 
 ```text
 role: experiment runner
-inputs_checked: trial config, clean branch, conda:dvsr_gpu environment, GPU runner lock
-actions: Ran conda:dvsr_gpu training command
-outputs: Training log, best checkpoint, full checkpoint, runner console receipt
-issues: First attempt with default Python failed before training because clip was missing
+agent_instance_type: main_agent
+independence_scope: serial execution only
+inputs_checked: conda:dvsr_gpu, cache availability, GPU runner lock
+actions: ran ATTEMPT-002..006 sequentially with `conda run --no-capture-output`
+outputs: five logs, five best checkpoints, five full checkpoints, five runner receipts
+issues: the first ATTEMPT-002 launch exposed a `conda run` Unicode wrapper failure; the successful rerun used `CONDA_NO_PLUGINS=true` and `--no-capture-output`
 decision: completed
-evidence_refs: log:v1:module_trial:TRIAL-001:attempt-001
+evidence_refs: GTPJ_Warehouse/runs/v1/module_trial/TRIAL-001/
+memory_used: no
+memory_sources: []
+verified_against_current_repo: manifest.yaml
 ```
 
 ## Result Analyst
 
 ```text
 role: metric parser
-inputs_checked: Warehouse training log
-actions: Parsed final Training Finished block
-outputs: U=72.32, S=75.19, H=73.72, ZS=81.13, best_epoch=30
-issues: none affecting metric extraction
-decision: valid metrics
-evidence_refs: result.yaml
+agent_instance_type: role_checklist
+independence_scope: parse metrics and compare ATTEMPT-002..006 only
+inputs_checked: five Warehouse logs
+actions: parsed the best-result blocks for ATTEMPT-002..006 and ranked them by H
+outputs: ATTEMPT-003 best at H=74.27; ATTEMPT-002 second at H=73.99; ATTEMPT-006 third at H=73.96
+issues: ATTEMPT-004 and ATTEMPT-005 both underperformed the current best setting
+decision: ATTEMPT-003 is the only clear keep-best result from this sweep
+evidence_refs: result.yaml, ATTEMPTS.md
+memory_used: no
+memory_sources: []
+verified_against_current_repo: result.yaml, ATTEMPTS.md
 ```
 
-## Quality Checker / Reviewer
+## Quality Checker
 
 ```text
-role: evidence and promotion reviewer
-inputs_checked: artifact ids, sha256, size, manifest/result consistency, raw artifact boundary
-actions: Copied raw artifacts to Warehouse and checked boundary audit
-outputs: PASS_REVISE
-issues: Trial H below v1 baseline
-decision: valid evidence, not promotion
-evidence_refs: quality_check.md
+role: evidence checker
+agent_instance_type: role_checklist
+independence_scope: artifact boundary, manifest/result consistency, promotion gate
+inputs_checked: artifact ids, Warehouse copies, manifest/result consistency, raw artifact boundary, unchanged interface semantics
+actions: registered artifacts, verified hashes and sizes, checked that no raw outputs were tracked in Git
+outputs: valid evidence for all five attempts; promotion blocked at the trial root
+issues: clean confirmation still missing for the ATTEMPT-003 setting
+decision: PASS_REVISE
+evidence_refs: quality_check.md, manifest.yaml
+memory_used: no
+memory_sources: []
+verified_against_current_repo: quality_check.md, manifest.yaml
+```
+
+## Interface Checker
+
+```text
+role: not activated
+agent_instance_type: not_applicable
+independence_scope: no post-implementation interface change during ATTEMPT-002..006 sweep
+inputs_checked: manifest.yaml, config.yaml
+actions: confirmed this sweep did not intentionally change label mapping, seen/unseen split, class order, logits shape, or metric semantics
+outputs: no interface-change review required for this historical parameter sweep
+issues: none
+decision: disabled
+evidence_refs: manifest.yaml, config.yaml
+memory_used: no
+memory_sources: []
+verified_against_current_repo: manifest.yaml, config.yaml
+```
+
+## Reviewer
+
+```text
+role: promotion reviewer
+agent_instance_type: role_checklist
+independence_scope: promotion readiness and process risk
+inputs_checked: result.yaml, quality_check.md, ATTEMPTS.md
+actions: checked whether ATTEMPT-003 can be promoted from this sweep
+outputs: promotion blocked pending clean confirmation
+issues: ATTEMPT-002..006 were run from a dirty worktree after configs/ledger files were added, so they cannot be final promotion evidence
+decision: PASS_REVISE
+evidence_refs: result.yaml, quality_check.md, ATTEMPTS.md
+memory_used: no
+memory_sources: []
+verified_against_current_repo: result.yaml, quality_check.md, ATTEMPTS.md
 ```

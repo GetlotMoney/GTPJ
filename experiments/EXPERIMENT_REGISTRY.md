@@ -10,7 +10,9 @@
 
 ## 模块 Trials
 
-当前还没有已经启动的模块 trial。
+| Trial | Idea | Status | Directory | Note |
+|---|---|---|---|---|
+| `TRIAL-001_clip_a_self_residual_seenonly` | `IDEA-0001` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | Current best ATTEMPT-003 reached H=74.27, +0.34 over v1 baseline; promotion blocked pending clean confirmation. |
 
 ## 版本实验
 

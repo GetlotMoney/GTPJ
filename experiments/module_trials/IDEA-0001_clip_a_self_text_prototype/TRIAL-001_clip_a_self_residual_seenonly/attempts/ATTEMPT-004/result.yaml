@@ -1,0 +1,48 @@
+schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+experiment_name: "TRIAL-001_clip_a_self_residual_seenonly"
+kind: "module-trial"
+version: "v1"
+attempt_id: "attempt-004"
+metrics:
+  U: "72.70"
+  S: "74.48"
+  H: "73.58"
+  ZS: "80.98"
+  best_epoch: "44"
+  baseline_H: "73.93"
+  delta_H: "-0.35"
+  seed: "5"
+  source: "training_log"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: "v1"
+  H: "73.93"
+delta:
+  H: "-0.35"
+run:
+  run_id: "RUN-20260626-ATTEMPT-004-heads8"
+  seed: "5"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-004/config.yaml"
+decision:
+  status: "reject"
+  promotion_decision: "not_applicable"
+  promote_to: ""
+evidence:
+  log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-004"
+  best_checkpoint_artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-004:best"
+  full_checkpoint_artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-004:full"
+  runner_console_artifact_id: "receipt:v1:module_trial:TRIAL-001:attempt-004:runner_console"
+  manifest: "manifest.yaml"
+  label_mapping_id: "standard_v1"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+quality:
+  manifest_verified: "true"
+  boundary_audit_passed: "true"
+  interface_contract_checked: "true"
+  evaluation_semantics_verified: "true"
+warnings:
+  - "Parameter sweep ran on a dirty worktree that only added trial-local configs and ledger updates; code path itself stayed on the TRIAL-001 implementation line."
+  - "Valid evidence, but this setting underperformed the current best ATTEMPT-003. H=73.58 vs baseline 73.93 (-0.35)."
+recorded_at: "2026-06-26T19:45:33+08:00"

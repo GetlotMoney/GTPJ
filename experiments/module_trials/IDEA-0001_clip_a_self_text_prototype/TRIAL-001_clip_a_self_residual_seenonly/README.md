@@ -16,21 +16,22 @@ code_commit: da2e295cb15b0d55afdcf4785bce4bc6a4bff80e
 changed_files:
   - train_GTPJ_CUB.py
   - model/MyModel.py
-  - experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/config.yaml
+  - experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/ATTEMPTS.md
+  - experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/
 attempts_table: ATTEMPTS.md
-best_attempt_id: ATTEMPT-001
-best_attempt_dir: .
-run_config: config.yaml
-log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-001
-log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-001/logs/training_log_CUB_2026-06-26_16-42-37.txt
-log_sha256: 2749bb5c45909a996529dccee4a097f75b51153a7bcf861634ce14358df65a31
-log_size_bytes: 91468
+best_attempt_id: ATTEMPT-003
+best_attempt_dir: attempts/ATTEMPT-003
+run_config: attempts/ATTEMPT-003/config.yaml
+log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-003
+log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-003/logs/training_log_CUB_2026-06-26_18-59-40.txt
+log_sha256: 0bd779315d16adcdf0f78bede52a13caa1d3cf494b17940f5bb033e9bb50ab74
+log_size_bytes: 92210
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
 agent_summary: agent_summary.md
 trial_decision: revise
-promotion_decision: rejected
+promotion_decision: blocked
 promote_to:
 ```
 
@@ -38,33 +39,39 @@ promote_to:
 
 | File | Change | Code layer |
 |---|---|---|
-| `train_GTPJ_CUB.py` | Adds sentence-level GPT/VDT encoding and passes seen/unseen sentence embeddings to `GTPJ` only when `use_clip_a_self=true`. | yes |
-| `model/MyModel.py` | Adds `CLIPASelfAdapter` and routes seen text prototypes through it when the trial switch is enabled. | yes |
-| `config/versions/v1.yaml` | Unchanged. | no |
-| `experiments/v1/config.yaml` | Unchanged. | no |
-| `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/config.yaml` | Trial-local switch/config. | no |
+| `train_GTPJ_CUB.py` | Adds sentence-level GPT/VDT encoding and routes `use_clip_a_self` runs through sentence-level caches. | yes |
+| `model/MyModel.py` | Adds `CLIPASelfAdapter` and the seen/unseen text adaptation path behind `use_clip_a_self`. | yes |
+| `experiments/module_trials/.../ATTEMPTS.md` | Records the parameter sweep from ATTEMPT-002 to ATTEMPT-006. | no |
+| `experiments/module_trials/.../attempts/ATTEMPT-002..006/config.yaml` | Stores attempt-local hyperparameter changes. | no |
 
 ## Result
 
 | Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch | Log artifact |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| ATTEMPT-001 | CUB | 5 | 72.32 | 75.19 | 73.72 | 81.13 | 30 | `log:v1:module_trial:TRIAL-001:attempt-001` |
+| ATTEMPT-003 | CUB | 5 | 71.76 | 76.97 | 74.27 | 81.72 | 33 | `log:v1:module_trial:TRIAL-001:attempt-003` |
 
 ## Attempts
 
-TRIAL-001 currently has one recorded attempt. See `ATTEMPTS.md` for the attempt index.
+See `ATTEMPTS.md` for the full sweep. Ranking by H:
+
+1. `ATTEMPT-003`: H=74.27
+2. `ATTEMPT-002`: H=73.99
+3. `ATTEMPT-006`: H=73.96
+4. `ATTEMPT-001`: H=73.72
+5. `ATTEMPT-004`: H=73.58
+6. `ATTEMPT-005`: H=72.69
 
 ## Promotion Gate
 
-- [x] baseline H, trial H, and delta H recorded.
-- [x] U/S/ZS have no unacceptable regression.
+- [x] baseline H, best-attempt H, and delta H recorded.
 - [x] class order, split, logits shape, and metric calculation unchanged.
-- [x] switch-off path returns to `v1` behavior.
-- [x] evidence directory, external artifact pointers, and `code.diff` are complete.
-- [ ] automatic promotion is allowed only after `promotion_decision: promote`.
+- [x] switch-off path remains the validated TRIAL-001 implementation path.
+- [x] best-attempt evidence directory and external artifact pointers are complete.
+- [ ] clean confirmation of the ATTEMPT-003 setting has not been run yet.
+- [ ] automatic promotion is allowed only after `trial_decision: promote` and `promotion_decision: promote`.
 
 ## Decision
 
 `revise`
 
-TRIAL-001 reached `H=73.72`, below the authoritative `v1` baseline `H=73.93`, and slightly below the same-day confirmation `H=73.77`. The evidence should be kept, but this trial should not enter promotion. If this idea continues, the next step should focus on prototype drift and then test a smaller outer ratio or an anchoring follow-up.
+The current best setting is `ATTEMPT-003` with `H=74.27`, which is `+0.34` above the authoritative `v1` baseline `H=73.93` and `+0.50` above the same-day confirmation `H=73.77`. This is good enough to keep as the leading parameter setting, but not good enough to promote directly from a single dirty-worktree sweep. The next step should be a clean confirmation run that uses the `ATTEMPT-003` config without further trial-local changes.

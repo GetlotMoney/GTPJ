@@ -18,4 +18,4 @@
 
 | Idea | Trial | 状态 | 目录 | 说明 |
 |---|---|---|---|---|
-| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | H=73.72, below v1 baseline H=73.93; keep evidence, do not promote. |
+| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | Current best ATTEMPT-003 reached H=74.27, +0.34 over v1 baseline; promotion blocked pending clean confirmation. |
