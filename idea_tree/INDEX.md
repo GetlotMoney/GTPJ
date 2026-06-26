@@ -7,7 +7,7 @@
 
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
-| - | - | - | - | - | - | - | 等待从可靠来源重新登记。 |
+| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1` | selected | Start TRIAL-001_clip_a_self_residual_seenonly from v1. |
 
 ## 使用规则
 

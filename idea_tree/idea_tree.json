@@ -2,5 +2,60 @@
   "project": "GTPJ",
   "version": "2026-06-20",
   "current_version": "v1",
-  "ideas": []
+  "ideas": [
+    {
+      "idea_id": "IDEA-0001",
+      "idea_dir": "idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/",
+      "title": "CLIP-A-self text prototype adapter",
+      "status": "selected",
+      "source_type": "paper",
+      "source_ref": "paper:Enhancing CLIP with GPT-4; code:https://github.com/mayug/VDT-Adapter",
+      "source_status": "verified",
+      "global_score": 82.0,
+      "version_scores": {
+        "v1": {
+          "score": 78.0,
+          "applicability": "needs_adaptation",
+          "stage": "selected",
+          "rationale": "v1 already uses GPT/VDT sentence averages and an MLP text adapter for seen prototypes. CLIP-A-self can test whether sentence-level self-attention selects more useful VDT cues while preserving the existing GZSL label mapping, class order, logits shape, and seen-only CE training path.",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v1"
+      ],
+      "based_on_modules": [
+        "v1_text_adapter",
+        "VDT-Adapter CLIP-A-self"
+      ],
+      "target_component": "seen-class text prototype adapter in model/MyModel.py",
+      "hypothesis": "Replacing the v1 MLP seen-text adapter with a sentence-level CLIP-A-self adapter can learn a better aggregation of GPT/VDT descriptions for seen classes, improving GZSL H or ZS without changing class order, seen/unseen split, label mapping, logits shape, or evaluation semantics.",
+      "expected_effect": {
+        "U": "should not drop materially because unseen prototypes stay raw sentence means in TRIAL-001",
+        "S": "may improve if seen prototypes use more discriminative VDT cues",
+        "H": "target metric; promote only with complete evidence and no interface pollution"
+      },
+      "implementation_scope": "TRIAL-001 only changes the text prototype construction path: preserve sentence-level GPT/VDT embeddings, apply CLIP-A-self to seen class sentence sets, keep an outer prototype residual against the raw sentence mean, and leave unseen prototypes as raw sentence means by default.",
+      "risk": "A seen-only CE signal can overfit the adapter toward seen categories and pull text prototypes away from the original CLIP/VDT space. L2SP is not part of TRIAL-001; it is recorded only as a follow-up ablation/anchoring question if prototype drift appears.",
+      "compatibility": "The switch-off path must keep the existing v1 MLP adapter behavior and the same forward/loss/eval interfaces. New parameters are trial-local and should load older checkpoints with strict=False only when intentionally used.",
+      "transfer_notes": "For future versions, re-check whether the text prototype owner is still model/MyModel.py and whether v2 keeps the same GPT/VDT sentence source and seen/unseen split semantics before reusing this idea.",
+      "priority": 0.78,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": [
+        {
+          "type": "paper",
+          "ref": "C:/Users/Administrator/Desktop/CV论文/2023/Enhancing CLIP with GPT-4：Harnessing Visual Descriptions as Prompts.pdf",
+          "note": "PDF abstract states the code, prompts, and auxiliary text dataset are available at github.com/mayug/VDT-Adapter."
+        },
+        {
+          "type": "code",
+          "ref": "https://github.com/mayug/VDT-Adapter",
+          "note": "Official code contains SelfAttnAdapter and a self_attn branch over per-class GPT/VDT sentence embeddings."
+        }
+      ],
+      "next_action": "Start TRIAL-001_clip_a_self_residual_seenonly from v1."
+    }
+  ]
 }
