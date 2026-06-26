@@ -3,14 +3,14 @@ experiment:
   id: "CONFIRM-001"
   name: "CONFIRM-001_v1_seed5"
   kind: "confirmation"
-  status: "ready_to_run"
+  status: "recorded"
   attempt_id: "attempt-001"
-  created_or_recorded_at: "2026-06-26T06:16:25+00:00"
+  created_or_recorded_at: "2026-06-26T06:28:07+00:00"
 version:
   base_version: "v1"
   base_code_tag: "v1"
   code_branch: "exp/v1-confirm-001-v1-seed5"
-  code_commit: "7fe71d36bcda5652c119eea7edf72a78106a6614"
+  code_commit: "43122528843d74928ccf3006eab1be80b4c7c885"
   git_dirty: "false"
 reproducibility:
   config_file: "experiments/v1/confirmation/CONFIRM-001_v1_seed5/config.yaml"
@@ -29,15 +29,39 @@ idea:
   hypothesis: "Reproduce the accepted GTPJ-v1 baseline without changing code, config, split, seed, class order, label mapping, or metric semantics."
 artifacts:
   train_log:
-    artifact_id: ""
+    artifact_id: "log:v1:confirmation:CONFIRM-001:attempt-001"
     role: "training_log"
-    uri: ""
-    sha256: ""
-    size_bytes: ""
+    uri: "warehouse://gtpj/runs/v1/confirmation/CONFIRM-001/attempt-001/logs/training_log_CUB_2026-06-26_14-19-01.txt"
+    sha256: "b00c62d59ac96929a1b9482dff3b4b2a19b3da0510b886a9caf28d9abb9fc5d3"
+    size_bytes: "139586"
     required_for: "audit"
-    status: "pending"
+    status: "available"
+  best_checkpoint:
+    artifact_id: "checkpoint:v1:confirmation:CONFIRM-001:attempt-001:best"
+    role: "best_model"
+    uri: "warehouse://gtpj/runs/v1/confirmation/CONFIRM-001/attempt-001/checkpoints/best_model_CUB_2026-06-26_14-19-01_H7377.pth"
+    sha256: "73c74c487fc7985b96e684fb2335d7d9d5984934ffdc055e201c9aae445be795"
+    size_bytes: "87698169"
+    required_for: "rerun_or_inspection"
+    status: "available"
+  full_checkpoint:
+    artifact_id: "checkpoint:v1:confirmation:CONFIRM-001:attempt-001:full"
+    role: "full_checkpoint"
+    uri: "warehouse://gtpj/runs/v1/confirmation/CONFIRM-001/attempt-001/checkpoints/ckpt_full_CUB_2026-06-26_14-19-01.pth"
+    sha256: "c1029b96768ae6bde4f0db086370730c43cda91d988a5006fc2d4ad8f9fa4c0b"
+    size_bytes: "170629907"
+    required_for: "rerun_or_resume"
+    status: "available"
+  runner_stderr:
+    artifact_id: "log:v1:confirmation:CONFIRM-001:attempt-001:runner_stderr"
+    role: "runner_stderr"
+    uri: "warehouse://gtpj/runs/v1/confirmation/CONFIRM-001/attempt-001/logs/runner_stderr.log"
+    sha256: "a24d468f100daa0d2d7051079aac6ea8443ecc5bb958eda876e90e1dedadfc0d"
+    size_bytes: "7638"
+    required_for: "runner_warning_audit"
+    status: "available"
 quality:
   boundary_audit_required: true
   raw_artifacts_in_git: false
   interface_contract_required: "true"
-  evaluation_semantics_verified: "false"
+  evaluation_semantics_verified: "true"

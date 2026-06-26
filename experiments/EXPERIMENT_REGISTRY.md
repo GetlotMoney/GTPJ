@@ -16,4 +16,4 @@
 
 | 实验 | 版本 | 类型 | 状态 | 目录 | 说明 |
 |---|---|---|---|---|---|
-| `CONFIRM-001_v1_seed5` | `v1` | `confirmation` | planned | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | 由结构 helper 创建。 |
+| `CONFIRM-001_v1_seed5` | `v1` | `confirmation` | keep | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | H=73.77, delta_H=-0.16; Warehouse artifacts registered. |

@@ -16,4 +16,4 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation
 
 | 实验 | 状态 | 目录 | 说明 |
 |---|---|---|---|
-| `CONFIRM-001_v1_seed5` | planned | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | 由结构 helper 创建。 |
+| `CONFIRM-001_v1_seed5` | keep | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | H=73.77, delta_H=-0.16; Warehouse artifacts registered. |
