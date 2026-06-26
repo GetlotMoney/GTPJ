@@ -105,3 +105,26 @@ Prevention:
 
 - `python -c` 只用于单行表达式。
 - 多行检查优先沉淀为 workflow helper；临时检查也使用 `$env:TEMP` 下脚本，执行后删除。
+
+### ISSUE-20260626-005: Runtime state must stay under `.gtpj_runtime/`
+
+Status: fixed immediately.
+
+What happened:
+
+- 创建 Runner lock 时，为了临时保存 `run_id`，在仓库根目录生成了 `.gtpj_current_run_id.txt`。
+- 这不是长期规范路径。
+
+Impact:
+
+- 该文件未提交、未影响代码或配置。
+
+Resolution:
+
+- 立即删除 `.gtpj_current_run_id.txt`。
+- 保留 workflow helper 生成的 `.gtpj_runtime/gpu_runner.lock`，该目录已在 `.gitignore` 中。
+
+Prevention:
+
+- 所有运行中状态只写 `.gtpj_runtime/`。
+- 如果需要在 shell 中复用 run id，使用当前 PowerShell 变量，不在仓库根目录落临时文件。
