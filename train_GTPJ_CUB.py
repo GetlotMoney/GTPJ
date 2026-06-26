@@ -78,13 +78,25 @@ config.config_path = config_path
 if not hasattr(config, 'device'):
     config.device = 'cuda:0'
 
+
+def _planned_total_epochs(cfg):
+    lr_stages_cfg = getattr(cfg, 'lr_stages', None) or []
+    if lr_stages_cfg:
+        return sum(int(stage['epochs']) for stage in lr_stages_cfg)
+    return int(getattr(cfg, 'epochs', 0)) + int(getattr(cfg, 'extra_epochs', 0) or 0)
+
+
+planned_total_epochs = _planned_total_epochs(config)
+epoch_schedule = "lr_stages" if (getattr(config, 'lr_stages', None) or []) else "epochs + extra_epochs"
+
 print_log("=" * 60)
 print_log("  CLIP + Adapter + GPT  |  CUB GZSL Training")
 print_log("=" * 60)
 print_log(f"  Log file  : {LOG_FILE}")
 print_log(f"  Config    : {config_path}")
 print_log(f"  Device    : {config.device}")
-print_log(f"  Epochs    : {config.epochs}")
+print_log(f"  Config epochs        : {config.epochs}")
+print_log(f"  Planned train epochs : {planned_total_epochs} ({epoch_schedule})")
 print_log(f"  Batch size: {config.batch_size}")
 print_log(f"  Random seed: {getattr(config, 'random_seed', 5)}")
 print_log("=" * 60)
@@ -101,6 +113,8 @@ print_log(f"│  adapter_ratio : {getattr(config, 'adapter_ratio', 0.2)}")
 print_log(f"│  use_clip_a_self: {getattr(config, 'use_clip_a_self', False)}")
 if getattr(config, 'use_clip_a_self', False):
     print_log(f"│  clip_a_self_apply_unseen: {getattr(config, 'clip_a_self_apply_unseen', False)}")
+    print_log(f"│  clip_a_self_heads       : {getattr(config, 'clip_a_self_heads', 1)}")
+    print_log(f"│  clip_a_self_dropout     : {getattr(config, 'clip_a_self_dropout', 0.5)}")
     print_log(f"│  clip_a_self_outer_ratio : {getattr(config, 'clip_a_self_outer_ratio', getattr(config, 'adapter_ratio', 0.2))}")
     print_log(f"│  clip_a_self_inner_ratio : {getattr(config, 'clip_a_self_inner_ratio', 0.5)}")
 print_log(f"│  tf_common_dim : {getattr(config, 'tf_common_dim', 512)}")

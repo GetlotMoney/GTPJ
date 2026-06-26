@@ -59,6 +59,59 @@ hard gates 和当前阻断后，才进入具体实验命令。
 第一次开跑完整工作流时，先读 `docs/workflow/FIRST_CLOSED_LOOP.md`，用 readiness check
 和低风险任务验证通路，不要直接从复杂 module trial 开始。
 
+## 实验后处理为什么会慢
+
+结论先写清楚：后处理不应该每次都靠临场试错。慢的主要原因通常不是训练本身，而是证据链还没有完全脚本化，尤其是 module trial 内部 attempt 的结果登记。
+
+常见耗时来源：
+
+```text
+1. 运行前需要 clean freeze commit，运行后又需要 post-run result commit。
+2. raw log/checkpoint 必须留在 GTPJ_Warehouse，Git 里只能写 URI、sha256、size 和摘要。
+3. manifest/result/quality_check/ATTEMPTS/README/INDEX/idea_tree 多个入口必须同步，否则以后会看到互相矛盾的状态。
+4. 结果异常或 owner 质疑时，需要独立 Quality Checker 或多 agent 复核。
+5. 如果某个步骤是第一次遇到，Coordinator 可能要边读规范边补证据字段，这会比训练本身更慢。
+```
+
+以后按下面规则沉淀经验：
+
+```text
+1. 同一个后处理动作重复出现 2 次：写进本 runbook。
+2. 同一个后处理动作重复出现 3 次：优先加到 workflow/gtpj_workflow.py helper，而不是继续手工填。
+3. version-level tune/ablation/confirmation 优先使用 record-result。
+4. module trial attempt 如果 helper 尚不覆盖，至少沿用最近一次 attempt 的 manifest/result/quality_check 模板，并在本 runbook 记录缺口。
+5. 任何“这次为什么慢”的原因，必须归类为：规范检查、artifact 注册、结果解释、多 agent 复核、脚本缺口或真实 bug。
+```
+
+项目内记忆分层：
+
+```text
+docs/workflow/runbook.md: 操作经验和反复踩坑的处理方法。
+docs/workflow/*.md: 长期规范和硬门。
+experiments/**/ATTEMPTS.md: 某个 trial 内部每次尝试的账本。
+experiments/**/result.yaml / quality_check.md: 可引用的正式证据。
+GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
+```
+
+聊天上下文和 Codex 全局 memory 只能帮助定位，不能当实验事实。能进入正式结论的内容，必须回到当前仓库文件、训练日志或 Warehouse artifact 里验证。
+
+### 后处理最小闭环
+
+真实训练完成后，除非只是 debug/smoke，否则按顺序做：
+
+```text
+1. 解析日志，记录 U/S/H/ZS、best_epoch、log path、checkpoint path。
+2. 复制 raw log/checkpoint/receipt 到 GTPJ_Warehouse。
+3. 计算 sha256 和 size。
+4. 更新 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
+5. 更新 trial 或 version 的总账：ATTEMPTS.md、README.md、result.yaml/result.md、quality_check.md、INDEX、EXPERIMENT_REGISTRY。
+6. 如果涉及 idea/module trial 状态，更新 idea_tree/idea_tree.json。
+7. 跑 yaml/hash 校验、validate、audit-boundary、validate-remote、git diff --check。
+8. 只提交轻量账本文件，不提交 train_log、.pth、.pt。
+```
+
+如果 4 到 6 步出现大量重复手工编辑，下一步不是继续试错，而是把该路径升级成 helper 命令。
+
 ## 运行 v1 确认实验
 
 确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v1` 时，临时分支从 `main` 开，
