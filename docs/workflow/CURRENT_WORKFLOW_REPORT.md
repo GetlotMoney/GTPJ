@@ -272,6 +272,7 @@ research_root: D:/backup/Documents/Myself/GTPJ_Research
 - 大的 innovation / module trial / promotion 应启用多 agents。
 - Runner 涉及 GPU，必须串行。
 - 同一代码路径只能有一个 writer。
+- 真实实验结束后必须留下 `agent_summary.md`，保存 agent 审计凭证，不保存完整聊天流水。
 
 ## 7. agents 怎么合作
 
@@ -455,6 +456,7 @@ manifest.yaml
 result.yaml
 result.md
 quality_check.md
+agent_summary.md
 external artifact URI
 sha256
 size_bytes
@@ -482,6 +484,7 @@ agents 入口：
 
 ```text
 docs/workflow/agent_contracts.md
+docs/workflow/agent_report_policy.md
 docs/workflow/agent_orchestration.md
 docs/workflow/agents/
 ```

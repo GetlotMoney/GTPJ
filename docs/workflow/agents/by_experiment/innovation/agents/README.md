@@ -30,5 +30,6 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 - Runner 串行运行。
 - Runner 只写 Warehouse raw artifacts，GitHub 只保存 manifest/result/quality/code.diff 等轻量证据。
 - Reviewer 独立检查污染、遗漏和误判。
+- Coordinator 必须写 `agent_summary.md`；Reviewer 或长报告可进入 Warehouse，由 GitHub 引用 artifact id。
 - 失败 trial 保留证据，不合并失败代码。
 - `trial_decision: promote` 且 `promotion_decision: promote` 时，转交 promotion agents。

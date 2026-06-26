@@ -35,4 +35,5 @@ Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
 - Runner 只写 Warehouse raw artifacts。
 - Log Analyst 记录 U/S/H/ZS、best epoch、log artifact id、URI、hash 和失败阶段。
 - Quality Checker 确认证据完整，并确认 dataset split、label mapping、class order、metric calculation 与 baseline 可比。
+- Coordinator 收口 `agent_summary.md`；不保存完整聊天流水，只保存角色、检查范围、发现、结论和证据引用。
 - 复现失败只记录证据和下一步建议，不直接改 baseline。

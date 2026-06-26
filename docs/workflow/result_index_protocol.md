@@ -12,6 +12,7 @@ manifest.yaml
 result.yaml
 result.md
 quality_check.md
+agent_summary.md
 README.md
 ```
 
@@ -43,6 +44,7 @@ For tune experiments, the idea summary can be empty, but the hypothesis must sta
 - `promotion_decision` and `promote_to`, when applicable
 - `evidence.log_artifact_id`
 - `evidence.manifest`
+- `evidence.agent_summary`
 - `evidence.manifest_verified`
 - `evidence.boundary_audit_passed`
 - metric source and metric semantics
@@ -67,6 +69,12 @@ If the manifest cannot resolve the artifact id to URI, sha256, and size, the res
 - where the improvement may come from
 - what the tradeoff is
 - whether the result is `keep`, `reject`, `rejected`, `rerun`, `needs_confirmation`, `blocked`, or `promote`
+
+## `agent_summary.md`
+
+`agent_summary.md` is the lightweight audit trail for agent work. It records which agents were enabled, which agents were disabled, what each agent checked, what issues were found, and which evidence references support the final decision.
+
+It must not contain full chat transcripts or raw logs. Long agent reports belong in Warehouse and are referenced by artifact id.
 
 ## Protected Evaluation Semantics
 

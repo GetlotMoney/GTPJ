@@ -27,6 +27,7 @@ docs/workflow/experiment_protocol.md
 docs/workflow/quality_gate.md
 docs/workflow/promotion.md
 docs/workflow/agent_contracts.md
+docs/workflow/agent_report_policy.md
 ```
 
 未来参考和 runtime 编排文档：
@@ -85,8 +86,9 @@ idea_tree
 19. `quality_gate.md`
 20. `promotion.md`
 21. `agent_contracts.md`
-22. `agent_orchestration.md`
-23. `agents/README.md`
-24. `progress_dashboard.md`
-25. `runbook.md`
-26. `../../workflow/README.md`
+22. `agent_report_policy.md`
+23. `agent_orchestration.md`
+24. `agents/README.md`
+25. `progress_dashboard.md`
+26. `runbook.md`
+27. `../../workflow/README.md`

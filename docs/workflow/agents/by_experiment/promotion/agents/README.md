@@ -2,6 +2,8 @@
 
 Promotion agents 在实验记录已经写出 `promotion_decision: promote` 和 `promote_to: vX` 后启动。
 
+Promotion 必须保留 `agent_summary.md`，记录 Quality Checker、Interface Checker、Result Analyst 和 Reviewer 的准入结论。长报告放 Warehouse，GitHub 只保存摘要和 artifact id。
+
 ## 启用角色
 
 ```text

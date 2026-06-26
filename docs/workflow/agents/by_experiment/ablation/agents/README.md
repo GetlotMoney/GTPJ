@@ -30,6 +30,6 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> L
 - Interface Checker 必须在训练前检查维度、logits、loss、labels、label mapping、seen/unseen split、class order、mask 和 config switch。
 - Runner 串行运行。
 - Runner 只写 Warehouse raw artifacts。
-- 必须保留 `implementation.md`、`code.diff`、`interface_check.md`、`quality_check.md`、`manifest.yaml`、`result.yaml` 和 `result.md`。
+- 必须保留 `implementation.md`、`code.diff`、`interface_check.md`、`quality_check.md`、`agent_summary.md`、`manifest.yaml`、`result.yaml` 和 `result.md`。
 - 跑完只把轻量证据写入 `experiments/vX/ablation/`；raw logs、checkpoint、generated figures 留在 Warehouse。
 - 即使效果更好，也必须走 promotion agents，不能把临时代码直接并入 `main`。

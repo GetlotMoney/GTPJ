@@ -407,6 +407,7 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/manifest.yaml").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md").exists())
+        self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/agent_summary.md").exists())
 
     def test_tune_suggest_lists_at_most_three_candidates_without_writing(self) -> None:
         index_before = self._tune_index_text()

@@ -67,6 +67,22 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
 Warehouse，Reader / Planner 读 Research，Result Analyst 通过 artifact id 引用结果。
 任何 agent 都不能把 raw logs、checkpoint、generated figures、完整论文笔记或完整创意树写入 GitHub。
 
+## Agent 工作凭证
+
+真实实验必须保存 agent 工作凭证，而不是保存完整聊天流水。最小 GitHub 记录是：
+
+```text
+agent_summary.md
+```
+
+它记录参与 agents、禁用 agents、输入、检查范围、发现、结论和证据引用。长报告、完整
+日志分析、runner 细节和大型审查材料放入 Warehouse，并在 `agent_summary.md` 里引用
+artifact id。具体规则见：
+
+```text
+docs/workflow/agent_report_policy.md
+```
+
 ## 四类实验编排
 
 调参：
@@ -124,7 +140,8 @@ Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinat
 修改 workflow agent 规范时：
 
 1. 先更新 `docs/workflow/agents/` 和本文件。
-2. 同步更新本地 `gtpj-workflow` skill 的 `references/agents/`。
-3. 运行 skill 校验。
-4. 运行仓库验证。
-5. 提交 GitHub 文档；只有 owner 明确要求时才 push。
+2. 如果影响 agent 工作凭证，同步更新 `docs/workflow/agent_report_policy.md` 和模板。
+3. 同步更新本地 `gtpj-workflow` skill 的 `references/agents/` 与相关 reference 文件。
+4. 运行 skill 校验。
+5. 运行仓库验证。
+6. 提交 GitHub 文档；只有 owner 明确要求时才 push。

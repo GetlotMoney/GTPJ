@@ -19,6 +19,7 @@ log_size_bytes:
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+agent_summary: agent_summary.md
 trial_decision:
 promote_to:
 promotion_decision:

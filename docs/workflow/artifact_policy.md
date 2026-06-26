@@ -80,6 +80,7 @@ Allowed GitHub artifacts:
 - `result.yaml`
 - `result.md`
 - `quality_check.md`
+- `agent_summary.md`
 - version tree, experiment registry, lightweight idea index
 - small hand-maintained explanatory figure source files, while generated experiment figures must stay external
 

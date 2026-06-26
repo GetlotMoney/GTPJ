@@ -129,6 +129,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
 | `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
 | `docs/workflow/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
+| `docs/workflow/agent_report_policy.md` | agent 工作凭证保存规范，规定 `agent_summary.md`、长报告 Warehouse 引用和不保存完整聊天流水。 |
 | `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
 | `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
 | `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
@@ -251,6 +252,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板，记录代码快照、环境、数据/cache、日志、attempt、失败阶段和 tune/ablation 专属字段。 |
+| `experiments/templates/agent_summary_template.md` | agent 工作凭证模板，记录参与 agents、检查范围、发现、结论和证据引用。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板，用于记录证据完整性，并在正式升版时执行 promotion gate。 |
@@ -276,6 +278,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |-- config.yaml
 |-- manifest.yaml
 |-- result.yaml
+|-- agent_summary.md
 |-- quality_check.md
 `-- result.md
 ```

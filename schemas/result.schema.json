@@ -27,7 +27,7 @@
     },
     "evidence": {
       "type": "object",
-      "required": ["log_artifact_id", "manifest", "label_mapping_id", "split_id", "class_order_id"]
+      "required": ["log_artifact_id", "manifest", "agent_summary", "label_mapping_id", "split_id", "class_order_id"]
     },
     "quality": {
       "type": "object",

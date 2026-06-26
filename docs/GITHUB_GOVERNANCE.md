@@ -52,6 +52,7 @@ manifest.yaml
 result.yaml
 result.md
 quality_check.md
+agent_summary.md
 EXPERIMENT_REGISTRY
 VERSION_TREE
 轻量 idea index
@@ -473,6 +474,19 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 promotion 的 `quality_check` 是正式版本准入门。当实验记录明确写
 `promotion_decision: promote` 且硬门全部通过时，Coordinator 可以自动创建本地新版本材料和本地 tag，
 并把版本账本回流到 `main`；但不自动切换 `main` 当前代码，也不自动 push GitHub。
+
+## agent_summary 是什么
+
+`agent_summary.md` 是 agent 工作凭证，不是完整聊天记录。它记录：
+
+- 本次实验启用了哪些 agents；
+- 哪些 agents 被禁用；
+- 每个 agent 检查了哪些输入；
+- 发现了哪些 blocking / non-blocking issue；
+- 最终决策引用了哪些 artifact、commit 和质量检查。
+
+长报告、完整日志分析和 runner 细节放 Warehouse；GitHub 只保存摘要和 artifact id。具体规则见
+`docs/workflow/agent_report_policy.md`。
 
 ## 从旧 cv 实验工作流可以学习什么
 

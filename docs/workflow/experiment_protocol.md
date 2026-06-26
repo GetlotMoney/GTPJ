@@ -21,6 +21,7 @@ manifest.yaml
 result.yaml
 result.md
 quality_check.md
+agent_summary.md
 ```
 
 普通实验目录不得新增 raw logs、checkpoint、feature cache 或 generated figures。
@@ -34,6 +35,10 @@ implementation.md
 code.diff
 interface_check.md
 ```
+
+每次真实实验都必须留下 agent 工作凭证。默认保存 `agent_summary.md`，记录参与角色、
+检查范围、发现、结论和证据引用。不要把完整聊天流水写入 GitHub；长报告放 Warehouse，
+GitHub 只记录 artifact id。具体规则见 `docs/workflow/agent_report_policy.md`。
 
 ## 共同记录字段
 
@@ -62,6 +67,7 @@ log_size_bytes:
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+agent_summary: agent_summary.md
 attempt_id:
 failure_stage:
 U:

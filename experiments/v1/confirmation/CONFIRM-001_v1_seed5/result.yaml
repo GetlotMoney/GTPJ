@@ -30,6 +30,7 @@ decision:
 evidence:
   log_artifact_id: "log:v1:confirmation:CONFIRM-001:attempt-001"
   manifest: "manifest.yaml"
+  agent_summary: "agent_summary.md"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
   class_order_id: "standard_v1"

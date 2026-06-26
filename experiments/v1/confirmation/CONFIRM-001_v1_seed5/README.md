@@ -26,6 +26,7 @@ log_size_bytes: 139586
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+agent_summary: agent_summary.md
 attempt_id: attempt-001
 failure_stage:
 U: 71.35
@@ -52,6 +53,7 @@ status: recorded
 - [x] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
 - [x] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
 - [x] `manifest.yaml` 中的 artifact URI、hash、size 能对应外部资产。
+- [x] `agent_summary.md` 已记录参与 agents、检查范围、发现和结论。
 - [x] `quality_check.md` 已创建；实验完成后再填写 decision。
 
 ## 变量

@@ -150,8 +150,10 @@ ALLOWED_EXPERIMENT_TEXT_FILES = {
     "VERSION_template.md",
     "experiment_README_template.md",
     "implementation_template.md",
+    "agent_summary_template.md",
     "quality_check_template.md",
     "quality_check.md",
+    "agent_summary.md",
     "implementation.md",
     "interface_check.md",
     "code.diff",
@@ -545,6 +547,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/artifact_policy.md",
         "docs/workflow/result_index_protocol.md",
         "docs/workflow/agent_contracts.md",
+        "docs/workflow/agent_report_policy.md",
         "docs/workflow/idea_tree_protocol.md",
         "docs/workflow/quality_gate.md",
         "docs/workflow/runbook.md",
@@ -568,6 +571,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/templates/VERSION_template.md",
         "experiments/templates/experiment_README_template.md",
         "experiments/templates/implementation_template.md",
+        "experiments/templates/agent_summary_template.md",
         "experiments/templates/quality_check_template.md",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
@@ -830,6 +834,7 @@ log_size_bytes:
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+agent_summary: agent_summary.md
 attempt_id: attempt-001
 failure_stage:
 U:
@@ -856,6 +861,7 @@ status: planned
 - [ ] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
 - [ ] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
 - [ ] `manifest.yaml` 中的 artifact URI、hash、size 能对应外部资产。
+- [ ] `agent_summary.md` 已记录参与 agents、检查范围、发现和结论。
 - [ ] `quality_check.md` 已创建；实验完成后再填写 decision。
 
 ## 变量
@@ -951,6 +957,108 @@ promotion_decision: not_applicable
 ## 决策
 
 PENDING
+"""
+
+
+def make_agent_summary(version: str, kind: ExperimentKind, exp_id: str, slug: str) -> str:
+    if kind.name == "confirmation":
+        agent_set = "Coordinator, Runner, Log Analyst, Quality Checker"
+        serial_agents = "Coordinator -> Runner -> Coordinator"
+        parallel_agents = "Log Analyst + Quality Checker after/around run evidence collection"
+        disabled_agents = "Reader/Planner, Implementer, Interface Checker, Reviewer, Result Analyst"
+    elif kind.name == "tune":
+        agent_set = "Coordinator, Reader/Planner, Runner, Log Analyst, Quality Checker"
+        serial_agents = "Coordinator -> Reader/Planner -> Runner -> Coordinator"
+        parallel_agents = "Log Analyst + Quality Checker after/around run evidence collection"
+        disabled_agents = "Implementer, Interface Checker, Reviewer"
+    elif kind.name == "ablation":
+        agent_set = "Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst"
+        serial_agents = "Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Coordinator"
+        parallel_agents = "Log Analyst + Quality Checker + Result Analyst after run"
+        disabled_agents = "Reviewer unless requested by Coordinator"
+    else:
+        agent_set = "Coordinator"
+        serial_agents = "Coordinator"
+        parallel_agents = ""
+        disabled_agents = ""
+    return f"""# Agent Summary
+
+```text
+experiment_id: {exp_id}
+run_id:
+base_version: {version}
+code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
+code_commit:
+agent_set: {agent_set}
+serial_agents: {serial_agents}
+parallel_agents: {parallel_agents}
+disabled_agents: {disabled_agents}
+runtime_state:
+warehouse_report_artifacts:
+final_decision: pending
+```
+
+## Coordinator
+
+```text
+role:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+```
+
+## Runner
+
+```text
+role:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+```
+
+## Log Analyst
+
+```text
+role:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+```
+
+## Quality Checker
+
+```text
+role:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+```
+
+## Interface Checker
+
+仅在代码、接口、loss、eval、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 可能变化时填写。
+
+```text
+role:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+```
 """
 
 
@@ -1090,6 +1198,7 @@ decision:
 evidence:
   log_artifact_id: {yaml_scalar(log_artifact_id)}
   manifest: {yaml_scalar("manifest.yaml")}
+  agent_summary: {yaml_scalar("agent_summary.md")}
   label_mapping_id: {yaml_scalar("standard_v1")}
   split_id: {yaml_scalar("standard_v1")}
   class_order_id: {yaml_scalar("standard_v1")}
@@ -1239,6 +1348,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
 
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
+    write_new(exp_dir / "agent_summary.md", make_agent_summary(version, kind, exp_id, slug))
     copy_new(src_config, exp_dir / "config.yaml")
     write_new(
         exp_dir / "manifest.yaml",
@@ -2138,6 +2248,7 @@ log_size_bytes:
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+agent_summary: agent_summary.md
 ```
 
 ## 改动文件
@@ -2265,6 +2376,7 @@ missing/unexpected keys:
         make_quality_check(ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")),
     )
     trial_kind = ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")
+    write_new(trial_dir / "agent_summary.md", make_agent_summary(base_version, trial_kind, trial_id, slug))
     write_new(
         trial_dir / "manifest.yaml",
         make_experiment_manifest(

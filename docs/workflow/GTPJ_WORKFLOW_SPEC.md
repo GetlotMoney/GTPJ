@@ -164,6 +164,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 登记动作规范，规定 Warehouse 路径、artifact id、URI、hash、size 和 manifest/result 引用。 |
 | `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的结果索引协议。 |
 | `docs/workflow/agent_contracts.md` | agents 的长期 IO 契约、自我介绍、读写边界和失败条件。 |
+| `docs/workflow/agent_report_policy.md` | agent 工作凭证保存规范，保留审计摘要，不保存完整聊天流水。 |
 | `docs/workflow/agent_orchestration.md` | 多 agents 编排、GPU 串行、实验类型分工和本地 skill 同步规则。 |
 | `docs/workflow/quality_gate.md` | 普通实验证据检查和 baseline promotion 强制门。 |
 | `docs/workflow/promotion.md` | 从 trial/result 到新版本 tag 的提升规范。 |
@@ -265,6 +266,7 @@ GitHub 里的 `experiments/` 是轻量实验索引，不是实验资产仓库。
 | `experiments/VERSION_TREE.md` | 版本树账本，记录每个正式 baseline 的父节点、tag、来源和指标。 |
 | `experiments/LEGACY_POLICY.md` | 边界收口前历史证据迁移规则。 |
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板。 |
+| `experiments/templates/agent_summary_template.md` | agent 工作凭证模板。 |
 | `experiments/templates/TRIAL_README_template.md` | trial README 模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板。 |
@@ -292,6 +294,7 @@ manifest.yaml
 result.yaml
 result.md
 quality_check.md
+agent_summary.md
 ```
 
 trial 还要包含：
@@ -557,6 +560,18 @@ trial 的决策类型：
 - 评估标注是否清楚。
 - 是否存在不可比风险。
 - 是否允许进入下一步。
+
+### 6.6 `agent_summary.md`
+
+`agent_summary.md` 是 agent 工作凭证。它回答：
+
+- 本次实验启用了哪些 agents；
+- 哪些 agents 被禁用，为什么；
+- 每个 agent 检查了什么输入；
+- 发现了哪些 blocking / non-blocking issue；
+- 最终决策由哪些证据支持。
+
+它不保存完整聊天流水，也不保存 raw logs。长报告进入 Warehouse，并通过 artifact id 引用。
 
 ## 7. 实验类型闭环
 
