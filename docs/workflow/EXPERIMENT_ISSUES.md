@@ -128,3 +128,28 @@ Prevention:
 
 - 所有运行中状态只写 `.gtpj_runtime/`。
 - 如果需要在 shell 中复用 run id，使用当前 PowerShell 变量，不在仓库根目录落临时文件。
+
+### ISSUE-20260626-006: Background runner must capture launch-time errors
+
+Status: fixed before training.
+
+What happened:
+
+- 第一次启动后台 batch runner 后，PID 很快退出，且没有生成 `status.json` / `events.jsonl`。
+- 原因是脚本里 `$RunDir = Join-Path $Repo '.gtpj_runtime\runs\' + $RunId` 写法错误；PowerShell 参数绑定不等价于字符串拼接。
+- 另外 `Start-Process` 没有重定向启动期 stdout/stderr，导致失败原因没有第一时间落盘。
+
+Impact:
+
+- 未启动训练，未生成新 raw log/checkpoint。
+- Runner lock 仍保留，需在修复脚本后继续使用或显式释放。
+
+Resolution:
+
+- `$RunDir` 改为 `Join-Path $Repo ('.gtpj_runtime\runs\' + $RunId)`。
+- 后台 `Start-Process` 必须重定向 `launch_stdout.log` 和 `launch_stderr.log`。
+
+Prevention:
+
+- 后台 runner 启动后立即轮询 PID、`status.json`、`events.jsonl` 和 launch stderr。
+- 如果 30 秒内没有 runtime 状态文件，视为启动失败，不允许当作训练中。
