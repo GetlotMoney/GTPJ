@@ -102,12 +102,6 @@ print_log(f"│  pool_method   : {getattr(config, 'pool_method', 'mean')}")
 if getattr(config, 'pool_method', 'mean') == 'lastvit':
     print_log(f"│  lastvit_k     : {getattr(config, 'lastvit_k', 8)}")
     print_log(f"│  lastvit_sigma : {getattr(config, 'lastvit_sigma', 10.0)}")
-print_log("├─ LaSt-ViT-CLS (CLIP CLS 增强) ──────────────────────────┤")
-print_log(f"│  use_lastvit_cls : {getattr(config, 'use_lastvit_cls', False)}")
-if bool(getattr(config, 'use_lastvit_cls', False)):
-    print_log(f"│  lastvit_cls_k     : {getattr(config, 'lastvit_cls_k', 1)}")
-    print_log(f"│  lastvit_cls_sigma : {getattr(config, 'lastvit_cls_sigma', 0.0)}")
-    print_log(f"│  lastvit_residual  : {getattr(config, 'lastvit_residual', 0.5)}")
 print_log("├─ Scoring & Gating ──────────────────────────────────────┤")
 print_log(f"│  score_mode    : {getattr(config, 'score_mode', 'add')}")
 print_log(f"│  gating        : {getattr(config, 'gating', 'fixed')}")
@@ -116,22 +110,11 @@ print_log(f"│  weight_s2v    : {getattr(config, 'weight_s2v', 0.5)}")
 print_log(f"│  text_residual : {getattr(config, 'text_residual', 0.5)}")
 print_log(f"│  visual_residual: {getattr(config, 'visual_residual', 0.5)}")
 print_log("├─ Loss Weights ──────────────────────────────────────────┤")
-print_log(f"│  lambda_cal    : {getattr(config, 'lambda_cal', 0.0)}")
 print_log(f"│  lambda_consist: {getattr(config, 'lambda_consist', 0.0)}")
-print_log(f"│  lambda_l2sp   : {getattr(config, 'lambda_l2sp', 0.0)}")
 print_log(f"│  lambda_topo   : {getattr(config, 'lambda_topo_pearson', 0.0)}")
-print_log(f"│  lambda_aux_s2v: {getattr(config, 'lambda_aux_s2v', 0.0)}")
-print_log(f"│  lambda_aux_v2s: {getattr(config, 'lambda_aux_v2s', 0.0)}")
-print_log(f"│  aux_temp      : {getattr(config, 'aux_temp', 14.28)}")
-print_log(f"│  use_geo_attr  : {getattr(config, 'use_geo_attr_routing', False)}")
-print_log(f"│  lambda_geo_attr: {getattr(config, 'lambda_geo_attr_routing', 0.0)}")
-print_log(f"│  use_text_reservoir: {getattr(config, 'use_text_attr_reservoir', False)}")
-print_log(f"│  text_reservoir_ratio: {getattr(config, 'text_attr_reservoir_ratio', 0.0)}")
-print_log(f"│  use_msdn_gate: {getattr(config, 'use_uncertainty_msdn_gate', False)}")
-print_log(f"│  use_attr_patch_ot: {getattr(config, 'use_attr_patch_ot', False)}")
-print_log(f"│  use_ag_jepa_v2: {getattr(config, 'use_ag_jepa_v2', False)}")
-print_log(f"│  use_cf_neg_text: {getattr(config, 'use_cf_neg_text', False)}")
-print_log(f"│  lambda_cf_neg_text: {getattr(config, 'lambda_cf_neg_text', 0.0)}")
+print_log(f"│  lambda_msdn   : {getattr(config, 'lambda_msdn', 0.0)}")
+print_log(f"│  lambda_jepa   : {getattr(config, 'lambda_jepa', 0.0)}")
+print_log(f"│  lambda_jepa_neg: {getattr(config, 'lambda_jepa_neg', 0.0)}")
 print_log("├─ Resume ────────────────────────────────────────────────┤")
 print_log(f"│  resume_from        : {getattr(config, 'resume_from', '')!r}")
 print_log(f"│  resume_lr_schedule : {getattr(config, 'resume_lr_schedule', 'continue')}")
@@ -716,30 +699,15 @@ for epoch in range(start_epoch, total_epochs + 1):
             avg_loss = epoch_loss / epoch_iters
             ce_v   = loss_pack.get('loss_CE',      torch.tensor(0.)).item()
             cons_v = loss_pack.get('loss_consist', torch.tensor(0.)).item()
-            l2_v   = loss_pack.get('loss_l2sp',    torch.tensor(0.)).item()
             topo_v = loss_pack.get('loss_topo',    torch.tensor(0.)).item()
-            va_v   = loss_pack.get('loss_v_anchor',        torch.tensor(0.)).item()
-            ta_v   = loss_pack.get('loss_t_unseen_anchor', torch.tensor(0.)).item()
-            di_v   = loss_pack.get('loss_distill',         torch.tensor(0.)).item()
-            as_v   = loss_pack.get('loss_aux_s2v',         torch.tensor(0.)).item()
-            av_v   = loss_pack.get('loss_aux_v2s',         torch.tensor(0.)).item()
             ms_v   = loss_pack.get('loss_msdn',            torch.tensor(0.)).item()
-            mg_v   = loss_pack.get('loss_msdn_gate',       torch.tensor(1.)).item()
-            bi_v   = loss_pack.get('loss_bias',            torch.tensor(0.)).item()
             jp_v   = loss_pack.get('loss_jepa',            torch.tensor(0.)).item()
             jn_v   = loss_pack.get('loss_jepa_neg',        torch.tensor(0.)).item()
-            cf_v   = loss_pack.get('loss_cf_neg_text',     torch.tensor(0.)).item()
-            ga_v   = loss_pack.get('loss_geo_attr',        torch.tensor(0.)).item()
-            ao_v   = loss_pack.get('loss_attr_patch_ot',   torch.tensor(0.)).item()
             print_log(f"  Step [{step+1:3d}/{iters_per_epoch}] | "
                       f"Loss: {loss.item():.4f} | Avg: {avg_loss:.4f} | "
                       f"CE: {ce_v:.3f}  Cons: {cons_v:.3f}  "
-                      f"L2SP: {l2_v:.4f}  Topo: {topo_v:.4f}  "
-                      f"VA: {va_v:.4f}  TA: {ta_v:.4f}  Dist: {di_v:.4f}  "
-                      f"AuxS2V: {as_v:.3f}  AuxV2S: {av_v:.3f}  "
-                      f"MSDN: {ms_v:.4f}  MGate: {mg_v:.3f}  Bias: {bi_v:.4f}  "
-                      f"JEPA: {jp_v:.4f}  JNeg: {jn_v:.4f}  CFNeg: {cf_v:.4f}  "
-                      f"GeoAttr: {ga_v:.4f}  AttrOT: {ao_v:.4f}")
+                      f"Topo: {topo_v:.4f}  MSDN: {ms_v:.4f}  "
+                      f"JEPA: {jp_v:.4f}  JNeg: {jn_v:.4f}")
 
     # 更新学习率
     scheduler.step()
