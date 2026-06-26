@@ -17,6 +17,7 @@ docs/PROJECT_STATUS.md
 docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/TASK_START_CARD.md
 docs/workflow/FIRST_CLOSED_LOOP.md
+docs/workflow/CURRENT_WORKFLOW_REPORT.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
 docs/workflow/artifact_policy.md
@@ -66,25 +67,26 @@ idea_tree
 1. `WORKFLOW_ROUTER.md`
 2. `TASK_START_CARD.md`
 3. `FIRST_CLOSED_LOOP.md`
-4. `GTPJ_WORKFLOW_SPEC.md`
-5. `IMPLEMENTATION_STATUS.md`
-6. `../GITHUB_GOVERNANCE.md`
-7. `../PROJECT_STRUCTURE.md`
-8. `../PROJECT_STATUS.md`
-9. `git_policy.md`
-10. `versioning.md`
-11. `idea_tree_protocol.md`
-12. `module_trial_protocol.md`
-13. `code_interface_contract.md`
-14. `artifact_policy.md`
-15. `ARTIFACT_REGISTRATION.md`
-16. `result_index_protocol.md`
-17. `experiment_protocol.md`
-18. `quality_gate.md`
-19. `promotion.md`
-20. `agent_contracts.md`
-21. `agent_orchestration.md`
-22. `agents/README.md`
-23. `progress_dashboard.md`
-24. `runbook.md`
-25. `../../workflow/README.md`
+4. `CURRENT_WORKFLOW_REPORT.md`
+5. `GTPJ_WORKFLOW_SPEC.md`
+6. `IMPLEMENTATION_STATUS.md`
+7. `../GITHUB_GOVERNANCE.md`
+8. `../PROJECT_STRUCTURE.md`
+9. `../PROJECT_STATUS.md`
+10. `git_policy.md`
+11. `versioning.md`
+12. `idea_tree_protocol.md`
+13. `module_trial_protocol.md`
+14. `code_interface_contract.md`
+15. `artifact_policy.md`
+16. `ARTIFACT_REGISTRATION.md`
+17. `result_index_protocol.md`
+18. `experiment_protocol.md`
+19. `quality_gate.md`
+20. `promotion.md`
+21. `agent_contracts.md`
+22. `agent_orchestration.md`
+23. `agents/README.md`
+24. `progress_dashboard.md`
+25. `runbook.md`
+26. `../../workflow/README.md`

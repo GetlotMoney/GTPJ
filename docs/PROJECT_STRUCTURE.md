@@ -116,6 +116,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
+| `docs/workflow/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
 | `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
