@@ -13,6 +13,7 @@ ATTEMPT-001 was originally recorded at the trial root. A compatibility copy now 
 | ATTEMPT-005 | param_tune | `clip_a_self_heads` + `clip_a_self_dropout` | `1 / 0.5` | `4 / 0.1` | 5 | 74.62 | 70.85 | 72.69 | 81.18 | 49 | `log:v1:module_trial:TRIAL-001:attempt-005` | reject | `attempts/ATTEMPT-005/` |
 | ATTEMPT-006 | param_tune | `clip_a_self_heads` + `clip_a_self_outer_ratio` + `clip_a_self_inner_ratio` | `1 / 0.2 / 0.5` | `4 / 0.1 / 0.25` | 5 | 70.85 | 77.36 | 73.96 | 81.46 | 33 | `log:v1:module_trial:TRIAL-001:attempt-006` | keep | `attempts/ATTEMPT-006/` |
 | ATTEMPT-007 | confirmation | clean confirmation of `ATTEMPT-003` config | `ATTEMPT-003` | same config | 5 | 70.82 | 76.80 | 73.69 | 80.91 | 33 | `log:v1:module_trial:TRIAL-001:attempt-007` | not_confirmed | `attempts/ATTEMPT-007/` |
+| ATTEMPT-008 | confirmation | repeat clean confirmation of `ATTEMPT-003` config with pre-run diagnostics | `ATTEMPT-003/007` | same config | 5 | pending | pending | pending | pending | pending | pending | pending | `attempts/ATTEMPT-008/` |
 
 ## Notes
 
