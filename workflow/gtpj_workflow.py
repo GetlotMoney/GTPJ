@@ -2422,7 +2422,7 @@ missing/unexpected keys:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="GTPJ 可选结构辅助 helper")
+    parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
     sub = parser.add_subparsers(dest="command", required=True)
 
     status = sub.add_parser("status", help="显示仓库状态")

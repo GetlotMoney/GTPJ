@@ -4,20 +4,19 @@
 
 ## 0. 当前结论
 
-当前项目已经完成的是“治理骨架”和“工作流规范骨架”：
+当前项目已经完成的是“治理骨架”和“核心 workflow 规范”：
 
 - GitHub 仓库已经被定位为轻量控制面：保存代码、配置、复现实验索引、版本账本、质量门和 agent 规范。
 - 本地外部目录已经被定位为材料和资产面：保存来源材料、完整创意来源、raw logs、checkpoint 和实验诊断材料。
-- agents 的角色边界已经规划：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
+- agents 的角色边界已经落地：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
 - 代码接口、评估标注、结果记录、artifact 引用和质量门已经形成规范入口。
 
-当前还没有完成的是“真实研究闭环产品”：
+当前还没有完成的是“首轮真实研究闭环和自动 runtime 产品化”：
 
 - 还没有跑一轮新的 trial/tune/ablation/confirmation 并完整落账。
-- 还没有把本规范审阅通过后固化成最终工作节奏。
 - 还没有把本地看板或自动 runtime 变成日常强制入口。
 
-所以现在的正确动作是：先读懂并确认本文件，再决定是否进入“首轮干跑 + 规范修正 + 正式闭环”阶段。
+所以现在的正确动作是：核心 workflow 按本文件执行；如果要验证整条链路，再进入“首轮干跑 / 真实 run + 规范修正 + 正式闭环”阶段。
 
 落地状态不要靠口述判断。每次需要确认哪些文件已经实体化、哪些仍是设计时，读取：
 
@@ -54,7 +53,8 @@ docs/workflow/FIRST_CLOSED_LOOP.md
 核心判断：
 
 ```text
-实验是为了调/查/验证已有东西 -> experiments，不进 idea_tree。
+实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
+实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
 实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
 ```
 
@@ -203,7 +203,7 @@ GitHub 轻量化以后，agents 边界必须跟着变化：
 
 | 路径 | 作用 |
 |---|---|
-| `workflow/README.md` | 结构辅助工具说明和未来 runtime 入口。 |
+| `workflow/README.md` | 结构辅助工具说明和 runtime 入口。 |
 | `workflow/gtpj_workflow.py` | CLI helper，负责 validate、audit-boundary、new-experiment、record-result、new-idea、new-trial、set-current-version 等结构性动作。 |
 | `workflow/codex/README.md` | Codex 接入参考。 |
 | `workflow/openclaw/README.md` | OpenClaw 接入参考。 |
@@ -521,6 +521,15 @@ trial 的决策类型：
 - 结果摘要和可比性判断。
 - 质量检查结论。
 
+除此之外，所有会产出正式证据的真实 run 都必须满足：
+
+- run 前先把配置、副本和计划索引冻结成一次 `pre-run freeze commit`；
+- `pre-run freeze commit` 之后 `git status --short` 必须为空；
+- Runner 只能从这个 clean worktree 启动；
+- 本次 run 必须能唯一映射到冻结后的 `run_commit`；
+- run 后的 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、artifact 注册和索引更新，必须进入单独的 `post-run result commit`；
+- 如果真实 run 启动时工作树不干净，这次结果最多算 debug 证据，不能直接作为 `keep`、`best`、confirmation 或 promotion 依据。
+
 ### 6.2 `manifest.yaml`
 
 `manifest.yaml` 是复现地图。它回答：
@@ -580,6 +589,10 @@ trial 的决策类型：
 
 目标：在不改变模型结构和评估语义的前提下找更好配置。
 
+本节说的是 version-level tune：基于某个正式 baseline `vX` 调参数，写入 `experiments/vX/tune/`。
+如果调的是某个 module trial 内部的 heads、ratio、dropout、seed 等 attempt 参数，写入该 trial 的
+`ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，按 `module_trial_protocol.md` 处理。
+
 流程：
 
 ```text
@@ -587,9 +600,12 @@ tune-suggest
   -> owner 选择候选
   -> exp/vX/tune/...
   -> new-experiment
+  -> 写 config / 计划行并提交 pre-run freeze commit
+  -> 确认 clean worktree，记录 run_commit
   -> Runner 独占 GPU 运行
   -> raw logs 写入 Warehouse
   -> Log Analyst 抽指标
+  -> post-run result commit
   -> record-result 写回 GitHub 轻量索引
   -> Quality Checker 检查
   -> Result Analyst 写结论
@@ -605,6 +621,11 @@ tune 不允许：
 ### 7.2 ablation
 
 目标：验证某个模块或设计是否真的贡献了指标。
+
+本节说的是 version-level ablation：基于某个正式 baseline `vX` 做消融，写入
+`experiments/vX/ablation/`。如果只是解释某个 module trial 当前实现假设下的局部因素，
+它是 trial-internal narrow ablation，写入该 trial 的 `ATTEMPTS.md` 和
+`attempts/ATTEMPT-xxx/`。
 
 流程：
 
@@ -636,8 +657,11 @@ Reader/Planner 形成 IDEA-xxxx
   -> Interface Checker 预审
   -> Implementer 实现
   -> 最低代码验证
+  -> 写 attempt config / ATTEMPTS 计划行并提交 pre-run freeze commit
+  -> 确认 clean worktree，记录 run_commit
   -> Runner 运行 trial
   -> Log Analyst 抽指标
+  -> post-run result commit
   -> Quality Checker 查证据
   -> Reviewer 查风险
   -> 决策 promote/keep/revise/reject
@@ -650,22 +674,31 @@ innovation 的硬规则：
 - 接口语义不清楚时不能跑正式结果。
 - trial 通过不等于自动成为新版本。
 - 同一个 `TRIAL-001` 可以有多个 `ATTEMPT-xxx`，用于记录同一实现假设下的参数尝试、小范围 follow-up ablation、rerun 或 debug-fix。
+- trial 内部必须允许 `param_tune`、narrow `ablation` 和 clean `confirmation`，否则无法判断这个模块到底好不好。
 - `ATTEMPTS.md` 是 trial 内部的人读总表；单次 attempt 的复现证据放在 `attempts/ATTEMPT-xxx/`。
 - trial 根目录的 `README.md`、`result.yaml`、`quality_check.md` 只汇总当前用于决策的 `best_attempt_id`。
 - 如果变化已经超出小范围参数或局部诊断，形成新的实现假设，就新开 `TRIAL-002`，不要继续堆在 `TRIAL-001`。
 - 旧 trial 如果只有一次 root-level attempt，可以作为历史证据保留；但从这条规则开始新增的 attempt 必须进入 `ATTEMPTS.md`。
+- 真实 attempt run 不允许在 dirty worktree 上启动，也不允许在未提交 attempt config 和计划行时直接开跑。
 
 ### 7.4 confirmation
 
 目标：确认一个已有结果能复现，或确认某个 promotion 候选不是偶然。
+
+本节说的是 version-level confirmation，写入 `experiments/vX/confirmation/`。如果确认对象是某个
+module trial 的 `best_attempt_id`，则写入该 trial 的 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，
+作为 trial-internal clean confirmation。
 
 流程：
 
 ```text
 选择待确认结果
   -> 固定配置和代码快照
+  -> 提交 pre-run freeze commit
+  -> 确认 clean worktree，记录 run_commit
   -> 改 seed 或重新跑
   -> 检查日志和指标
+  -> post-run result commit
   -> 判断是否稳定
 ```
 
@@ -674,6 +707,7 @@ confirmation 必须说明：
 - 确认对象是谁。
 - 与原结果的差异是多少。
 - 是否仍满足质量门。
+- 这次确认运行引用的 `run_commit` 是什么。
 
 ### 7.5 promotion
 
@@ -744,6 +778,95 @@ Quality Checker 的拒绝条件：
 - 能读外部目录的 agent，不等于能把外部材料写回 GitHub。
 - 所有 agents 都要先读对应规范文件，再行动。
 - 任何 agent 发现评估语义不清楚，都必须停止把结果当作有效结论。
+- Coordinator 不能临场自由决定是否使用多 agents；每次任务启动卡必须显式记录 `agents.activation_mode`、`activation_reason`、`decision_basis`、`required_roles`、`required_real_agents`、`tool_support`、`single_agent_allowed` 和 `memory_policy`。
+
+### 9.1.1 Agent 启用模式
+
+GTPJ 任务只有两种 agent 启用模式：
+
+| 模式 | 含义 | 适用范围 |
+|---|---|---|
+| `role_only` | 一个主 agent 按多个角色清单串行执行，并在 `agent_summary.md` 记录各角色检查结果。 | 只读解释、状态检查、配置查看、窄范围 rerun / confirmation 准备、账本格式整理。 |
+| `real_multi_agent` | 启动或委派独立 agent / reviewer / checker 执行对应角色，保留独立输入、发现和结论。 | 代码语义变更、接口风险、promotion、争议结果、owner 明确要求多 agents。 |
+
+如果当前 Codex 环境没有真实 sub-agent / multi-agent 工具，不能把 `role_only` 写成
+`real_multi_agent`。`role_only_with_independent_sequential_review` 不是第三种 `activation_mode`，
+只能写在 `agents.tool_support.fallback_mode` 中：
+
+```yaml
+agents:
+  activation_mode: role_only
+  tool_support:
+    real_multi_agent_available: false
+    fallback_mode: role_only_with_independent_sequential_review
+```
+
+该 fallback 不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，
+除非 owner 明确接受它只作为 debug/smoke 证据。
+
+`required_real_agents` 是真实 sub-agent 硬需求角色列表；`real_multi_agent` 时填写必须独立执行的
+角色，`role_only` 时填写 `[]`。
+
+必须使用 `real_multi_agent` 的情况：
+
+- owner 明确说“用多 agents”“多 agents 验证”“独立 review”；
+- 修改模型结构、forward、loss、eval、数据流、label mapping、seen/unseen split、class order 或 logits shape；
+- 新 module trial 的实现阶段、接口检查阶段或 promotion 前复核；
+- 结果异常或争议较大，例如明显低于预期、指标大幅波动、和 baseline 不可比，或 owner 对解释提出质疑；
+- 准备写 `promotion_decision: promote`、创建新 `vX`、打 version tag；
+- 任务需要同时阅读论文、源码、日志和质量证据，且这些输入可以被不同角色独立检查。
+- 同一结论会影响论文实验路线、baseline 选择或下一轮大成本实验。
+
+允许使用 `role_only` 的情况：
+
+- 只读解释、定位文件、查看配置、普通状态汇报；
+- 不改代码、不改实验语义的窄范围 rerun / confirmation 准备；
+- 单一 Runner 按 frozen config 串行训练；
+- 结果只记为 debug/smoke，不作为 keep / best / promote / confirmation evidence；
+- 账本格式整理，且不改变实验结论。
+
+如果 owner 对 `activation_mode` 提出异议，Coordinator 必须暂停真实 run，先修正启动卡或升级为 `real_multi_agent`。
+
+### 9.1.2 Agent 记忆规则
+
+Agent 不能把隐藏聊天记忆当作实验事实源。事实源优先级是：
+
+1. 当前仓库文件、commit、tag、实验账本、config、manifest、result、quality check。
+2. Warehouse / Research 中被 artifact id、URI、hash、size 引用的外部证据。
+3. 当前对话中 owner 明确给出的任务约束。
+4. Codex 全局 memory 或历史会话摘要，只能用于快速定位和背景提醒，必须回到当前仓库或 artifact 验证后才能入账。
+
+真实多 agent 下，每个 agent 只自动拥有自己收到的任务说明、被显式传入的文件和当前工具可见上下文。
+它们不应假定自己拥有主 agent 的全部隐藏记忆。Coordinator 如果依赖历史记忆，必须在任务说明里显式写出，
+并要求 agent 回到当前仓库验证。
+
+`agent_summary.md` 必须记录：
+
+- `memory_used`
+- `memory_sources`
+- `verified_against_current_repo`
+- `agent_instance_type`
+- `independence_scope`
+
+没有经过当前仓库或 artifact 验证的 memory-derived fact，不能写入 `result.yaml`、`quality_check.md`、
+promotion 证据或正式结论。
+
+### 9.1.3 当前 ATTEMPT-007 的 agent 结论
+
+CLIP-A-self ATTEMPT-007 是 ATTEMPT-003 配置的干净 confirmation run，但 owner 已经质疑流程、
+结果解释和多 agent 使用边界。因此本轮应按 `real_multi_agent` 处理。启用：
+
+```text
+Coordinator
+Runner
+Log Analyst
+Quality Checker
+Result Analyst
+Reviewer
+```
+
+不启用 Implementer 和 Interface Checker，除非 ATTEMPT-007 前修改训练代码、loss、eval、数据流、
+label mapping、seen/unseen split、class order、logits shape 或 metric semantics。
 
 ### 9.2 角色分工
 
@@ -763,11 +886,14 @@ Quality Checker 的拒绝条件：
 
 | 实验类型 | 必需 agents |
 |---|---|
-| tune | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker |
+| 只读状态 / 配置检查 | Coordinator，必要时 Reader/Planner |
+| 调参建议 | Coordinator、Reader/Planner、Result Analyst |
+| tune 真实运行 | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker |
 | ablation | Coordinator、Runner、Log Analyst、Interface Checker、Result Analyst、Quality Checker |
 | innovation/module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Result Analyst、Quality Checker、Reviewer |
 | confirmation | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker |
 | promotion | Coordinator、Quality Checker、Reviewer、Result Analyst，必要时 Interface Checker |
+| debug / smoke | Coordinator、Runner、Log Analyst，必要时 Interface Checker |
 
 ## 10. 标准命令入口
 
@@ -867,7 +993,8 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
    Result Analyst 判断 keep/revise/reject/promote。
 
 9. 确认和消融
-   需要时跑 confirmation 和 ablation。
+   对 trial best attempt 做 trial-internal clean confirmation；必要时做 trial-internal narrow ablation。
+   若确认对象已经是正式 baseline 版本，再写入 `experiments/vX/confirmation/` 或 `experiments/vX/ablation/`。
 
 10. 提升版本
     promotion 通过后创建 vY 配置、账本、tag。

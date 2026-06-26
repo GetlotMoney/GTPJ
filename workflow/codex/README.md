@@ -1,7 +1,7 @@
-# Codex 未来工作流入口
+# Codex 工作流入口
 
-当前阶段不强制执行 Codex 工作流。Codex 只需要遵循 GitHub 项目治理规范；
-未来正式接入时，再遵循与 OpenClaw 相同的仓库工作流。
+当前阶段 Codex 必须遵循 GTPJ 核心 workflow。OpenClaw 和 Codex 只是不同 runtime 入口；
+两者共享同一套 GitHub 事实源、任务路由、启动卡、artifact 边界、结果账本、质量门和 agent 凭证规则。
 
 ## 启动契约
 
@@ -24,7 +24,8 @@ python workflow/gtpj_workflow.py validate
 
 ## Codex 职责
 
-- 可以使用 `workflow/gtpj_workflow.py` 执行结构性辅助动作。
+- 优先使用 `workflow/gtpj_workflow.py` 执行 validate、audit-boundary、目录创建和结果记录等结构性辅助动作。
+- 不把 helper 当成研究判断黑盒；Coordinator 仍要判断任务类型、实验语义、质量门和结论边界。
 - 保持改动最小且范围明确。
 - 不迁移旧分支名、旧实验 ID、旧视频文件或旧外部工具工作流文件。
 - 除非 owner 明确要求，否则不要 push。

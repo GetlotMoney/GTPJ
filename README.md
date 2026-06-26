@@ -19,9 +19,9 @@ GeoTopoPatch-JEPA 实验仓库。
 
 ## 当前管理重点
 
-当前阶段先管理 GitHub 项目本身：版本、tag、分支、目录、配置快照、创意树和实验证据。
-OpenClaw / Codex 工作流之后再接入这个仓库；现有 `docs/workflow/` 和 `workflow/`
-只作为未来工作流参考，不是当前必须执行的完整流程。
+当前阶段已经强制执行 GTPJ 核心 workflow：版本、tag、分支、目录、配置快照、创意树、
+实验证据、任务路由、启动卡、artifact 边界、结果账本、质量门、agent 凭证和 promotion gate。
+OpenClaw / Codex 只是不同 runtime 入口，必须接入同一套 GitHub 事实源和 workflow 规范。
 
 ## 项目结构
 
@@ -32,12 +32,12 @@ GTPJ/
 |-- tools/                  # 数据、特征、评估工具
 |-- config/
 |   `-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
-|-- docs/                   # GitHub 治理、项目状态和未来 workflow 参考
-|-- workflow/               # 可选结构辅助；未来 workflow 接入口
+|-- docs/                   # GitHub 治理、项目状态和 workflow 规范
+|-- workflow/               # 结构辅助工具和 runtime 接入口
 |-- idea_tree/              # 总创意库和按版本生成的创意选择清单
 `-- experiments/
-    |-- module_trials/      # 模块 trial 证据；当前无已启动 trial
-    `-- v1/                 # GTPJ-v1 baseline、调参、消融、确认记录
+    |-- module_trials/      # 模块 trial 证据；trial 内部 attempts 可做调参、窄消融、确认
+    `-- v1/                 # GTPJ-v1 baseline 和 version-level 调参、消融、确认记录
 ```
 
 ## GitHub 管理规则
@@ -87,11 +87,10 @@ experiments/VERSION_TREE.md
 `idea_tree/INDEX.md` 是总创意清单；`idea_tree/versions/v1.md` 是 v1 创意选择清单。
 创新 trial 只读取对应 base version 的版本清单，不需要每次读完整总表。
 
-## 未来工作流接入
+## Workflow 入口
 
-OpenClaw 是未来实验运行的优先 runtime。Codex 需要兼容同一套仓库文件。
-但在正式接入前，本仓库先保证 GitHub 治理干净：版本能回滚、实验能追溯、
-创意有来源、代码快照和结果不混淆。
+OpenClaw 是实验运行的优先 runtime。Codex 兼容同一套仓库文件和 workflow 规范。
+GitHub 负责事实源和轻量账本：版本能回滚、实验能追溯、创意有来源、代码快照和结果不混淆。
 
 ## 默认实验环境
 
@@ -114,12 +113,12 @@ conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v1.yaml
 - `docs/GITHUB_GOVERNANCE.md`
 - `docs/PROJECT_STRUCTURE.md`
 - `docs/PROJECT_STATUS.md`
-- `docs/workflow/README.md`（未来 workflow 参考）
-- `workflow/README.md`（可选结构辅助）
+- `docs/workflow/README.md`（workflow 入口）
+- `workflow/README.md`（结构辅助工具）
 - `experiments/v1/VERSION.md`
 - `idea_tree/README.md`
 
-## 可选结构辅助
+## 结构辅助工具
 
 需要检查仓库结构时，可以运行：
 
@@ -132,7 +131,8 @@ python workflow/gtpj_workflow.py validate-remote
 `validate-remote` 检查远端 `main` 是否等于本地 `main`、远端 `v1` tag 是否等于本地
 `v1` tag，并确认本地 `main` 包含 `v1` 历史；`main` 可以比 `v1` 多治理账本提交。
 
-需要创建标准目录时，可以使用 helper；当前它不是强制工作流。
+需要创建标准目录、登记结果或做边界检查时，优先使用 helper。它是结构辅助工具，
+不是研究判断黑盒。
 `new-experiment` 必须在 clean working tree 中运行，并且先从当前 `main` 切到 helper 建议的 `exp/...` 分支；helper 会拒绝不包含当前本地 `main` 历史的实验分支。
 下面是模板命令，`IDEA-XXXX` 和 `<source>` 需要替换成真实值：
 

@@ -67,6 +67,161 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
 Warehouse，Reader / Planner 读 Research，Result Analyst 通过 artifact id 引用结果。
 任何 agent 都不能把 raw logs、checkpoint、generated figures、完整论文笔记或完整创意树写入 GitHub。
 
+## Agent 启用模式
+
+Coordinator 不能临场自由决定是否使用多 agents。每次任务启动卡必须显式写入：
+
+```yaml
+agents:
+  activation_mode: role_only | real_multi_agent
+  activation_reason:
+  required_roles:
+  disabled_roles:
+  required_real_agents:
+  single_agent_allowed:
+  owner_override:
+  tool_support:
+    real_multi_agent_available:
+    fallback_mode:
+    checked_by:
+  serial:
+  parallel:
+  writer_roles:
+  reviewer_roles:
+  memory_policy:
+    session_context_allowed:
+    codex_memory_allowed:
+    repo_state_required:
+    memory_used:
+    memory_sources:
+    verified_against_current_repo:
+```
+
+两种模式含义：
+
+- `role_only`：一个主 agent 按多个角色清单串行执行，并在 `agent_summary.md` 里记录各角色检查结果。
+- `real_multi_agent`：启动或委派独立 agent / reviewer / checker 执行对应角色，至少保留独立输入、发现和结论。
+
+`activation_mode` 只能是 `role_only` 或 `real_multi_agent`。如果当前 Codex 环境没有真实
+sub-agent / multi-agent 工具，不能把 `role_only` 写成 `real_multi_agent`。此时：
+
+```yaml
+agents:
+  activation_mode: role_only
+  tool_support:
+    real_multi_agent_available: false
+    fallback_mode: role_only_with_independent_sequential_review
+```
+
+该 fallback 不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非
+owner 明确接受它只作为 debug/smoke 证据。
+
+`required_real_agents` 是真实多 agent 硬需求角色列表：
+
+- `activation_mode: real_multi_agent` 时，写必须由独立 sub-agent 执行的角色，例如
+  `[Quality Checker, Result Analyst, Reviewer]`。
+- `activation_mode: role_only` 时，写 `[]`；如果本应有真实多 agent 但工具不可用，必须在
+  `tool_support.fallback_mode` 写明 fallback，并触发阻断或 debug-only 降级。
+
+### 启用矩阵
+
+| 场景 | 默认模式 | 触发理由 |
+|---|---|---|
+| 只读解释、定位文件、查看配置、普通状态汇报 | `role_only` | 不产生实验事实，不改代码，不改变结论。 |
+| 窄范围 rerun / confirmation 准备 | `role_only` | 只准备冻结配置、启动卡或账本，不启动争议 run。 |
+| 单一 Runner 按 frozen config 串行训练 | `role_only` 可用 | 只执行已冻结配置，Runner/GPU 本来必须串行。 |
+| debug/smoke | `role_only` | 结果不作为 keep / best / promote / confirmation evidence。 |
+| 账本格式整理 | `role_only` | 不改变实验结论和证据语义。 |
+| owner 明确要求“多 agents”“多 agents 验证”“独立 review” | `real_multi_agent` | owner 已要求独立分工。 |
+| 修改模型结构、forward、loss、eval 或数据流 | `real_multi_agent` | 代码语义变化需要实现、接口、质量独立复核。 |
+| 涉及 label mapping、seen/unseen split、class order、logits shape 或 metric semantics | `real_multi_agent` | 这些是 GZSL 有效性硬门。 |
+| 新 module trial 的实现、接口检查或 promotion 前复核 | `real_multi_agent` | 会影响 trial 结论或版本提升。 |
+| 结果异常、争议大、owner 质疑解释 | `real_multi_agent` | 需要独立复核日志、配置、代码和质量证据。 |
+| 准备写 `promotion_decision: promote`、创建 `vX` 或打 tag | `real_multi_agent` | 版本事实不可由单一视角确认。 |
+| 任务需要同时读论文、源码、日志和质量证据 | `real_multi_agent` | 输入天然可拆，适合独立检查。 |
+| 结论会影响论文实验路线、baseline 选择或下一轮大成本实验 | `real_multi_agent` | 决策成本高，需要可审计分工。 |
+
+即使使用 `role_only`，也不能省略角色记录。`agent_summary.md` 必须写清：
+
+- 为什么没有启动 `real_multi_agent`；
+- 哪些角色由主 agent 代执行；
+- 哪些 hard gate 已检查；
+- 哪些情况会升级为 `real_multi_agent`。
+
+如果 owner 对 `activation_mode` 提出异议，Coordinator 必须暂停真实 run，先修正启动卡或升级为
+`real_multi_agent`，不能继续按原模式执行。
+
+### 按任务选角色
+
+| 任务 | 必需角色 | 默认模式 | 说明 |
+|---|---|---|---|
+| 只读状态 / 配置检查 | Coordinator，必要时 Reader/Planner | `role_only` | 不跑训练，不写实验结论。 |
+| 调参建议 | Coordinator、Reader/Planner、Result Analyst | `role_only` | 只提出候选，不启动 Runner。 |
+| 调参真实运行 | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `role_only` 或 `real_multi_agent` | 单配置冻结复跑可 `role_only`；多候选、争议或正式 best 选择用 `real_multi_agent`。 |
+| confirmation / rerun | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `role_only` 或 `real_multi_agent` | 普通干净复跑可 `role_only`；争议确认、promotion 前确认用 `real_multi_agent`。 |
+| ablation | Coordinator、Runner、Log Analyst、Interface Checker、Result Analyst、Quality Checker | `real_multi_agent` | 如果只改配置开关但不改代码，也要保留 Interface Checker 角色。 |
+| innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Result Analyst、Quality Checker、Reviewer | `real_multi_agent` | 新模块默认真实多 agent。 |
+| promotion | Coordinator、Quality Checker、Reviewer、Result Analyst，必要时 Interface Checker | `real_multi_agent` | promotion 不允许只靠 `role_only` 给最终通过结论。 |
+| debug / smoke | Coordinator、Runner、Log Analyst，必要时 Interface Checker | `role_only` | 只定位问题；若发现代码或评估语义问题，升级。 |
+
+### 串行和并行
+
+- Runner 永远串行，必须独占 GPU lock。
+- Implementer 是同一代码路径的唯一 writer；不能让多个 agents 同时改同一模型、loss、eval 或 dataset 文件。
+- Coordinator 是最终 GitHub 账本唯一写入者。
+- Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行。
+- Interface Checker 对接口语义有阻断权；一旦阻断，Runner 和 Result Analyst 不能把结果当有效证据。
+
+### Agent 记忆规则
+
+Agent 不能把隐藏聊天记忆当作实验事实源。GTPJ 的可审计事实源按优先级排序：
+
+1. 当前仓库文件、commit、tag、实验账本、config、manifest、result、quality check。
+2. Warehouse / Research 中被 artifact id、URI、hash、size 引用的外部证据。
+3. 当前对话中 owner 明确给出的任务约束。
+4. Codex 全局 memory 或历史会话摘要，只能用于快速定位和背景提醒，必须回到当前仓库或 artifact 验证后才能入账。
+
+真实多 agent 下，每个 agent 只自动拥有自己收到的任务说明、被显式传入的文件和当前工具可见上下文。
+它们不应假定自己拥有主 agent 的全部隐藏记忆。Coordinator 如果依赖历史记忆，必须在任务说明里显式写出，
+并要求 agent 回到当前仓库验证。
+
+`agent_summary.md` 必须记录：
+
+- `memory_used: yes | no`
+- `memory_sources:` 使用了哪些历史摘要、memory 文件或 conversation context；
+- `verified_against_current_repo:` 哪些事实已经用当前 repo / log / artifact 验证；
+- `agent_instance_type:` `main_agent`、`sub_agent`、`sequential_reviewer` 或 `role_checklist`；
+- `independence_scope:` 该角色独立检查了哪些输入。
+
+没有经过当前仓库或 artifact 验证的 memory-derived fact，不能写入 `result.yaml`、`quality_check.md`、
+promotion 证据或正式结论。
+
+### 决定权
+
+- Coordinator 按本矩阵选择 `activation_mode`，不是按个人偏好选择。
+- Owner 可以随时要求向上升级为 `real_multi_agent`。
+- 如果硬门要求 `real_multi_agent`，不能向下降级为普通 `role_only`；除非本次明确标记为 debug/smoke，且结果不进入正式证据。
+- 如果工具不可用但任务硬门要求 `real_multi_agent`，Coordinator 必须在
+  `tool_support.real_multi_agent_available: false` 和
+  `tool_support.fallback_mode: role_only_with_independent_sequential_review` 中记录阻断原因，并在 owner 审核前不得跑正式实验或 promotion。
+
+### 当前 CLIP-A-self ATTEMPT-007 适用结论
+
+ATTEMPT-007 是对 ATTEMPT-003 配置的干净 confirmation run，但 owner 已经质疑流程、结果解释和多 agent 使用边界。
+因此本轮应按 `real_multi_agent` 处理。启用角色：
+
+```text
+Coordinator
+Runner
+Log Analyst
+Quality Checker
+Result Analyst
+Reviewer
+```
+
+不启用 Implementer 和 Interface Checker，除非 ATTEMPT-007 前修改训练代码、loss、eval、数据流、label mapping、
+seen/unseen split、class order、logits shape 或 metric semantics。
+
 ## Agent 工作凭证
 
 真实实验必须保存 agent 工作凭证，而不是保存完整聊天流水。最小 GitHub 记录是：

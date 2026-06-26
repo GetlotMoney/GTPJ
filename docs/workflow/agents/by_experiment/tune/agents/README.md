@@ -1,6 +1,11 @@
 # Tune Agents
 
-调参只改变参数，不改变模型结构。训练串行，一次只跑一个 Runner。
+本文件用于 version-level tune。调参只改变正式 baseline `vX` 的参数，不改变模型结构。
+训练串行，一次只跑一个 Runner。
+
+如果调的是某个 module trial 内部的 attempt 参数，例如 heads、ratio、dropout、seed，
+使用 `module_trial_protocol.md` 的 trial-internal `param_tune`，写入该 trial 的
+`ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，不使用本 version-level tune agent 编排。
 
 ## 启用角色
 
@@ -38,6 +43,6 @@ Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality
 - Coordinator 必须写 `agent_summary.md`，记录参与 agents、禁用 agents、检查范围、发现和证据引用。
 - 当前版本从 `main` 开 `exp/vX-tune-...`。
 - 历史版本从 `vX` tag 开临时运行分支。
-- 长期轻量证据只写 `experiments/vX/tune/`；完整日志、checkpoint、generated figures 留在 Warehouse。
+- version-level 长期轻量证据只写 `experiments/vX/tune/`；完整日志、checkpoint、generated figures 留在 Warehouse。
 - 历史版本跑完证据回当前 `main`，然后删除临时运行分支。
 - 如记录 `promotion_decision: promote` 和 `promote_to`，转交 promotion agents。

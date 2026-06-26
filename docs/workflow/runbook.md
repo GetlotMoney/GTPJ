@@ -36,6 +36,18 @@ validate-remote-ok
 ```
 
 如果工作区不干净，先提交或处理当前改动，不要直接开实验分支。
+对真实训练、confirmation、tune、ablation、module trial 的正式 run，再额外执行下面的冻结规则：
+
+```text
+1. 先写本次 run 需要的 config 副本、ATTEMPTS 计划行或启动卡
+2. 提交 pre-run freeze commit
+3. 再次检查 git status --short 为空
+4. 记录 run_commit
+5. 只从这个 clean worktree 启动 Runner
+6. run 完成后再写 manifest/result/quality_check 和 artifact 注册，形成 post-run result commit
+```
+
+不要把“影响本次运行的配置改动”和“运行后的结果记账”混在同一次提交里。
 如果只是本地离线复查，可以先跳过 `validate-remote`，但正式开实验前需要确认远端状态对齐。
 `validate-remote` 允许 `main` 比 `v1` 多治理账本提交；它检查的是远端 `main` 对齐本地
 `main`、远端 `v1` 对齐本地 `v1` tag，并确认本地 `main` 包含 `v1` 历史。
@@ -80,9 +92,11 @@ experiments/v1/confirmation/INDEX.md
 确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
 历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。
 
-## 运行 v1 调参实验
+## 运行 v1 版本级调参实验
 
-tune run 属于 `experiments/v1/tune/`，不要放到 `confirmation/`。
+version-level tune run 属于 `experiments/v1/tune/`，不要放到 `confirmation/`。
+如果调参对象是某个 module trial 的 heads、ratio、dropout、seed 等 attempt 参数，应写入该 trial 的
+`ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，不要写入 `experiments/v1/tune/`。
 
 调参前先生成最多 3 个候选。这个命令只读配置和 tune 索引，不会改文件，也不会启动训练：
 
