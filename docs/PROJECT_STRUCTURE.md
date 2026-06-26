@@ -9,11 +9,11 @@
 - 改变某个文件或目录类型的职责时，必须同步更新本文件。
 - 新增普通实验、idea 或 trial 的具体实例时，优先更新对应 INDEX、登记表或 idea_tree 记录；
   只有结构模式、入口职责或维护规则变化时才更新本文件。
-- 修改 GitHub 治理规范、实验记录规范、创意树规范、代码接口规范或未来 workflow 参考时，必须同步更新本文件中对应说明。
+- 修改 GitHub 治理规范、实验记录规范、创意树规范、代码接口规范或 workflow/runtime 入口职责时，必须同步更新本文件中对应说明。
 - 只更新实验数值、日志路径或普通记录内容时，也要检查本文件是否需要更新；如果结构和职责没有变化，可以不改。
 - 结构性改动完成前建议运行 `python workflow/gtpj_workflow.py validate`；需要确认 GitHub 远端状态时再运行
   `python workflow/gtpj_workflow.py validate-remote`。`validate-remote` 核对远端 `main`/`v1`
-  分别对齐本地 `main`/`v1`，并确认本地 `main` 包含 `v1` 历史。当前阶段它们是结构辅助检查，不是完整 workflow。
+  分别对齐本地 `main`/`v1`，并确认本地 `main` 包含 `v1` 历史。它们是 workflow 的结构辅助检查，不替代研究判断。
 
 ## 总体框架
 
@@ -42,6 +42,12 @@ idea_tree/                 # 创意来源、评分、排序
   -> experiments/vX/         # 新版本自己的 tune / ablation / confirmation 记录
 ```
 
+注意两层实验位置：
+
+- version-level tune / ablation / confirmation 写入 `experiments/vX/`；
+- module trial 内部的 `param_tune`、narrow `ablation`、clean `confirmation` 写入该 trial 的
+  `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，用于判断这个新模块本身是否值得保留。
+
 版本规则：
 
 ```text
@@ -65,7 +71,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和可选结构辅助命令。 |
+| `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和结构辅助命令。 |
 | `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
@@ -103,7 +109,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/GITHUB_GOVERNANCE.md` | 当前阶段的主规范，说明 GitHub 如何管理版本树、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理版本树、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`
@@ -112,7 +118,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `docs/workflow/README.md` | 未来 workflow 参考入口，说明哪些规则只是后续接入素材。 |
+| `docs/workflow/README.md` | workflow 入口，说明核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
 | `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
@@ -139,15 +145,15 @@ idea_tree/                 # 创意来源、评分、排序
 
 ## `workflow/`
 
-可选结构辅助层。当前阶段用于检查结构和创建标准目录；未来可以升级为 OpenClaw/Codex workflow 入口。
+结构辅助与 runtime 接入层。用于检查结构、创建标准目录、登记结果、维护本地 runner lock，并给 OpenClaw/Codex 提供同一套 workflow 入口。
 
 | 路径 | 用途 |
 |---|---|
-| `workflow/README.md` | 可选结构辅助说明和未来 runtime 入口说明。 |
+| `workflow/README.md` | 结构辅助说明和 runtime 入口说明。 |
 | `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
-| `workflow/codex/README.md` | Codex 未来 workflow 入口参考。 |
-| `workflow/openclaw/README.md` | OpenClaw 未来 workflow 入口参考。 |
-| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst。 |
+| `workflow/codex/README.md` | Codex workflow 入口，说明 Codex 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
+| `workflow/openclaw/README.md` | OpenClaw workflow 入口，说明 OpenClaw 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
+| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/agent_orchestration.md` 为准。 |
 
 `workflow/gtpj_workflow.py` 的职责：
 
@@ -304,6 +310,10 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
+
+这些 `experiments/v1/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
+dropout、seed，或做窄消融、clean confirmation，应写入该 trial 的 `ATTEMPTS.md` 和
+`attempts/ATTEMPT-xxx/`。
 
 ## 更新本文件的判断标准
 

@@ -62,4 +62,4 @@ If interface, label mapping, seen/unseen split, class order, logits shape, or me
 
 `runner-lock` and `runner-unlock` use `.gtpj_runtime/gpu_runner.lock` as a local file lock. This lock is not tracked by Git and does not replace checking actual GPU state.
 
-Future OpenClaw/Codex runtime integrations must use the same repository docs, templates, schemas, and CLI checks.
+The current OpenClaw/Codex runtime entrypoints, and any future runtime integration, must use the same repository docs, templates, schemas, and CLI checks.

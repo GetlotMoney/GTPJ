@@ -107,10 +107,31 @@ inputs:
   seed:
 
 agents:
+  activation_mode:
+  activation_reason:
+  decision_basis:
+  required_roles:
+  disabled_roles:
+  required_real_agents:
+  single_agent_allowed:
+  owner_override:
+  tool_support:
+    real_multi_agent_available:
+    fallback_mode:
+    checked_by:
   serial:
   parallel:
+  writer_roles:
+  reviewer_roles:
   runner_required:
   gpu_lock_required:
+  memory_policy:
+    session_context_allowed:
+    codex_memory_allowed:
+    repo_state_required:
+    memory_used:
+    memory_sources:
+    verified_against_current_repo:
 
 hard_gates:
   interface_contract:
@@ -124,7 +145,7 @@ expected_outputs:
   research:
   warehouse:
 
-stop_if:
+stop_if: copy the mandatory blocker checklist from section 5; never leave this field empty.
 ```
 
 ## 3. 必填判断
@@ -148,9 +169,80 @@ progress dashboard
 `enters_idea_tree` 使用总判断规则：
 
 ```text
-实验是为了调/查/验证已有东西 -> experiments，不进 idea_tree。
+实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
+实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
 实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
 ```
+
+`agents.activation_mode` 只能选择：
+
+```text
+role_only
+real_multi_agent
+```
+
+`role_only_with_independent_sequential_review` 不是第三种 `activation_mode`。它只能写在：
+
+```yaml
+agents:
+  activation_mode: role_only
+  tool_support:
+    real_multi_agent_available: false
+    fallback_mode: role_only_with_independent_sequential_review
+```
+
+该 fallback 只能说明当前环境无法启动真实 sub-agent 后的顺序独立复核状态；不能用于
+promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受
+debug/smoke 降级。
+
+必须选择 `real_multi_agent` 的情况：
+
+- owner 明确要求多 agents、独立 review 或多方验证；
+- 任务修改模型结构、forward、loss、eval、数据流、label mapping、seen/unseen split、class order 或 logits shape；
+- 新 module trial 的实现、接口检查、promotion 前复核；
+- 结果异常、指标争议较大，或 owner 明确质疑当前解释；
+- 准备写 `promotion_decision: promote`、创建新 `vX` 或打 version tag；
+- 任务需要同时阅读论文、源码、日志和质量证据，且这些输入可以被不同角色独立检查。
+
+允许选择 `role_only` 的情况：
+
+- 只读解释、状态检查、配置查看；
+- 不改代码、不改实验语义的窄范围 rerun / confirmation 准备；
+- 单一 Runner 按 frozen config 串行训练；
+- 结果只作为 debug/smoke；
+- 只做账本格式整理且不改变实验结论。
+
+如果选择 `role_only`，启动卡必须写明为什么不启用真实多 agents，以及哪些角色由主 agent 代执行。
+
+`agents.required_real_agents` 是真实 sub-agent 硬需求角色列表：
+
+- `activation_mode: real_multi_agent` 时，填写必须独立执行的角色列表；
+- `activation_mode: role_only` 时，填写 `[]`；
+- 如果按规则应使用真实多 agents 但工具不可用，填写 `[]`，并在 `tool_support.fallback_mode` 写
+  `role_only_with_independent_sequential_review`，同时触发阻断或 debug-only 降级。
+
+`agents.required_roles` 必须写角色名，不写“按需”。常用角色集合：
+
+| 任务 | 必需角色 |
+|---|---|
+| 只读状态 / 配置检查 | Coordinator，必要时 Reader/Planner |
+| 调参建议 | Coordinator、Reader/Planner、Result Analyst |
+| 调参真实运行 | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker |
+| confirmation / rerun | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker |
+| ablation | Coordinator、Runner、Log Analyst、Interface Checker、Result Analyst、Quality Checker |
+| innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Result Analyst、Quality Checker、Reviewer |
+| promotion | Coordinator、Quality Checker、Reviewer、Result Analyst，必要时 Interface Checker |
+| debug / smoke | Coordinator、Runner、Log Analyst，必要时 Interface Checker |
+
+`real_multi_agent` 下，Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认可以并行。
+Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 writer。Coordinator 是最终 GitHub 账本唯一写入者。
+
+`agents.memory_policy` 必须写清：
+
+- session context 只能作为任务上下文，不能直接当证据；
+- Codex 全局 memory 或历史会话摘要只能用于定位，必须回到当前仓库、日志或 artifact 验证；
+- repo state 和 artifact 是正式实验事实源；
+- 使用 memory 时，必须记录 `memory_sources` 和 `verified_against_current_repo`。
 
 ## 4. 各任务补充字段
 
@@ -169,31 +261,45 @@ progress dashboard
 必须记录：
 
 - base version；
+- 这是 version-level tune，还是 trial-internal `param_tune`；
 - 调哪个参数；
 - old value / new value；
 - 预期成本；
 - 是否已经试过；
 - 为什么不改变模型结构、forward、loss 语义或 eval 语义。
 
+如果是 trial-internal `param_tune`，写入该 trial 的 `ATTEMPTS.md` 和
+`attempts/ATTEMPT-xxx/`，并遵守 `module_trial_protocol.md`，不要写入 `experiments/vX/tune/`。
+
 ### Ablation
 
 必须记录：
 
+- 这是 version-level ablation，还是 trial-internal narrow ablation；
 - disabled module / disabled factor；
 - switch key；
 - baseline-off path；
 - interface_check 是否阻塞；
 - 一次只消融的主因素。
 
+如果是 trial-internal narrow ablation，只能解释当前 trial 的局部因素；如果改变实现假设、
+forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
+
 ### Confirmation
 
 必须记录：
 
+- 这是 version-level confirmation，还是 trial-internal clean confirmation；
 - 要确认的 baseline tag；
 - config；
 - seed；
 - 数据 split、class order、label mapping；
-- 预期对齐的旧结果。
+- 预期对齐的旧结果；
+- 将被锁定的 `run_commit`；
+- 这次 confirmation 是从哪个 `pre-run freeze commit` 启动。
+
+如果是 trial-internal clean confirmation，目标是确认当前 `best_attempt_id`，写入该 trial 的
+`ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`。
 
 ### Debug / Smoke
 
@@ -216,7 +322,9 @@ progress dashboard
 - input/output contract；
 - shape invariants；
 - baseline-off switch；
-- trial branch 和 trial tag 计划。
+- trial branch 和 trial tag 计划；
+- attempt 级 `config.yaml` 和 `ATTEMPTS.md` 计划行是否已经冻结到 `pre-run freeze commit`；
+- 本次真实 run 将使用的 `run_commit`。
 
 ### Promotion
 
@@ -235,6 +343,16 @@ progress dashboard
 遇到以下情况，先停止，不跑实验：
 
 - 工作区 dirty 且未说明哪些改动属于当前任务；
+- 启动卡没有填写 `agents.activation_mode`、`activation_reason`、`decision_basis`、`single_agent_allowed` 或 `required_real_agents`；
+- 启动卡没有填写 `agents.required_roles`、`tool_support` 或 `memory_policy`；
+- 按规则应使用 `real_multi_agent`，但启动卡写成 `role_only`；
+- owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
+- 工具不可用但任务硬门要求 `real_multi_agent`，且没有阻断或明确标成 debug/smoke 降级；
+- `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
+- 使用了 memory-derived fact，却没有说明 memory 来源和当前仓库 / artifact 验证方式；
+- 这是一个真实训练 / confirmation / tune / trial run，但工作区不是 clean；
+- 运行前新增了 attempt config、`ATTEMPTS.md`、启动卡或其他预跑账本，但还没有先提交成 `pre-run freeze commit`；
+- 预期运行 commit 不明确，或无法把本次 run 唯一映射到一个冻结后的 `run_commit`；
 - module trial 没有正式 idea；
 - idea 来源是 `unknown` 或 `unverified` 却要开 trial；
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚；
@@ -253,8 +371,17 @@ GitHub 写入：
 本地写入：
 必读协议：
 启用 agents：
+agents.activation_mode：
+agents.activation_reason：
+agents.decision_basis：
+agents.required_roles：
+agents.required_real_agents：
+agents.tool_support：
 硬门：
 当前阻塞：
+pre-run freeze commit：
+run_commit：
+post-run result commit：
 ```
 
 这段输出就是后续 agent 的共同入口。

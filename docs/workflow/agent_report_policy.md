@@ -59,10 +59,19 @@ run_id:
 base_version:
 code_branch:
 code_commit:
+activation_mode:
+activation_reason:
+required_roles:
+required_real_agents:
 agent_set:
 serial_agents:
 parallel_agents:
 disabled_agents:
+tool_support:
+memory_policy:
+memory_used:
+memory_sources:
+verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
 final_decision:
@@ -73,12 +82,17 @@ final_decision:
 ```text
 agent:
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+verified_against_current_repo:
 ```
 
 ## Agent 边界
@@ -89,6 +103,8 @@ evidence_refs:
 - Quality Checker 检查证据完整性和边界，不只看 H 分数。
 - Interface Checker 在 label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清时必须阻断。
 - 多个 agents 不得同时写同一个 GitHub 账本文件。
+- `real_multi_agent` 必须保留各 agent 的独立输入、发现和结论；如果当前工具不可用，只能在 `tool_support.fallback_mode` 记录 `role_only_with_independent_sequential_review`，不能冒充真实多 agent。
+- memory 只能用于定位和背景提醒；没有被当前 repo、日志或 artifact 验证的 memory-derived fact 不能写入正式结果、质量门或 promotion 证据。
 
 ## 入账时机
 
@@ -96,6 +112,6 @@ evidence_refs:
 
 - `agent_summary.md` 存在；
 - 已启用 agents 和禁用 agents 与实验类型匹配；
+- `activation_mode`、`agent_instance_type`、`independence_scope` 和 memory 字段已填写；
 - blocking issue 已处理或结果被标记为 blocked/rerun/reject；
 - 需要长期保存的完整报告已经进入 Warehouse，GitHub 只记录 artifact id/URI。
-

@@ -1,8 +1,21 @@
 # 实验协议
 
-tune、ablation 和 confirmation 都属于某个正式 baseline 版本 `vX`。它们保存证据，
+本文件只规定 standalone / version-level 的普通实验。也就是：为了调、查、确认某个正式
+baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt。
+
+版本级 tune、ablation 和 confirmation 都属于某个正式 baseline 版本 `vX`。它们保存证据，
 不自动产生新版本；只有满足 `docs/workflow/promotion.md` 的自动 promotion gate，
 才会生成新的正式 `vY`。
+
+模块 trial 内部也可以、也应该做参数尝试、窄消融和 clean confirmation。那类运行写在：
+
+```text
+experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/ATTEMPTS.md
+experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/attempts/ATTEMPT-xxx/
+```
+
+并遵守 `docs/workflow/module_trial_protocol.md`。不要因为 trial 内部有 `param_tune` 或
+`ablation` 字样，就把它误放到 `experiments/vX/tune/` 或 `experiments/vX/ablation/`。
 
 示例：
 
@@ -81,6 +94,42 @@ promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
 ```
 
+## 运行前冻结与运行后记账
+
+对 tune、ablation、confirmation 这三类会产出正式证据的真实 run，统一执行两阶段规则。
+
+### 第一阶段：`pre-run freeze commit`
+
+启动 Runner 前，先把本次 run 依赖的仓库内输入冻结成一次独立提交。至少包括：
+
+- 本次 run 的 `config.yaml` 或 attempt 级配置副本；
+- 运行计划所需的人类可读索引，例如 tune 表计划行、启动卡、trial 内 `ATTEMPTS.md` 计划行；
+- 必要的轻量预跑元数据，例如 `base_code_tag`、目标 seed、预计命令。
+
+硬规则：
+
+- `pre-run freeze commit` 完成后，必须满足 `git status --short` 为空；
+- Runner 只能从这个 clean worktree 启动；
+- 本次 run 的 `run_commit` 必须等于这个冻结后的 commit；
+- 这次提交不允许提前写入本次 run 的 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、指标结论或 artifact 注册。
+
+### 第二阶段：`post-run result commit`
+
+训练完成并取得日志后，再单独写入：
+
+- `manifest.yaml`
+- `result.yaml`
+- `result.md`
+- `quality_check.md`
+- `agent_summary.md`
+- 各类索引和 artifact 注册
+
+硬规则：
+
+- `post-run result commit` 只能记录已经完成的 run 结果；
+- 不要在结果记账提交里再改会影响该 run 语义的配置、开关或参数；
+- 如果 run 启动前工作树不干净，或 `run_commit` 不明确，这次结果最多记为 debug 证据，不能直接记为正式 keep / best / confirmation evidence。
+
 ## Promotion 字段映射
 
 普通实验使用上面的轻量字段记录证据。进入 `docs/workflow/promotion.md` 时，Coordinator 按下面规则读取：
@@ -131,8 +180,11 @@ run_log_sha256   = log_sha256
 从当前 main 开 exp/vX-tune-XXX-xxx 分支
 base_code_tag: vX
 branch_source: main
+先写 config 和计划行，提交 pre-run freeze commit
+确认 git status --short 为空，并记录 run_commit
 跑实验
-回 main 更新 experiments/vX/tune/
+回 main 或当前实验分支写结果账本，形成 post-run result commit
+更新 experiments/vX/tune/
 ```
 
 ### 历史版本调参
@@ -271,7 +323,8 @@ confirmation 实验用于确认某个正式 baseline 的结果仍然可信。
 - 固定 config；
 - 固定 seed；
 - 固定数据 split 和 cache 口径；
-- 记录完整命令、日志、U/S/H/ZS 和 best epoch。
+- 记录完整命令、日志、U/S/H/ZS 和 best epoch；
+- 从 clean worktree 启动，并把冻结后的 `run_commit` 写清楚。
 
 confirmation 分支：
 
@@ -281,6 +334,9 @@ exp/vX-confirm-XXX-xxx
 
 历史版本 confirmation 可以从 `vX` tag 开临时运行分支；跑完后回当前 `main`
 写 `experiments/vX/confirmation/`，确认入账后删除临时运行分支。
+
+confirmation 不允许从 dirty worktree 直接启动。若需要先补 config 副本、启动卡或索引条目，也必须先提交
+`pre-run freeze commit`，再从 clean 状态发起确认运行。
 
 confirmation 多 agent 编排：
 

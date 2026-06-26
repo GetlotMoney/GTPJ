@@ -7,7 +7,8 @@
 总判断规则见 `docs/workflow/WORKFLOW_ROUTER.md`。最重要的是：
 
 ```text
-实验是为了调/查/验证已有东西 -> experiments，不进 idea_tree。
+实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
+实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
 实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
 ```
 

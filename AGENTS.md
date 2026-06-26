@@ -38,8 +38,9 @@
 - `main` 是唯一长期分支。
 - `v1`、`v2`、`v3` 是永久 baseline tags。
 - Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
-- 当前阶段只强制 GitHub 项目治理规范；workflow 只作为未来 OpenClaw/Codex 接入参考。
-- `workflow/gtpj_workflow.py` 目前只作为可选的结构检查和目录创建辅助，不代表必须执行完整实验工作流。
+- 当前阶段已经强制执行 GTPJ 核心 workflow：任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、agent 凭证和 promotion gate 都必须遵守。
+- OpenClaw / Codex 只是不同 runtime 入口；它们必须共享同一套 GitHub 事实源和 workflow 规范。
+- `workflow/gtpj_workflow.py` 是结构辅助工具，用于 validate、audit-boundary、目录创建和结果记录等机械动作；它不替代 Coordinator 的研究判断、owner 决策、代码审查或实验解释。
 - `docs/PROJECT_STRUCTURE.md` 是项目结构总账本；新增、删除、移动、重命名文件或改变文件职责时必须同步更新。
 - 不创建 controller branch。
 - 不迁移旧实验 ID、旧分支、旧 PR 或旧 workflow 文件。
@@ -52,7 +53,26 @@
 - 每个新模块 trial 都必须从 `idea_tree` 节点开始。
 - 没有 `idea_id`，就没有 `dev/idea-*` 分支。
 - 每个 trial 至少记录 implementation、config、quality_check、result 和 code tag。
-- Tune、ablation 和 confirmation 运行属于具体版本目录，例如 `experiments/v1/`。
+- 只有版本级 tune、ablation 和 confirmation 才写入正式版本目录，例如 `experiments/v1/`。
+- 模块 trial 内部为了判断一个新模块好不好，可以做 trial-internal param tune、narrow ablation、confirmation/rerun；这些写入该 trial 的 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，不要误放到 `experiments/vX/tune|ablation|confirmation/`。
+- 如果 trial 内部尝试已经改变实现假设、forward 路径、新 loss 机制或评估语义，就新开 `TRIAL-002`，不要继续堆在同一个 `TRIAL-001`。
+- 真实训练或会产出正式证据的运行，必须从 `git status --short` 为空的 clean worktree 启动；dirty tree 只能用于临时 debug/smoke，且结果不能记为 `keep`、`best`、`promote` 或 confirmation evidence。
+- 如果一次 run 需要先在仓库里新增 `config.yaml`、`ATTEMPTS.md` 计划行、启动卡或其他预跑账本，必须先把这些“运行前文件”冻结成一次 `pre-run freeze commit`，再确认工作树 clean 后才能启动 Runner。
+- `pre-run freeze commit` 只允许包含本次 run 的配置、副本、计划和轻量预跑元数据，不允许提前写入本次 run 的 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、指标结论或 artifact 注册。
+- 真实 run 启动时必须记录并引用冻结后的 `run_commit`；run 完成后，结果账本、artifact 注册和索引更新应进入单独的 `post-run result commit`，不要把“影响运行的配置改动”和“运行后的结果记账”混在同一次提交里。
+
+## Multi-agent 规则
+
+- 每次 GTPJ workflow 启动卡必须写明 `agents.activation_mode`，只能是 `role_only` 或 `real_multi_agent`。
+- `role_only` 表示一个主 agent 按 Coordinator、Runner、Quality Checker 等角色清单串行执行；必须在 `agent_summary.md` 里说明为什么没有启动真实多 agents。
+- `real_multi_agent` 表示启动或委派独立 agent / reviewer / checker，保留独立输入、发现和结论；如果当前环境没有真实 multi-agent 工具，不能把顺序角色扮演写成 `real_multi_agent`。
+- `role_only_with_independent_sequential_review` 不是第三种 activation mode，只能写在 `agents.tool_support.fallback_mode`；它不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受 debug/smoke 降级。
+- owner 明确要求多 agents、任务修改模型/forward/loss/eval/数据流语义、涉及接口/评估/label mapping/seen-unseen split/class order/logits shape/metric semantics 风险、结果异常有争议、promotion 前复核、结论会影响论文实验路线或 baseline 选择时，必须使用 `real_multi_agent`。
+- 窄范围 rerun / confirmation 准备、只读解释、配置查看、单一 Runner 按 frozen config 复跑、debug/smoke 或账本格式整理时，可以使用 `role_only`，但必须记录代执行的角色和升级条件。
+- Runner 永远串行并锁 GPU；Implementer 是同一代码路径唯一 writer；Coordinator 是最终 GitHub 账本唯一写入者；Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行。
+- Agent 不能把隐藏聊天记忆当实验事实源。Codex memory 或历史会话摘要只能用于定位，必须回到当前 repo、日志或 artifact 验证后才能写入结果、质量门或 promotion 证据。
+- `agent_summary.md` 必须记录 `activation_mode`、`agent_instance_type`、`independence_scope`、`memory_used`、`memory_sources` 和 `verified_against_current_repo`。
+- 如果 owner 对 agent 模式提出异议，先暂停真实 run，修正启动卡或升级为 `real_multi_agent` 后再继续。
 
 ## 安全
 

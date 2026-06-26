@@ -77,7 +77,19 @@ experiments/module_trials/IDEA-xxxx_short_name/
 
 The same module trial may include multiple attempts, but they must stay within the same implementation hypothesis.
 
-Use `ATTEMPTS.md` as the human-readable index for trial-internal parameter tuning, narrow follow-up ablations, reruns, and debug-fix reruns.
+Use `ATTEMPTS.md` as the human-readable index for trial-internal parameter tuning, narrow follow-up ablations, confirmation/reruns, and debug-fix reruns.
+
+Trial-internal tuning and ablation are required parts of judging whether a new module is useful. They stay inside the trial because they answer:
+
+```text
+在同一个模块实现假设下，这个模块怎样设置才公平？
+这个模块内部哪些局部因素真的有贡献？
+当前 best attempt 是否能 clean confirmation？
+```
+
+They are not version-level tune or ablation runs. Do not record them under `experiments/vX/tune/`,
+`experiments/vX/ablation/`, or `experiments/vX/confirmation/` unless the task is explicitly a standalone
+baseline-version experiment outside the module trial.
 
 Recommended table:
 ```text
@@ -86,7 +98,7 @@ Recommended table:
 
 Recommended `Type` values:
 ```text
-param_tune / ablation / rerun / anchor_followup / debug_fix
+param_tune / ablation / confirmation / rerun / anchor_followup / debug_fix
 ```
 
 Each `attempts/ATTEMPT-xxx/` directory should keep its own:
@@ -96,14 +108,43 @@ Each `attempts/ATTEMPT-xxx/` directory should keep its own:
 - `quality_check.md`
 - `result.md`
 
+Before any real attempt run, trial-internal bookkeeping follows the same two-stage evidence rule:
+
+### `pre-run freeze commit`
+
+Before Runner starts, first freeze into Git:
+
+- the target `attempts/ATTEMPT-xxx/config.yaml`
+- the planned row in `ATTEMPTS.md`
+- any required task-start card or attempt note that explains what this run will do
+
+Hard rules:
+
+- Runner must start from a clean worktree after this commit;
+- the attempt `run_commit` must point to this freeze commit;
+- this commit must not pre-fill the run's `manifest.yaml`, `result.yaml`, `result.md`, `quality_check.md`, metrics, or artifact registration.
+
+### `post-run result commit`
+
+After the attempt finishes, write the attempt-local:
+
+- `manifest.yaml`
+- `result.yaml`
+- `result.md`
+- `quality_check.md`
+
+and then update the trial root summary and indexes in a separate result-bookkeeping step.
+
 Rules:
 - `TRIAL-001` is one implementation line for one idea, not one training run.
 - `ATTEMPT-001`, `ATTEMPT-002`, and later rows are repeated runs or small controlled variations inside that same trial.
 - Numeric-only changes such as ratio, lambda, temperature, dropout, seed, or scheduler stay inside the same trial as `param_tune`.
 - A narrow diagnostic ablation that only helps explain the current trial may stay in the same trial as `ablation`.
+- A clean rerun that confirms the current best attempt may stay in the same trial as `confirmation`.
 - If the change becomes a new implementation hypothesis, a new forward path, or a new loss mechanism, open `TRIAL-002` instead of extending `TRIAL-001`.
 - The trial root `README.md`, `result.yaml`, and `quality_check.md` should point to the current decision-driving `best_attempt_id` rather than trying to inline every attempt detail.
 - Existing historical trials with only one root-level attempt may remain readable as legacy evidence, but any new attempt added after this rule should be recorded in `ATTEMPTS.md`.
+- If a real attempt run starts while the worktree is dirty, or before the attempt config and planned `ATTEMPTS.md` row are frozen into Git, the result cannot be treated as promotion-ready evidence; at most it may be recorded as debug or `revise`.
 
 `trial_decision`：
 
