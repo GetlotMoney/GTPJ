@@ -12,7 +12,7 @@ version_score: 78.0
 applicability: needs_adaptation
 code_branch: dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly
 code_tag: trial/v1/idea-0001/trial-001
-code_commit:
+code_commit: da2e295cb15b0d55afdcf4785bce4bc6a4bff80e
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
