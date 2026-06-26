@@ -13,10 +13,11 @@ ATTEMPT-001 was originally recorded at the trial root. A compatibility copy now 
 | ATTEMPT-005 | param_tune | `clip_a_self_heads` + `clip_a_self_dropout` | `1 / 0.5` | `4 / 0.1` | 5 | 74.62 | 70.85 | 72.69 | 81.18 | 49 | `log:v1:module_trial:TRIAL-001:attempt-005` | reject | `attempts/ATTEMPT-005/` |
 | ATTEMPT-006 | param_tune | `clip_a_self_heads` + `clip_a_self_outer_ratio` + `clip_a_self_inner_ratio` | `1 / 0.2 / 0.5` | `4 / 0.1 / 0.25` | 5 | 70.85 | 77.36 | 73.96 | 81.46 | 33 | `log:v1:module_trial:TRIAL-001:attempt-006` | keep | `attempts/ATTEMPT-006/` |
 | ATTEMPT-007 | confirmation | clean confirmation of `ATTEMPT-003` config | `ATTEMPT-003` | same config | 5 | 70.82 | 76.80 | 73.69 | 80.91 | 33 | `log:v1:module_trial:TRIAL-001:attempt-007` | not_confirmed | `attempts/ATTEMPT-007/` |
-| ATTEMPT-008 | confirmation | repeat clean confirmation of `ATTEMPT-003` config with pre-run diagnostics | `ATTEMPT-003/007` | same config | 5 | pending | pending | pending | pending | pending | pending | pending | `attempts/ATTEMPT-008/` |
+| ATTEMPT-008 | confirmation | repeat clean confirmation of `ATTEMPT-003` config with pre-run diagnostics | `ATTEMPT-003/007` | same config | 5 | 71.36 | 76.58 | 73.88 | 81.22 | 33 | `log:v1:module_trial:TRIAL-001:attempt-008` | not_confirmed | `attempts/ATTEMPT-008/` |
 
 ## Notes
 
 - ATTEMPT-002 through ATTEMPT-006 changed only trial-local parameters; the TRIAL-001 code path itself did not change.
 - ATTEMPT-007 is a clean confirmation of the ATTEMPT-003 config from pre-run freeze commit `2820b17`.
-- ATTEMPT-003 remains the highest observed setting, but ATTEMPT-007 did not confirm it; promotion remains blocked.
+- ATTEMPT-008 is a second clean confirmation of the same config from pre-run freeze commit `8b6acac`.
+- ATTEMPT-003 remains the highest observed setting, but ATTEMPT-007 and ATTEMPT-008 did not confirm it; promotion remains blocked.

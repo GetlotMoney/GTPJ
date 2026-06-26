@@ -6,6 +6,7 @@
 |---|---|---:|---:|---:|---:|---:|---:|
 | ATTEMPT-003 | CUB | 5 | 71.76 | 76.97 | 74.27 | 81.72 | 33 |
 | ATTEMPT-007 | CUB | 5 | 70.82 | 76.80 | 73.69 | 80.91 | 33 |
+| ATTEMPT-008 | CUB | 5 | 71.36 | 76.58 | 73.88 | 81.22 | 33 |
 
 ## Baseline Comparison
 
@@ -13,12 +14,14 @@
 |---|---:|---:|---:|
 | GTPJ-v1 authoritative baseline | 73.93 | 74.27 | +0.34 |
 | CONFIRM-001 same-day confirmation | 73.77 | 74.27 | +0.50 |
+| GTPJ-v1 authoritative baseline | 73.93 | 73.88 clean confirmation | -0.05 |
 
 ## Clean Confirmation
 
 | Target | Target H | Confirmation | Confirmation H | Delta H |
 |---|---:|---|---:|---:|
 | ATTEMPT-003 | 74.27 | ATTEMPT-007 | 73.69 | -0.58 |
+| ATTEMPT-003 | 74.27 | ATTEMPT-008 | 73.88 | -0.39 |
 
 ## Evidence
 
@@ -28,10 +31,11 @@ best_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-003:be
 full_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-003:full
 runner_console_artifact_id: receipt:v1:module_trial:TRIAL-001:attempt-003:runner_console
 confirmation_log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-007
+second_confirmation_log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-008
 ```
 
 ## Decision
 
 `revise`
 
-ATTEMPT-003 is still the highest observed parameter setting for TRIAL-001, but ATTEMPT-007 clean confirmation did not reproduce it. ATTEMPT-007 reached H=73.69, which is below both ATTEMPT-003 and the authoritative `v1` baseline. The next action is analysis or a new stabilization hypothesis, not promotion.
+ATTEMPT-003 is still the highest observed parameter setting for TRIAL-001, but ATTEMPT-007 and ATTEMPT-008 clean confirmations did not reproduce it. ATTEMPT-008 reached H=73.88, which is close to but still below the authoritative `v1` baseline. The next action is analysis or a new stabilization hypothesis, not promotion.

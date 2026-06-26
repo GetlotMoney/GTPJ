@@ -20,8 +20,8 @@ memory_used: no
 memory_sources: []
 verified_against_current_repo: README.md, ATTEMPTS.md, manifest.yaml, result.yaml, quality_check.md
 runtime_state:
-warehouse_report_artifacts: log:v1:module_trial:TRIAL-001:attempt-002, log:v1:module_trial:TRIAL-001:attempt-003, log:v1:module_trial:TRIAL-001:attempt-004, log:v1:module_trial:TRIAL-001:attempt-005, log:v1:module_trial:TRIAL-001:attempt-006
-final_decision: revise; ATTEMPT-003 is current best, promotion blocked pending clean confirmation
+warehouse_report_artifacts: log:v1:module_trial:TRIAL-001:attempt-002, log:v1:module_trial:TRIAL-001:attempt-003, log:v1:module_trial:TRIAL-001:attempt-004, log:v1:module_trial:TRIAL-001:attempt-005, log:v1:module_trial:TRIAL-001:attempt-006, log:v1:module_trial:TRIAL-001:attempt-007, log:v1:module_trial:TRIAL-001:attempt-008
+final_decision: revise; ATTEMPT-003 is historical high, but clean confirmations ATTEMPT-007 and ATTEMPT-008 did not reproduce it
 ```
 
 ## ATTEMPT-007 Confirmation Addendum
@@ -39,6 +39,26 @@ memory_used: yes
 memory_sources: C:/Users/Administrator/.codex/memories/MEMORY.md
 verified_against_current_repo: WORKFLOW_ROUTER.md, module_trial_protocol.md, ATTEMPTS.md, config.yaml, manifest.yaml, result.yaml, quality_check.md
 result: ATTEMPT-007 H=73.69 did not confirm ATTEMPT-003 H=74.27
+final_decision: revise; promotion remains blocked
+```
+
+## ATTEMPT-008 Confirmation Addendum
+
+```text
+run_id: RUN-20260626-231504-module-trial-attempt-008
+attempt_id: ATTEMPT-008
+pre_run_freeze_commit: 8b6acac45b83cca1a255d00782d4eba7a272c4fb
+activation_mode: real_quality_checker_plus_main_runner
+activation_reason: disputed anomalous result and user concern about parameter pollution required independent read-only review
+required_roles: Coordinator, Runner, Log Analyst, Quality Checker, Result Analyst
+required_real_agents: Quality Checker
+real_agents: Quality Checker=019f047d-13f1-7b81-820e-ef7fc34fcfc7(Banach)
+tool_support: real_multi_agent_available=yes; quality_checker_completed=yes
+memory_used: yes
+memory_sources: C:/Users/Administrator/.codex/memories/MEMORY.md
+verified_against_current_repo: WORKFLOW_ROUTER.md, module_trial_protocol.md, ATTEMPTS.md, config.yaml, manifest.yaml, result.yaml, quality_check.md
+result: ATTEMPT-008 H=73.88 did not confirm ATTEMPT-003 H=74.27; it is +0.19 above ATTEMPT-007 but -0.05 below v1
+quality_checker_conclusion: no evidence of config, training-code, resume/checkpoint, or artifact pollution; ATTEMPT-003 remains non-promotion-grade because it was dirty and not reproduced by clean confirmations
 final_decision: revise; promotion remains blocked
 ```
 

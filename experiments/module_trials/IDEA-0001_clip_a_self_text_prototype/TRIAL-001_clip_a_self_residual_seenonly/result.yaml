@@ -20,10 +20,18 @@ baseline:
 delta:
   H: "+0.34"
 confirmation:
-  attempt_id: "ATTEMPT-007"
-  H: "73.69"
-  delta_vs_best_H: "-0.58"
-  delta_vs_baseline_H: "-0.24"
+  target_attempt_id: "ATTEMPT-003"
+  target_H: "74.27"
+  attempts:
+    - attempt_id: "ATTEMPT-007"
+      H: "73.69"
+      delta_vs_best_H: "-0.58"
+      delta_vs_baseline_H: "-0.24"
+    - attempt_id: "ATTEMPT-008"
+      H: "73.88"
+      delta_vs_best_H: "-0.39"
+      delta_vs_baseline_H: "-0.05"
+  best_clean_confirmation_H: "73.88"
   confirmed_best: "false"
 run:
   run_id: "RUN-20260626-ATTEMPT-003-heads4"
@@ -36,6 +44,7 @@ decision:
 evidence:
   log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-003"
   confirmation_log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-007"
+  second_confirmation_log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-008"
   manifest: "manifest.yaml"
   agent_summary: "agent_summary.md"
   label_mapping_id: "standard_v1"
@@ -49,5 +58,6 @@ quality:
 warnings:
   - "ATTEMPT-003 is currently the best setting with H=74.27, but the sweep ran on a dirty worktree that only added trial-local configs and ledger updates."
   - "ATTEMPT-007 reran the ATTEMPT-003 config from a clean pre-run freeze commit and reached H=73.69, so ATTEMPT-003 is not confirmed."
+  - "ATTEMPT-008 reran the same config from a clean pre-run freeze commit and reached H=73.88, again not confirming ATTEMPT-003."
   - "Promotion remains blocked; analyze stabilization or prototype drift before another promotion attempt."
-recorded_at: "2026-06-26T23:01:21+08:00"
+recorded_at: "2026-06-26T23:28:07+08:00"

@@ -18,4 +18,4 @@
 
 | Idea | Trial | 状态 | 目录 | 说明 |
 |---|---|---|---|---|
-| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | ATTEMPT-003 reached H=74.27, but clean confirmation ATTEMPT-007 reached H=73.69; promotion blocked. |
+| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | ATTEMPT-003 reached H=74.27, but clean confirmations ATTEMPT-007/008 reached H=73.69/73.88; promotion blocked. |
