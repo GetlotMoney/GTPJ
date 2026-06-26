@@ -153,3 +153,33 @@ Prevention:
 
 - 后台 runner 启动后立即轮询 PID、`status.json`、`events.jsonl` 和 launch stderr。
 - 如果 30 秒内没有 runtime 状态文件，视为启动失败，不允许当作训练中。
+
+### ISSUE-20260627-007: Long batch stopped at ATTEMPT-021 with truncated conda traceback
+
+Status: retry from ATTEMPT-021.
+
+What happened:
+
+- Batch `RUN-20260626-235934-trial001-009-028` completed `ATTEMPT-009` through `ATTEMPT-020`.
+- `ATTEMPT-021` failed before training epochs began. Runtime status recorded `message: Traceback (most recent call last):`.
+- Available logs:
+  - `.gtpj_runtime/runs/RUN-20260626-235934-trial001-009-028/stdout_ATTEMPT-021.log`
+  - `train_log/CUB/training_log_CUB_2026-06-27_01-43-16.txt`
+- The visible log ends after GPT description loading starts. The earlier CUDA `pin_memory failed ... fallback to plain CPU tensor` is visible but had appeared in successful attempts too, so it is not by itself the root cause.
+
+Impact:
+
+- `ATTEMPT-021` partial log is invalid experiment evidence.
+- `ATTEMPT-009` through `ATTEMPT-020` remain completed because they each have full logs and best checkpoints.
+- `ATTEMPT-021` through `ATTEMPT-028` still need a resume batch.
+
+Resolution:
+
+- Do not register the partial `ATTEMPT-021` log as a valid attempt result.
+- Start a new resume batch for `ATTEMPT-021` through `ATTEMPT-028`.
+- Keep both runtime run ids so later result registration can map logs correctly.
+
+Prevention:
+
+- Long batch runner should support resume ranges, not only all-or-nothing `009..028`.
+- If `conda run` exits before epochs start and stderr is truncated, treat it as a runner/environment failure and retry the same frozen config once before blaming the config.
