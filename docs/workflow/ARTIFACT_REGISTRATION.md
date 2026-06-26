@@ -188,8 +188,17 @@ Quality Checker 还要确认：
 
 ## 5. Helper 使用边界
 
-当前 `record-result` 可以从日志中解析指标，计算 sha256/size，并把轻量结果写回 GitHub 账本。
-它不负责把 raw log 长期整理到 Warehouse，也不提交、不 push、不删除分支。
+`record-result` 用于 version-level tune / ablation / confirmation。它可以从日志中解析指标，计算 sha256/size，并把轻量结果写回 GitHub 账本。它不提交、不 push、不删除分支。
+
+`record-module-attempt` 用于 module trial 内部 attempt。它会从日志中解析指标，把 raw log / checkpoint / runner receipt 复制或生成到 Warehouse，并写回 attempt-local `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`ATTEMPTS.md` 和 `GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml`。
+
+推荐先运行：
+
+```bash
+python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
+```
+
+确认指标和 Warehouse URI 后再正式执行。helper 不负责自动得出 trial-level 论文结论；如果某个 attempt 改变 root trial 决策，Coordinator 仍需 review 并同步 trial 根目录 README/result/quality_check/idea_tree。
 
 如果 helper 和本文件冲突，优先遵守本文件的证据边界，再补 helper。
 

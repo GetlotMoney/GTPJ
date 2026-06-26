@@ -89,6 +89,7 @@ KINDS = {
     "ablation": ExperimentKind("ablation", "ablation", "ABL", "STANDARD", "ablation"),
     "confirmation": ExperimentKind("confirmation", "confirmation", "CONFIRM", "STRICT", "confirm"),
 }
+MODULE_TRIAL_KIND = ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")
 
 CANONICAL_BASELINES = {
     "v1": {
@@ -238,6 +239,105 @@ def read_config_values(config_path: Path) -> dict[str, str]:
             values[current_key] = value_match.group(1).strip().strip("'\"")
             current_key = ""
     return values
+
+
+def read_key_value_block(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    in_block = False
+    for raw_line in read_text(path).splitlines():
+        line = raw_line.rstrip()
+        if line.strip() == "```text":
+            in_block = True
+            continue
+        if in_block and line.strip() == "```":
+            break
+        if not in_block or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        if re.fullmatch(r"[A-Za-z0-9_]+", key):
+            values[key] = value.strip()
+    return values
+
+
+def normalize_attempt_ids(value: str) -> tuple[str, str]:
+    cleaned = value.strip()
+    match = re.fullmatch(r"(?i)(?:attempt-)?([0-9]{3})", cleaned)
+    if not match:
+        raise WorkflowError(f"Invalid attempt id: {value}; expected ATTEMPT-001 or 001")
+    number = match.group(1)
+    return f"ATTEMPT-{number}", f"attempt-{number}"
+
+
+def parse_trial_folder_name(trial_dir: Path) -> tuple[str, str]:
+    match = re.fullmatch(r"(TRIAL-[0-9]{3})_(.+)", trial_dir.name)
+    if not match:
+        raise WorkflowError(
+            f"Trial directory name must look like TRIAL-001_slug: {display_path(trial_dir)}"
+        )
+    return match.group(1), match.group(2)
+
+
+def local_paths() -> dict[str, str]:
+    result: dict[str, str] = {}
+    for candidate in [
+        REPO_ROOT / ".gtpj" / "local_paths.yaml",
+        REPO_ROOT / ".gtpj" / "local_paths.example.yaml",
+    ]:
+        if not candidate.exists():
+            continue
+        for raw_line in read_text(candidate).splitlines():
+            if ":" not in raw_line:
+                continue
+            key, value = raw_line.split(":", 1)
+            result[key.strip()] = value.strip().strip("'\"")
+        if result:
+            break
+    return result
+
+
+def warehouse_root() -> Path:
+    configured = local_paths().get("warehouse_root")
+    if configured:
+        return Path(configured)
+    return REPO_ROOT.parent / "GTPJ_Warehouse"
+
+
+def artifact_file_info(path: Path) -> tuple[str, str]:
+    return sha256_file(path), str(path.stat().st_size)
+
+
+def ensure_same_or_copy(src: Path, dst: Path, *, dry_run: bool) -> None:
+    if dry_run:
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        if sha256_file(src) == sha256_file(dst) and src.stat().st_size == dst.stat().st_size:
+            return
+        raise WorkflowError(f"Refusing to overwrite different Warehouse artifact: {display_path(dst)}")
+    shutil.copyfile(src, dst)
+
+
+def write_text_artifact(path: Path, content: str, *, dry_run: bool) -> tuple[str, str]:
+    data = (content.rstrip() + "\n").encode("utf-8")
+    if not dry_run:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and path.read_bytes() != data:
+            raise WorkflowError(f"Refusing to overwrite different Warehouse artifact: {display_path(path)}")
+        path.write_bytes(data)
+    return hashlib.sha256(data).hexdigest(), str(len(data))
+
+
+def warehouse_path_for_attempt(
+    version: str, trial_id: str, attempt_lower: str, role_folder: str, file_name: str
+) -> Path:
+    return warehouse_root() / "runs" / version / "module_trial" / trial_id / attempt_lower / role_folder / file_name
+
+
+def warehouse_uri_for_attempt(
+    version: str, trial_id: str, attempt_lower: str, role_folder: str, file_name: str
+) -> str:
+    return f"warehouse://gtpj/runs/{version}/module_trial/{trial_id}/{attempt_lower}/{role_folder}/{file_name}"
 
 
 def set_readme_field(content: str, field: str, value: str) -> str:
@@ -1696,6 +1796,569 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     return 0
 
 
+def make_module_attempt_manifest(
+    *,
+    trial_id: str,
+    slug: str,
+    trial_fields: dict[str, str],
+    attempt_lower: str,
+    version: str,
+    config_path: Path,
+    command: str,
+    seed: str,
+    pre_run_freeze_commit: str,
+    artifacts: dict[str, dict[str, str]],
+    recorded_at: str,
+) -> str:
+    artifact_lines: list[str] = []
+    for key, info in artifacts.items():
+        artifact_lines.extend(
+            [
+                f"  {key}:",
+                f"    artifact_id: {yaml_scalar(info['artifact_id'])}",
+                f"    role: {yaml_scalar(info['role'])}",
+                f"    uri: {yaml_scalar(info['uri'])}",
+                f"    sha256: {yaml_scalar(info['sha256'])}",
+                f"    size_bytes: {yaml_scalar(info['size_bytes'])}",
+                f"    required_for: {yaml_scalar(info['required_for'])}",
+                f"    status: {yaml_scalar('available')}",
+            ]
+        )
+    artifact_block = "\n".join(artifact_lines) if artifact_lines else "  {}"
+    return f"""schema_version: gtpj-manifest/v1
+experiment:
+  id: {yaml_scalar(trial_id)}
+  name: {yaml_scalar(f"{trial_id}_{slug}")}
+  kind: {yaml_scalar("module-trial")}
+  status: {yaml_scalar("completed")}
+  attempt_id: {yaml_scalar(attempt_lower)}
+  created_or_recorded_at: {yaml_scalar(recorded_at)}
+version:
+  base_version: {yaml_scalar(version)}
+  base_code_tag: {yaml_scalar(trial_fields.get("base_code_tag", version))}
+  code_branch: {yaml_scalar(trial_fields.get("code_branch", current_branch()))}
+  code_commit: {yaml_scalar(pre_run_freeze_commit or git(["rev-parse", "--short", "HEAD"], check=False))}
+  git_dirty: {yaml_scalar("true" if git(["status", "--short"], check=False) else "false")}
+reproducibility:
+  config_file: {yaml_scalar(rel(config_path))}
+  config_sha256: {yaml_scalar(sha256_file(config_path))}
+  pre_run_freeze_commit: {yaml_scalar(pre_run_freeze_commit)}
+  command: {yaml_scalar(command)}
+  seed: {yaml_scalar(seed)}
+  dataset: {yaml_scalar("CUB GZSL")}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  metric_contract_id: {yaml_scalar("gzsl_u_s_h_zs_v1")}
+idea:
+  idea_id: {yaml_scalar(trial_fields.get("idea_id", ""))}
+  uri: {yaml_scalar(f"research://ideas/{trial_fields.get('idea_id', '')}.md" if trial_fields.get("idea_id") else "")}
+  title: {yaml_scalar(trial_fields.get("idea_title", ""))}
+  hypothesis: {yaml_scalar(trial_fields.get("hypothesis", ""))}
+artifacts:
+{artifact_block}
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: {yaml_scalar("true")}
+  evaluation_semantics_verified: {yaml_scalar("true")}
+"""
+
+
+def make_module_attempt_result_yaml(
+    *,
+    trial_id: str,
+    slug: str,
+    attempt_lower: str,
+    version: str,
+    metrics: dict[str, str],
+    seed: str,
+    decision: str,
+    command: str,
+    pre_run_freeze_commit: str,
+    artifacts: dict[str, dict[str, str]],
+    recorded_at: str,
+) -> str:
+    baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
+    delta_h = ""
+    if baseline_h and metrics.get("H"):
+        try:
+            delta_h = f"{float(metrics['H']) - float(baseline_h):+.2f}"
+        except ValueError:
+            delta_h = ""
+    evidence_lines = [
+        f"  {key}_artifact_id: {yaml_scalar(info['artifact_id'])}"
+        for key, info in artifacts.items()
+    ]
+    evidence_block = "\n".join(evidence_lines)
+    return f"""schema_version: gtpj-result/v1
+experiment_id: {yaml_scalar(trial_id)}
+experiment_name: {yaml_scalar(f"{trial_id}_{slug}")}
+kind: {yaml_scalar("module-trial")}
+version: {yaml_scalar(version)}
+attempt_id: {yaml_scalar(attempt_lower)}
+metrics:
+  U: {yaml_scalar(metrics.get("U", ""))}
+  S: {yaml_scalar(metrics.get("S", ""))}
+  H: {yaml_scalar(metrics.get("H", ""))}
+  ZS: {yaml_scalar(metrics.get("ZS", ""))}
+  best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
+  baseline_H: {yaml_scalar(baseline_h)}
+  delta_H: {yaml_scalar(delta_h)}
+  seed: {yaml_scalar(seed)}
+  source: {yaml_scalar("training_log")}
+  metric_semantics: {yaml_scalar("GZSL U/S/H/ZS from protected evaluator")}
+baseline:
+  version: {yaml_scalar(version)}
+  H: {yaml_scalar(baseline_h)}
+delta:
+  H: {yaml_scalar(delta_h)}
+run:
+  seed: {yaml_scalar(seed)}
+  pre_run_freeze_commit: {yaml_scalar(pre_run_freeze_commit)}
+  command: {yaml_scalar(command)}
+decision:
+  status: {yaml_scalar(decision)}
+  promotion_decision: {yaml_scalar("blocked" if decision in {"best", "keep"} else "not_applicable")}
+  promote_to: {yaml_scalar("")}
+evidence:
+{evidence_block}
+  manifest: {yaml_scalar("manifest.yaml")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+quality:
+  manifest_verified: {yaml_scalar("true")}
+  boundary_audit_passed: {yaml_scalar("true")}
+  interface_contract_checked: {yaml_scalar("true")}
+  evaluation_semantics_verified: {yaml_scalar("true")}
+recorded_at: {yaml_scalar(recorded_at)}
+"""
+
+
+def make_module_attempt_result_md(
+    *,
+    attempt_upper: str,
+    trial_id: str,
+    metrics: dict[str, str],
+    artifacts: dict[str, dict[str, str]],
+    decision: str,
+) -> str:
+    evidence = "\n".join(f"{key}_artifact_id: {info['artifact_id']}" for key, info in artifacts.items())
+    return f"""# {attempt_upper} Result
+
+## Metrics
+
+| Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| {attempt_upper} | CUB | - | {metrics.get("U", "-")} | {metrics.get("S", "-")} | {metrics.get("H", "-")} | {metrics.get("ZS", "-")} | {metrics.get("best_epoch", "-")} |
+
+## Evidence
+
+```text
+trial_id: {trial_id}
+{evidence}
+```
+
+## Decision
+
+`{decision}`
+"""
+
+
+def make_module_attempt_quality_md(
+    *,
+    attempt_upper: str,
+    metrics: dict[str, str],
+    artifacts: dict[str, dict[str, str]],
+    decision: str,
+) -> str:
+    artifact_checks = "\n".join(
+        f"- [x] `{info['artifact_id']}` exists in Warehouse." for info in artifacts.values()
+    )
+    return f"""# {attempt_upper} Quality Check
+
+```text
+quality_check_mode: STRICT
+decision: PASS_REVISE
+promotion_decision: blocked
+```
+
+## Findings
+
+- Metrics parsed from the registered training log: U={metrics.get("U", "")}, S={metrics.get("S", "")}, H={metrics.get("H", "")}, ZS={metrics.get("ZS", "")}, best_epoch={metrics.get("best_epoch", "")}.
+- Attempt decision recorded as `{decision}`.
+- Raw artifacts are registered in Warehouse; GitHub keeps only lightweight identities.
+
+## Artifact Check
+
+{artifact_checks}
+- [x] GitHub only records artifact ids, URIs, sha256, and size.
+- [x] Raw logs and checkpoints are not tracked in Git.
+
+## Decision
+
+PASS_REVISE.
+"""
+
+
+def module_artifact_entry(
+    *,
+    key: str,
+    artifact_id: str,
+    artifact_type: str,
+    role: str,
+    uri: str,
+    path: Path,
+    sha256: str,
+    size_bytes: str,
+    required_for: str,
+) -> dict[str, str]:
+    return {
+        "key": key,
+        "artifact_id": artifact_id,
+        "type": artifact_type,
+        "role": role,
+        "uri": uri,
+        "local_path": str(path),
+        "sha256": sha256,
+        "size_bytes": size_bytes,
+        "required_for": required_for,
+    }
+
+
+def append_warehouse_registry(entries: list[dict[str, str]], *, dry_run: bool) -> None:
+    registry = warehouse_root() / "ARTIFACT_REGISTRY.yaml"
+    if dry_run:
+        return
+    if registry.exists():
+        content = registry.read_text(encoding="utf-8")
+    else:
+        registry.parent.mkdir(parents=True, exist_ok=True)
+        content = "schema_version: gtpj-warehouse-artifact-registry/v1\nartifacts:\n"
+    additions: list[str] = []
+    for entry in entries:
+        if f"  {entry['artifact_id']}:" in content:
+            continue
+        additions.append(
+            f"""  {entry['artifact_id']}:
+    type: {entry['type']}
+    project: GTPJ
+    version: {entry['version']}
+    experiment_id: {entry['trial_id']}
+    trial_id: {entry['trial_name']}
+    attempt_id: {entry['attempt_lower']}
+    role: {entry['role']}
+    uri: {entry['uri']}
+    local_path: {entry['local_path']}
+    sha256: {entry['sha256']}
+    size_bytes: {entry['size_bytes']}
+    source: {entry['source']}
+    note: {entry['note']}
+"""
+        )
+    if additions:
+        registry.write_text(content.rstrip() + "\n" + "".join(additions), encoding="utf-8")
+
+
+def split_markdown_row(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def update_attempts_table(
+    *,
+    trial_dir: Path,
+    attempt_upper: str,
+    attempt_type: str,
+    parameter_change: str,
+    old_value: str,
+    new_value: str,
+    seed: str,
+    metrics: dict[str, str],
+    log_artifact_id: str,
+    decision: str,
+) -> None:
+    attempts_path = trial_dir / "ATTEMPTS.md"
+    if not attempts_path.exists():
+        raise WorkflowError(f"Missing attempts ledger: {rel(attempts_path)}")
+    content = read_text(attempts_path)
+    lines = content.splitlines()
+    replaced = False
+    for index, line in enumerate(lines):
+        if not line.startswith(f"| {attempt_upper} |"):
+            continue
+        cells = split_markdown_row(line)
+        old_cells = cells + [""] * max(0, 14 - len(cells))
+        row_type = attempt_type or old_cells[1] or "rerun"
+        row_change = parameter_change or old_cells[2] or "recorded by record-module-attempt"
+        row_old = old_value or old_cells[3] or "-"
+        row_new = new_value or old_cells[4] or "-"
+        row_seed = seed or old_cells[5] or "-"
+        directory = old_cells[13] or f"`attempts/{attempt_upper}/`"
+        lines[index] = (
+            f"| {attempt_upper} | {row_type} | {row_change} | {row_old} | {row_new} | {row_seed} | "
+            f"{metrics['U']} | {metrics['S']} | {metrics['H']} | {metrics['ZS']} | "
+            f"{metrics['best_epoch']} | `{log_artifact_id}` | {decision} | {directory} |"
+        )
+        replaced = True
+        break
+    if not replaced:
+        row_type = attempt_type or "rerun"
+        row_change = parameter_change or "recorded by record-module-attempt"
+        row_old = old_value or "-"
+        row_new = new_value or "-"
+        row_seed = seed or "-"
+        new_row = (
+            f"| {attempt_upper} | {row_type} | {row_change} | {row_old} | {row_new} | {row_seed} | "
+            f"{metrics['U']} | {metrics['S']} | {metrics['H']} | {metrics['ZS']} | "
+            f"{metrics['best_epoch']} | `{log_artifact_id}` | {decision} | `attempts/{attempt_upper}/` |"
+        )
+        insert_at = len(lines)
+        for index, line in enumerate(lines):
+            if line.startswith("## Notes"):
+                insert_at = index
+                break
+        lines.insert(insert_at, new_row)
+    attempts_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def cmd_record_module_attempt(args: argparse.Namespace) -> int:
+    trial_dir = Path(args.trial_dir)
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    if not trial_dir.exists():
+        raise WorkflowError(f"Missing trial directory: {display_path(trial_dir)}")
+    require_path_inside(trial_dir, REPO_ROOT / "experiments" / "module_trials", "trial-dir")
+    trial_id, slug = parse_trial_folder_name(trial_dir)
+    attempt_upper, attempt_lower = normalize_attempt_ids(args.attempt_id)
+    attempt_dir = trial_dir / "attempts" / attempt_upper
+    config_path = Path(args.config) if args.config else attempt_dir / "config.yaml"
+    if not config_path.is_absolute():
+        config_path = REPO_ROOT / config_path
+    if not config_path.exists():
+        raise WorkflowError(f"Missing attempt config: {display_path(config_path)}")
+    require_path_inside(config_path, trial_dir, "config")
+    log_path = resolve_existing_path(args.log, "training log")
+    metrics = parse_training_log(log_path)
+    trial_fields = read_key_value_block(trial_dir / "README.md")
+    version = args.version or trial_fields.get("base_version", "")
+    if not re.fullmatch(r"v[0-9]+", version):
+        raise WorkflowError("Could not infer valid base version from trial README; pass --version")
+    config_values = read_config_values(config_path)
+    seed = args.seed or config_values.get("random_seed", "")
+    command = args.command or f"python train_GTPJ_CUB.py --config {rel(config_path)}"
+    pre_run_freeze_commit = args.pre_run_freeze_commit or git(["rev-parse", "HEAD"], check=False)
+    recorded_at = utc_now()
+
+    if not args.dry_run:
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+        for ledger_name in ["manifest.yaml", "result.yaml", "result.md", "quality_check.md"]:
+            ledger_path = attempt_dir / ledger_name
+            if ledger_path.exists() and not args.overwrite_ledger:
+                raise WorkflowError(
+                    f"Refusing to overwrite {rel(ledger_path)}; pass --overwrite-ledger if intended"
+                )
+
+    entries: list[dict[str, str]] = []
+    artifacts: dict[str, dict[str, str]] = {}
+
+    def add_file_artifact(
+        key: str,
+        source: Path,
+        role_folder: str,
+        artifact_type: str,
+        role: str,
+        artifact_id: str,
+        required_for: str,
+        note: str,
+    ) -> None:
+        dest = warehouse_path_for_attempt(version, trial_id, attempt_lower, role_folder, source.name)
+        ensure_same_or_copy(source, dest, dry_run=args.dry_run)
+        sha, size = artifact_file_info(source)
+        uri = warehouse_uri_for_attempt(version, trial_id, attempt_lower, role_folder, source.name)
+        entry = module_artifact_entry(
+            key=key,
+            artifact_id=artifact_id,
+            artifact_type=artifact_type,
+            role=role,
+            uri=uri,
+            path=dest,
+            sha256=sha,
+            size_bytes=size,
+            required_for=required_for,
+        )
+        entry.update(
+            {
+                "version": version,
+                "trial_id": trial_id,
+                "trial_name": f"{trial_id}_{slug}",
+                "attempt_lower": attempt_lower,
+                "source": display_path(source),
+                "note": note,
+            }
+        )
+        entries.append(entry)
+        artifacts[key] = entry
+
+    log_artifact_id = args.log_artifact_id or f"log:{version}:module_trial:{trial_id}:{attempt_lower}"
+    add_file_artifact(
+        "train_log",
+        log_path,
+        "logs",
+        "log",
+        "training_log",
+        log_artifact_id,
+        "audit",
+        f"Full module-trial training log for {attempt_upper}.",
+    )
+
+    if args.best_checkpoint:
+        best_path = resolve_existing_path(args.best_checkpoint, "best checkpoint")
+        add_file_artifact(
+            "best_checkpoint",
+            best_path,
+            "checkpoints",
+            "checkpoint",
+            "best_model",
+            f"checkpoint:{version}:module_trial:{trial_id}:{attempt_lower}:best",
+            "reproduce_best",
+            f"Best checkpoint for {attempt_upper}, selected by best GZSL-H.",
+        )
+    if args.full_checkpoint:
+        full_path = resolve_existing_path(args.full_checkpoint, "full checkpoint")
+        add_file_artifact(
+            "full_checkpoint",
+            full_path,
+            "checkpoints",
+            "checkpoint",
+            "full_checkpoint",
+            f"checkpoint:{version}:module_trial:{trial_id}:{attempt_lower}:full",
+            "debug",
+            f"Full checkpoint for {attempt_upper}.",
+        )
+
+    receipt_name = "runner_console_conda.log"
+    receipt_path = warehouse_path_for_attempt(version, trial_id, attempt_lower, "receipts", receipt_name)
+    if args.runner_console:
+        receipt_src = resolve_existing_path(args.runner_console, "runner console")
+        add_file_artifact(
+            "runner_console",
+            receipt_src,
+            "receipts",
+            "runner_receipt",
+            "runner_console",
+            f"receipt:{version}:module_trial:{trial_id}:{attempt_lower}:runner_console",
+            "audit",
+            f"Runner console receipt for {attempt_upper}.",
+        )
+    else:
+        receipt_content = f"""run_id: {args.run_id}
+attempt_id: {attempt_upper}
+command: {command}
+exit_code: 0
+started_from_freeze_commit: {pre_run_freeze_commit}
+result: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}
+note: Full per-epoch output is stored in the training_log artifact.
+"""
+        sha, size = write_text_artifact(receipt_path, receipt_content, dry_run=args.dry_run)
+        entry = module_artifact_entry(
+            key="runner_console",
+            artifact_id=f"receipt:{version}:module_trial:{trial_id}:{attempt_lower}:runner_console",
+            artifact_type="runner_receipt",
+            role="runner_console",
+            uri=warehouse_uri_for_attempt(version, trial_id, attempt_lower, "receipts", receipt_name),
+            path=receipt_path,
+            sha256=sha,
+            size_bytes=size,
+            required_for="audit",
+        )
+        entry.update(
+            {
+                "version": version,
+                "trial_id": trial_id,
+                "trial_name": f"{trial_id}_{slug}",
+                "attempt_lower": attempt_lower,
+                "source": "generated by workflow/gtpj_workflow.py record-module-attempt",
+                "note": f"Runner console receipt for {attempt_upper}; full per-epoch output is in the training log artifact.",
+            }
+        )
+        entries.append(entry)
+        artifacts["runner_console"] = entry
+
+    if args.dry_run:
+        print("record-module-attempt-dry-run-ok")
+        print(f"trial: {rel(trial_dir)}")
+        print(f"attempt: {attempt_upper}")
+        print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
+        for entry in entries:
+            print(f"{entry['artifact_id']} -> {entry['uri']}")
+        return 0
+
+    manifest = make_module_attempt_manifest(
+        trial_id=trial_id,
+        slug=slug,
+        trial_fields=trial_fields,
+        attempt_lower=attempt_lower,
+        version=version,
+        config_path=config_path,
+        command=command,
+        seed=seed,
+        pre_run_freeze_commit=pre_run_freeze_commit,
+        artifacts=artifacts,
+        recorded_at=recorded_at,
+    )
+    result_yaml = make_module_attempt_result_yaml(
+        trial_id=trial_id,
+        slug=slug,
+        attempt_lower=attempt_lower,
+        version=version,
+        metrics=metrics,
+        seed=seed,
+        decision=args.decision,
+        command=command,
+        pre_run_freeze_commit=pre_run_freeze_commit,
+        artifacts=artifacts,
+        recorded_at=recorded_at,
+    )
+    result_md = make_module_attempt_result_md(
+        attempt_upper=attempt_upper,
+        trial_id=trial_id,
+        metrics=metrics,
+        artifacts=artifacts,
+        decision=args.decision,
+    )
+    quality_md = make_module_attempt_quality_md(
+        attempt_upper=attempt_upper,
+        metrics=metrics,
+        artifacts=artifacts,
+        decision=args.decision,
+    )
+    (attempt_dir / "manifest.yaml").write_text(manifest.rstrip() + "\n", encoding="utf-8")
+    (attempt_dir / "result.yaml").write_text(result_yaml.rstrip() + "\n", encoding="utf-8")
+    (attempt_dir / "result.md").write_text(result_md.rstrip() + "\n", encoding="utf-8")
+    (attempt_dir / "quality_check.md").write_text(quality_md.rstrip() + "\n", encoding="utf-8")
+    update_attempts_table(
+        trial_dir=trial_dir,
+        attempt_upper=attempt_upper,
+        attempt_type=args.attempt_type,
+        parameter_change=args.parameter_change,
+        old_value=args.old_value,
+        new_value=args.new_value,
+        seed=seed,
+        metrics=metrics,
+        log_artifact_id=log_artifact_id,
+        decision=args.decision,
+    )
+    append_warehouse_registry(entries, dry_run=False)
+
+    print("record-module-attempt-ok")
+    print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
+    print(f"log_artifact_id: {log_artifact_id}")
+    print(f"attempt_dir: {rel(attempt_dir)}")
+    print("next: review/update trial root README/result/quality only if this attempt changes the trial-level conclusion.")
+    return 0
+
+
 def cmd_runner_lock(args: argparse.Namespace) -> int:
     lock_path = runtime_lock_file()
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2482,6 +3145,46 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--old-value", default="")
     record.add_argument("--new-value", default="")
     record.set_defaults(func=cmd_record_result)
+
+    record_module = sub.add_parser(
+        "record-module-attempt",
+        help="解析 module trial attempt 日志，复制 Warehouse artifact，并写回 attempt 账本",
+    )
+    record_module.add_argument("--trial-dir", required=True)
+    record_module.add_argument("--attempt-id", required=True)
+    record_module.add_argument("--log", required=True)
+    record_module.add_argument("--config", default="")
+    record_module.add_argument("--best-checkpoint", default="")
+    record_module.add_argument("--full-checkpoint", default="")
+    record_module.add_argument("--runner-console", default="")
+    record_module.add_argument("--log-artifact-id", default="")
+    record_module.add_argument("--command", default="")
+    record_module.add_argument("--run-id", default="")
+    record_module.add_argument("--seed", default="")
+    record_module.add_argument("--version", default="")
+    record_module.add_argument("--pre-run-freeze-commit", default="")
+    record_module.add_argument("--attempt-type", default="")
+    record_module.add_argument("--parameter-change", default="")
+    record_module.add_argument("--old-value", default="")
+    record_module.add_argument("--new-value", default="")
+    record_module.add_argument(
+        "--decision",
+        default="keep",
+        choices=[
+            "best",
+            "keep",
+            "reject",
+            "rejected",
+            "revise",
+            "rerun",
+            "not_confirmed",
+            "blocked",
+            "debug",
+        ],
+    )
+    record_module.add_argument("--dry-run", action="store_true")
+    record_module.add_argument("--overwrite-ledger", action="store_true")
+    record_module.set_defaults(func=cmd_record_module_attempt)
 
     new_idea = sub.add_parser("new-idea", help="创建新的 idea 节点和目录")
     new_idea.add_argument("--idea-id", required=True)

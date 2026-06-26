@@ -112,6 +112,39 @@ GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
 
 如果 4 到 6 步出现大量重复手工编辑，下一步不是继续试错，而是把该路径升级成 helper 命令。
 
+### Module Trial Attempt 快速入账
+
+module trial 内部 attempt 跑完后，优先用 helper，不要手填四五个账本文件：
+
+```bash
+python workflow/gtpj_workflow.py record-module-attempt \
+  --trial-dir experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly \
+  --attempt-id ATTEMPT-009 \
+  --log train_log/CUB/<training_log>.txt \
+  --best-checkpoint train_log/CUB/<best_model>.pth \
+  --full-checkpoint train_log/CUB/<ckpt_full>.pth \
+  --decision keep
+```
+
+建议先 dry-run：
+
+```bash
+python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
+```
+
+该命令负责：
+
+```text
+1. 从训练日志解析 U/S/H/ZS 和 best_epoch。
+2. 把 raw log、checkpoint、runner receipt 复制或生成到 GTPJ_Warehouse。
+3. 计算 artifact sha256 和 size。
+4. 写 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
+5. 更新 ATTEMPTS.md 中对应 attempt 行。
+6. 更新 GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml。
+```
+
+它不会自动判断 trial 根目录 README/result/quality_check/idea_tree 的最终结论。只有当本次 attempt 改变 trial-level 结论，例如 best、reject、promotion blocked 原因变化时，Coordinator 再做少量人工 review 和根账本同步。
+
 ## 运行 v1 确认实验
 
 确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v1` 时，临时分支从 `main` 开，
