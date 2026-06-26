@@ -30,7 +30,7 @@ GTPJ 仓库分成三层：
 ```text
 GTPJ_Research：论文、完整阅读笔记、完整创意树和来源复核。
 GTPJ_Warehouse：raw logs、checkpoint、generated figures、tables、failure cases。
-GTPJ_Manuscript：论文正文、图注、投稿图、最终表格和写作材料。
+GTPJ_Manuscript：论文正文、图注、投稿图、最终表格和写作材料；属于另一套写作工作流，实验创新 workflow 默认不使用。
 ```
 
 核心关系：
@@ -109,7 +109,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 ## `docs/workflow/`
 
-未来 workflow 参考目录。当前阶段不强制执行完整 workflow；这里保存之后 OpenClaw/Codex 接入时可以学习和复用的规则草案。
+实验创新 workflow 目录。默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账；写论文属于另一套 workflow。
 
 | 路径 | 用途 |
 |---|---|
@@ -117,7 +117,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
-| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | CV 论文研发系统总规范审阅版，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和完整闭环。 |
+| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
 | `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |

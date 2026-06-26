@@ -1,14 +1,15 @@
-# GTPJ CV 论文研发系统工作流程总规范
+# GTPJ 实验创新工作流总规范
 
-本文是审阅版总规范，用来让 owner 先完整理解 GitHub、本地目录、创意树、实验记账、tag、agents 和工作流闭环。只有你确认这份规范之后，才进入下一步执行。
+本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
+写论文、投稿图、caption 和论文正文属于另一套写作工作流，不是本实验 workflow 的默认任务。
 
 ## 0. 当前结论
 
 当前项目已经完成的是“治理骨架”和“工作流规范骨架”：
 
 - GitHub 仓库已经被定位为轻量控制面：保存代码、配置、复现实验索引、版本账本、质量门和 agent 规范。
-- 本地外部目录已经被定位为材料和资产面：保存论文阅读、完整创意来源、raw logs、checkpoint、论文图片、表格和写作材料。
-- agents 的角色边界已经规划：读论文、选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
+- 本地外部目录已经被定位为材料和资产面：保存来源材料、完整创意来源、raw logs、checkpoint 和实验诊断材料。
+- agents 的角色边界已经规划：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
 - 代码接口、评估标注、结果记录、artifact 引用和质量门已经形成规范入口。
 
 当前还没有完成的是“真实研究闭环产品”：
@@ -37,6 +38,14 @@ Router 判断后，用启动卡记录本次任务的执行边界：
 docs/workflow/TASK_START_CARD.md
 ```
 
+Owner 不需要主动要求启动卡；Coordinator 必须自动完成判断。Owner 的最小输入是：
+
+```text
+我想基于 <version> 跑/做 <experiment or idea>。
+```
+
+正式改文件、建目录或跑实验前，先在对话中说明能不能开工、任务类型、当前缺口和下一步最小动作。
+
 第一次开跑工作流时，先用首条闭环指南做 readiness check：
 
 ```text
@@ -52,7 +61,7 @@ docs/workflow/FIRST_CLOSED_LOOP.md
 
 ## 1. 总体设计
 
-GTPJ 论文研发系统分成两部分：
+GTPJ 实验创新系统分成两部分：
 
 ```text
 D:\backup\Documents\Myself\GTPJ
@@ -61,13 +70,13 @@ D:\backup\Documents\Myself\GTPJ
 D:\backup\Documents\Myself\GTPJ_Research
 D:\backup\Documents\Myself\GTPJ_Warehouse
 D:\backup\Documents\Myself\GTPJ_Manuscript
-  本地外部目录，负责论文材料、完整创意材料、大型实验资产、论文写作资产。
+  本地外部目录。默认实验 workflow 只使用 Research 和 Warehouse；Manuscript 属于另一套写作工作流。
 ```
 
 核心原则：
 
 - GitHub 只保存能让实验被复现、被审计、被索引的最小事实。
-- GitHub 不保存 raw logs、checkpoint、cache、generated figures、完整论文阅读笔记和投稿图源文件。
+- GitHub 不保存 raw logs、checkpoint、cache、generated figures 和完整长材料。
 - 本地目录保存大文件和研究材料，但 GitHub 里必须留下能追踪它们的 artifact id、URI、hash、size 和复现配置。
 - 每个实验结果必须回答四件事：从哪个版本来，用什么配置跑，评估语义是什么，外部证据在哪里。
 
@@ -203,8 +212,9 @@ GitHub 轻量化以后，agents 边界必须跟着变化：
 
 当前 helper 是结构辅助层，不是替你做研究判断的黑盒。它负责让目录、索引、artifact 和基本规则不乱。
 
-真实任务开始前，Coordinator 仍必须用 `TASK_START_CARD.md` 输出任务类型、写入边界、
-agents 和 hard gates。只要会产生 raw evidence，就必须同时遵守 `ARTIFACT_REGISTRATION.md`。
+真实任务开始前，Coordinator 仍必须用 `TASK_START_CARD.md` 自动输出任务类型、写入边界、
+agents 和 hard gates。Owner 不负责填写这张卡。只要会产生 raw evidence，就必须同时遵守
+`ARTIFACT_REGISTRATION.md`。
 
 ### 2.8 schema 和测试
 
@@ -385,6 +395,9 @@ Warehouse 的职责：
 
 ### 3.4 `GTPJ_Manuscript`
 
+`GTPJ_Manuscript` 不是本实验创新 workflow 的默认组成部分。它保留给另一套写作工作流：
+当 owner 明确开始写论文、整理投稿图、caption 或最终表格时再使用。
+
 ```text
 D:\backup\Documents\Myself\GTPJ_Manuscript
 |-- README.md
@@ -409,6 +422,8 @@ Manuscript 的职责：
 - 保存“最后论文怎么呈现”的材料。
 - 每张图、每张表都要能追溯到 GitHub 实验索引和 Warehouse artifact。
 - 不承担模型代码或实验配置事实源。
+
+本实验 workflow 不因为跑实验而自动创建论文稿、投稿图或 caption。
 
 ## 4. Git 分支、tag 和版本规范
 
@@ -838,11 +853,11 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 
 ## 11. 完整闭环
 
-### 11.1 从论文到新版本
+### 11.1 从 idea 到新版本
 
 ```text
-1. 读论文
-   Research 保存 PDF、笔记、来源复核。
+1. 记录来源或想法
+   Research 可保存长推理；GitHub 只保存轻量 idea/source 索引。
 
 2. 进入创意树
    GitHub 保存最小 idea 索引，记录来源、假设、版本评分、接口风险。
@@ -871,8 +886,8 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 10. 提升版本
     promotion 通过后创建 vY 配置、账本、tag。
 
-11. 写论文
-    Manuscript 使用最终图表，反向追踪到实验索引和 artifact。
+11. 如需写论文
+    进入另一套写作工作流；本实验 workflow 到版本、结果和证据链闭环为止。
 ```
 
 ### 11.2 每一步事实源
@@ -887,7 +902,7 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 | 指标是多少 | GitHub `result.yaml` / `result.md` |
 | 是否可信 | GitHub `quality_check.md` |
 | 是否成为版本 | GitHub `VERSION_TREE.md` + tag |
-| 论文怎么呈现 | Manuscript asset registry |
+| 论文怎么呈现 | 另一套写作工作流，不属于默认实验闭环 |
 
 ## 12. 交付和审查标准
 
@@ -918,7 +933,7 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 你读完后可以逐项确认：
 
 - GitHub 是否只承担轻量控制面，而不是材料仓库。
-- Research/Warehouse/Manuscript 三个本地目录分工是否符合你的习惯。
+- 默认实验 workflow 是否只依赖 Research/Warehouse；Manuscript 是否保持为写作工作流资产区。
 - 创意树是否接受“外部完整材料 + GitHub 最小索引”的折中。
 - 实验记账是否足够支撑复现。
 - raw logs 不进 GitHub 是否可接受。
@@ -946,6 +961,6 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 
 - owner 能一眼知道当前版本、下一步和证据状态。
 - 每个结果能追踪到配置、代码、日志和评估语义。
-- 每个 idea 能追踪到论文来源和 trial 证据。
+- 每个 idea 能追踪到来源和 trial 证据。
 - 每个新版本能追踪到父版本、promotion 决策和 tag。
 - agents 能各司其职，不越权、不污染 GitHub、不把不可比结果当结论。

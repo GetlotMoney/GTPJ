@@ -1,4 +1,7 @@
-# 未来工作流参考
+# GTPJ 实验创新工作流
+
+本目录默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
+写论文、投稿图、caption 和论文正文属于另一套写作工作流，不是本实验 workflow 的默认任务。
 
 当前阶段不强制执行完整 runtime workflow。边界类规范已经生效，agent/runtime 编排仍作为未来 OpenClaw/Codex 接入参考。
 当前主规范是：
@@ -55,7 +58,8 @@ idea_tree
 - OpenClaw 优先用于运行实验。
 - Codex 遵循相同仓库事实来源。
 - GitHub 仓库是治理事实源、复现控制层和轻量结果索引层。
-- `GTPJ_Research`、`GTPJ_Warehouse`、`GTPJ_Manuscript` 分别是论文材料、大型实验资产和写作资产事实源。
+- `GTPJ_Research` 保存 idea/source 长推理，`GTPJ_Warehouse` 保存大型实验资产。
+- `GTPJ_Manuscript` 是另一套写作工作流的资产区；本实验 workflow 默认不读写它。
 - 结构性动作可以使用 `workflow/gtpj_workflow.py`，但当前阶段不强制。
 - GitHub 文档是 workflow 规范的权威来源；本地 `gtpj-workflow` skill 是执行副本，修改后必须同步。
 

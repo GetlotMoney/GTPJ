@@ -40,8 +40,9 @@ validate-remote-ok
 `validate-remote` 允许 `main` 比 `v1` 多治理账本提交；它检查的是远端 `main` 对齐本地
 `main`、远端 `v1` 对齐本地 `v1` tag，并确认本地 `main` 包含 `v1` 历史。
 
-检查通过后，先按 `docs/workflow/TASK_START_CARD.md` 输出启动卡。只有启动卡说明任务类型、
-写入边界、agents、hard gates 和当前阻断后，才进入具体实验命令。
+Owner 只需要说明“想基于哪个版本跑/做什么”。检查通过后，Coordinator 自动按
+`docs/workflow/TASK_START_CARD.md` 输出启动卡。只有启动卡说明任务类型、写入边界、agents、
+hard gates 和当前阻断后，才进入具体实验命令。
 
 第一次开跑完整工作流时，先读 `docs/workflow/FIRST_CLOSED_LOOP.md`，用 readiness check
 和低风险任务验证通路，不要直接从复杂 module trial 开始。

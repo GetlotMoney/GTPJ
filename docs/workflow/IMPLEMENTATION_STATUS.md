@@ -92,6 +92,8 @@ D:\backup\Documents\Myself\GTPJ_Warehouse
 
 ## 5. 本地 Manuscript
 
+状态：非默认。`GTPJ_Manuscript` 属于另一套写作工作流，不是当前实验创新 workflow 的默认读写目标。
+
 根目录：
 
 ```text
@@ -100,7 +102,7 @@ D:\backup\Documents\Myself\GTPJ_Manuscript
 
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
-| Manuscript 顶层说明 | 已落地 | `README.md` | 说明论文正文、图、表、caption 的写作资产边界。 |
+| Manuscript 顶层说明 | 已落地 / 非默认 | `README.md` | 说明论文正文、图、表、caption 的写作资产边界；实验 workflow 默认不使用。 |
 | 写作资产注册表 | 已落地 | `MANUSCRIPT_ASSET_REGISTRY.yaml` | 当前为空，等产生论文图表后填写。 |
 | draft 目录 | 已落地 | `draft/` | 论文正文草稿。 |
 | figures 目录 | 已落地 | `figures/` | 投稿图、可编辑图源和最终导出图。 |
@@ -138,6 +140,6 @@ GTPJ 任务开始前，优先读取：
 7. 与任务类型相关的具体协议文件
 8. `docs/workflow/ARTIFACT_REGISTRATION.md`
 9. `.gtpj/local_paths.yaml`
-10. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
+10. 需要时再读本地 Research/Warehouse 对应 README；Manuscript 只在进入写作工作流时读取
 
 这样不需要 owner 每次口述哪些文件已经落地。
