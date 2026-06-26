@@ -24,6 +24,24 @@ warehouse_report_artifacts: log:v1:module_trial:TRIAL-001:attempt-002, log:v1:mo
 final_decision: revise; ATTEMPT-003 is current best, promotion blocked pending clean confirmation
 ```
 
+## ATTEMPT-007 Confirmation Addendum
+
+```text
+run_id: RUN-20260626-225103-module-trial-attempt-007
+attempt_id: ATTEMPT-007
+pre_run_freeze_commit: 2820b17c222bd2084292d5249d429dce95d1e060
+activation_mode: role_only
+activation_reason: clean confirmation rerun with no code, interface, loss, eval, split, class order, label mapping, or logits-shape change
+required_roles: Coordinator, Runner, Log Analyst, Quality Checker, Result Analyst
+required_real_agents: []
+tool_support: real_multi_agent_available=not_required_for_clean_confirmation; fallback_mode=role_only
+memory_used: yes
+memory_sources: C:/Users/Administrator/.codex/memories/MEMORY.md
+verified_against_current_repo: WORKFLOW_ROUTER.md, module_trial_protocol.md, ATTEMPTS.md, config.yaml, manifest.yaml, result.yaml, quality_check.md
+result: ATTEMPT-007 H=73.69 did not confirm ATTEMPT-003 H=74.27
+final_decision: revise; promotion remains blocked
+```
+
 ## Coordinator
 
 ```text

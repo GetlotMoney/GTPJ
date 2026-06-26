@@ -59,7 +59,7 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.yaml",
-          "note": "TRIAL-001 reached H=73.72, below v1 baseline H=73.93; decision=revise, promotion_decision=rejected."
+          "note": "TRIAL-001 highest observed result is ATTEMPT-003 H=74.27, but clean confirmation ATTEMPT-007 reached H=73.69; decision=revise, promotion_decision=blocked."
         }
       ],
       "next_action": "Analyze TRIAL-001 prototype drift; if continuing, run smaller outer-ratio or L2SP anchoring follow-up instead of promoting TRIAL-001."
