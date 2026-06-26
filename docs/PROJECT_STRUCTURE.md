@@ -257,6 +257,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板，用于记录证据完整性，并在正式升版时执行 promotion gate。 |
 | `experiments/templates/TRIAL_README_template.md` | trial README 模板，包含结果记录和 promotion gate 字段。 |
+| `experiments/templates/TRIAL_ATTEMPTS_template.md` | module trial 内部多次 attempt 总表模板。 |
 | `experiments/templates/VERSION_template.md` | 版本说明模板。 |
 
 ### `experiments/module_trials/`
@@ -273,14 +274,17 @@ idea_tree/                 # 创意来源、评分、排序
 ```text
 experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |-- README.md
+|-- ATTEMPTS.md
 |-- implementation.md
 |-- code.diff
-|-- config.yaml
-|-- manifest.yaml
-|-- result.yaml
 |-- agent_summary.md
-|-- quality_check.md
-`-- result.md
+`-- attempts/
+    `-- ATTEMPT-001/
+        |-- config.yaml
+        |-- manifest.yaml
+        |-- result.yaml
+        |-- quality_check.md
+        `-- result.md
 ```
 
 ### `experiments/v1/`

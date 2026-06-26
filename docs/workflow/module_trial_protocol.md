@@ -37,13 +37,16 @@ experiments/module_trials/IDEA-xxxx_short_name/
 |-- IDEA.md              # trial-local pointer to the source idea file
 `-- TRIAL-001_short_name/
     |-- README.md
+    |-- ATTEMPTS.md
     |-- implementation.md
     |-- code.diff
-    |-- config.yaml
-    |-- manifest.yaml
-    |-- result.yaml
-    |-- quality_check.md
-    |-- result.md
+    `-- attempts/
+        `-- ATTEMPT-001/
+            |-- config.yaml
+            |-- manifest.yaml
+            |-- result.yaml
+            |-- quality_check.md
+            |-- result.md
 ```
 
 每个 trial 必须记录：
@@ -61,12 +64,46 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - 最低验证证据
 - code branch
 - code tag
+- attempts table
+- best attempt id
 - changed files
 - implementation summary
 - quality check decision
 - result
 - `trial_decision`
 - `promotion_decision`
+
+## Trial-internal attempts
+
+The same module trial may include multiple attempts, but they must stay within the same implementation hypothesis.
+
+Use `ATTEMPTS.md` as the human-readable index for trial-internal parameter tuning, narrow follow-up ablations, reruns, and debug-fix reruns.
+
+Recommended table:
+```text
+| Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
+```
+
+Recommended `Type` values:
+```text
+param_tune / ablation / rerun / anchor_followup / debug_fix
+```
+
+Each `attempts/ATTEMPT-xxx/` directory should keep its own:
+- `config.yaml`
+- `manifest.yaml`
+- `result.yaml`
+- `quality_check.md`
+- `result.md`
+
+Rules:
+- `TRIAL-001` is one implementation line for one idea, not one training run.
+- `ATTEMPT-001`, `ATTEMPT-002`, and later rows are repeated runs or small controlled variations inside that same trial.
+- Numeric-only changes such as ratio, lambda, temperature, dropout, seed, or scheduler stay inside the same trial as `param_tune`.
+- A narrow diagnostic ablation that only helps explain the current trial may stay in the same trial as `ablation`.
+- If the change becomes a new implementation hypothesis, a new forward path, or a new loss mechanism, open `TRIAL-002` instead of extending `TRIAL-001`.
+- The trial root `README.md`, `result.yaml`, and `quality_check.md` should point to the current decision-driving `best_attempt_id` rather than trying to inline every attempt detail.
+- Existing historical trials with only one root-level attempt may remain readable as legacy evidence, but any new attempt added after this rule should be recorded in `ATTEMPTS.md`.
 
 `trial_decision`：
 

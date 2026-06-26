@@ -34,6 +34,7 @@
 | agent 工作凭证 | 已落地 | `docs/workflow/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；helper 会为新实验创建 `agent_summary.md`。 |
 | 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
 | 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
+| Module trial attempt ledger | 已落地 | `docs/workflow/module_trial_protocol.md`, `experiments/templates/TRIAL_ATTEMPTS_template.md`, `experiments/templates/TRIAL_README_template.md` | module trial 已明确支持 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/` 多次尝试账本；正式 baseline 的 tune 表仍留在 `experiments/vX/tune/INDEX.md`。 |
 | Artifact 登记动作 | 已落地 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 规定 raw artifact 从本地文件到 Warehouse registry、manifest、result 的登记步骤。 |
 | 质量门 | 已落地 | `docs/workflow/quality_gate.md` | 普通实验和 promotion gate 的检查规则。 |
 | promotion | 已落地 | `docs/workflow/promotion.md` | promotion 规则已写；只有实验记录明确 `promotion_decision: promote` 才触发。 |
