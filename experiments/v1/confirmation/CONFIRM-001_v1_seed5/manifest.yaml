@@ -1,0 +1,43 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "CONFIRM-001"
+  name: "CONFIRM-001_v1_seed5"
+  kind: "confirmation"
+  status: "ready_to_run"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-06-26T06:16:25+00:00"
+version:
+  base_version: "v1"
+  base_code_tag: "v1"
+  code_branch: "exp/v1-confirm-001-v1-seed5"
+  code_commit: "7fe71d36bcda5652c119eea7edf72a78106a6614"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/v1/confirmation/CONFIRM-001_v1_seed5/config.yaml"
+  config_sha256: "e16c7cbab967e079717893262c3c7a686bb343b1def4b09ddd9ec4288b949d28"
+  command: "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_v1_seed5/config.yaml"
+  seed: "5"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: ""
+  uri: ""
+  title: "GTPJ-v1 baseline confirmation"
+  hypothesis: "Reproduce the accepted GTPJ-v1 baseline without changing code, config, split, seed, class order, label mapping, or metric semantics."
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "false"

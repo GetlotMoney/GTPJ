@@ -16,4 +16,4 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation
 
 | 实验 | 状态 | 目录 | 说明 |
 |---|---|---|---|
-| 暂无 | - | - | 由 `workflow/gtpj_workflow.py new-experiment` 创建后追加。 |
+| `CONFIRM-001_v1_seed5` | planned | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | 由结构 helper 创建。 |

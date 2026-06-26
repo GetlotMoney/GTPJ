@@ -16,4 +16,4 @@
 
 | 实验 | 版本 | 类型 | 状态 | 目录 | 说明 |
 |---|---|---|---|---|---|
-| 暂无 | - | - | - | - | `GTPJ-v1` 第一版基准证据放在 `experiments/v1/baseline/`。 |
+| `CONFIRM-001_v1_seed5` | `v1` | `confirmation` | planned | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | 由结构 helper 创建。 |
