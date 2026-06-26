@@ -1,0 +1,103 @@
+dataset:
+  value: CUB
+num_class:
+  value: 200
+dim_f_clip:
+  value: 768
+device:
+  value: cuda:0
+batch_size:
+  value: 64
+epochs:
+  value: 30
+random_seed:
+  value: 5
+text_source:
+  value: gpt55
+adapter_ratio:
+  value: 0.2
+use_clip_a_self:
+  value: true
+clip_a_self_apply_unseen:
+  value: false
+clip_a_self_heads:
+  value: 4
+clip_a_self_dropout:
+  value: 0.4
+clip_a_self_inner_ratio:
+  value: 0.3
+clip_a_self_outer_ratio:
+  value: 0.125
+tf_common_dim:
+  value: 512
+tf_heads:
+  value: 4
+tf_dropout:
+  value: 0.1
+weight_s2v:
+  value: 0.5
+text_residual:
+  value: 0.5
+visual_residual:
+  value: 0.5
+local_weight:
+  value: 0.3
+pool_method:
+  value: mean
+lastvit_select_k:
+  value: 32
+lastvit_select_sigma:
+  value: 0.0
+lastvit_select_largest:
+  value: true
+lastvit_select_formula:
+  value: v2_abs_mean
+score_mode:
+  value: add
+use_fae:
+  value: true
+lambda_consist:
+  value: 0.05
+consist_temp:
+  value: 2.0
+consist_dynamic:
+  value: true
+consist_dynamic_gamma:
+  value: 0.1
+lambda_topo_pearson:
+  value: 0.1
+use_conditional_text:
+  value: true
+conditional_text_ratio:
+  value: 0.008
+meta_net_hidden:
+  value: 48
+lambda_msdn:
+  value: 0.05
+msdn_temp:
+  value: 2.0
+use_ag_jepa:
+  value: true
+jepa_topk:
+  value: 8
+jepa_hidden:
+  value: 512
+lambda_jepa:
+  value: 0.05
+lambda_jepa_neg:
+  value: 0.01
+jepa_neg_margin:
+  value: 0.2
+lr_stages:
+  value:
+  - lr: 0.001
+    epochs: 20
+    eta_min: 1e-5
+  - lr: 0.0001
+    epochs: 20
+    eta_min: 1e-6
+    restart_from_best: false
+  - lr: 1.0e-05
+    epochs: 10
+    eta_min: 1e-7
+    restart_from_best: false
