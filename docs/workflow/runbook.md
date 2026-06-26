@@ -40,6 +40,12 @@ validate-remote-ok
 `validate-remote` 允许 `main` 比 `v1` 多治理账本提交；它检查的是远端 `main` 对齐本地
 `main`、远端 `v1` 对齐本地 `v1` tag，并确认本地 `main` 包含 `v1` 历史。
 
+检查通过后，先按 `docs/workflow/TASK_START_CARD.md` 输出启动卡。只有启动卡说明任务类型、
+写入边界、agents、hard gates 和当前阻断后，才进入具体实验命令。
+
+第一次开跑完整工作流时，先读 `docs/workflow/FIRST_CLOSED_LOOP.md`，用 readiness check
+和低风险任务验证通路，不要直接从复杂 module trial 开始。
+
 ## 运行 v1 确认实验
 
 确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v1` 时，临时分支从 `main` 开，
@@ -67,6 +73,8 @@ experiments/v1/confirmation/INDEX.md
 
 日志原始位置如果在 `train_log/`，必须登记或复制到外部 `GTPJ_Warehouse`，GitHub 只记录
 `log_artifact_id`、`warehouse://` URI、sha256、size 和指标摘要。
+具体 artifact id、Warehouse URI、hash、size、manifest/result 回填步骤见
+`docs/workflow/ARTIFACT_REGISTRATION.md`。
 
 确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
 历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。

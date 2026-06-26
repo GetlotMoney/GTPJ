@@ -31,6 +31,18 @@ docs/workflow/IMPLEMENTATION_STATUS.md
 docs/workflow/WORKFLOW_ROUTER.md
 ```
 
+Router 判断后，用启动卡记录本次任务的执行边界：
+
+```text
+docs/workflow/TASK_START_CARD.md
+```
+
+第一次开跑工作流时，先用首条闭环指南做 readiness check：
+
+```text
+docs/workflow/FIRST_CLOSED_LOOP.md
+```
+
 核心判断：
 
 ```text
@@ -132,6 +144,8 @@ D:\backup\Documents\Myself\GTPJ
 |---|---|
 | `docs/workflow/README.md` | workflow 文档入口和推荐阅读顺序。 |
 | `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| `docs/workflow/TASK_START_CARD.md` | 任务启动卡模板，记录 Router 分类、base version、写入位置、agents、硬门和阻断条件。 |
+| `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，先验证 readiness、tune-suggest 和低风险 confirmation 通路。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照和命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序。 |
@@ -140,6 +154,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/workflow/code_interface.md` | 代码接口补充说明，用于承接更具体的接口约束。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
 | `docs/workflow/artifact_policy.md` | GitHub 轻量边界和外部资产职责。 |
+| `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 登记动作规范，规定 Warehouse 路径、artifact id、URI、hash、size 和 manifest/result 引用。 |
 | `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的结果索引协议。 |
 | `docs/workflow/agent_contracts.md` | agents 的长期 IO 契约、自我介绍、读写边界和失败条件。 |
 | `docs/workflow/agent_orchestration.md` | 多 agents 编排、GPU 串行、实验类型分工和本地 skill 同步规则。 |
@@ -187,6 +202,9 @@ GitHub 轻量化以后，agents 边界必须跟着变化：
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色参考。 |
 
 当前 helper 是结构辅助层，不是替你做研究判断的黑盒。它负责让目录、索引、artifact 和基本规则不乱。
+
+真实任务开始前，Coordinator 仍必须用 `TASK_START_CARD.md` 输出任务类型、写入边界、
+agents 和 hard gates。只要会产生 raw evidence，就必须同时遵守 `ARTIFACT_REGISTRATION.md`。
 
 ### 2.8 schema 和测试
 

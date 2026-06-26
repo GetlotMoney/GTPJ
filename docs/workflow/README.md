@@ -13,9 +13,12 @@ docs/PROJECT_STATUS.md
 
 ```text
 docs/workflow/WORKFLOW_ROUTER.md
+docs/workflow/TASK_START_CARD.md
+docs/workflow/FIRST_CLOSED_LOOP.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
 docs/workflow/artifact_policy.md
+docs/workflow/ARTIFACT_REGISTRATION.md
 docs/workflow/result_index_protocol.md
 docs/workflow/experiment_protocol.md
 docs/workflow/quality_gate.md
@@ -59,24 +62,27 @@ idea_tree
 阅读顺序：
 
 1. `WORKFLOW_ROUTER.md`
-2. `GTPJ_WORKFLOW_SPEC.md`
-3. `IMPLEMENTATION_STATUS.md`
-4. `../GITHUB_GOVERNANCE.md`
-5. `../PROJECT_STRUCTURE.md`
-6. `../PROJECT_STATUS.md`
-7. `git_policy.md`
-8. `versioning.md`
-9. `idea_tree_protocol.md`
-10. `module_trial_protocol.md`
-11. `code_interface_contract.md`
-12. `artifact_policy.md`
-13. `result_index_protocol.md`
-14. `experiment_protocol.md`
-15. `quality_gate.md`
-16. `promotion.md`
-17. `agent_contracts.md`
-18. `agent_orchestration.md`
-19. `agents/README.md`
-20. `progress_dashboard.md`
-21. `runbook.md`
-22. `../../workflow/README.md`
+2. `TASK_START_CARD.md`
+3. `FIRST_CLOSED_LOOP.md`
+4. `GTPJ_WORKFLOW_SPEC.md`
+5. `IMPLEMENTATION_STATUS.md`
+6. `../GITHUB_GOVERNANCE.md`
+7. `../PROJECT_STRUCTURE.md`
+8. `../PROJECT_STATUS.md`
+9. `git_policy.md`
+10. `versioning.md`
+11. `idea_tree_protocol.md`
+12. `module_trial_protocol.md`
+13. `code_interface_contract.md`
+14. `artifact_policy.md`
+15. `ARTIFACT_REGISTRATION.md`
+16. `result_index_protocol.md`
+17. `experiment_protocol.md`
+18. `quality_gate.md`
+19. `promotion.md`
+20. `agent_contracts.md`
+21. `agent_orchestration.md`
+22. `agents/README.md`
+23. `progress_dashboard.md`
+24. `runbook.md`
+25. `../../workflow/README.md`

@@ -24,6 +24,8 @@
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
 | Workflow Router | 已落地 | `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，任何 GTPJ 任务先用它判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| Task Start Card | 已落地 | `docs/workflow/TASK_START_CARD.md` | 每次改文件、跑实验或登记结果前填写，记录 Router 分类、写入边界、agents、硬门和阻断条件。 |
+| First Closed Loop | 已落地 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 第一次开跑工作流时使用，先用 readiness check / tune-suggest / confirmation 验证闭环，不直接从复杂 module trial 开始。 |
 | 总工作流规范 | 已落地 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
 | workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |
 | 仓库结构总账本 | 已落地 | `docs/PROJECT_STRUCTURE.md` | 记录稳定目录和文件职责。 |
@@ -31,6 +33,7 @@
 | agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；真正运行时仍由 Codex/OpenClaw 按任务调用。 |
 | 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
 | 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
+| Artifact 登记动作 | 已落地 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 规定 raw artifact 从本地文件到 Warehouse registry、manifest、result 的登记步骤。 |
 | 质量门 | 已落地 | `docs/workflow/quality_gate.md` | 普通实验和 promotion gate 的检查规则。 |
 | promotion | 已落地 | `docs/workflow/promotion.md` | promotion 规则已写；只有实验记录明确 `promotion_decision: promote` 才触发。 |
 | 看板 runtime | 设计中 | `docs/workflow/progress_dashboard.md` | `.gtpj_runtime/` 只在真实运行时创建，纯规划不创建。 |
@@ -127,11 +130,14 @@ D:\backup\Documents\Myself\GTPJ_Manuscript
 GTPJ 任务开始前，优先读取：
 
 1. `docs/workflow/WORKFLOW_ROUTER.md`
-2. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
-3. `docs/workflow/IMPLEMENTATION_STATUS.md`
-4. `docs/workflow/README.md`
-5. 与任务类型相关的具体协议文件
-6. `.gtpj/local_paths.yaml`
-7. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
+2. `docs/workflow/TASK_START_CARD.md`
+3. `docs/workflow/FIRST_CLOSED_LOOP.md`
+4. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
+5. `docs/workflow/IMPLEMENTATION_STATUS.md`
+6. `docs/workflow/README.md`
+7. 与任务类型相关的具体协议文件
+8. `docs/workflow/ARTIFACT_REGISTRATION.md`
+9. `.gtpj/local_paths.yaml`
+10. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
 
 这样不需要 owner 每次口述哪些文件已经落地。
