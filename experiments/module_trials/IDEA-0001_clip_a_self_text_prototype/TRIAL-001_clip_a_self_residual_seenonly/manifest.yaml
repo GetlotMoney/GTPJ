@@ -3,7 +3,7 @@ experiment:
   id: "TRIAL-001"
   name: "TRIAL-001_clip_a_self_residual_seenonly"
   kind: "module-trial"
-  status: "planned"
+  status: "completed"
   attempt_id: "attempt-001"
   created_or_recorded_at: "2026-06-26T08:35:59+00:00"
 version:
@@ -15,8 +15,8 @@ version:
 reproducibility:
   config_file: "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/config.yaml"
   config_sha256: "b2724bfdc8e5a52f9cfb7258a3fdf60a583feaa50c537241480d365470949f66"
-  command: ""
-  seed: ""
+  command: "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/config.yaml"
+  seed: "5"
   dataset: "CUB GZSL"
   split_id: "standard_v1"
   class_order_id: "standard_v1"
@@ -29,15 +29,39 @@ idea:
   hypothesis: "Replacing the v1 MLP seen-text adapter with a sentence-level CLIP-A-self adapter can learn a better aggregation of GPT/VDT descriptions for seen classes, improving GZSL H or ZS without changing class order, seen/unseen split, label mapping, logits shape, or evaluation semantics."
 artifacts:
   train_log:
-    artifact_id: ""
+    artifact_id: "log:v1:module_trial:TRIAL-001:attempt-001"
     role: "training_log"
-    uri: ""
-    sha256: ""
-    size_bytes: ""
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-001/logs/training_log_CUB_2026-06-26_16-42-37.txt"
+    sha256: "2749bb5c45909a996529dccee4a097f75b51153a7bcf861634ce14358df65a31"
+    size_bytes: "91468"
     required_for: "audit"
-    status: "pending"
+    status: "available"
+  best_checkpoint:
+    artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-001:best"
+    role: "best_model"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-001/checkpoints/best_model_CUB_2026-06-26_16-42-37_H7372.pth"
+    sha256: "25e7de0d40cda062e7a6759dff31e0870861cfae35d70c2c96cf0f73691f3af1"
+    size_bytes: "102640233"
+    required_for: "reproduce_best"
+    status: "available"
+  full_checkpoint:
+    artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-001:full"
+    role: "full_checkpoint"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-001/checkpoints/ckpt_full_CUB_2026-06-26_16-42-37.pth"
+    sha256: "b79f15de72f2df21ef1b25122aa3f3659e41efadb523b1fe0642d698537173a2"
+    size_bytes: "206854147"
+    required_for: "debug"
+    status: "available"
+  runner_console:
+    artifact_id: "receipt:v1:module_trial:TRIAL-001:attempt-001:runner_console"
+    role: "runner_console"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-001/receipts/runner_console_conda.log"
+    sha256: "aef124c87f4c6f893da979d5132b4d2ca17f8ab462bf09869c34d6b5f13ab5d4"
+    size_bytes: "174436"
+    required_for: "audit"
+    status: "available"
 quality:
   boundary_audit_required: true
   raw_artifacts_in_git: false
   interface_contract_required: "true"
-  evaluation_semantics_verified: "false"
+  evaluation_semantics_verified: "true"

@@ -3,8 +3,8 @@
 ```text
 runtime:
 quality_check_mode: STRICT
-decision: PRECHECK_PASS
-promotion_decision: not_applicable
+decision: PASS_REVISE
+promotion_decision: rejected
 ```
 
 ## 范围
@@ -24,7 +24,7 @@ promotion_decision: not_applicable
 
 - [x] 代码快照或 base version 明确。
 - [x] 配置副本保存在实验目录。
-- [ ] 外部日志 artifact URI、sha256、size 明确。
+- [x] 外部日志 artifact URI、sha256、size 明确。
 - [x] 结果口径明确。
 - [x] 没有未声明的 eval / class order / logits shape 改动。
 - [x] seen/unseen split、label mapping、class order 和 metric calculation 未改变或已按高风险记录。
@@ -40,7 +40,15 @@ switch_on_logits_200: [2（图片/样本数量）, 200（总类别数量）]
 loss_keys: loss, loss_CE, loss_consist, loss_jepa, loss_jepa_neg, loss_msdn, loss_msdn_gate, loss_topo
 ```
 
-当前结论：训练前接口预检通过，可以进入 Runner；正式实验结果仍需 raw log artifact、manifest/result 和完整 quality evidence。
+当前结论：接口预检通过，Runner 已完成，raw artifacts 已进入 Warehouse，manifest/result 已回写。
+
+## Artifact Check
+
+- [x] `log:v1:module_trial:TRIAL-001:attempt-001` exists in Warehouse registry.
+- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-001:best` exists in Warehouse registry.
+- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-001:full` exists in Warehouse registry.
+- [x] `receipt:v1:module_trial:TRIAL-001:attempt-001:runner_console` exists in Warehouse registry.
+- [x] GitHub only records artifact ids, URIs, sha256, and size.
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
@@ -61,4 +69,6 @@ loss_keys: loss, loss_CE, loss_consist, loss_jepa, loss_jepa_neg, loss_msdn, los
 
 ## 决策
 
-PRECHECK_PASS；等待正式训练。
+PASS_REVISE。
+
+The trial is valid evidence but not a promotion candidate: H=73.72 is below the authoritative v1 baseline H=73.93.

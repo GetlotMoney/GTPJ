@@ -109,3 +109,11 @@ L2SP = prototype drift 风险下的 follow-up ablation / anchoring question
 - `promote`：H 提升且 U/S/ZS 无不可接受退化，artifact、interface、quality evidence 完整。
 - `revise`：有局部提升但存在 prototype drift、unseen 退化或证据不完整。
 - `reject`：H 和 ZS 均无收益，或接口污染导致无法比较。
+
+## Trial 记录
+
+| Trial | U | S | H | ZS | Best epoch | Decision |
+|---|---:|---:|---:|---:|---:|---|
+| `TRIAL-001_clip_a_self_residual_seenonly` | 72.32 | 75.19 | 73.72 | 81.13 | 30 | revise |
+
+结论：TRIAL-001 没有超过权威 v1 baseline `H=73.93`，不进入 promotion。下一步如果继续该 idea，优先分析 prototype drift，再考虑更小 `clip_a_self_outer_ratio` 或 L2SP anchoring follow-up。

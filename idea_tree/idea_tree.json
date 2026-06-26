@@ -55,9 +55,14 @@
           "type": "code",
           "ref": "https://github.com/mayug/VDT-Adapter",
           "note": "Official code contains SelfAttnAdapter and a self_attn branch over per-class GPT/VDT sentence embeddings."
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.yaml",
+          "note": "TRIAL-001 reached H=73.72, below v1 baseline H=73.93; decision=revise, promotion_decision=rejected."
         }
       ],
-      "next_action": "Start TRIAL-001_clip_a_self_residual_seenonly from v1."
+      "next_action": "Analyze TRIAL-001 prototype drift; if continuing, run smaller outer-ratio or L2SP anchoring follow-up instead of promoting TRIAL-001."
     }
   ]
 }
