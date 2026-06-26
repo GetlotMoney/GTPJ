@@ -64,7 +64,7 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
 但必须按照长期角色文件工作。
 
 新边界下，GitHub 只保存轻量 config / manifest / result / version ledger。Runner 写
-Warehouse，Reader / Planner 读 Research，Manuscript 通过 artifact id 引用结果。
+Warehouse，Reader / Planner 读 Research，Result Analyst 通过 artifact id 引用结果。
 任何 agent 都不能把 raw logs、checkpoint、generated figures、完整论文笔记或完整创意树写入 GitHub。
 
 ## 四类实验编排

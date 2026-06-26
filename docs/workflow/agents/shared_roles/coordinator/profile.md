@@ -33,7 +33,7 @@
 ## Forbidden Writes
 
 - raw logs、checkpoint、generated figures。
-- 完整论文笔记、完整创意树、论文草稿资产。
+- 完整论文笔记、完整创意树。
 - 未授权 push、tag、activate-version。
 - 让多个 agents 同时写同一份账本。
 

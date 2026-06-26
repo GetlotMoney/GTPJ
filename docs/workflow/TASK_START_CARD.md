@@ -77,8 +77,6 @@ Owner 不需要提前判断：
 - 登记实验结果、日志、checkpoint 或 generated figures；
 - promotion、set-current-version 或 activate-version。
 
-写论文、投稿图、caption 和论文正文不走本启动卡；它们属于另一套写作工作流。
-
 如果只是普通聊天解释，可以不写完整启动卡；但只要要改文件、跑实验或登记结果，Coordinator 就必须自动写。
 
 ## 2. 最小启动卡

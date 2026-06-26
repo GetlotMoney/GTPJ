@@ -1456,8 +1456,8 @@ def artifact_uri_for_log(
     explicit_uri: str,
 ) -> str:
     if explicit_uri:
-        if not re.fullmatch(r"(warehouse|research|manuscript)://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+", explicit_uri):
-            raise WorkflowError("artifact URI must use warehouse://, research://, or manuscript://")
+        if not re.fullmatch(r"(warehouse|research)://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+", explicit_uri):
+            raise WorkflowError("artifact URI must use warehouse:// or research://")
         return explicit_uri
     source = Path(source_text)
     return default_log_uri(version, kind, exp_id, slug, attempt_id, source.name or "train.log")

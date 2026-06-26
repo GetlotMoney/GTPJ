@@ -1,7 +1,6 @@
 # GTPJ 实验创新工作流总规范
 
 本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
-写论文、投稿图、caption 和论文正文属于另一套写作工作流，不是本实验 workflow 的默认任务。
 
 ## 0. 当前结论
 
@@ -69,8 +68,7 @@ D:\backup\Documents\Myself\GTPJ
 
 D:\backup\Documents\Myself\GTPJ_Research
 D:\backup\Documents\Myself\GTPJ_Warehouse
-D:\backup\Documents\Myself\GTPJ_Manuscript
-  本地外部目录。默认实验 workflow 只使用 Research 和 Warehouse；Manuscript 属于另一套写作工作流。
+  本地外部目录。默认实验 workflow 只使用 Research 和 Warehouse。
 ```
 
 核心原则：
@@ -332,7 +330,6 @@ generated figures
 ```yaml
 warehouse_root: D:/backup/Documents/Myself/GTPJ_Warehouse
 research_root: D:/backup/Documents/Myself/GTPJ_Research
-manuscript_root: D:/backup/Documents/Myself/GTPJ_Manuscript
 ```
 
 ### 3.2 `GTPJ_Research`
@@ -383,8 +380,8 @@ D:\backup\Documents\Myself\GTPJ_Warehouse
 | `runs/` | 每次运行的本地运行目录，可包含 stdout、环境快照和中间文件。 |
 | `logs/` | raw logs。GitHub 只保存日志 artifact 引用。 |
 | `checkpoints/` | checkpoint、best model、临时权重。 |
-| `figures/` | 实验生成图、可视化、失败案例图。投稿图最终版本放 Manuscript。 |
-| `tables/` | 大表格、CSV、Excel、导出统计。GitHub 只放摘要结论。 |
+| `figures/` | 实验可视化输出、训练曲线、失败案例图。 |
+| `tables/` | 实验统计导出、CSV、Excel、指标汇总。GitHub 只放摘要结论。 |
 | `failure_cases/` | 失败样本、错误可视化、诊断材料。 |
 
 Warehouse 的职责：
@@ -392,38 +389,6 @@ Warehouse 的职责：
 - 保存“实验实际产生了什么”的大文件证据。
 - 给 Log Analyst 和 Quality Checker 提供可核对材料。
 - 给 GitHub 的 `manifest.yaml` / `result.yaml` 提供 artifact id、URI、hash、size。
-
-### 3.4 `GTPJ_Manuscript`
-
-`GTPJ_Manuscript` 不是本实验创新 workflow 的默认组成部分。它保留给另一套写作工作流：
-当 owner 明确开始写论文、整理投稿图、caption 或最终表格时再使用。
-
-```text
-D:\backup\Documents\Myself\GTPJ_Manuscript
-|-- README.md
-|-- MANUSCRIPT_ASSET_REGISTRY.yaml
-|-- draft/
-|-- figures/
-|-- tables/
-`-- captions/
-```
-
-| 路径 | 作用 |
-|---|---|
-| `README.md` | 说明 Manuscript 是写作资产目录。 |
-| `MANUSCRIPT_ASSET_REGISTRY.yaml` | 论文图、表、caption、版本来源登记。 |
-| `draft/` | 论文正文草稿、段落版本、投稿版本。 |
-| `figures/` | 投稿图、可编辑图源、最终导出图。 |
-| `tables/` | 论文最终表格和格式化版本。 |
-| `captions/` | 图注、表注和对应实验来源说明。 |
-
-Manuscript 的职责：
-
-- 保存“最后论文怎么呈现”的材料。
-- 每张图、每张表都要能追溯到 GitHub 实验索引和 Warehouse artifact。
-- 不承担模型代码或实验配置事实源。
-
-本实验 workflow 不因为跑实验而自动创建论文稿、投稿图或 caption。
 
 ## 4. Git 分支、tag 和版本规范
 
@@ -886,8 +851,6 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 10. 提升版本
     promotion 通过后创建 vY 配置、账本、tag。
 
-11. 如需写论文
-    进入另一套写作工作流；本实验 workflow 到版本、结果和证据链闭环为止。
 ```
 
 ### 11.2 每一步事实源
@@ -902,7 +865,6 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 | 指标是多少 | GitHub `result.yaml` / `result.md` |
 | 是否可信 | GitHub `quality_check.md` |
 | 是否成为版本 | GitHub `VERSION_TREE.md` + tag |
-| 论文怎么呈现 | 另一套写作工作流，不属于默认实验闭环 |
 
 ## 12. 交付和审查标准
 
@@ -933,7 +895,7 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 你读完后可以逐项确认：
 
 - GitHub 是否只承担轻量控制面，而不是材料仓库。
-- 默认实验 workflow 是否只依赖 Research/Warehouse；Manuscript 是否保持为写作工作流资产区。
+- 默认实验 workflow 是否只依赖 Research/Warehouse。
 - 创意树是否接受“外部完整材料 + GitHub 最小索引”的折中。
 - 实验记账是否足够支撑复现。
 - raw logs 不进 GitHub 是否可接受。

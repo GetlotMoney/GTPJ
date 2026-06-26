@@ -24,8 +24,7 @@
         "generated_figure",
         "table",
         "metrics_export",
-        "paper_note",
-        "manuscript_asset"
+        "paper_note"
       ]
     },
     "uri": {
@@ -61,7 +60,7 @@
             "minLength": 1
           },
           "uri": {
-            "pattern": "^(warehouse|research|manuscript)://"
+            "pattern": "^(warehouse|research)://"
           },
           "sha256": {
             "pattern": "^[a-fA-F0-9]{64}$"

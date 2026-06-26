@@ -14,7 +14,7 @@ Which code, config, command, seed, dataset split, label mapping, class order, an
 Which external artifact is the raw evidence, where is it, and what is its hash?
 ```
 
-GitHub does not store raw logs, checkpoints, generated experiment figures, full paper-reading material, complete idea-tree reasoning, or manuscript assets.
+GitHub does not store raw logs, checkpoints, generated experiment figures, full paper-reading material, or complete idea-tree reasoning.
 
 ## External Stores
 
@@ -25,10 +25,7 @@ GTPJ_Research
   Paper PDFs, reading notes, full idea trees, source reviews, and long-form reasoning.
 
 GTPJ_Warehouse
-  Raw logs, checkpoints, generated figures, tables, failure cases, and run receipts.
-
-GTPJ_Manuscript
-  Manuscript drafts, figure source files, captions, final tables, and writing assets.
+  Raw logs, checkpoints, experiment visualizations, experiment tables, failure cases, and run receipts.
 ```
 
 GitHub references external assets through logical URIs:
@@ -36,7 +33,6 @@ GitHub references external assets through logical URIs:
 ```text
 warehouse://gtpj/runs/v1/tune/TUNE-001_topo008/attempt-001/logs/train.log
 research://ideas/IDEA-0001.md
-manuscript://figures/FIG-004.yaml
 ```
 
 Local physical paths are stored in the ignored local file:

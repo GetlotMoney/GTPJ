@@ -67,7 +67,6 @@ generated figures
 feature cache
 完整论文阅读材料
 完整创意树
-论文草稿和投稿资产
 ```
 
 这些外部资产分别放在：
@@ -75,10 +74,9 @@ feature cache
 ```text
 GTPJ_Research
 GTPJ_Warehouse
-GTPJ_Manuscript
 ```
 
-GitHub 使用 `warehouse://`、`research://`、`manuscript://` URI 和 sha256/size 引用它们。
+GitHub 使用 `warehouse://`、`research://` URI 和 sha256/size 引用它们。
 本地真实路径只写入 ignored 的 `.gtpj/local_paths.yaml`。
 
 ## 当前阶段不强制什么

@@ -81,53 +81,33 @@ D:\backup\Documents\Myself\GTPJ_Warehouse
 
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
-| Warehouse 顶层说明 | 已落地 | `README.md` | 说明 raw logs、checkpoint、generated figures、tables、failure cases 不进 GitHub。 |
+| Warehouse 顶层说明 | 已落地 | `README.md` | 说明 raw logs、checkpoint、experiment visualizations、experiment tables、failure cases 不进 GitHub。 |
 | artifact 注册表 | 已落地 | `ARTIFACT_REGISTRY.yaml` | 已登记迁出的 v1 baseline log。 |
 | raw logs 目录 | 已落地 | `logs/` | 真实实验日志写这里。 |
 | checkpoint 目录 | 已落地 | `checkpoints/` | 权重和 checkpoint 写这里。 |
-| figures 目录 | 已落地 | `figures/` | 实验生成图写这里；投稿最终图放 Manuscript。 |
-| tables 目录 | 已落地 | `tables/` | 大表格和导出统计写这里。 |
+| figures 目录 | 已落地 | `figures/` | 实验可视化输出写这里。 |
+| tables 目录 | 已落地 | `tables/` | 实验统计导出写这里。 |
 | failure cases 目录 | 已落地 | `failure_cases/` | 失败样本和诊断材料写这里。 |
 | run 细分目录 | 按需创建 | `runs/<run_id>/` | 只有真实实验运行时创建。 |
 
-## 5. 本地 Manuscript
-
-状态：非默认。`GTPJ_Manuscript` 属于另一套写作工作流，不是当前实验创新 workflow 的默认读写目标。
-
-根目录：
-
-```text
-D:\backup\Documents\Myself\GTPJ_Manuscript
-```
-
-| 模块 | 状态 | 已有文件 | 说明 |
-|---|---|---|---|
-| Manuscript 顶层说明 | 已落地 / 非默认 | `README.md` | 说明论文正文、图、表、caption 的写作资产边界；实验 workflow 默认不使用。 |
-| 写作资产注册表 | 已落地 | `MANUSCRIPT_ASSET_REGISTRY.yaml` | 当前为空，等产生论文图表后填写。 |
-| draft 目录 | 已落地 | `draft/` | 论文正文草稿。 |
-| figures 目录 | 已落地 | `figures/` | 投稿图、可编辑图源和最终导出图。 |
-| tables 目录 | 已落地 | `tables/` | 论文最终表格。 |
-| captions 目录 | 已落地 | `captions/` | 图注和表注。 |
-| 具体论文稿件 | 按需创建 | `draft/*.md` 或其他写作文件 | 进入写作阶段后创建，不提前制造空稿。 |
-
-## 6. 本地路径映射
+## 5. 本地路径映射
 
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
 | 示例路径配置 | 已落地 | `.gtpj/local_paths.example.yaml` | 可提交的示例。 |
 | 本机路径配置 | 已落地 | `.gtpj/local_paths.yaml` | 本机真实路径，不应提交。 |
 
-## 7. 不应该创建的文件
+## 6. 不应该创建的文件
 
 | 文件类型 | 状态 | 原因 |
 |---|---|---|
 | GitHub 内 raw logs | 不创建 | raw logs 属于 Warehouse。 |
 | GitHub 内 checkpoint | 不创建 | checkpoint 属于 Warehouse。 |
-| GitHub 内 generated figures | 不创建 | 实验生成图属于 Warehouse，投稿图属于 Manuscript。 |
+| GitHub 内 generated figures | 不创建 | 实验生成图属于 Warehouse。 |
 | 未产生正式版本的 `vX.md` | 不提前创建 | 避免把未来版本误认为真实状态。 |
 | 空的实验 run 目录 | 不提前创建 | run 目录必须对应真实运行。 |
 
-## 8. 下次任务前的读取顺序
+## 7. 下次任务前的读取顺序
 
 GTPJ 任务开始前，优先读取：
 
@@ -140,6 +120,6 @@ GTPJ 任务开始前，优先读取：
 7. 与任务类型相关的具体协议文件
 8. `docs/workflow/ARTIFACT_REGISTRATION.md`
 9. `.gtpj/local_paths.yaml`
-10. 需要时再读本地 Research/Warehouse 对应 README；Manuscript 只在进入写作工作流时读取
+10. 需要时再读本地 Research/Warehouse 对应 README
 
 这样不需要 owner 每次口述哪些文件已经落地。

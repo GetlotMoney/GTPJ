@@ -29,8 +29,7 @@ GTPJ 仓库分成三层：
 
 ```text
 GTPJ_Research：论文、完整阅读笔记、完整创意树和来源复核。
-GTPJ_Warehouse：raw logs、checkpoint、generated figures、tables、failure cases。
-GTPJ_Manuscript：论文正文、图注、投稿图、最终表格和写作材料；属于另一套写作工作流，实验创新 workflow 默认不使用。
+GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment tables、failure cases。
 ```
 
 核心关系：
@@ -109,7 +108,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 ## `docs/workflow/`
 
-实验创新 workflow 目录。默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账；写论文属于另一套 workflow。
+实验创新 workflow 目录。默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
 
 | 路径 | 用途 |
 |---|---|
@@ -125,7 +124,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
-| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse/Manuscript 外部资产职责。 |
+| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
 | `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
 | `docs/workflow/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
