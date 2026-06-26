@@ -4,6 +4,17 @@
 
 核心原则：创意全局共用一个总库，但选择清单必须按 baseline 版本分开。
 
+总判断规则见 `docs/workflow/WORKFLOW_ROUTER.md`。最重要的是：
+
+```text
+实验是为了调/查/验证已有东西 -> experiments，不进 idea_tree。
+实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+```
+
+因此，tune、ablation、confirmation、debug 不会因为有“想法”就自动进入
+`idea_tree/`；只有可复用的新模块、新机制、新方法，或可能成为新 baseline 的设计，
+才进入创意树。
+
 ```text
 同一个 idea
   global_score              长期价值

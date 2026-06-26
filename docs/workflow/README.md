@@ -12,6 +12,7 @@ docs/PROJECT_STATUS.md
 当前强制 workflow 文档：
 
 ```text
+docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
 docs/workflow/artifact_policy.md
@@ -57,24 +58,25 @@ idea_tree
 
 阅读顺序：
 
-1. `GTPJ_WORKFLOW_SPEC.md`
-2. `IMPLEMENTATION_STATUS.md`
-3. `../GITHUB_GOVERNANCE.md`
-4. `../PROJECT_STRUCTURE.md`
-5. `../PROJECT_STATUS.md`
-6. `git_policy.md`
-7. `versioning.md`
-8. `idea_tree_protocol.md`
-9. `module_trial_protocol.md`
-10. `code_interface_contract.md`
-11. `artifact_policy.md`
-12. `result_index_protocol.md`
-13. `experiment_protocol.md`
-14. `quality_gate.md`
-15. `promotion.md`
-16. `agent_contracts.md`
-17. `agent_orchestration.md`
-18. `agents/README.md`
-19. `progress_dashboard.md`
-20. `runbook.md`
-21. `../../workflow/README.md`
+1. `WORKFLOW_ROUTER.md`
+2. `GTPJ_WORKFLOW_SPEC.md`
+3. `IMPLEMENTATION_STATUS.md`
+4. `../GITHUB_GOVERNANCE.md`
+5. `../PROJECT_STRUCTURE.md`
+6. `../PROJECT_STATUS.md`
+7. `git_policy.md`
+8. `versioning.md`
+9. `idea_tree_protocol.md`
+10. `module_trial_protocol.md`
+11. `code_interface_contract.md`
+12. `artifact_policy.md`
+13. `result_index_protocol.md`
+14. `experiment_protocol.md`
+15. `quality_gate.md`
+16. `promotion.md`
+17. `agent_contracts.md`
+18. `agent_orchestration.md`
+19. `agents/README.md`
+20. `progress_dashboard.md`
+21. `runbook.md`
+22. `../../workflow/README.md`

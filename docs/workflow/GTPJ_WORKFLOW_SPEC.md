@@ -25,6 +25,19 @@
 docs/workflow/IMPLEMENTATION_STATUS.md
 ```
 
+任务类型不要靠临场推理。每次 GTPJ 任务开始前，先读取总教官/总路由文件：
+
+```text
+docs/workflow/WORKFLOW_ROUTER.md
+```
+
+核心判断：
+
+```text
+实验是为了调/查/验证已有东西 -> experiments，不进 idea_tree。
+实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+```
+
 ## 1. 总体设计
 
 GTPJ 论文研发系统分成两部分：
@@ -118,6 +131,7 @@ D:\backup\Documents\Myself\GTPJ
 | 路径 | 作用 |
 |---|---|
 | `docs/workflow/README.md` | workflow 文档入口和推荐阅读顺序。 |
+| `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照和命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序。 |

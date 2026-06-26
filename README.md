@@ -93,6 +93,21 @@ OpenClaw 是未来实验运行的优先 runtime。Codex 需要兼容同一套仓
 但在正式接入前，本仓库先保证 GitHub 治理干净：版本能回滚、实验能追溯、
 创意有来源、代码快照和结果不混淆。
 
+## 默认实验环境
+
+本机 GTPJ 实验默认使用 conda 环境 `dvsr_gpu`。运行训练、特征抽取或验证脚本前，
+先激活该环境：
+
+```bash
+conda activate dvsr_gpu
+```
+
+或者直接使用：
+
+```bash
+conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v1.yaml
+```
+
 优先阅读：
 
 - `NEXT_ACTIONS.md`

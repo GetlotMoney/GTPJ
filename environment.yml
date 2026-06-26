@@ -1,4 +1,4 @@
-name: gtpj
+name: dvsr_gpu
 channels:
   - pytorch
   - nvidia

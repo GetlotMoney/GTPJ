@@ -6,11 +6,11 @@
       模拟数据增强但仍走缓存模式（训练时随机抽 1 个视角）
 
 用法:
-    F:\Anaconda\envs\dassl_clip\python.exe tools/extract_features.py [num_views]
+    conda run -n dvsr_gpu python tools/extract_features.py [num_views]
 
     示例:
-      python tools/extract_features.py        # 默认单视角
-      python tools/extract_features.py 4      # 4 视角增强缓存
+      conda run -n dvsr_gpu python tools/extract_features.py        # 默认单视角
+      conda run -n dvsr_gpu python tools/extract_features.py 4      # 4 视角增强缓存
 
 输出文件:
     单视角:

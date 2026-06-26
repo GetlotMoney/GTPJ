@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -179,7 +179,7 @@ def sha256_file(path: Path) -> str:
 
 
 def utc_now() -> str:
-    return datetime.now(UTC).replace(microsecond=0).isoformat()
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def rel(path: Path) -> str:
@@ -1607,7 +1607,7 @@ def cmd_runner_lock(args: argparse.Namespace) -> int:
         "run_id": args.run_id,
         "experiment_id": args.experiment_id,
         "branch": branch,
-        "locked_at": datetime.now(UTC).isoformat(),
+        "locked_at": datetime.now(timezone.utc).isoformat(),
     }
     lock_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("gpu-runner-locked")

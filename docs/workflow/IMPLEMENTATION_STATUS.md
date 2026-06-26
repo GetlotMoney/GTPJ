@@ -23,6 +23,7 @@
 
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
+| Workflow Router | 已落地 | `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，任何 GTPJ 任务先用它判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | 总工作流规范 | 已落地 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
 | workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |
 | 仓库结构总账本 | 已落地 | `docs/PROJECT_STRUCTURE.md` | 记录稳定目录和文件职责。 |
@@ -125,11 +126,12 @@ D:\backup\Documents\Myself\GTPJ_Manuscript
 
 GTPJ 任务开始前，优先读取：
 
-1. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
-2. `docs/workflow/IMPLEMENTATION_STATUS.md`
-3. `docs/workflow/README.md`
-4. 与任务类型相关的具体协议文件
-5. `.gtpj/local_paths.yaml`
-6. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
+1. `docs/workflow/WORKFLOW_ROUTER.md`
+2. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
+3. `docs/workflow/IMPLEMENTATION_STATUS.md`
+4. `docs/workflow/README.md`
+5. 与任务类型相关的具体协议文件
+6. `.gtpj/local_paths.yaml`
+7. 需要时再读本地 Research/Warehouse/Manuscript 对应 README
 
 这样不需要 owner 每次口述哪些文件已经落地。

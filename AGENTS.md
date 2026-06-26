@@ -47,6 +47,7 @@
 
 ## 实验规则
 
+- GTPJ 实验默认使用本机 conda 环境 `dvsr_gpu`；运行训练、特征抽取、验证脚本前先激活该环境，或使用 `conda run -n dvsr_gpu ...`。
 - OpenClaw 是优先 runtime；Codex 兼容，但必须遵循同一套文件。
 - 每个新模块 trial 都必须从 `idea_tree` 节点开始。
 - 没有 `idea_id`，就没有 `dev/idea-*` 分支。
