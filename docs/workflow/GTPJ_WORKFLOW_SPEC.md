@@ -149,6 +149,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 治理主规范，说明 branch、tag、版本树、配置快照、实验索引和合并边界。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存和大文件不入 GitHub 的说明。 |
 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | 本文件，供 owner 审阅的完整工作流总规范。 |
+| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、Mermaid 权威格式和更新时机。 |
 
 ### 2.5 工作流规范层 `docs/workflow/`
 
@@ -322,6 +323,7 @@ trial 还要包含：
 ```text
 implementation.md
 code.diff
+Trial Flow in README.md or flow.md
 ```
 
 实验目录不允许包含：
@@ -1061,6 +1063,7 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 - GitHub 中有 `manifest.yaml`，且 artifact 可追踪。
 - GitHub 中有 `result.yaml` 和 `result.md`。
 - GitHub 中有 `quality_check.md`。
+- 如果是正式版本或 module trial，GitHub 中有对应流程图。
 - 外部 Warehouse 中有 raw log 或其他必要证据。
 - 评估标注、split、class order、metric semantics 明确。
 - 结论中写明可比或不可比。

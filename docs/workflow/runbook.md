@@ -144,6 +144,26 @@ GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
 
 聊天上下文和 Codex 全局 memory 只能帮助定位，不能当实验事实。能进入正式结论的内容，必须回到当前仓库文件、训练日志或 Warehouse artifact 里验证。
 
+### 流程图补齐规则
+
+如果 owner 追问“流程到底是什么”或“每个版本有没有流程图”，先检查：
+
+```text
+docs/workflow/workflow_diagrams.md
+experiments/vX/VERSION.md 的 ## Version Flow
+module trial README.md 的 ## Trial Flow
+```
+
+要求：
+
+```text
+1. 正式版本必须有 Version Flow。
+2. 新 module trial 必须有 Trial Flow。
+3. 图用 Mermaid 写在 Markdown 中，作为 GitHub 权威流程图。
+4. PNG/HTML/截图不是权威流程图；除非是小型稳定文档资产，否则放 Warehouse。
+5. 图和账本冲突时，先以 manifest/result/VERSION_TREE/tag 为准修账本，再修图。
+```
+
 ### 后处理最小闭环
 
 真实训练完成后，除非只是 debug/smoke，否则按顺序做：

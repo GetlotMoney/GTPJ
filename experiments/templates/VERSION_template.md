@@ -33,6 +33,16 @@ children:
 notes:
 ```
 
+## Version Flow
+
+```mermaid
+flowchart TD
+  Parent["parent_version / parent_tag"] --> Trial["based_on_trial or baseline source"]
+  Trial --> Evidence["manifest / result / quality_check"]
+  Evidence --> Version["code_tag"]
+  Version --> Status["evidence_level / confirmation_status"]
+```
+
 ## 允许的实验类型
 
 - tune

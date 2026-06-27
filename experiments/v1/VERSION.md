@@ -49,6 +49,17 @@ children: none yet
 notes: v1 是当前版本树根节点。
 ```
 
+## Version Flow
+
+```mermaid
+flowchart TD
+  Initial["initial code/config"] --> V1["GTPJ-v1 tag v1"]
+  V1 --> Baseline["experiments/v1/baseline"]
+  Baseline --> Result["CUB seed=5 H=73.93"]
+  Result --> Status["status: confirmed"]
+  V1 --> Future["version-level tune / ablation / confirmation"]
+```
+
 ## 允许的实验类型
 
 - `tune/`

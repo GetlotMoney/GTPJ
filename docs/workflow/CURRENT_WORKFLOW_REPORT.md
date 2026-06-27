@@ -477,6 +477,7 @@ docs/workflow/WORKFLOW_ROUTER.md           # 总教官
 docs/workflow/TASK_START_CARD.md           # 启动卡
 docs/workflow/GTPJ_WORKFLOW_SPEC.md        # 总规范
 docs/workflow/IMPLEMENTATION_STATUS.md     # 落地状态
+docs/workflow/workflow_diagrams.md         # 流程图标准
 docs/PROJECT_STRUCTURE.md                  # 项目结构总账本
 docs/GITHUB_GOVERNANCE.md                  # GitHub 治理规范
 ```

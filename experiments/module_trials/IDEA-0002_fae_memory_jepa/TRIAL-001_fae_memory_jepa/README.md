@@ -52,6 +52,22 @@ agent_summary: agent_summary.md
 |---|---:|---:|---:|---:|---:|---:|---|
 | CUB | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` |
 
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea["IDEA-0002: FAE-memory JEPA"] --> R0["Review 0: idea/source intent"]
+  R0 --> R1["Review 1: design/interface"]
+  R1 --> Impl["Implement jepa_context_mode: fae_memory"]
+  Impl --> R2["Review 2: code diff pre-run"]
+  R2 --> Freeze["pre-run freeze commit 5ca8245"]
+  Freeze --> Run["ATTEMPT-001 training"]
+  Run --> Warehouse["Warehouse log/checkpoints/receipt"]
+  Warehouse --> Attempt["attempt-local manifest/result/quality"]
+  Attempt --> R3["Review 3: post-run evidence"]
+  R3 --> Decision["trial_decision: revise"]
+```
+
 ## Innovation Code Review
 
 ```text

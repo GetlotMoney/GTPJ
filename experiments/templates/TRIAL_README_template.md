@@ -52,6 +52,22 @@ confirmation_status:
 
 Detailed attempt records live in `ATTEMPTS.md`. Reproducibility evidence for each attempt should live in `attempts/ATTEMPT-xxx/`, unless this is a legacy single-attempt trial.
 
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea["IDEA-xxxx"] --> Review0["Review 0: idea/source intent"]
+  Review0 --> Review1["Review 1: design/interface"]
+  Review1 --> Impl["implementation"]
+  Impl --> Review2["Review 2: code diff pre-run"]
+  Review2 --> Freeze["pre-run freeze commit"]
+  Freeze --> Runner["Runner"]
+  Runner --> Warehouse["Warehouse artifacts"]
+  Warehouse --> Attempt["attempt-local manifest/result/quality"]
+  Attempt --> Review3["Review 3: post-run evidence"]
+  Review3 --> Decision["trial_decision / promotion_decision"]
+```
+
 ## Innovation Code Review
 
 ```text

@@ -92,6 +92,18 @@ children: none yet
 notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline；证据状态为 owner_activated_unconfirmed。
 ```
 
+## Version Flow
+
+```mermaid
+flowchart TD
+  V1["GTPJ-v1 tag v1"] --> Trial["IDEA-0001 / TRIAL-001"]
+  Trial --> Attempt["ATTEMPT-019 H=74.29"]
+  Attempt --> V2["GTPJ-v2 tag v2"]
+  V2 --> Active["owner active mainline"]
+  V2 --> Evidence["evidence_level: valid_single_run"]
+  Evidence --> Confirm["confirmation_status: needs_confirmation"]
+```
+
 ## 允许的实验类型
 
 - `tune/`

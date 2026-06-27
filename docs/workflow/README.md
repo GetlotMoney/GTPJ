@@ -26,6 +26,7 @@ docs/workflow/FIRST_CLOSED_LOOP.md
 docs/workflow/CURRENT_WORKFLOW_REPORT.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
+docs/workflow/workflow_diagrams.md
 docs/workflow/paper_intake.md
 docs/workflow/artifact_policy.md
 docs/workflow/ARTIFACT_REGISTRATION.md
@@ -92,27 +93,28 @@ runtime 规则：
 4. `CURRENT_WORKFLOW_REPORT.md`
 5. `GTPJ_WORKFLOW_SPEC.md`
 6. `IMPLEMENTATION_STATUS.md`
-7. `../GITHUB_GOVERNANCE.md`
-8. `../PROJECT_STRUCTURE.md`
-9. `../PROJECT_STATUS.md`
-10. `git_policy.md`
-11. `versioning.md`
-12. `idea_tree_protocol.md`
-13. `paper_intake.md`
-14. `module_trial_protocol.md`
-15. `code_interface_contract.md`
-16. `innovation_code_review_protocol.md`
-17. `artifact_policy.md`
-18. `ARTIFACT_REGISTRATION.md`
-19. `result_index_protocol.md`
-20. `experiment_protocol.md`
-21. `quality_gate.md`
-22. `promotion.md`
-23. `agent_contracts.md`
-24. `agent_report_policy.md`
-25. `agent_orchestration.md`
-26. `agents/README.md`
-27. `agents/long_term_memory.md`
-28. `progress_dashboard.md`
-29. `runbook.md`
-30. `../../workflow/README.md`
+7. `workflow_diagrams.md`
+8. `../GITHUB_GOVERNANCE.md`
+9. `../PROJECT_STRUCTURE.md`
+10. `../PROJECT_STATUS.md`
+11. `git_policy.md`
+12. `versioning.md`
+13. `idea_tree_protocol.md`
+14. `paper_intake.md`
+15. `module_trial_protocol.md`
+16. `code_interface_contract.md`
+17. `innovation_code_review_protocol.md`
+18. `artifact_policy.md`
+19. `ARTIFACT_REGISTRATION.md`
+20. `result_index_protocol.md`
+21. `experiment_protocol.md`
+22. `quality_gate.md`
+23. `promotion.md`
+24. `agent_contracts.md`
+25. `agent_report_policy.md`
+26. `agent_orchestration.md`
+27. `agents/README.md`
+28. `agents/long_term_memory.md`
+29. `progress_dashboard.md`
+30. `runbook.md`
+31. `../../workflow/README.md`

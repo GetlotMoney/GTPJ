@@ -69,6 +69,30 @@ inherits_code_from: v1
 does_not_inherit: v2
 ```
 
+## 版本流程图
+
+每个正式版本的 `experiments/vX/VERSION.md` 必须包含：
+
+```text
+## Version Flow
+```
+
+图用 Markdown + Mermaid 作为 GitHub 权威版本，至少画清：
+
+- 父版本和父 tag；
+- 来源 trial / attempt；
+- 当前版本 tag；
+- evidence level；
+- confirmation status；
+- 是否是 owner active mainline。
+
+复杂图可以单独放到 `experiments/vX/flow.md`，但 `VERSION.md` 必须保留摘要图或链接。
+通用要求见：
+
+```text
+docs/workflow/workflow_diagrams.md
+```
+
 `parent_version` 表示代码父节点，不表示实验记录父节点。
 
 实验记录是全局账本。`experiments/v2/` 保留在最新 `main` 中，
