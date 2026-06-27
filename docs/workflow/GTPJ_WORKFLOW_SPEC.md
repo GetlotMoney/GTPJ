@@ -159,6 +159,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照和命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序。 |
+| `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录、分支、tag、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新模块输入输出、shape、loss、eval、开关和最低验证。 |
 | `docs/workflow/code_interface.md` | 代码接口补充说明，用于承接更具体的接口约束。 |

@@ -115,6 +115,9 @@ GTPJ_Research/
 只有抽出的机制足够稳定、来源状态明确、并且能映射到 GTPJ 接口时，才在 GitHub
 `idea_tree/` 中创建轻量 idea 索引。
 
+论文投递、阅读状态、`PAPERS_INDEX.md` 登记和 `_inbox/` 处理细则见
+`docs/workflow/paper_intake.md`。`idea_tree/` 只接收 paper intake 之后的轻量来源和成熟 idea。
+
 ```text
 同一个 idea
   global_score              长期价值

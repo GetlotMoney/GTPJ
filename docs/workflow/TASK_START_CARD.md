@@ -274,10 +274,15 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 必须记录：
 
 - paper id 或 source id；
+- `_inbox` 输入文件；
+- `PAPERS_INDEX.md` 当前状态和目标状态；
 - Research 写入位置；
+- 论文是否包含官方 GitHub / code URL；
+- 若包含，`official_code_url`、`official_code_path`、clone commit、是否排除了数据/权重；
 - 是否只进 inbox；
 - 是否已经 source review；
 - 何时允许升级成正式 `IDEA-xxxx`。
+- 是否同步 GitHub `idea_tree/sources/`、`idea_tree/inbox.md` 或正式 `IDEA.md`。
 
 ### Tune
 

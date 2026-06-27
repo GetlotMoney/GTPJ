@@ -130,6 +130,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
+| `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |

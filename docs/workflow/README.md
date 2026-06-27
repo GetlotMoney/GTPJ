@@ -26,6 +26,7 @@ docs/workflow/FIRST_CLOSED_LOOP.md
 docs/workflow/CURRENT_WORKFLOW_REPORT.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
+docs/workflow/paper_intake.md
 docs/workflow/artifact_policy.md
 docs/workflow/ARTIFACT_REGISTRATION.md
 docs/workflow/result_index_protocol.md
@@ -95,18 +96,19 @@ runtime 规则：
 10. `git_policy.md`
 11. `versioning.md`
 12. `idea_tree_protocol.md`
-13. `module_trial_protocol.md`
-14. `code_interface_contract.md`
-15. `artifact_policy.md`
-16. `ARTIFACT_REGISTRATION.md`
-17. `result_index_protocol.md`
-18. `experiment_protocol.md`
-19. `quality_gate.md`
-20. `promotion.md`
-21. `agent_contracts.md`
-22. `agent_report_policy.md`
-23. `agent_orchestration.md`
-24. `agents/README.md`
-25. `progress_dashboard.md`
-26. `runbook.md`
-27. `../../workflow/README.md`
+13. `paper_intake.md`
+14. `module_trial_protocol.md`
+15. `code_interface_contract.md`
+16. `artifact_policy.md`
+17. `ARTIFACT_REGISTRATION.md`
+18. `result_index_protocol.md`
+19. `experiment_protocol.md`
+20. `quality_gate.md`
+21. `promotion.md`
+22. `agent_contracts.md`
+23. `agent_report_policy.md`
+24. `agent_orchestration.md`
+25. `agents/README.md`
+26. `progress_dashboard.md`
+27. `runbook.md`
+28. `../../workflow/README.md`

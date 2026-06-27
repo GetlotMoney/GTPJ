@@ -452,6 +452,7 @@ GitHub 远端应设置保护规则：
 | 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
 | 版本树账本 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变父节点关系或主版本时更新。 |
 | 创意树细则 | `docs/workflow/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
+| 论文 intake / idea discovery | `docs/workflow/paper_intake.md` | 改论文投递、阅读状态、来源复核、候选 idea 提取或 GitHub 轻量创意同步流程时更新。 |
 | 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |
 | 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |
 | 代码接口契约 | `docs/workflow/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
