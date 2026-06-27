@@ -1,0 +1,68 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_clip_a_self_residual_seenonly"
+  kind: "module-trial"
+  status: "completed"
+  attempt_id: "attempt-016"
+  created_or_recorded_at: "2026-06-27T00:25:10+00:00"
+version:
+  base_version: "v1"
+  base_code_tag: "v1"
+  code_branch: "dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly"
+  code_commit: "453acc0"
+  git_dirty: "true"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-016/config.yaml"
+  config_sha256: "743f095dc16bf1ddb75302cdddd7588b7a220a7711917f27fa9a876578d8d9dd"
+  pre_run_freeze_commit: "453acc0"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-016/config.yaml"
+  seed: "5"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: "IDEA-0001"
+  uri: "research://ideas/IDEA-0001.md"
+  title: "CLIP-A-self text prototype adapter"
+  hypothesis: ""
+artifacts:
+  train_log:
+    artifact_id: "log:v1:module_trial:TRIAL-001:attempt-016"
+    role: "training_log"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-016/logs/training_log_CUB_2026-06-27_01-03-03.txt"
+    sha256: "54f45c905f8616c9e285038df0496c6f20d31287040c3de99923b820aade296e"
+    size_bytes: "92057"
+    required_for: "audit"
+    status: "available"
+  best_checkpoint:
+    artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-016:best"
+    role: "best_model"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-016/checkpoints/best_model_CUB_2026-06-27_01-03-03_H7385.pth"
+    sha256: "d8190ba89b75d23b0e984ff968d69ef7b2a4d76a0b2d75acfc17b8168e6ada20"
+    size_bytes: "102640233"
+    required_for: "reproduce_best"
+    status: "available"
+  full_checkpoint:
+    artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-016:full"
+    role: "full_checkpoint"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-016/checkpoints/ckpt_full_CUB_2026-06-27_01-03-03.pth"
+    sha256: "680ee7964b8929f31617dd45052d3e50e48143bfea1c52631546dd313e3d2f10"
+    size_bytes: "206854147"
+    required_for: "debug"
+    status: "available"
+  runner_console:
+    artifact_id: "receipt:v1:module_trial:TRIAL-001:attempt-016:runner_console"
+    role: "runner_console"
+    uri: "warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-016/receipts/stdout_ATTEMPT-016.log"
+    sha256: "0a7f22b93b4d35c20b9b62c9152ee21746accd2d55231ece9c584c9a94e9c490"
+    size_bytes: "175054"
+    required_for: "audit"
+    status: "available"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "true"

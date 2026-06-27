@@ -11,67 +11,42 @@ promotion_decision: blocked
 
 - Code layer: `train_GTPJ_CUB.py`, `model/MyModel.py`
 - Trial ledger: `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/`
-- Parameter sweep: ATTEMPT-002 to ATTEMPT-006 under the same TRIAL-001 implementation line
-- Clean confirmation: ATTEMPT-007 and ATTEMPT-008 rerun ATTEMPT-003 config from clean pre-run freeze commits
+- Current recorded sweep: `ATTEMPT-009` through `ATTEMPT-020`
+- Failed startup: `ATTEMPT-021`, not valid result evidence
 
 ## Findings
 
-- Interface semantics remain unchanged across all five attempts.
-- ATTEMPT-003 is the best setting: `H=74.27`, `U=71.76`, `S=76.97`, `ZS=81.72`.
-- ATTEMPT-007 clean confirmation reached `H=73.69`, `U=70.82`, `S=76.80`, `ZS=80.91`; it does not confirm ATTEMPT-003.
-- ATTEMPT-008 clean confirmation reached `H=73.88`, `U=71.36`, `S=76.58`, `ZS=81.22`; it also does not confirm ATTEMPT-003.
-- The sweep itself ran on a dirty worktree because attempt-local configs and ledger rows were added before execution.
-- ATTEMPT-007 and ATTEMPT-008 both started from clean pre-run freeze commits, so their negative confirmations are valid revise evidence.
-- No code-path change occurred after the original TRIAL-001 implementation snapshot.
-- A real read-only Quality Checker subagent (`019f047d-13f1-7b81-820e-ef7fc34fcfc7`, Banach) independently found no evidence of config, training-code, resume/checkpoint, or artifact pollution between ATTEMPT-003 and ATTEMPT-007.
-
-## Quality Check
-
-- [x] Code snapshot and base version are explicit.
-- [x] Attempt-local configs are saved in the trial directory.
-- [x] External log and checkpoint artifacts are registered in Warehouse.
-- [x] Result semantics are explicit and unchanged.
-- [x] No new raw logs, checkpoints, or generated figures are tracked in Git.
-
-## Interface Precheck
-
-```text
-shape_probe_ok
-switch_off_max_abs_diff: 0.0
-switch_on_logits: [2, 150]
-switch_on_logits_200: [2, 200]
-loss_keys: loss, loss_CE, loss_consist, loss_jepa, loss_jepa_neg, loss_msdn, loss_msdn_gate, loss_topo
-```
+- `ATTEMPT-019` is the current formal best setting: `H=74.29`, `U=71.32`, `S=77.52`, `ZS=81.59`.
+- The result improves over the authoritative v1 baseline by `+0.36 H`.
+- The U/S gap is large: `S - U = 6.20`, so the result is seen-heavy.
+- `ATTEMPT-019` started from a clean run commit (`453acc0`) and has complete artifact registration.
+- No code-path change occurred during `ATTEMPT-009` through `ATTEMPT-020`; these are trial-internal parameter attempts.
+- `ATTEMPT-021` failed before epochs began. It is documented in `docs/workflow/EXPERIMENT_ISSUES.md` and is excluded from result evidence.
 
 ## Artifact Check
 
-- [x] `log:v1:module_trial:TRIAL-001:attempt-003` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-003:best` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-003:full` exists in Warehouse.
-- [x] `receipt:v1:module_trial:TRIAL-001:attempt-003:runner_console` exists in Warehouse.
-- [x] `log:v1:module_trial:TRIAL-001:attempt-007` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-007:best` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-007:full` exists in Warehouse.
-- [x] `receipt:v1:module_trial:TRIAL-001:attempt-007:runner_console` exists in Warehouse.
-- [x] `log:v1:module_trial:TRIAL-001:attempt-008` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-008:best` exists in Warehouse.
-- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-008:full` exists in Warehouse.
-- [x] `receipt:v1:module_trial:TRIAL-001:attempt-008:runner_console` exists in Warehouse.
+- [x] `log:v1:module_trial:TRIAL-001:attempt-019` exists in Warehouse.
+- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-019:best` exists in Warehouse.
+- [x] `checkpoint:v1:module_trial:TRIAL-001:attempt-019:full` exists in Warehouse.
+- [x] `receipt:v1:module_trial:TRIAL-001:attempt-019:runner_console` exists in Warehouse.
 - [x] GitHub only records artifact ids, URIs, sha256, and size.
+- [x] No raw logs, checkpoints, generated figures, or feature caches are tracked in Git.
 
 ## Promotion Gate
 
 - [x] parent_version / parent_tag remain `v1`.
-- [x] baseline H, best-attempt H, and delta H are explicit.
+- [x] baseline H, current best H, and delta H are explicit.
 - [x] U/S/ZS, best epoch, and seed are explicit.
-- [x] trial config path for the best setting is explicit.
+- [x] current best config path is explicit.
 - [x] class order, seen/unseen split, logits shape, and metric calculation are unchanged.
-- [x] clean confirmation of the best setting has been completed as ATTEMPT-007 and ATTEMPT-008.
-- [ ] clean confirmations did not reproduce ATTEMPT-003; promotion remains blocked.
+- [x] artifact boundary is complete for the current best attempt.
+- [ ] `ATTEMPT-019` has not yet been clean-confirmed.
+- [ ] seen-heavy behavior needs analysis before any promotion claim.
 - [ ] promotion review has not upgraded `trial_decision` to `promote`.
 
 ## Decision
 
 PASS_REVISE.
 
-The sweep produced a higher observed setting, but ATTEMPT-007 and ATTEMPT-008 clean confirmations did not reproduce it. Promotion remains blocked, and TRIAL-001 should stay in revise.
+`ATTEMPT-019` is accepted as the current formal best experiment record for TRIAL-001, but promotion
+remains blocked pending clean confirmation and seen-bias analysis.

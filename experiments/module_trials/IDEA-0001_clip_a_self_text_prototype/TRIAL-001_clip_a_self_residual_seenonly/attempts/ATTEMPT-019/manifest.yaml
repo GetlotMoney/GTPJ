@@ -3,16 +3,15 @@ experiment:
   id: "TRIAL-001"
   name: "TRIAL-001_clip_a_self_residual_seenonly"
   kind: "module-trial"
-  status: "formal_best_recorded"
+  status: "completed"
   attempt_id: "attempt-019"
-  created_or_recorded_at: "2026-06-27T08:34:00+08:00"
+  created_or_recorded_at: "2026-06-27T00:25:12+00:00"
 version:
   base_version: "v1"
   base_code_tag: "v1"
   code_branch: "dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly"
   code_commit: "453acc0"
-  best_attempt_tag: "trial/v1/idea-0001/trial-001-attempt-019-best-h7429"
-  git_dirty_at_run: "false"
+  git_dirty: "true"
 reproducibility:
   config_file: "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-019/config.yaml"
   config_sha256: "9a7f1853326d16bf9e5bb12146d2f1708b5f570f16c70cf8f1de7b9e9331dadb"
@@ -28,7 +27,7 @@ idea:
   idea_id: "IDEA-0001"
   uri: "research://ideas/IDEA-0001.md"
   title: "CLIP-A-self text prototype adapter"
-  hypothesis: "A conservative dual-residual CLIP-A-self text prototype adapter can improve CUB GZSL H while keeping the protected evaluator, split, label mapping, class order, and logits shape unchanged."
+  hypothesis: ""
 artifacts:
   train_log:
     artifact_id: "log:v1:module_trial:TRIAL-001:attempt-019"

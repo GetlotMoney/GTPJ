@@ -1,0 +1,45 @@
+schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+experiment_name: "TRIAL-001_clip_a_self_residual_seenonly"
+kind: "module-trial"
+version: "v1"
+attempt_id: "attempt-018"
+metrics:
+  U: "71.08"
+  S: "77.42"
+  H: "74.12"
+  ZS: "81.51"
+  best_epoch: "33"
+  baseline_H: "73.93"
+  delta_H: "+0.19"
+  seed: "5"
+  source: "training_log"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: "v1"
+  H: "73.93"
+delta:
+  H: "+0.19"
+run:
+  seed: "5"
+  pre_run_freeze_commit: "453acc0"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-018/config.yaml"
+decision:
+  status: "keep"
+  promotion_decision: "blocked"
+  promote_to: ""
+evidence:
+  train_log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-018"
+  best_checkpoint_artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-018:best"
+  full_checkpoint_artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-018:full"
+  runner_console_artifact_id: "receipt:v1:module_trial:TRIAL-001:attempt-018:runner_console"
+  manifest: "manifest.yaml"
+  label_mapping_id: "standard_v1"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+quality:
+  manifest_verified: "true"
+  boundary_audit_passed: "true"
+  interface_contract_checked: "true"
+  evaluation_semantics_verified: "true"
+recorded_at: "2026-06-27T00:25:11+00:00"

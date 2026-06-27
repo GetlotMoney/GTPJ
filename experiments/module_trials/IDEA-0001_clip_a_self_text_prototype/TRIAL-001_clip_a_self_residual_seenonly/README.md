@@ -13,21 +13,13 @@ applicability: needs_adaptation
 code_branch: dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly
 code_tag: trial/v1/idea-0001/trial-001
 code_commit: da2e295cb15b0d55afdcf4785bce4bc6a4bff80e
-changed_files:
-  - train_GTPJ_CUB.py
-  - model/MyModel.py
-  - experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/ATTEMPTS.md
-  - experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/
-attempts_table: ATTEMPTS.md
-best_attempt_id: ATTEMPT-003
-best_attempt_dir: attempts/ATTEMPT-003
-confirmation_attempt_id: ATTEMPT-008
-confirmation_attempt_dir: attempts/ATTEMPT-008
-run_config: attempts/ATTEMPT-003/config.yaml
-log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-003
-log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-003/logs/training_log_CUB_2026-06-26_18-59-40.txt
-log_sha256: 0bd779315d16adcdf0f78bede52a13caa1d3cf494b17940f5bb033e9bb50ab74
-log_size_bytes: 92210
+best_attempt_id: ATTEMPT-019
+best_attempt_dir: attempts/ATTEMPT-019
+best_attempt_tag: trial/v1/idea-0001/trial-001-attempt-019-best-h7429
+best_attempt_run_commit: 453acc0
+run_config: attempts/ATTEMPT-019/config.yaml
+log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
+log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-019/logs/training_log_CUB_2026-06-27_01-27-48.txt
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -43,42 +35,52 @@ promote_to:
 |---|---|---|
 | `train_GTPJ_CUB.py` | Adds sentence-level GPT/VDT encoding and routes `use_clip_a_self` runs through sentence-level caches. | yes |
 | `model/MyModel.py` | Adds `CLIPASelfAdapter` and the seen/unseen text adaptation path behind `use_clip_a_self`. | yes |
-| `experiments/module_trials/.../ATTEMPTS.md` | Records the parameter sweep from ATTEMPT-002 to ATTEMPT-006. | no |
-| `experiments/module_trials/.../attempts/ATTEMPT-002..006/config.yaml` | Stores attempt-local hyperparameter changes. | no |
+| `experiments/module_trials/.../ATTEMPTS.md` | Records the trial-internal parameter sweep and confirmation attempts. | no |
+| `experiments/module_trials/.../attempts/` | Stores attempt-local configs, manifests, results, and quality checks. | no |
 
-## Result
+## Current Formal Best
 
-| Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch | Log artifact |
-|---|---|---:|---:|---:|---:|---:|---:|---|
-| ATTEMPT-003 | CUB | 5 | 71.76 | 76.97 | 74.27 | 81.72 | 33 | `log:v1:module_trial:TRIAL-001:attempt-003` |
-| ATTEMPT-007 | CUB | 5 | 70.82 | 76.80 | 73.69 | 80.91 | 33 | `log:v1:module_trial:TRIAL-001:attempt-007` |
-| ATTEMPT-008 | CUB | 5 | 71.36 | 76.58 | 73.88 | 81.22 | 33 | `log:v1:module_trial:TRIAL-001:attempt-008` |
+| Attempt ID | Dataset | Seed | Heads | Dropout | Inner | Outer | U | S | H | ZS | Best epoch | Log artifact |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| ATTEMPT-019 | CUB | 5 | 4 | 0.5 | 0.35 | 0.15 | 71.32 | 77.52 | 74.29 | 81.59 | 33 | `log:v1:module_trial:TRIAL-001:attempt-019` |
 
-## Attempts
+## Recent Sweep Summary
 
-See `ATTEMPTS.md` for the full sweep. Ranking by H:
+| Attempt ID | Inner | Outer | U | S | H | ZS | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| ATTEMPT-009 | 0.25 | 0.100 | 70.83 | 77.03 | 73.80 | 81.22 | not_confirmed |
+| ATTEMPT-010 | 0.25 | 0.125 | 70.76 | 77.49 | 73.97 | 81.22 | keep |
+| ATTEMPT-011 | 0.25 | 0.150 | 70.76 | 77.54 | 74.00 | 81.19 | keep |
+| ATTEMPT-012 | 0.25 | 0.175 | 71.19 | 77.08 | 74.02 | 81.22 | keep |
+| ATTEMPT-013 | 0.30 | 0.100 | 71.19 | 76.52 | 73.76 | 80.91 | reject |
+| ATTEMPT-014 | 0.30 | 0.125 | 71.35 | 76.99 | 74.07 | 81.28 | keep |
+| ATTEMPT-015 | 0.30 | 0.150 | 70.99 | 77.88 | 74.27 | 81.45 | keep |
+| ATTEMPT-016 | 0.30 | 0.175 | 70.85 | 77.12 | 73.85 | 81.05 | reject |
+| ATTEMPT-017 | 0.35 | 0.100 | 71.59 | 76.32 | 73.88 | 81.21 | reject |
+| ATTEMPT-018 | 0.35 | 0.125 | 71.08 | 77.42 | 74.12 | 81.51 | keep |
+| ATTEMPT-019 | 0.35 | 0.150 | 71.32 | 77.52 | 74.29 | 81.59 | best |
+| ATTEMPT-020 | 0.35 | 0.175 | 71.13 | 77.63 | 74.24 | 81.42 | keep |
 
-1. `ATTEMPT-003`: H=74.27
-2. `ATTEMPT-002`: H=73.99
-3. `ATTEMPT-006`: H=73.96
-4. `ATTEMPT-008`: H=73.88
-5. `ATTEMPT-001`: H=73.72
-6. `ATTEMPT-007`: H=73.69
-7. `ATTEMPT-004`: H=73.58
-8. `ATTEMPT-005`: H=72.69
+`ATTEMPT-021` failed before training epochs began and is recorded as a runner/environment issue in
+`docs/workflow/EXPERIMENT_ISSUES.md`; it is not valid result evidence. `ATTEMPT-021` through
+`ATTEMPT-028` remain uncompleted.
 
 ## Promotion Gate
 
-- [x] baseline H, best-attempt H, and delta H recorded.
+- [x] baseline H, current best H, and delta H recorded.
 - [x] class order, split, logits shape, and metric calculation unchanged.
 - [x] switch-off path remains the validated TRIAL-001 implementation path.
-- [x] best-attempt evidence directory and external artifact pointers are complete.
-- [x] clean confirmation of the ATTEMPT-003 setting has been run as ATTEMPT-007 and ATTEMPT-008.
-- [ ] clean confirmations did not reproduce ATTEMPT-003; ATTEMPT-007 reached H=73.69 and ATTEMPT-008 reached H=73.88.
+- [x] current best attempt evidence directory and external artifact pointers are complete.
+- [x] raw logs, checkpoints, and runner receipts are registered in Warehouse rather than Git.
+- [ ] current best `ATTEMPT-019` has not yet received a clean confirmation rerun.
+- [ ] U/S gap remains large: `S - U = 6.20`, so the result is seen-heavy.
 - [ ] automatic promotion is allowed only after `trial_decision: promote` and `promotion_decision: promote`.
 
 ## Decision
 
 `revise`
 
-The current highest observed setting is still `ATTEMPT-003` with `H=74.27`, but two clean confirmation runs did not reproduce it: `ATTEMPT-007` reached `H=73.69` and `ATTEMPT-008` reached `H=73.88`. ATTEMPT-008 is close to the authoritative `v1` baseline `H=73.93` but still below it. TRIAL-001 should remain `revise`; do not promote it without a new stabilization hypothesis and another clean confirmation.
+`ATTEMPT-019` is now the formal best recorded experiment for TRIAL-001 with `H=74.29`
+(`U=71.32`, `S=77.52`, `ZS=81.59`, best epoch 33). It is tagged as the current best
+trial attempt, but it is not promoted to a new baseline because the result is seen-heavy and still
+needs a clean confirmation run.
