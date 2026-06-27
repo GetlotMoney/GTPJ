@@ -1,0 +1,161 @@
+from types import SimpleNamespace
+import unittest
+
+import torch
+
+from model.MyModel import GTPJ
+
+
+def make_config(
+    jepa_context_mode="fae_memory",
+    lambda_jepa=0.05,
+    lambda_jepa_neg=0.0,
+    use_fae=True,
+    lastvit_select_k=8,
+):
+    return SimpleNamespace(
+        num_class=200,
+        dim_f_clip=768,
+        adapter_ratio=0.2,
+        use_clip_a_self=True,
+        clip_a_self_apply_unseen=False,
+        clip_a_self_heads=4,
+        clip_a_self_dropout=0.0,
+        clip_a_self_inner_ratio=0.35,
+        clip_a_self_outer_ratio=0.15,
+        tf_common_dim=512,
+        tf_heads=4,
+        tf_dropout=0.0,
+        weight_s2v=0.5,
+        use_fae=use_fae,
+        local_weight=0.3,
+        score_mode="add",
+        use_ag_jepa=True,
+        jepa_context_mode=jepa_context_mode,
+        jepa_topk=2,
+        jepa_hidden=512,
+        jepa_neg_margin=0.2,
+        lastvit_select_k=lastvit_select_k,
+        lastvit_select_sigma=0.0,
+        lastvit_select_largest=True,
+        lastvit_select_formula="v2_abs_mean",
+        use_conditional_text=False,
+        lambda_consist=0.0,
+        lambda_topo_pearson=0.0,
+        lambda_msdn=0.0,
+        lambda_jepa=lambda_jepa,
+        lambda_jepa_neg=lambda_jepa_neg,
+    )
+
+
+def make_model(config):
+    torch.manual_seed(7)
+    seen = torch.arange(150)
+    unseen = torch.arange(150, 200)
+    seen_text = torch.randn(150, 768)
+    unseen_text = torch.randn(50, 768)
+    seen_sentences = torch.randn(150, 3, 768)
+    return GTPJ(
+        config,
+        seen,
+        unseen,
+        seen_text,
+        unseen_text,
+        seen_sentence_embeds=seen_sentences,
+    )
+
+
+def grad_norm(parameters):
+    total = 0.0
+    for param in parameters:
+        if param.grad is not None:
+            total += float(param.grad.detach().abs().sum().item())
+    return total
+
+
+class FaeMemoryJepaTest(unittest.TestCase):
+    def test_fae_memory_positive_jepa_reaches_fae(self):
+        model = make_model(make_config("fae_memory", lambda_jepa=0.05, lambda_jepa_neg=0.0))
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa"].backward()
+
+        self.assertEqual(tuple(out["logits"].shape), (2, 150))
+        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
+        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.cross_tf.embed_cv.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.clip_a_self_adapter.parameters()), 0.0)
+
+    def test_eval_logits_shape_is_unchanged(self):
+        model = make_model(make_config("fae_memory"))
+        clip_features = torch.randn(2, 577, 768)
+
+        out = model(clip_features, is_train=False)
+
+        self.assertEqual(tuple(out["logits"].shape), (2, 200))
+        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
+
+    def test_fae_memory_requires_fae(self):
+        config = make_config("fae_memory", use_fae=False)
+
+        with self.assertRaisesRegex(ValueError, "requires use_fae=True"):
+            make_model(config)
+
+    def test_fae_memory_supports_full_patch_set(self):
+        model = make_model(make_config("fae_memory", lastvit_select_k=0))
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa"].backward()
+
+        self.assertEqual(tuple(out["jepa_selected_patches"].shape), (2, 576, 768))
+        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+
+    def test_embed_positive_jepa_does_not_reach_fae(self):
+        model = make_model(make_config("embed", lambda_jepa=0.05, lambda_jepa_neg=0.0))
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa"].backward()
+
+        self.assertEqual(tuple(out["logits"].shape), (2, 150))
+        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+
+    def test_negative_jepa_detaches_visual_context(self):
+        model = make_model(make_config("fae_memory", lambda_jepa=0.0, lambda_jepa_neg=0.01))
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa_neg"].backward()
+
+        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+
+
+if __name__ == "__main__":
+    unittest.main()

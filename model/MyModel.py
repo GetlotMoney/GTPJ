@@ -258,6 +258,20 @@ class CrossModalTransformer(nn.Module):
         self.proj_visual = nn.Linear(dim_com, dim_f)
         self.proj_text = nn.Linear(dim_com, dim_f)
 
+    def geometry_for_indices(self, batch_size, token_indices=None, seq_len=None):
+        if not self.use_fae or self.box_emb is None:
+            return None
+        if token_indices is None:
+            if seq_len == self.box_emb.geometry_embedding.size(0):
+                return self.box_emb(batch_size)
+            return None
+
+        K = token_indices.size(1)
+        full = self.box_emb.geometry_embedding
+        i_idx = token_indices.unsqueeze(-1).expand(-1, -1, K)
+        j_idx = token_indices.unsqueeze(-2).expand(-1, K, -1)
+        return full[i_idx, j_idx]
+
     def forward(
         self,
         patches,
@@ -286,14 +300,11 @@ class CrossModalTransformer(nn.Module):
 
         vis = self.embed_cv(patches)
         if self.use_fae:
-            if patches.size(1) == 576:
-                memory = self.fae(vis, self.box_emb(B))
-            elif topk_indices is not None:
-                full = self.box_emb.geometry_embedding
-                K_sel = topk_indices.size(1)
-                i_idx = topk_indices.unsqueeze(-1).expand(-1, -1, K_sel)
-                j_idx = topk_indices.unsqueeze(-2).expand(-1, K_sel, -1)
-                memory = self.fae(vis, full[i_idx, j_idx])
+            geometry_emb = self.geometry_for_indices(
+                B, topk_indices, seq_len=patches.size(1)
+            )
+            if geometry_emb is not None:
+                memory = self.fae(vis, geometry_emb)
             else:
                 memory = vis
         else:
@@ -319,6 +330,10 @@ class CrossModalTransformer(nn.Module):
             "local_score": local_score,
             "score_s2v": score_s2v,
             "score_v2s": score_v2s,
+            "jepa_selected_patches": patches,
+            "jepa_selected_indices": topk_indices,
+            "jepa_patch_z": vis,
+            "jepa_memory": memory,
         }
 
 
@@ -410,6 +425,16 @@ class GTPJ(nn.Module):
         )
 
         self.use_ag_jepa = bool(getattr(config, "use_ag_jepa", False))
+        self.jepa_context_mode = str(
+            getattr(config, "jepa_context_mode", "embed")
+        ).lower()
+        if self.jepa_context_mode not in {"embed", "fae_memory"}:
+            raise ValueError(
+                "jepa_context_mode must be 'embed' or 'fae_memory', "
+                f"got {self.jepa_context_mode!r}."
+            )
+        if self.jepa_context_mode == "fae_memory" and not use_fae:
+            raise ValueError("jepa_context_mode='fae_memory' requires use_fae=True.")
         self.jepa_topk = int(getattr(config, "jepa_topk", 8))
         self.jepa_neg_margin = float(getattr(config, "jepa_neg_margin", 0.2))
         if self.use_ag_jepa:
@@ -585,19 +610,38 @@ class GTPJ(nn.Module):
         )
         return (1.0 - numerator / denominator).mean()
 
-    def _ag_jepa_loss(self, patches, all_text, labels):
+    def _ag_jepa_loss(
+        self,
+        patches,
+        all_text,
+        labels,
+        selected_patches=None,
+        selected_indices=None,
+        selected_patch_z=None,
+    ):
         device = patches.device
         if (not self.use_ag_jepa) or patches is None or all_text is None:
             zero = torch.tensor(0.0, device=device if patches is not None else labels.device)
             return zero, zero
 
-        B, N, _ = patches.shape
+        if self.jepa_context_mode == "fae_memory":
+            if selected_patches is None or selected_patch_z is None:
+                raise ValueError("fae_memory JEPA requires selected patches and patch_z.")
+            jepa_patches = selected_patches
+        else:
+            jepa_patches = patches
+            selected_patch_z = None
+
+        B, N, _ = jepa_patches.shape
+        if N < 2:
+            zero = torch.tensor(0.0, device=device)
+            return zero, zero
         k = max(1, min(int(self.jepa_topk), N - 1))
         labels = labels.to(device=device, dtype=torch.long)
-        class_text = all_text[labels].to(device=device, dtype=patches.dtype)
+        class_text = all_text[labels].to(device=device, dtype=jepa_patches.dtype)
 
         with torch.no_grad():
-            patch_n = F.normalize(patches.float(), dim=-1)
+            patch_n = F.normalize(jepa_patches.float(), dim=-1)
             text_n = F.normalize(class_text.float(), dim=-1)
             patch_score = torch.einsum("bnd,bd->bn", patch_n, text_n)
             _, masked_idx = torch.topk(patch_score, k=k, dim=1, largest=True)
@@ -606,10 +650,15 @@ class GTPJ(nn.Module):
         mask.scatter_(1, masked_idx, True)
         keep = ~mask
 
-        patch_z = self.cross_tf.embed_cv(patches)
+        if self.jepa_context_mode == "fae_memory":
+            patch_z = selected_patch_z
+            context = self._ag_jepa_fae_context(patch_z, keep, selected_indices)
+        else:
+            patch_z = self.cross_tf.embed_cv(jepa_patches)
+            keep_f = keep.unsqueeze(-1).to(patch_z.dtype)
+            context = (patch_z * keep_f).sum(dim=1) / keep_f.sum(dim=1).clamp_min(1.0)
+
         target = patch_z[mask].view(B, k, -1).mean(dim=1).detach()
-        keep_f = keep.unsqueeze(-1).to(patch_z.dtype)
-        context = (patch_z * keep_f).sum(dim=1) / keep_f.sum(dim=1).clamp_min(1.0)
 
         text_z = self.cross_tf.embed_text(class_text)
         pred = self.jepa_predictor(torch.cat([context, text_z], dim=-1))
@@ -630,6 +679,38 @@ class GTPJ(nn.Module):
         neg_sim = F.cosine_similarity(pred_neg, target, dim=-1)
         loss_jepa_neg = F.relu(neg_sim - pos_sim.detach() + self.jepa_neg_margin).mean()
         return loss_jepa, loss_jepa_neg
+
+    def _ag_jepa_fae_context(self, patch_z, keep, selected_indices):
+        B, N, D = patch_z.shape
+        keep_count = int(keep[0].sum().item())
+        if keep_count <= 0:
+            raise ValueError("AG-JEPA fae_memory mode requires at least one keep patch.")
+
+        token_range = torch.arange(N, device=patch_z.device).unsqueeze(0).expand(B, -1)
+        keep_idx = token_range[keep].view(B, keep_count)
+        idx_exp = keep_idx.unsqueeze(-1).expand(-1, -1, D)
+        patch_z_keep = torch.gather(patch_z, dim=1, index=idx_exp)
+
+        if selected_indices is None:
+            full_len = self.cross_tf.box_emb.geometry_embedding.size(0)
+            if N != full_len:
+                raise ValueError(
+                    "fae_memory JEPA needs selected patch indices when patch count "
+                    f"is {N}, not the full geometry length {full_len}."
+                )
+            selected_indices = token_range
+        else:
+            selected_indices = selected_indices.to(device=patch_z.device)
+
+        keep_orig_idx = torch.gather(selected_indices, dim=1, index=keep_idx)
+        geometry_emb = self.cross_tf.geometry_for_indices(
+            B, keep_orig_idx, seq_len=keep_count
+        )
+        if geometry_emb is None:
+            raise ValueError("fae_memory JEPA could not build keep-token geometry.")
+
+        memory_keep = self.cross_tf.fae(patch_z_keep, geometry_emb)
+        return memory_keep.mean(dim=1)
 
     def _prepare_patches(self, clip_features):
         if clip_features.dim() == 3:
@@ -698,6 +779,9 @@ class GTPJ(nn.Module):
             "score_s2v": cm_out["score_s2v"],
             "score_v2s": cm_out["score_v2s"],
             "jepa_patches": patches,
+            "jepa_selected_patches": cm_out["jepa_selected_patches"],
+            "jepa_selected_indices": cm_out["jepa_selected_indices"],
+            "jepa_patch_z": cm_out["jepa_patch_z"],
             "all_text": all_text,
         }
 
@@ -762,7 +846,12 @@ class GTPJ(nn.Module):
             all_text_jepa = in_package.get("all_text")
             if jepa_patches is not None and all_text_jepa is not None:
                 loss_jepa, loss_jepa_neg = self._ag_jepa_loss(
-                    jepa_patches, all_text_jepa, labels
+                    jepa_patches,
+                    all_text_jepa,
+                    labels,
+                    selected_patches=in_package.get("jepa_selected_patches"),
+                    selected_indices=in_package.get("jepa_selected_indices"),
+                    selected_patch_z=in_package.get("jepa_patch_z"),
                 )
                 loss = loss + lambda_jepa * loss_jepa
                 loss = loss + lambda_jepa_neg * loss_jepa_neg

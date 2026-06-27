@@ -1,48 +1,59 @@
-# Quality Check
+# Quality Check: TRIAL-001_fae_memory_jepa
 
 ```text
-runtime:
+runtime: pre_run
 quality_check_mode: STRICT
-decision: PENDING
+decision: allow_after_clean_pre_run_freeze_commit
 promotion_decision: not_applicable
-evidence_level: pending
-confirmation_status: pending
+evidence_level: pending_run
+confirmation_status: not_applicable
 ```
 
-## 范围
+## Scope
 
-## 发现
+This is the Review 2 pre-run quality check for ATTEMPT-001. It verifies code/config/evidence readiness before training. It does not claim metrics, best attempt status, confirmation, or promotion.
 
-## 质量检查
+## Findings
 
-- [ ] 代码快照或 base version 明确。
-- [ ] 配置副本保存在实验目录。
-- [ ] 外部日志 artifact URI、sha256、size 明确。
-- [ ] 结果口径明确。
-- [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
-- [ ] 没有未声明的 eval / class order / logits shape 改动。
-- [ ] seen/unseen split、label mapping、class order 和 metric calculation 未改变或已按高风险记录。
-- [ ] GitHub 目录中没有新增 raw log、checkpoint、generated figures。
+- Implementation scope is limited to `model/MyModel.py`, `train_GTPJ_CUB.py`, and `tests/test_fae_memory_jepa.py`.
+- Trial config is stored at `attempts/ATTEMPT-001/config.yaml` and sets `jepa_context_mode: fae_memory`.
+- Baseline-off path is explicit: missing config or `jepa_context_mode: embed` preserves the old AG-JEPA pre-FAE context behavior.
+- No dataset, split, label mapping, class order, evaluator, or metric code was changed.
+- Unit tests cover positive FAE gradient reachability, negative visual-context detach, full-patch mode, `use_fae` guard, and train/eval logits shapes.
+- No raw log, checkpoint, generated figure, or feature cache has been added to GitHub.
 
-## Promotion Gate（仅正式提升 vX 时填写）
+## Quality Checklist
 
-- [ ] parent_version / parent_tag 明确。
-- [ ] trial tag 指向 README 中记录的 code_commit。
-- [ ] baseline H、trial H、delta H 明确。
-- [ ] `evidence_level: baseline_grade` 或明确标成 owner_activated_unconfirmed / provisional。
-- [ ] clean confirmation 或多 run 稳定性证据明确；单次最高 H 不直接 promotion。
-- [ ] U/S/ZS、best epoch、seed 明确。
-- [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
-- [ ] trial config 和新版本 config 路径明确。
-- [ ] 外部日志 artifact URI、sha256、size、保留位置明确。
-- [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
-- [ ] input/output shape、loss、eval、checkpoint 变化已声明。
-- [ ] switch off 能回到 parent_version 行为。
-- [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
-- [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
-- [ ] 新 baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上。
-- [ ] main 当前代码只有 owner 明确执行 activate-version vX 时才切换；默认不切换。
+- [x] Base version and base code tag are explicit: `v2`.
+- [x] Trial config copy exists in the trial directory.
+- [x] Run command is planned in `manifest.yaml`.
+- [x] `evidence_level`, `best_observed_H`, `confirmed_H`, and `confirmation_status` are separated.
+- [x] Eval path, class order, and logits shape changes are declared as unchanged.
+- [x] Seen/unseen split, label mapping, class order, and metric calculation are unchanged.
+- [x] GitHub trial directory contains no new raw log, checkpoint, or generated figure.
+- [x] `interface_check.md` exists and records Review 2 interface decision.
+- [x] `code.diff` is required before freeze commit and must be generated from the current code diff.
+- [ ] External training log artifact URI, sha256, and size are pending until Runner finishes.
+- [ ] Warehouse artifact registry is pending until Runner finishes.
+- [ ] Attempt-local post-run `manifest.yaml`, `result.yaml`, `result.md`, and `quality_check.md` are pending until Runner finishes.
 
-## 决策
+## Runner Gate
 
-PENDING
+Runner may start only after all of the following are true:
+
+- Review 2 files are present: `review_round_1.md`, `interface_check.md`, `quality_check.md`, and `code.diff`.
+- `python -m py_compile model/MyModel.py train_GTPJ_CUB.py` passes.
+- `python -m unittest tests.test_fae_memory_jepa` passes.
+- `python -m unittest tests.test_gtpj_workflow` passes.
+- `python workflow/gtpj_workflow.py validate`, `audit-boundary`, and `validate-remote` pass.
+- `git diff --check` passes.
+- A clean pre-run freeze commit exists and `git status --short` is empty.
+- GPU runner lock is acquired and `.gtpj_runtime/runs/<run_id>/` is created.
+
+## Promotion Gate
+
+Not applicable for ATTEMPT-001 pre-run state. A single completed run can only produce `best_observed_H`. Promotion remains blocked unless later evidence reaches the required confirmation grade and explicitly records `promotion_decision: promote`.
+
+## Decision
+
+Allow creation of the pre-run freeze commit. Do not start Runner while the worktree is dirty or before `code.diff` and validation evidence are complete.

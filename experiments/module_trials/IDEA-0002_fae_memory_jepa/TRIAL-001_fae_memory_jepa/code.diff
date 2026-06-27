@@ -1,1 +1,311 @@
-
+﻿diff --git a/model/MyModel.py b/model/MyModel.py
+index 2bcd014..285466e 100644
+--- a/model/MyModel.py
++++ b/model/MyModel.py
+@@ -260,0 +261,14 @@ class CrossModalTransformer(nn.Module):
++    def geometry_for_indices(self, batch_size, token_indices=None, seq_len=None):
++        if not self.use_fae or self.box_emb is None:
++            return None
++        if token_indices is None:
++            if seq_len == self.box_emb.geometry_embedding.size(0):
++                return self.box_emb(batch_size)
++            return None
++
++        K = token_indices.size(1)
++        full = self.box_emb.geometry_embedding
++        i_idx = token_indices.unsqueeze(-1).expand(-1, -1, K)
++        j_idx = token_indices.unsqueeze(-2).expand(-1, K, -1)
++        return full[i_idx, j_idx]
++
+@@ -289,8 +303,5 @@ class CrossModalTransformer(nn.Module):
+-            if patches.size(1) == 576:
+-                memory = self.fae(vis, self.box_emb(B))
+-            elif topk_indices is not None:
+-                full = self.box_emb.geometry_embedding
+-                K_sel = topk_indices.size(1)
+-                i_idx = topk_indices.unsqueeze(-1).expand(-1, -1, K_sel)
+-                j_idx = topk_indices.unsqueeze(-2).expand(-1, K_sel, -1)
+-                memory = self.fae(vis, full[i_idx, j_idx])
++            geometry_emb = self.geometry_for_indices(
++                B, topk_indices, seq_len=patches.size(1)
++            )
++            if geometry_emb is not None:
++                memory = self.fae(vis, geometry_emb)
+@@ -321,0 +333,4 @@ class CrossModalTransformer(nn.Module):
++            "jepa_selected_patches": patches,
++            "jepa_selected_indices": topk_indices,
++            "jepa_patch_z": vis,
++            "jepa_memory": memory,
+@@ -412,0 +428,10 @@ class GTPJ(nn.Module):
++        self.jepa_context_mode = str(
++            getattr(config, "jepa_context_mode", "embed")
++        ).lower()
++        if self.jepa_context_mode not in {"embed", "fae_memory"}:
++            raise ValueError(
++                "jepa_context_mode must be 'embed' or 'fae_memory', "
++                f"got {self.jepa_context_mode!r}."
++            )
++        if self.jepa_context_mode == "fae_memory" and not use_fae:
++            raise ValueError("jepa_context_mode='fae_memory' requires use_fae=True.")
+@@ -588 +613,9 @@ class GTPJ(nn.Module):
+-    def _ag_jepa_loss(self, patches, all_text, labels):
++    def _ag_jepa_loss(
++        self,
++        patches,
++        all_text,
++        labels,
++        selected_patches=None,
++        selected_indices=None,
++        selected_patch_z=None,
++    ):
+@@ -594 +627,12 @@ class GTPJ(nn.Module):
+-        B, N, _ = patches.shape
++        if self.jepa_context_mode == "fae_memory":
++            if selected_patches is None or selected_patch_z is None:
++                raise ValueError("fae_memory JEPA requires selected patches and patch_z.")
++            jepa_patches = selected_patches
++        else:
++            jepa_patches = patches
++            selected_patch_z = None
++
++        B, N, _ = jepa_patches.shape
++        if N < 2:
++            zero = torch.tensor(0.0, device=device)
++            return zero, zero
+@@ -597 +641 @@ class GTPJ(nn.Module):
+-        class_text = all_text[labels].to(device=device, dtype=patches.dtype)
++        class_text = all_text[labels].to(device=device, dtype=jepa_patches.dtype)
+@@ -600 +644 @@ class GTPJ(nn.Module):
+-            patch_n = F.normalize(patches.float(), dim=-1)
++            patch_n = F.normalize(jepa_patches.float(), dim=-1)
+@@ -609 +653,8 @@ class GTPJ(nn.Module):
+-        patch_z = self.cross_tf.embed_cv(patches)
++        if self.jepa_context_mode == "fae_memory":
++            patch_z = selected_patch_z
++            context = self._ag_jepa_fae_context(patch_z, keep, selected_indices)
++        else:
++            patch_z = self.cross_tf.embed_cv(jepa_patches)
++            keep_f = keep.unsqueeze(-1).to(patch_z.dtype)
++            context = (patch_z * keep_f).sum(dim=1) / keep_f.sum(dim=1).clamp_min(1.0)
++
+@@ -611,2 +661,0 @@ class GTPJ(nn.Module):
+-        keep_f = keep.unsqueeze(-1).to(patch_z.dtype)
+-        context = (patch_z * keep_f).sum(dim=1) / keep_f.sum(dim=1).clamp_min(1.0)
+@@ -633,0 +683,32 @@ class GTPJ(nn.Module):
++    def _ag_jepa_fae_context(self, patch_z, keep, selected_indices):
++        B, N, D = patch_z.shape
++        keep_count = int(keep[0].sum().item())
++        if keep_count <= 0:
++            raise ValueError("AG-JEPA fae_memory mode requires at least one keep patch.")
++
++        token_range = torch.arange(N, device=patch_z.device).unsqueeze(0).expand(B, -1)
++        keep_idx = token_range[keep].view(B, keep_count)
++        idx_exp = keep_idx.unsqueeze(-1).expand(-1, -1, D)
++        patch_z_keep = torch.gather(patch_z, dim=1, index=idx_exp)
++
++        if selected_indices is None:
++            full_len = self.cross_tf.box_emb.geometry_embedding.size(0)
++            if N != full_len:
++                raise ValueError(
++                    "fae_memory JEPA needs selected patch indices when patch count "
++                    f"is {N}, not the full geometry length {full_len}."
++                )
++            selected_indices = token_range
++        else:
++            selected_indices = selected_indices.to(device=patch_z.device)
++
++        keep_orig_idx = torch.gather(selected_indices, dim=1, index=keep_idx)
++        geometry_emb = self.cross_tf.geometry_for_indices(
++            B, keep_orig_idx, seq_len=keep_count
++        )
++        if geometry_emb is None:
++            raise ValueError("fae_memory JEPA could not build keep-token geometry.")
++
++        memory_keep = self.cross_tf.fae(patch_z_keep, geometry_emb)
++        return memory_keep.mean(dim=1)
++
+@@ -700,0 +782,3 @@ class GTPJ(nn.Module):
++            "jepa_selected_patches": cm_out["jepa_selected_patches"],
++            "jepa_selected_indices": cm_out["jepa_selected_indices"],
++            "jepa_patch_z": cm_out["jepa_patch_z"],
+@@ -765 +849,6 @@ class GTPJ(nn.Module):
+-                    jepa_patches, all_text_jepa, labels
++                    jepa_patches,
++                    all_text_jepa,
++                    labels,
++                    selected_patches=in_package.get("jepa_selected_patches"),
++                    selected_indices=in_package.get("jepa_selected_indices"),
++                    selected_patch_z=in_package.get("jepa_patch_z"),
+diff --git a/tests/test_fae_memory_jepa.py b/tests/test_fae_memory_jepa.py
+new file mode 100644
+index 0000000..f44b927
+--- /dev/null
++++ b/tests/test_fae_memory_jepa.py
+@@ -0,0 +1,161 @@
++from types import SimpleNamespace
++import unittest
++
++import torch
++
++from model.MyModel import GTPJ
++
++
++def make_config(
++    jepa_context_mode="fae_memory",
++    lambda_jepa=0.05,
++    lambda_jepa_neg=0.0,
++    use_fae=True,
++    lastvit_select_k=8,
++):
++    return SimpleNamespace(
++        num_class=200,
++        dim_f_clip=768,
++        adapter_ratio=0.2,
++        use_clip_a_self=True,
++        clip_a_self_apply_unseen=False,
++        clip_a_self_heads=4,
++        clip_a_self_dropout=0.0,
++        clip_a_self_inner_ratio=0.35,
++        clip_a_self_outer_ratio=0.15,
++        tf_common_dim=512,
++        tf_heads=4,
++        tf_dropout=0.0,
++        weight_s2v=0.5,
++        use_fae=use_fae,
++        local_weight=0.3,
++        score_mode="add",
++        use_ag_jepa=True,
++        jepa_context_mode=jepa_context_mode,
++        jepa_topk=2,
++        jepa_hidden=512,
++        jepa_neg_margin=0.2,
++        lastvit_select_k=lastvit_select_k,
++        lastvit_select_sigma=0.0,
++        lastvit_select_largest=True,
++        lastvit_select_formula="v2_abs_mean",
++        use_conditional_text=False,
++        lambda_consist=0.0,
++        lambda_topo_pearson=0.0,
++        lambda_msdn=0.0,
++        lambda_jepa=lambda_jepa,
++        lambda_jepa_neg=lambda_jepa_neg,
++    )
++
++
++def make_model(config):
++    torch.manual_seed(7)
++    seen = torch.arange(150)
++    unseen = torch.arange(150, 200)
++    seen_text = torch.randn(150, 768)
++    unseen_text = torch.randn(50, 768)
++    seen_sentences = torch.randn(150, 3, 768)
++    return GTPJ(
++        config,
++        seen,
++        unseen,
++        seen_text,
++        unseen_text,
++        seen_sentence_embeds=seen_sentences,
++    )
++
++
++def grad_norm(parameters):
++    total = 0.0
++    for param in parameters:
++        if param.grad is not None:
++            total += float(param.grad.detach().abs().sum().item())
++    return total
++
++
++class FaeMemoryJepaTest(unittest.TestCase):
++    def test_fae_memory_positive_jepa_reaches_fae(self):
++        model = make_model(make_config("fae_memory", lambda_jepa=0.05, lambda_jepa_neg=0.0))
++        clip_features = torch.randn(2, 577, 768)
++        labels = torch.tensor([0, 1])
++
++        out = model(clip_features, is_train=True)
++        pack = out.copy()
++        pack["batch_label"] = labels
++        loss_pack = model.compute_loss(pack)
++
++        model.zero_grad(set_to_none=True)
++        loss_pack["loss_jepa"].backward()
++
++        self.assertEqual(tuple(out["logits"].shape), (2, 150))
++        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
++        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
++        self.assertGreater(grad_norm(model.cross_tf.embed_cv.parameters()), 0.0)
++        self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
++        self.assertGreater(grad_norm(model.clip_a_self_adapter.parameters()), 0.0)
++
++    def test_eval_logits_shape_is_unchanged(self):
++        model = make_model(make_config("fae_memory"))
++        clip_features = torch.randn(2, 577, 768)
++
++        out = model(clip_features, is_train=False)
++
++        self.assertEqual(tuple(out["logits"].shape), (2, 200))
++        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
++
++    def test_fae_memory_requires_fae(self):
++        config = make_config("fae_memory", use_fae=False)
++
++        with self.assertRaisesRegex(ValueError, "requires use_fae=True"):
++            make_model(config)
++
++    def test_fae_memory_supports_full_patch_set(self):
++        model = make_model(make_config("fae_memory", lastvit_select_k=0))
++        clip_features = torch.randn(2, 577, 768)
++        labels = torch.tensor([0, 1])
++
++        out = model(clip_features, is_train=True)
++        pack = out.copy()
++        pack["batch_label"] = labels
++        loss_pack = model.compute_loss(pack)
++
++        model.zero_grad(set_to_none=True)
++        loss_pack["loss_jepa"].backward()
++
++        self.assertEqual(tuple(out["jepa_selected_patches"].shape), (2, 576, 768))
++        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
++
++    def test_embed_positive_jepa_does_not_reach_fae(self):
++        model = make_model(make_config("embed", lambda_jepa=0.05, lambda_jepa_neg=0.0))
++        clip_features = torch.randn(2, 577, 768)
++        labels = torch.tensor([0, 1])
++
++        out = model(clip_features, is_train=True)
++        pack = out.copy()
++        pack["batch_label"] = labels
++        loss_pack = model.compute_loss(pack)
++
++        model.zero_grad(set_to_none=True)
++        loss_pack["loss_jepa"].backward()
++
++        self.assertEqual(tuple(out["logits"].shape), (2, 150))
++        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
++
++    def test_negative_jepa_detaches_visual_context(self):
++        model = make_model(make_config("fae_memory", lambda_jepa=0.0, lambda_jepa_neg=0.01))
++        clip_features = torch.randn(2, 577, 768)
++        labels = torch.tensor([0, 1])
++
++        out = model(clip_features, is_train=True)
++        pack = out.copy()
++        pack["batch_label"] = labels
++        loss_pack = model.compute_loss(pack)
++
++        model.zero_grad(set_to_none=True)
++        loss_pack["loss_jepa_neg"].backward()
++
++        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/train_GTPJ_CUB.py b/train_GTPJ_CUB.py
+index 0fadfd6..8425413 100644
+--- a/train_GTPJ_CUB.py
++++ b/train_GTPJ_CUB.py
+@@ -140,0 +141 @@ print_log(f"│  lambda_jepa_neg: {getattr(config, 'lambda_jepa_neg', 0.0)}")
++print_log(f"│  jepa_context  : {getattr(config, 'jepa_context_mode', 'embed')}")

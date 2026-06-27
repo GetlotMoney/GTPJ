@@ -12,7 +12,7 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-001-fae-memory-jepa
 code_tag: trial/v2/idea-0002/trial-001
-code_commit:
+code_commit: pending_pre_run_freeze_commit
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
@@ -32,6 +32,7 @@ result_md: result.md
 idea_intent_check: idea_intent_check.md
 interface_precheck: interface_precheck.md
 review_round_1: review_round_1.md
+interface_check: interface_check.md
 review_round_2: review_round_2.md
 agent_summary: agent_summary.md
 ```
@@ -43,6 +44,7 @@ agent_summary: agent_summary.md
 | `model/MyModel.py` | Add `jepa_context_mode` and FAE-memory JEPA auxiliary path | yes |
 | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml` | Enable `jepa_context_mode: fae_memory` | no |
 | `tests/test_fae_memory_jepa.py` | Gradient and shape smoke tests | no |
+| `train_GTPJ_CUB.py` | Log `jepa_context_mode` in training header | yes |
 
 ## 结果
 
