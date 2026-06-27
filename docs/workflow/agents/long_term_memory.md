@@ -17,6 +17,17 @@ docs/workflow/issues/YYYY-MM-DD-*.md
 运行时 sub-agent 可以是临时实例，但每次启动前必须加载对应长期身份包。实例结束后，
 新的经验写回文件化记忆，而不是留在临时对话里。
 
+创新代码改动中的临时 agents 还必须遵守：
+
+```text
+docs/workflow/innovation_code_review_protocol.md
+```
+
+也就是说，临时 agent 可以承担 Reader/Planner、Interface Checker、Quality Checker、Reviewer、
+Log Analyst 或 Result Analyst 的独立审查，但它必须显式接收长期角色文件和本轮审查输入，并把结论写入
+`review_round_*.md`、`agent_summary.md` 或 `docs/workflow/issues/`。临时 agent 的隐藏上下文不能作为
+正式证据。
+
 ## 每个角色的长期文件
 
 每个 `shared_roles/<role>/` 至少包含：

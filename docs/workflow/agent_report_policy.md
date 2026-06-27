@@ -26,7 +26,7 @@
 |---|---|---|
 | confirmation / 普通 tune | `agent_summary.md` | 可选完整 runner/log analyst 报告 |
 | ablation / 改代码 tune | `agent_summary.md`、`interface_check.md`、`quality_check.md` | 可选完整 runner/log analyst/reviewer 报告 |
-| innovation / module trial | `agent_summary.md`、`implementation.md`、`interface_check.md`、`quality_check.md`、`review.md` | 可选完整 agent reports |
+| innovation / module trial | `agent_summary.md`、`implementation.md`、`idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md`、`interface_check.md`、`quality_check.md`、`review_round_2.md`、必要时 `review.md` | 可选完整 agent reports |
 | promotion / 新 baseline | `agent_summary.md`、`quality_check.md`、必要 reviewer/result analyst report | 可选完整 promotion reports |
 
 ## GitHub 文件边界
@@ -78,6 +78,8 @@ verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
 final_decision:
+review_rounds:
+temporary_agents:
 ```
 
 每个 agent 至少记录：
@@ -99,6 +101,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Agent 边界

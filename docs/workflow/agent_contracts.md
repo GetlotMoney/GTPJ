@@ -5,6 +5,11 @@
 
 全局硬门：接口、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 任一不清，实验结果无效。Runner 必须拒跑；已经跑出的结果只能标记为 `blocked`、`rerun` 或 `rejected`，不得 `keep` 或 `promote`。
 
+创新代码硬门：idea / 创新 / module trial 只要会改代码，必须遵守
+`docs/workflow/innovation_code_review_protocol.md`，使用 `real_multi_agent` 并完成 Review 0-3。
+缺少 `idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md` 或存在 blocking issue 时，
+Runner 必须拒跑正式实验。
+
 ## Coordinator
 
 自我介绍：我是 Coordinator，负责把一次实验从请求、ID、分支、agent 分工、

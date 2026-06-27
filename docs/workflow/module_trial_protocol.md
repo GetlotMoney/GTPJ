@@ -16,6 +16,7 @@ idea_tree/ideas/IDEA-xxxx_short_name/IDEA.md
 
 ```text
 docs/workflow/code_interface_contract.md
+docs/workflow/innovation_code_review_protocol.md
 ```
 
 分支和 tag 命名必须带 base version：
@@ -43,6 +44,10 @@ experiments/module_trials/IDEA-xxxx_short_name/
     |-- ATTEMPTS.md
     |-- implementation.md
     |-- code.diff
+    |-- idea_intent_check.md
+    |-- interface_precheck.md
+    |-- review_round_1.md
+    |-- review_round_2.md
     `-- attempts/
         `-- ATTEMPT-001/
             |-- config.yaml
@@ -71,6 +76,10 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - best attempt id
 - changed files
 - implementation summary
+- Review 0 idea/source intent check
+- Review 1 design/interface precheck
+- Review 2 code diff pre-run review
+- Review 3 post-run evidence review
 - quality check decision
 - result
 - `trial_decision`
@@ -112,6 +121,28 @@ Each `attempts/ATTEMPT-xxx/` directory should keep its own:
 - `result.md`
 
 Before any real attempt run, trial-internal bookkeeping follows the same two-stage evidence rule:
+
+## Innovation code review gate
+
+如果 module trial 会把 idea、论文机制、官方代码或本地创新改成实际代码，必须先通过
+`docs/workflow/innovation_code_review_protocol.md`：
+
+```text
+Review 0 -> idea_intent_check.md
+Review 1 -> interface_precheck.md
+Review 2 -> review_round_1.md + interface_check.md + quality_check.md
+Review 3 -> review_round_2.md + agent_summary.md
+```
+
+这些文件是轻量审查凭证，允许进入 GitHub。完整长报告、日志和大文件仍进入 Warehouse。
+
+硬规则：
+
+- 没有 Review 0 和 Review 1，不得开始实现；
+- 没有 Review 2 通过，不得启动正式 Runner；
+- 代码修复后必须重做相关 review；
+- 没有 Review 3，不得把结果标成 best、promote 或主线候选；
+- 如果真实多 agents 工具不可用，本任务不得冒充 `real_multi_agent`，只能阻断或降级为 debug/smoke。
 
 ### `pre-run freeze commit`
 

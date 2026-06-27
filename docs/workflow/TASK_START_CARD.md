@@ -141,6 +141,7 @@ agents:
 
 hard_gates:
   interface_contract:
+  innovation_code_review:
   source_status:
   artifact_boundary:
   metric_semantics:
@@ -356,6 +357,11 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - trial branch 和 trial tag 计划；
 - attempt 级 `config.yaml` 和 `ATTEMPTS.md` 计划行是否已经冻结到 `pre-run freeze commit`；
 - 本次真实 run 将使用的 `run_commit`。
+- 是否触发 `innovation_code_review_protocol.md`；
+- `idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md`、
+  `review_round_2.md` 的计划位置；
+- 临时 agents 是否允许，哪些角色必须由真实独立 agents 执行；
+- Review 0-3 的阻断条件和当前状态。
 
 ### Promotion
 
@@ -386,6 +392,11 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 预期运行 commit 不明确，或无法把本次 run 唯一映射到一个冻结后的 `run_commit`；
 - module trial 没有正式 idea；
 - idea 来源是 `unknown` 或 `unverified` 却要开 trial；
+- idea / 创新 / module trial 将改代码，但没有写明
+  `innovation_code_review_protocol.md` 的 Review 0-3 计划；
+- 创新代码改动没有使用 `real_multi_agent`，或没有把 Reader/Planner、Interface Checker、
+  Quality Checker、Reviewer 等必须独立复核角色写入 `required_real_agents`；
+- Review 0-3 任一轮存在 blocking issue，却要启动 Runner、选择 best 或 promotion；
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚；
 - raw logs、checkpoint、generated figures 会写进 GitHub；
 - Runner 需要 GPU，但 lock 状态未知；

@@ -22,6 +22,10 @@ log_size_bytes:
 manifest:
 result_yaml:
 result_md:
+idea_intent_check: idea_intent_check.md
+interface_precheck: interface_precheck.md
+review_round_1: review_round_1.md
+review_round_2: review_round_2.md
 agent_summary: agent_summary.md
 trial_decision:
 promote_to:
@@ -43,6 +47,16 @@ promotion_decision:
 ## Attempts
 
 Detailed attempt records live in `ATTEMPTS.md`. Reproducibility evidence for each attempt should live in `attempts/ATTEMPT-xxx/`, unless this is a legacy single-attempt trial.
+
+## Innovation Code Review
+
+```text
+Review 0: idea_intent_check.md
+Review 1: interface_precheck.md
+Review 2: review_round_1.md + interface_check.md + quality_check.md
+Review 3: review_round_2.md + agent_summary.md
+activation_mode: real_multi_agent
+```
 
 ## Promotion Gate
 

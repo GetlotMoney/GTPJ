@@ -46,6 +46,9 @@ validate-remote-ok
 如果工作区不干净，先提交或处理当前改动，不要直接开实验分支。
 对真实训练、confirmation、tune、ablation、module trial 的正式 run，再额外执行下面的冻结规则：
 
+如果 module trial 或 ablation 来自 idea / 创新 / 代码语义改动，先完成
+`docs/workflow/innovation_code_review_protocol.md` 要求的 Review 0-3；没有 Review 2 通过不得进入 Runner。
+
 ```text
 1. 先写本次 run 需要的 config 副本、ATTEMPTS 计划行或启动卡
 2. 提交 pre-run freeze commit

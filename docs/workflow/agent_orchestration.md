@@ -164,6 +164,7 @@ owner 明确接受它只作为 debug/smoke 证据。
 | 修改模型结构、forward、loss、eval 或数据流 | `real_multi_agent` | 代码语义变化需要实现、接口、质量独立复核。 |
 | 涉及 label mapping、seen/unseen split、class order、logits shape 或 metric semantics | `real_multi_agent` | 这些是 GZSL 有效性硬门。 |
 | 新 module trial 的实现、接口检查或 promotion 前复核 | `real_multi_agent` | 会影响 trial 结论或版本提升。 |
+| idea / 创新 / module trial 将落成代码改动 | `real_multi_agent` | 必须执行 `innovation_code_review_protocol.md` 的多轮独立审查。 |
 | 结果异常、争议大、owner 质疑解释 | `real_multi_agent` | 需要独立复核日志、配置、代码和质量证据。 |
 | 准备写 `promotion_decision: promote`、创建 `vX` 或打 tag | `real_multi_agent` | 版本事实不可由单一视角确认。 |
 | 任务需要同时读论文、源码、日志和质量证据 | `real_multi_agent` | 输入天然可拆，适合独立检查。 |
@@ -240,6 +241,31 @@ docs/workflow/issues/README.md 和最近相关问题文档
 
 没有经过当前仓库或 artifact 验证的 memory-derived fact，不能写入 `result.yaml`、`quality_check.md`、
 promotion 证据或正式结论。
+
+### 创新代码改动多轮审查
+
+凡是 idea、创新机制或 module trial 会改变模型、forward、loss、eval、data flow、scoring 或配置语义，
+必须同时遵守：
+
+```text
+docs/workflow/innovation_code_review_protocol.md
+```
+
+最低审查顺序是：
+
+```text
+Review 0: Reader/Planner + Coordinator 检查 idea/source intent
+Review 1: Interface Checker 在写代码前检查设计和接口
+Review 2: Interface Checker + Quality Checker + Reviewer 在正式 run 前检查 code diff
+Review 3: Log Analyst + Quality Checker + Result Analyst + Reviewer 在 run 后检查证据和结论
+```
+
+临时 sub-agent 可以启用，但必须加载对应长期角色的 `profile.md`、`memory.md` 和
+`by_experiment/innovation/agents/README.md`。临时实例不自带可采信的长期记忆，必须把发现写入
+`review_round_*.md`、`agent_summary.md`、`docs/workflow/issues/` 或对应 role memory。
+
+Implementer 是同一代码路径唯一 writer。Reader/Planner、Interface Checker、Quality Checker、
+Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须重跑相关 review，不得沿用旧通过结论。
 
 ### 决定权
 

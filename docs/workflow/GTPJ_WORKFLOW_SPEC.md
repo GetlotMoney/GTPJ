@@ -162,6 +162,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录、分支、tag、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新模块输入输出、shape、loss、eval、开关和最低验证。 |
+| `docs/workflow/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
 | `docs/workflow/code_interface.md` | 代码接口补充说明，用于承接更具体的接口约束。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
 | `docs/workflow/artifact_policy.md` | GitHub 轻量边界和外部资产职责。 |
@@ -700,6 +701,8 @@ innovation 的硬规则：
 - 必须有开关。
 - 关闭开关必须回到 base behavior。
 - 接口语义不清楚时不能跑正式结果。
+- 只要 idea / 创新 / module trial 会落成代码改动，必须遵守 `innovation_code_review_protocol.md`。
+- 必须使用 `real_multi_agent`，并完成 Review 0-3；临时 agents 可以开启，但必须加载长期角色文件并留下审查凭证。
 - trial 通过不等于自动成为新版本。
 - 同一个 `TRIAL-001` 可以有多个 `ATTEMPT-xxx`，用于记录同一实现假设下的参数尝试、小范围 follow-up ablation、rerun 或 debug-fix。
 - trial 内部必须允许 `param_tune`、narrow `ablation` 和 clean `confirmation`，否则无法判断这个模块到底好不好。

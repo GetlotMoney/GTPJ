@@ -163,6 +163,10 @@ ALLOWED_EXPERIMENT_TEXT_FILES = {
     "agent_summary.md",
     "implementation.md",
     "interface_check.md",
+    "idea_intent_check.md",
+    "interface_precheck.md",
+    "review_round_1.md",
+    "review_round_2.md",
     "code.diff",
     "config.yaml",
     "manifest.yaml",
@@ -648,6 +652,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/versioning.md",
         "docs/workflow/module_trial_protocol.md",
         "docs/workflow/code_interface_contract.md",
+        "docs/workflow/innovation_code_review_protocol.md",
         "docs/workflow/code_interface.md",
         "docs/workflow/experiment_protocol.md",
         "docs/workflow/artifact_policy.md",
@@ -831,10 +836,35 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Config Switch Contract",
         "Loss Contract",
         "Evaluation Contract",
+        "Innovation Code Review Gate",
         "Minimum Verification",
     ]:
         if marker not in contract:
             raise WorkflowError(f"code_interface_contract.md missing section: {marker}")
+
+    innovation_review = read_text(REPO_ROOT / "docs" / "workflow" / "innovation_code_review_protocol.md")
+    for marker in [
+        "Review 0",
+        "Review 1",
+        "Review 2",
+        "Review 3",
+        "临时 agents",
+        "正式 run 前硬阻断",
+    ]:
+        if marker not in innovation_review:
+            raise WorkflowError(f"innovation_code_review_protocol.md missing section: {marker}")
+
+    agent_report_policy = read_text(REPO_ROOT / "docs" / "workflow" / "agent_report_policy.md")
+    for marker in [
+        "idea_intent_check.md",
+        "interface_precheck.md",
+        "review_round_1.md",
+        "review_round_2.md",
+        "temporary_agents",
+        "review_rounds",
+    ]:
+        if marker not in agent_report_policy:
+            raise WorkflowError(f"agent_report_policy.md missing field: {marker}")
 
     artifact_policy = read_text(REPO_ROOT / "docs" / "workflow" / "artifact_policy.md")
     for marker in [
@@ -1135,6 +1165,11 @@ def make_agent_summary(version: str, kind: ExperimentKind, exp_id: str, slug: st
         serial_agents = "Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Coordinator"
         parallel_agents = "Log Analyst + Quality Checker + Result Analyst after run"
         disabled_agents = "Reviewer unless requested by Coordinator"
+    elif kind.name == "module-trial":
+        agent_set = "Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer"
+        serial_agents = "Coordinator -> Review 0 -> Review 1 -> Implementer -> Review 2 -> Runner -> Review 3 -> Coordinator"
+        parallel_agents = "Reader/Planner + Coordinator in Review 0; Interface Checker + Quality Checker + Reviewer in Review 2; Log Analyst + Quality Checker + Result Analyst + Reviewer in Review 3"
+        disabled_agents = ""
     else:
         agent_set = "Coordinator"
         serial_agents = "Coordinator"
@@ -1167,6 +1202,8 @@ verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
 final_decision: pending
+review_rounds:
+temporary_agents:
 ```
 
 ## Coordinator
@@ -1187,6 +1224,56 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
+```
+
+## Reader/Planner
+
+仅在 paper intake、idea discovery、tune suggestion、innovation/module trial 或需要读取论文/来源证据时填写。
+
+```text
+role:
+agent_instance_type:
+independence_scope:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
+review_round:
+blocking_issues:
+```
+
+## Implementer
+
+仅在代码、配置、模块开关、loss、eval 或数据流发生实现改动时填写。
+
+```text
+role:
+agent_instance_type:
+independence_scope:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Runner
@@ -1207,6 +1294,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Log Analyst
@@ -1227,6 +1316,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Quality Checker
@@ -1247,6 +1338,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Interface Checker
@@ -1255,12 +1348,70 @@ verified_against_current_repo:
 
 ```text
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
+review_round:
+blocking_issues:
+```
+
+## Result Analyst
+
+在 tune、ablation、confirmation、innovation/module trial 或 promotion 需要结果比较时填写。
+
+```text
+role:
+agent_instance_type:
+independence_scope:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
+review_round:
+blocking_issues:
+```
+
+## Reviewer
+
+仅在 innovation、争议结果、promotion 或 owner 明确要求独立 review 时填写。
+
+```text
+role:
+agent_instance_type:
+independence_scope:
+inputs_checked:
+actions:
+outputs:
+issues:
+decision:
+evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 """
 
@@ -2984,6 +3135,28 @@ trial_folder: {rel(idea_dir)}
     ensure_dir(trial_dir)
     copy_new(REPO_ROOT / "experiments" / base_version / "config.yaml", trial_dir / "config.yaml")
     write_new(trial_dir / "code.diff", "")
+    review_template = """# Innovation Review
+
+```text
+review_round:
+role:
+agent_instance_type:
+inputs_checked:
+independence_scope:
+findings:
+blocking_issues:
+non_blocking_issues:
+decision: PENDING
+evidence_refs:
+memory_used:
+memory_sources:
+verified_against_current_repo:
+```
+"""
+    write_new(trial_dir / "idea_intent_check.md", review_template.replace("review_round:", "review_round: Review 0"))
+    write_new(trial_dir / "interface_precheck.md", review_template.replace("review_round:", "review_round: Review 1"))
+    write_new(trial_dir / "review_round_1.md", review_template.replace("review_round:", "review_round: Review 2"))
+    write_new(trial_dir / "review_round_2.md", review_template.replace("review_round:", "review_round: Review 3"))
     code_tag = trial_tag_name(base_version, idea_id, trial_id)
     write_new(
         trial_dir / "README.md",
@@ -3014,6 +3187,10 @@ log_size_bytes:
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
+idea_intent_check: idea_intent_check.md
+interface_precheck: interface_precheck.md
+review_round_1: review_round_1.md
+review_round_2: review_round_2.md
 agent_summary: agent_summary.md
 ```
 
@@ -3026,6 +3203,16 @@ agent_summary: agent_summary.md
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
+
+## Innovation Code Review
+
+```text
+Review 0: idea_intent_check.md
+Review 1: interface_precheck.md
+Review 2: review_round_1.md + interface_check.md + quality_check.md
+Review 3: review_round_2.md + agent_summary.md
+activation_mode: real_multi_agent
+```
 
 ## Promotion Gate
 
@@ -3049,6 +3236,7 @@ agent_summary: agent_summary.md
 
 ```text
 docs/workflow/code_interface_contract.md
+docs/workflow/innovation_code_review_protocol.md
 ```
 
 ## 新模块

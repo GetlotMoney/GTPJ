@@ -30,6 +30,37 @@ class WorkflowHelperTest(unittest.TestCase):
         self.repo = Path(self.tmp.name)
         self.module = load_helper()
         self.module.REPO_ROOT = self.repo
+        self.module.CANONICAL_BASELINES = {
+            "v1": {
+                "name": "GTPJ-v1",
+                "H": "73.93",
+                "result_file": "experiments/v1/result.md",
+                "version_file": "experiments/v1/VERSION.md",
+            }
+        }
+        self.module.TUNE_CANDIDATE_RULES = [
+            {
+                "parameter": "conditional_text_ratio",
+                "suggested_value": "0.010",
+                "why": "Test candidate.",
+                "risk": "Low.",
+                "cost": "1 seed.",
+            },
+            {
+                "parameter": "lambda_topo_pearson",
+                "suggested_value": "0.15",
+                "why": "Test candidate.",
+                "risk": "Low.",
+                "cost": "1 seed.",
+            },
+            {
+                "parameter": "adapter_ratio",
+                "suggested_value": "0.3",
+                "why": "Test candidate.",
+                "risk": "Low.",
+                "cost": "1 seed.",
+            },
+        ]
         self._git("init", "-b", "main")
         self._git("config", "user.email", "test@example.invalid")
         self._git("config", "user.name", "Workflow Test")

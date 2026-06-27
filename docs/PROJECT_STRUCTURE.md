@@ -133,6 +133,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
 | `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
+| `docs/workflow/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
 | `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
 | `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
@@ -190,6 +191,7 @@ idea_tree/                 # 创意来源、评分、排序
 代码接口要求：
 
 - 新模块必须遵守 `docs/workflow/code_interface_contract.md`。
+- idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/innovation_code_review_protocol.md`。
 - 开关关闭时必须回到选定 base version 行为。
 - 不得静默改变 logits shape、class order、loss 语义或 eval 语义。
 
@@ -290,6 +292,10 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 |-- ATTEMPTS.md
 |-- implementation.md
 |-- code.diff
+|-- idea_intent_check.md
+|-- interface_precheck.md
+|-- review_round_1.md
+|-- review_round_2.md
 |-- agent_summary.md
 `-- attempts/
     `-- ATTEMPT-001/

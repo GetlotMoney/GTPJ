@@ -1,4 +1,4 @@
-# Agent Summary
+﻿# Agent Summary
 
 ```text
 experiment_id:
@@ -25,6 +25,8 @@ verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
 final_decision:
+review_rounds:
+temporary_agents:
 ```
 
 ## Coordinator
@@ -45,6 +47,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Reader/Planner
@@ -67,6 +71,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Implementer
@@ -89,6 +95,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Runner
@@ -109,6 +117,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Log Analyst
@@ -129,6 +139,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Quality Checker
@@ -149,6 +161,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Interface Checker
@@ -171,6 +185,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Result Analyst
@@ -193,6 +209,8 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```
 
 ## Reviewer
@@ -215,4 +233,6 @@ agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
 verified_against_current_repo:
+review_round:
+blocking_issues:
 ```

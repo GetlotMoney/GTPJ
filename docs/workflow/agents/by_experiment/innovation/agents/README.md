@@ -18,13 +18,28 @@ Reviewer
 ## 编排
 
 ```text
-Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Quality Checker + Result Analyst + Reviewer -> Coordinator
+Coordinator
+  -> Review 0: Reader/Planner + Coordinator
+  -> Review 1: Interface Checker
+  -> Implementer
+  -> Review 2: Interface Checker + Quality Checker + Reviewer
+  -> Runner
+  -> Review 3: Log Analyst + Quality Checker + Result Analyst + Reviewer
+  -> Coordinator
 ```
 
 ## 关键规则
 
 - 只读取 `idea_tree/versions/<base_version>.md` 中已选中的 idea。
 - 不从总创意表直接启动 trial。
+- 只要 idea / 创新 / module trial 会落成代码改动，必须遵守
+  `docs/workflow/innovation_code_review_protocol.md`。
+- 本类任务默认 `activation_mode: real_multi_agent`，不得用单 agent 顺序执行冒充真实多 agents。
+- 临时 sub-agent 可以开启，但必须加载对应长期角色的 `profile.md`、`memory.md` 和本文件。
+- Review 0 产出 `idea_intent_check.md`，确认 source intent 和 hypothesis。
+- Review 1 产出 `interface_precheck.md`，在写代码前确认接口设计。
+- Review 2 产出 `review_round_1.md`，在 Runner 前检查 code diff。
+- Review 3 产出 `review_round_2.md`，在结果入账、best 或 promotion 前检查证据。
 - Implementer 只改当前 trial 代码路径。
 - Interface Checker 必须检查 off switch、shape、loss、eval、logits、label mapping、seen/unseen split 和 class order。
 - Runner 串行运行。

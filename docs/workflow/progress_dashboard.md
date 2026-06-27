@@ -209,6 +209,8 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 
 - `idea_id`、`trial_id` 和 base version；
 - 是否来自 `idea_tree/versions/<base_version>.md` 的 selected idea；
+- Review 0-3：`idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md`、`review_round_2.md`；
+- `activation_mode: real_multi_agent` 和必须独立执行的 reviewer roles；
 - off switch、shape、loss、eval、logits 和 class order 检查；
 - `experiments/module_trials/` 轻量证据完整性；
 - `trial_decision` 和 `promotion_decision`。

@@ -11,6 +11,24 @@
 
 Hard gate: if the interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence. It cannot enter Runner, cannot be marked `keep`, and cannot be promoted.
 
+## Innovation Code Review Gate
+
+如果代码改动来自 idea、创新机制、论文模块、官方代码复刻或 module trial，必须同时遵守：
+
+```text
+docs/workflow/innovation_code_review_protocol.md
+```
+
+Interface Checker 的职责分成两次：
+
+```text
+Review 1: 写代码前检查设计、接入点、输入输出、shape、switch、loss/eval/data flow 风险。
+Review 2: 写代码后、Runner 前检查 code diff 是否真的满足接口契约和 baseline-off 等价。
+```
+
+只要 Review 1 或 Review 2 存在 blocking issue，Runner 不得启动正式训练。修复代码后必须重新审查，
+旧的 `interface_check.md` 不能继续作为通过证据。
+
 ## Baseline-Off Equivalence（基线关闭等价）
 
 每个新模块都必须有明确的 config switch。

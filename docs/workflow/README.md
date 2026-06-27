@@ -31,6 +31,7 @@ docs/workflow/artifact_policy.md
 docs/workflow/ARTIFACT_REGISTRATION.md
 docs/workflow/result_index_protocol.md
 docs/workflow/experiment_protocol.md
+docs/workflow/innovation_code_review_protocol.md
 docs/workflow/quality_gate.md
 docs/workflow/promotion.md
 docs/workflow/agent_contracts.md
@@ -100,17 +101,18 @@ runtime 规则：
 13. `paper_intake.md`
 14. `module_trial_protocol.md`
 15. `code_interface_contract.md`
-16. `artifact_policy.md`
-17. `ARTIFACT_REGISTRATION.md`
-18. `result_index_protocol.md`
-19. `experiment_protocol.md`
-20. `quality_gate.md`
-21. `promotion.md`
-22. `agent_contracts.md`
-23. `agent_report_policy.md`
-24. `agent_orchestration.md`
-25. `agents/README.md`
-26. `agents/long_term_memory.md`
-27. `progress_dashboard.md`
-28. `runbook.md`
-29. `../../workflow/README.md`
+16. `innovation_code_review_protocol.md`
+17. `artifact_policy.md`
+18. `ARTIFACT_REGISTRATION.md`
+19. `result_index_protocol.md`
+20. `experiment_protocol.md`
+21. `quality_gate.md`
+22. `promotion.md`
+23. `agent_contracts.md`
+24. `agent_report_policy.md`
+25. `agent_orchestration.md`
+26. `agents/README.md`
+27. `agents/long_term_memory.md`
+28. `progress_dashboard.md`
+29. `runbook.md`
+30. `../../workflow/README.md`
