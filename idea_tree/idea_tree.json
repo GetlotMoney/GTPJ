@@ -1,13 +1,13 @@
 {
   "project": "GTPJ",
   "version": "2026-06-20",
-  "current_version": "v1",
+  "current_version": "v2",
   "ideas": [
     {
       "idea_id": "IDEA-0001",
       "idea_dir": "idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/",
       "title": "CLIP-A-self text prototype adapter",
-      "status": "selected",
+      "status": "validated",
       "source_type": "paper",
       "source_ref": "paper:Enhancing CLIP with GPT-4; code:https://github.com/mayug/VDT-Adapter",
       "source_status": "verified",
@@ -16,13 +16,21 @@
         "v1": {
           "score": 78.0,
           "applicability": "needs_adaptation",
-          "stage": "trialing",
+          "stage": "validated",
           "rationale": "v1 already uses GPT/VDT sentence averages and an MLP text adapter for seen prototypes. CLIP-A-self can test whether sentence-level self-attention selects more useful VDT cues while preserving the existing GZSL label mapping, class order, logits shape, and seen-only CE training path.",
+          "blockers": []
+        },
+        "v2": {
+          "score": 82.0,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "IDEA-0001 was promoted into the active GTPJ-v2 mainline by owner decision on 2026-06-27 using TRIAL-001 ATTEMPT-019. It is no longer a pending v2 candidate; future v2 work should focus on confirmation, U/S gap analysis, and ablations around the accepted adapter.",
           "blockers": []
         }
       },
       "base_versions": [
-        "v1"
+        "v1",
+        "v2"
       ],
       "based_on_modules": [
         "v1_text_adapter",
@@ -43,7 +51,9 @@
       "linked_trials": [
         "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly"
       ],
-      "linked_versions": [],
+      "linked_versions": [
+        "v2"
+      ],
       "linked_experiments": [],
       "evidence": [
         {
@@ -59,10 +69,10 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.yaml",
-          "note": "TRIAL-001 highest observed result is ATTEMPT-003 H=74.27, but clean confirmations ATTEMPT-007 and ATTEMPT-008 reached H=73.69 and H=73.88; decision=revise, promotion_decision=blocked."
+          "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
       ],
-      "next_action": "Analyze TRIAL-001 prototype drift or run deterministic/stability diagnostics; do not promote TRIAL-001 from ATTEMPT-003 without a reproduced clean confirmation."
+      "next_action": "Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml."
     }
   ]
 }

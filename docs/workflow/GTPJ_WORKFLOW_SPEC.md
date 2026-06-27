@@ -4,19 +4,21 @@
 
 ## 0. 当前结论
 
-当前项目已经完成的是“治理骨架”和“核心 workflow 规范”：
+当前项目已经完成的是“治理骨架、核心 workflow 规范和首个真实 module-trial 到正式版本的闭环”：
 
 - GitHub 仓库已经被定位为轻量控制面：保存代码、配置、复现实验索引、版本账本、质量门和 agent 规范。
 - 本地外部目录已经被定位为材料和资产面：保存来源材料、完整创意来源、raw logs、checkpoint 和实验诊断材料。
 - agents 的角色边界已经落地：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
 - 代码接口、评估标注、结果记录、artifact 引用和质量门已经形成规范入口。
+- `IDEA-0001 / TRIAL-001` 已提升为 `GTPJ-v2`，当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。
 
-当前还没有完成的是“首轮真实研究闭环和自动 runtime 产品化”：
+当前还没有完成的是“自动 runtime 产品化和 v2 后续复核”：
 
-- 还没有跑一轮新的 trial/tune/ablation/confirmation 并完整落账。
 - 还没有把本地看板或自动 runtime 变成日常强制入口。
+- `GTPJ-v2` 仍建议补 clean confirmation、seen/unseen gap analysis 和关键 ablation。
 
-所以现在的正确动作是：核心 workflow 按本文件执行；如果要验证整条链路，再进入“首轮干跑 / 真实 run + 规范修正 + 正式闭环”阶段。
+所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active baseline `v2`，
+除非 owner 明确要求从历史版本 tag 开始。
 
 落地状态不要靠口述判断。每次需要确认哪些文件已经实体化、哪些仍是设计时，读取：
 
@@ -106,13 +108,14 @@ D:\backup\Documents\Myself\GTPJ
 |---|---|
 | `config/README.md` | 说明版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 权威 baseline 配置。正式版本配置放这里。 |
+| `config/versions/v2.yaml` | `GTPJ-v2` 权威 baseline 配置，是当前 active baseline 的配置源。 |
 | `config/GTPJ_cub_gzsl.yaml` | 当前 CUB 运行别名。只有 owner 明确切换 active version 时才同步到某个 `vX`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | 当前 AWA2 运行别名。 |
 | `config/GTPJ_sun_gzsl.yaml` | 当前 SUN 运行别名。 |
 
 规则：
 
-- 临时实验不能直接改 `config/versions/v1.yaml`。
+- 临时实验不能直接改 `config/versions/vX.yaml`。
 - 每次实验必须把 base version 配置复制到实验目录的 `config.yaml`，再记录局部改动。
 - `config/versions/vX.yaml` 是版本账本，不是随手调参文件。
 - `config/GTPJ_*.yaml` 是当前运行别名，不等于全部历史版本。
@@ -286,6 +289,17 @@ GitHub 里的 `experiments/` 是轻量实验索引，不是实验资产仓库。
 | `experiments/v1/tune/INDEX.md` | v1 tune 实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 ablation 实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 confirmation 实验索引。 |
+| `experiments/v2/VERSION.md` | v2 版本说明。 |
+| `experiments/v2/config.yaml` | v2 配置归档副本。 |
+| `experiments/v2/result.md` | v2 结果摘要。 |
+| `experiments/v2/baseline/README.md` | v2 baseline 证据说明。 |
+| `experiments/v2/baseline/config.yaml` | v2 baseline 实验配置副本。 |
+| `experiments/v2/baseline/manifest.yaml` | v2 baseline 复现地图，记录配置、代码、环境、数据和外部 artifact 引用。 |
+| `experiments/v2/baseline/result.yaml` | v2 baseline 机器可读结果。 |
+| `experiments/v2/baseline/quality_check.md` | v2 baseline 质量检查记录。 |
+| `experiments/v2/tune/INDEX.md` | v2 tune 实验索引。 |
+| `experiments/v2/ablation/INDEX.md` | v2 ablation 实验索引。 |
+| `experiments/v2/confirmation/INDEX.md` | v2 confirmation 实验索引。 |
 
 每个新实验目录至少要包含：
 
@@ -410,7 +424,8 @@ Warehouse 的职责：
 | tag | 作用 |
 |---|---|
 | `v1` | `GTPJ-v1` 正式 baseline 快照。 |
-| `v2`、`v3` | 未来 promotion 后创建的新 baseline 快照。 |
+| `v2` | `GTPJ-v2` 正式 baseline 快照，当前 active mainline。 |
+| `v3`、后续 `vX` | 未来 promotion 后创建的新 baseline 快照。 |
 
 正式版本关系：
 

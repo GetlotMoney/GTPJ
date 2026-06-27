@@ -28,10 +28,11 @@ run:
   pre_run_freeze_commit: "453acc0"
   command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-019/config.yaml"
 decision:
-  status: "revise"
+  status: "promote"
   best_attempt_status: "best"
-  promotion_decision: "blocked"
-  promote_to: ""
+  promotion_decision: "promote"
+  promote_to: "v2"
+  owner_override: "true"
 evidence:
   log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-019"
   best_checkpoint_artifact_id: "checkpoint:v1:module_trial:TRIAL-001:attempt-019:best"
@@ -53,5 +54,5 @@ warnings:
   - "ATTEMPT-019 is the current formal best H=74.29, but the result is seen-heavy: U=71.32, S=77.52."
   - "ATTEMPT-019 has not yet received a clean confirmation rerun."
   - "ATTEMPT-021 failed before epochs began and is not valid result evidence."
-  - "Promotion remains blocked until confirmation and quality gates are satisfied."
+  - "Owner accepted these remaining risks when promoting and activating GTPJ-v2 on 2026-06-27."
 recorded_at: "2026-06-27T08:34:00+08:00"

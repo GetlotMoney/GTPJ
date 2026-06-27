@@ -84,6 +84,31 @@ quality_conclusion: formal best recorded, but seen-heavy and not promotion-grade
 final_decision: revise; promotion remains blocked
 ```
 
+## Promotion To GTPJ-v2 Addendum
+
+```text
+promotion_date: 2026-06-27
+target_version: v2
+owner_request: make the current best experiment formal and turn it into the mainline
+source_attempt: ATTEMPT-019
+source_trial_run_commit: 453acc0
+source_attempt_record_commit: 3a7945a
+metrics: U=71.32 S=77.52 H=74.29 ZS=81.59 best_epoch=33
+baseline: GTPJ-v1 H=73.93
+delta_H: +0.36
+activation_mode: real_multi_agent_required_by_policy_but_role_only_with_available_evidence
+activation_reason: promotion and active mainline decision affect baseline selection
+required_roles: Coordinator, Interface Checker, Quality Checker, Result Analyst, Reviewer
+required_real_agents: []
+tool_support: real_multi_agent_available=limited_in_current_turn; fallback_mode=role_only_with_independent_sequential_review
+memory_used: yes
+memory_sources: C:/Users/Administrator/.codex/memories/MEMORY.md
+verified_against_current_repo: README.md, result.yaml, manifest.yaml, quality_check.md, attempts/ATTEMPT-019/result.yaml, attempts/ATTEMPT-019/manifest.yaml
+decision: promote_to_v2_and_activate_mainline_by_owner
+known_risks: clean confirmation missing; seen-heavy S-U=6.20
+follow_up: run v2 confirmation and U/S gap analysis before manuscript-grade claims
+```
+
 ## Coordinator
 
 ```text

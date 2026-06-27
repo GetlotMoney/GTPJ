@@ -54,8 +54,9 @@ idea_tree/                 # 创意来源、评分、排序
 一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
 ```
 
-当前唯一权威基线是 `GTPJ-v1 / tag v1 / H=73.93`。`main` 是唯一长期分支；
-`v1` 是 tag，不是分支。
+当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。历史基线
+`GTPJ-v1 / tag v1 / H=73.93` 永久保留。`main` 是唯一长期分支；
+`v1`、`v2` 是 tag，不是分支。
 
 代码层和实验层不要混淆：
 
@@ -88,7 +89,8 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `config/README.md` | 配置策略说明，解释版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
-| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v1`。 |
+| `config/versions/v2.yaml` | `GTPJ-v2` 的固定 baseline 配置，是当前 active baseline 的权威配置源。 |
+| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v2`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
 
@@ -159,7 +161,7 @@ idea_tree/                 # 创意来源、评分、排序
 `workflow/gtpj_workflow.py` 的职责：
 
 - 检查仓库结构是否完整。
-- 检查当前唯一基线 `v1` tag 是否对应 `H=73.93`。
+- 检查正式 baseline tags 是否对应各自版本账本中的 H 值。
 - 检查创意树、版本配置和接口规范关键章节。
 - 创建实验目录和标准模板。
 - 创建实验时同步更新全局登记表和版本索引。
@@ -218,6 +220,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `idea_tree/schema.json` | `idea_tree.json` 的结构约束，规定版本分数字段必须按 `v1`、`v2` 这类版本键保存。 |
 | `idea_tree/versions/` | 按版本生成的人类阅读选择清单；创新 trial 只读取对应 base version 的清单。 |
 | `idea_tree/versions/v1.md` | `v1` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
+| `idea_tree/versions/v2.md` | `v2` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
 | `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
 | `idea_tree/sources/papers_index.md` | 论文来源索引。 |
 | `idea_tree/sources/source_notes/` | 预留来源笔记目录；可放论文摘录、来源复核摘要等轻量文本。 |
@@ -312,7 +315,25 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
 
-这些 `experiments/v1/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
+### `experiments/v2/`
+
+`GTPJ-v2` 的版本实验目录。
+
+| 路径 | 用途 |
+|---|---|
+| `experiments/v2/VERSION.md` | v2 版本说明，记录父版本、来源 trial、启用模块、正式结果和已知风险。 |
+| `experiments/v2/config.yaml` | v2 配置归档副本，应与 `config/versions/v2.yaml` 保持一致。 |
+| `experiments/v2/result.md` | v2 结果记录，保存当前正式主线指标和外部日志 artifact 证据。 |
+| `experiments/v2/baseline/README.md` | `GTPJ-v2` baseline 证据说明。 |
+| `experiments/v2/baseline/config.yaml` | `GTPJ-v2` baseline 配置副本，来自 `TRIAL-001 / ATTEMPT-019`。 |
+| `experiments/v2/baseline/manifest.yaml` | `GTPJ-v2` baseline 复现地图，记录外部 artifact URI、hash、size 和评估契约。 |
+| `experiments/v2/baseline/result.yaml` | `GTPJ-v2` baseline 机器可读结果。 |
+| `experiments/v2/baseline/quality_check.md` | `GTPJ-v2` baseline 质量检查和 owner 主线化决策记录。 |
+| `experiments/v2/tune/INDEX.md` | v2 调参实验索引。 |
+| `experiments/v2/ablation/INDEX.md` | v2 消融实验索引。 |
+| `experiments/v2/confirmation/INDEX.md` | v2 确认实验索引。 |
+
+这些 `experiments/vX/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
 dropout、seed，或做窄消融、clean confirmation，应写入该 trial 的 `ATTEMPTS.md` 和
 `attempts/ATTEMPT-xxx/`。
 

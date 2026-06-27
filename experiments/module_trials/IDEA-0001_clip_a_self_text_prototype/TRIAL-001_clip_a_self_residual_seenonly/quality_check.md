@@ -3,8 +3,10 @@
 ```text
 runtime:
 quality_check_mode: STRICT
-decision: PASS_REVISE
-promotion_decision: blocked
+decision: PASS_OWNER_PROMOTE
+promotion_decision: promote
+promote_to: v2
+owner_override: true
 ```
 
 ## Scope
@@ -31,6 +33,7 @@ promotion_decision: blocked
 - [x] `receipt:v1:module_trial:TRIAL-001:attempt-019:runner_console` exists in Warehouse.
 - [x] GitHub only records artifact ids, URIs, sha256, and size.
 - [x] No raw logs, checkpoints, generated figures, or feature caches are tracked in Git.
+- [x] Owner accepted `ATTEMPT-019` as `GTPJ-v2` formal mainline evidence on 2026-06-27.
 
 ## Promotion Gate
 
@@ -40,13 +43,13 @@ promotion_decision: blocked
 - [x] current best config path is explicit.
 - [x] class order, seen/unseen split, logits shape, and metric calculation are unchanged.
 - [x] artifact boundary is complete for the current best attempt.
-- [ ] `ATTEMPT-019` has not yet been clean-confirmed.
-- [ ] seen-heavy behavior needs analysis before any promotion claim.
-- [ ] promotion review has not upgraded `trial_decision` to `promote`.
+- [x] promotion review has upgraded `trial_decision` to `promote` by owner decision.
+- [ ] `ATTEMPT-019` has not yet been clean-confirmed; this is a follow-up requirement.
+- [ ] seen-heavy behavior needs follow-up analysis.
 
 ## Decision
 
-PASS_REVISE.
+PASS_OWNER_PROMOTE.
 
-`ATTEMPT-019` is accepted as the current formal best experiment record for TRIAL-001, but promotion
-remains blocked pending clean confirmation and seen-bias analysis.
+`ATTEMPT-019` is accepted as the current formal best experiment record for TRIAL-001 and is promoted
+to `GTPJ-v2` by owner decision. Clean confirmation and seen-bias analysis remain required follow-ups.

@@ -1,20 +1,28 @@
 # Runbook
 
-## 当前唯一基线
+## 当前基线
 
-本仓库当前只有一个正式基线：
+本仓库当前 active baseline：
+
+```text
+GTPJ-v2
+code tag: v2
+baseline H: 74.29
+长期分支: main
+```
+
+历史 baseline：
 
 ```text
 GTPJ-v1
 code tag: v1
 baseline H: 73.93
-长期分支: main
 ```
 
-`v1` 是代码快照 tag，不是分支。`main` 是唯一长期分支，保存 owner 明确选择的 active code
-和全部实验账本。
+`v1` 和 `v2` 是代码快照 tag，不是分支。`main` 是唯一长期分支，保存 owner 明确选择的
+active code 和全部实验账本。
 
-如果本地 `v1` tag 不是 `H=73.93` 对应的代码快照，必须先修正 tag，不能继续跑实验。
+如果本地 baseline tag 和对应版本账本不一致，必须先修正 tag，不能继续跑正式实验。
 
 ## 实验前统一检查
 
@@ -49,8 +57,8 @@ validate-remote-ok
 
 不要把“影响本次运行的配置改动”和“运行后的结果记账”混在同一次提交里。
 如果只是本地离线复查，可以先跳过 `validate-remote`，但正式开实验前需要确认远端状态对齐。
-`validate-remote` 允许 `main` 比 `v1` 多治理账本提交；它检查的是远端 `main` 对齐本地
-`main`、远端 `v1` 对齐本地 `v1` tag，并确认本地 `main` 包含 `v1` 历史。
+`validate-remote` 允许 `main` 比历史 tag 多治理账本提交；它检查的是远端 `main` 对齐本地
+`main`、远端 baseline tags 对齐本地 baseline tags，并确认本地 `main` 包含这些 baseline 历史。
 
 Owner 只需要说明“想基于哪个版本跑/做什么”。检查通过后，Coordinator 自动按
 `docs/workflow/TASK_START_CARD.md` 输出启动卡。只有启动卡说明任务类型、写入边界、agents、
@@ -148,29 +156,29 @@ python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 
 它不会自动判断 trial 根目录 README/result/quality_check/idea_tree 的最终结论。只有当本次 attempt 改变 trial-level 结论，例如 best、reject、promotion blocked 原因变化时，Coordinator 再做少量人工 review 和根账本同步。
 
-## 运行 v1 确认实验
+## 运行 v2 确认实验
 
-确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v1` 时，临时分支从 `main` 开，
-`base_code_tag: v1` 记录代码来源；如果未来当前 `main` 不是 `v1` 代码，则按
-`docs/workflow/experiment_protocol.md` 的历史版本 confirmation 规则从 `v1` tag 开只运行分支。
+确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v2` 时，临时分支从 `main` 开，
+`base_code_tag: v2` 记录代码来源；如果未来当前 `main` 不是 `v2` 代码，则按
+`docs/workflow/experiment_protocol.md` 的历史版本 confirmation 规则从 `v2` tag 开只运行分支。
 
 ```bash
 git switch main
-git switch -c exp/v1-confirm-001-v1-seed5
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind confirmation --exp-id CONFIRM-001 --slug v1_seed5
-python train_GTPJ_CUB.py --config experiments/v1/confirmation/CONFIRM-001_v1_seed5/config.yaml
+git switch -c exp/v2-confirm-001-v2-seed5
+python workflow/gtpj_workflow.py new-experiment --version v2 --kind confirmation --exp-id CONFIRM-001 --slug v2_seed5
+python train_GTPJ_CUB.py --config experiments/v2/confirmation/CONFIRM-001_v2_seed5/config.yaml
 ```
 
 跑完后必须补：
 
 ```text
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/README.md
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/manifest.yaml
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md
-experiments/v1/confirmation/CONFIRM-001_v1_seed5/quality_check.md
+experiments/v2/confirmation/CONFIRM-001_v2_seed5/README.md
+experiments/v2/confirmation/CONFIRM-001_v2_seed5/manifest.yaml
+experiments/v2/confirmation/CONFIRM-001_v2_seed5/result.yaml
+experiments/v2/confirmation/CONFIRM-001_v2_seed5/result.md
+experiments/v2/confirmation/CONFIRM-001_v2_seed5/quality_check.md
 experiments/EXPERIMENT_REGISTRY.md
-experiments/v1/confirmation/INDEX.md
+experiments/v2/confirmation/INDEX.md
 ```
 
 日志原始位置如果在 `train_log/`，必须登记或复制到外部 `GTPJ_Warehouse`，GitHub 只记录
@@ -181,31 +189,31 @@ experiments/v1/confirmation/INDEX.md
 确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
 历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。
 
-## 运行 v1 版本级调参实验
+## 运行 v2 版本级调参实验
 
-version-level tune run 属于 `experiments/v1/tune/`，不要放到 `confirmation/`。
+version-level tune run 属于 `experiments/v2/tune/`，不要放到 `confirmation/`。
 如果调参对象是某个 module trial 的 heads、ratio、dropout、seed 等 attempt 参数，应写入该 trial 的
 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，不要写入 `experiments/v1/tune/`。
 
 调参前先生成最多 3 个候选。这个命令只读配置和 tune 索引，不会改文件，也不会启动训练：
 
 ```bash
-python workflow/gtpj_workflow.py tune-suggest --version v1
+python workflow/gtpj_workflow.py tune-suggest --version v2
 ```
 
 用户明确选择 1 个候选后，再开临时分支、创建实验目录、修改该实验目录里的配置副本：
 
 ```bash
 git switch main
-git switch -c exp/v1-tune-001-topo008
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+git switch -c exp/v2-tune-001-clipaself
+python workflow/gtpj_workflow.py new-experiment --version v2 --kind tune --exp-id TUNE-001 --slug clipaself
 ```
 
 Runner 开始前用本地文件锁占用 GPU，避免同一时间跑多个训练：
 
 ```bash
 python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
-python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
+python train_GTPJ_CUB.py --config experiments/v2/tune/TUNE-001_clipaself/config.yaml
 ```
 
 跑完后必须补：
@@ -216,19 +224,19 @@ quality_check.md: 证据是否完整、有没有改 eval 口径
 manifest.yaml: config、command、seed、dataset、split、class order 和 artifact identity
 result.yaml: U/S/H/ZS、best epoch、decision 和 evidence
 result.md: 人类可读结果解释
-experiments/v1/tune/INDEX.md: 实验索引
+experiments/v2/tune/INDEX.md: 实验索引
 experiments/EXPERIMENT_REGISTRY.md: 全局登记
 ```
 
 可以用 helper 解析训练日志并入账：
 
 ```bash
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python workflow/gtpj_workflow.py record-result --version v2 --kind tune --exp-id TUNE-001 --slug clipaself --parameter clip_a_self_outer_ratio --old-value 0.15 --new-value 0.125 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v2/tune/TUNE-001_clipaself/config.yaml" --decision keep
 python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
 ```
 
 `record-result` 会读取外部日志、解析指标、计算 sha256/size，更新实验 README、`manifest.yaml`、
-`result.yaml`、`result.md`、`experiments/v1/tune/INDEX.md` 和
+`result.yaml`、`result.md`、`experiments/v2/tune/INDEX.md` 和
 `experiments/EXPERIMENT_REGISTRY.md`，并提示何时清理临时分支。
 它不会把 raw log 复制到 GitHub。
 它不提交、不 push、不删除分支。
@@ -240,8 +248,8 @@ tune 不会产生新的 `vX`。只有模块组合或模块替换通过 promotion
 先登记创意来源。`IDEA-XXXX`、`short_name` 和 `<source>` 必须替换成真实值。
 
 ```bash
-python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
-python workflow/gtpj_workflow.py set-current-version --version v1
+python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v2 --global-score 50 --version-score 50 --applicability direct
+python workflow/gtpj_workflow.py set-current-version --version v2
 ```
 
 然后补全：
@@ -255,9 +263,9 @@ idea_tree/ideas/IDEA-XXXX_short_name/IDEA.md
 
 ```text
 status: selected
-version_scores.v1.rationale: 非空
-version_scores.v1.applicability: direct 或 needs_adaptation
-version_scores.v1.blockers: []
+version_scores.v2.rationale: 非空
+version_scores.v2.applicability: direct 或 needs_adaptation
+version_scores.v2.blockers: []
 hypothesis: 非空
 implementation_scope: 非空
 risk: 非空
@@ -267,11 +275,11 @@ risk: 非空
 
 ```bash
 git switch main
-git switch -c dev/v1-idea-xxxx-trial-001-short-name
-python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
+git switch -c dev/v2-idea-xxxx-trial-001-short-name
+python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v2
 ```
 
-当前阶段 `main` 的代码就是 `v1`，所以不需要额外恢复代码层。未来如果 `main` 已经是 `v3`，但 trial 要基于旧 `v1`，仍然从当前 `main` 开分支以保留最新账本，然后只把代码层恢复到 `v1`，不要恢复 `docs/`、`experiments/`、`idea_tree/` 和 `config/versions/`。
+当前阶段 `main` 的代码就是 `v2`，所以不需要额外恢复代码层。未来如果 `main` 已经是 `v3`，但 trial 要基于旧 `v1` 或 `v2`，仍然从当前 `main` 开分支以保留最新账本，然后只把代码层恢复到目标 tag，不要恢复 `docs/`、`experiments/`、`idea_tree/` 和 `config/versions/`。
 
 ## Trial 打快照 tag
 

@@ -5,7 +5,7 @@
 
 | Idea | 源 idea 文件 | Trial 证据目录 | Trial 状态 |
 |---|---|---|---|
-| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | revise |
+| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | promoted_to_v2 |
 
 启动任何 trial 前：
 
@@ -18,4 +18,4 @@
 
 | Idea | Trial | 状态 | 目录 | 说明 |
 |---|---|---|---|---|
-| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | revise | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | Current best is ATTEMPT-019 with H=74.29; promotion remains blocked pending clean confirmation and U/S gap review. |
+| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | promoted_to_v2 | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | ATTEMPT-019 with H=74.29 is promoted to `GTPJ-v2` by owner decision; clean confirmation and U/S gap review remain follow-ups. |

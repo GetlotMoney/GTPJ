@@ -1,13 +1,13 @@
 # 总创意清单
 
-当前实验版本视图：`idea_tree/versions/v1.md`
+当前实验版本视图：`idea_tree/versions/v2.md`
 
 这是给人读的全局创意总表，只回答“有哪些创意”。
 具体某个版本下一步试什么，请读取 `idea_tree/versions/vX.md`。
 
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
-| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1` | selected | Analyze TRIAL-001 prototype drift; if continuing, run smaller outer-ratio or L2SP anchoring follow-up instead of promoting TRIAL-001. |
+| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2` | validated | Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml. |
 
 ## 使用规则
 

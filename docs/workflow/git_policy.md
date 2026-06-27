@@ -6,15 +6,16 @@
 - `v1`、`v2`、`v3`：永久 baseline tag，不是分支。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
-当前唯一权威基线是：
+当前 active baseline 是：
 
 ```text
-GTPJ-v1
-tag: v1
-H: 73.93
+GTPJ-v2
+tag: v2
+H: 74.29
 ```
 
-如果本地或远端 `v1` tag 指向的记录不是 `H=73.93`，说明 tag 错位，必须先修正，不能继续开实验。
+历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。如果本地或远端 baseline tag
+指向的记录与版本账本不一致，说明 tag 错位，必须先修正，不能继续开正式实验。
 
 ## 临时分支
 
@@ -197,7 +198,9 @@ trial/v1/idea-0003/trial-001
 - `v*`：保护正式 baseline tag，禁止移动、覆盖或删除。
 - `trial/**`：保护 trial 快照 tag，禁止移动、覆盖或删除。
 
-当前仓库初始化阶段如果发现 `v1` tag 错指旧基线，允许做一次性更正；更正后 `v1` 必须指向 `H=73.93` 的 GTPJ-v1 快照，之后按不可移动对象管理。
+当前仓库初始化阶段如果发现 `v1` tag 错指旧基线，允许做一次性更正；更正后 `v1`
+必须指向 `H=73.93` 的 GTPJ-v1 快照，之后按不可移动对象管理。`v2` 是当前 active
+baseline tag，也按不可移动对象管理。
 
 Push 规则：
 

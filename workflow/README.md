@@ -14,7 +14,9 @@ docs/workflow/quality_gate.md
 docs/workflow/agent_contracts.md
 ```
 
-当前权威 baseline 是 `GTPJ-v1 / tag v1 / H=73.93`。`validate` 会检查本地 `v1` tag 是否能读到该 baseline 记录；`validate-remote` 会检查远端 `main` 和 `v1` 是否与本地治理事实对齐。
+当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。`GTPJ-v1 / tag v1 / H=73.93`
+仍是历史 baseline。`validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
+用于核对远端 `main` 和 baseline tags 是否与本地治理事实对齐。
 
 ## Commands
 
@@ -24,7 +26,7 @@ python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-remote
 python workflow/gtpj_workflow.py audit-boundary
 
-python workflow/gtpj_workflow.py tune-suggest --version v1
+python workflow/gtpj_workflow.py tune-suggest --version v2
 
 git switch main
 git status --short

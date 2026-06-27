@@ -97,35 +97,41 @@ CANONICAL_BASELINES = {
         "H": "73.93",
         "result_file": "experiments/v1/result.md",
         "version_file": "experiments/v1/VERSION.md",
+    },
+    "v2": {
+        "name": "GTPJ-v2",
+        "H": "74.29",
+        "result_file": "experiments/v2/result.md",
+        "version_file": "experiments/v2/VERSION.md",
     }
 }
 TUNE_CANDIDATE_RULES = [
     {
-        "parameter": "conditional_text_ratio",
-        "suggested_value": "0.006",
-        "why": "降低条件文本注入强度，检查当前 v1 是否对文本条件过敏。",
-        "risk": "过低可能削弱 unseen 类别收益。",
+        "parameter": "clip_a_self_outer_ratio",
+        "suggested_value": "0.125",
+        "why": "降低 CLIP-A-self 二级残差强度，检查 seen-heavy 行为是否缓解。",
+        "risk": "过低可能削弱 ATTEMPT-019 的 seen 类收益。",
         "cost": "1 个 CUB seed 训练。",
     },
     {
-        "parameter": "lambda_topo_pearson",
-        "suggested_value": "0.08",
-        "why": "轻微降低拓扑约束权重，观察 H 是否被过强正则压住。",
-        "risk": "可能牺牲 seen/unseen 结构一致性。",
+        "parameter": "clip_a_self_inner_ratio",
+        "suggested_value": "0.30",
+        "why": "降低句级 self-attention 注入强度，检查文本原型是否更稳。",
+        "risk": "可能降低 adapter 对句间信息的利用。",
         "cost": "1 个 CUB seed 训练。",
     },
     {
-        "parameter": "adapter_ratio",
-        "suggested_value": "0.15",
-        "why": "缩小 adapter 容量，验证当前配置是否有过拟合迹象。",
-        "risk": "容量不足会同时压低 U/S。",
+        "parameter": "clip_a_self_dropout",
+        "suggested_value": "0.45",
+        "why": "轻微降低 adapter dropout，检查 ATTEMPT-019 附近是否还有可提升空间。",
+        "risk": "可能加重 seen 类过拟合，需要同时关注 U/S gap。",
         "cost": "1 个 CUB seed 训练。",
     },
     {
-        "parameter": "tf_dropout",
-        "suggested_value": "0.15",
-        "why": "提高 Transformer dropout，测试泛化稳定性。",
-        "risk": "dropout 过高会拖慢收敛。",
+        "parameter": "clip_a_self_outer_ratio",
+        "suggested_value": "0.175",
+        "why": "向 ATTEMPT-020 方向测试更强二级残差，确认 H=74.29 附近的局部峰值。",
+        "risk": "可能进一步扩大 seen/unseen 差距。",
         "cost": "1 个 CUB seed 训练。",
     },
 ]
@@ -661,6 +667,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "idea_tree/schema.json",
         "idea_tree/idea_tree.json",
         "idea_tree/versions/v1.md",
+        "idea_tree/versions/v2.md",
         "experiments/README.md",
         "experiments/EXPERIMENT_REGISTRY.md",
         "experiments/VERSION_TREE.md",
@@ -683,6 +690,18 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/v1/ablation/INDEX.md",
         "experiments/v1/confirmation/INDEX.md",
         "config/versions/v1.yaml",
+        "experiments/v2/VERSION.md",
+        "experiments/v2/config.yaml",
+        "experiments/v2/result.md",
+        "experiments/v2/baseline/README.md",
+        "experiments/v2/baseline/config.yaml",
+        "experiments/v2/baseline/manifest.yaml",
+        "experiments/v2/baseline/result.yaml",
+        "experiments/v2/baseline/quality_check.md",
+        "experiments/v2/tune/INDEX.md",
+        "experiments/v2/ablation/INDEX.md",
+        "experiments/v2/confirmation/INDEX.md",
+        "config/versions/v2.yaml",
         "schemas/manifest.schema.json",
         "schemas/result.schema.json",
         "schemas/artifact_ref.schema.json",
@@ -775,10 +794,14 @@ def cmd_validate(_: argparse.Namespace) -> int:
             if expected_h not in local_text:
                 raise WorkflowError(f"{local_file} must record canonical H={expected_h}")
 
-    v1_config = read_text(REPO_ROOT / "config" / "versions" / "v1.yaml")
-    archived_config = read_text(REPO_ROOT / "experiments" / "v1" / "config.yaml")
-    if v1_config != archived_config:
-        raise WorkflowError("config/versions/v1.yaml and experiments/v1/config.yaml differ")
+    for version in sorted(CANONICAL_BASELINES):
+        version_config = read_text(REPO_ROOT / "config" / "versions" / f"{version}.yaml")
+        archived_config = read_text(REPO_ROOT / "experiments" / version / "config.yaml")
+        baseline_config = read_text(REPO_ROOT / "experiments" / version / "baseline" / "config.yaml")
+        if version_config != archived_config:
+            raise WorkflowError(f"config/versions/{version}.yaml and experiments/{version}/config.yaml differ")
+        if version_config != baseline_config:
+            raise WorkflowError(f"config/versions/{version}.yaml and experiments/{version}/baseline/config.yaml differ")
 
     project_structure = read_text(REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md")
     for marker in [
@@ -868,24 +891,28 @@ def cmd_validate(_: argparse.Namespace) -> int:
 
 def cmd_validate_remote(args: argparse.Namespace) -> int:
     remote = args.remote
-    try:
-        local_v1 = tag_commit("v1")
-    except WorkflowError as exc:
-        raise WorkflowError("Missing local authoritative tag: v1") from exc
+    local_tags: dict[str, str] = {}
+    for version in CANONICAL_BASELINES:
+        try:
+            local_tags[version] = tag_commit(version)
+        except WorkflowError as exc:
+            raise WorkflowError(f"Missing local authoritative tag: {version}") from exc
     try:
         local_main = resolve_commit("refs/heads/main")
     except WorkflowError as exc:
         raise WorkflowError("Missing local main branch: refs/heads/main") from exc
-    require_ancestor(
-        "refs/tags/v1",
-        "refs/heads/main",
-        "local main must contain local v1 tag",
-    )
+    for version in CANONICAL_BASELINES:
+        require_ancestor(
+            f"refs/tags/{version}",
+            "refs/heads/main",
+            f"local main must contain local {version} tag",
+        )
 
     checks = [
         ("origin/main", "refs/heads/main", local_main),
-        ("origin/v1", "refs/tags/v1", local_v1),
     ]
+    for version, commit in local_tags.items():
+        checks.append((f"origin/{version}", f"refs/tags/{version}", commit))
     errors: list[str] = []
     for label, ref, expected in checks:
         display_label = label.replace("origin", remote, 1)
@@ -3094,7 +3121,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)
 
-    validate_remote = sub.add_parser("validate-remote", help="校验远端 main/v1 与本地 main/v1")
+    validate_remote = sub.add_parser("validate-remote", help="校验远端 main/baseline tags 与本地治理事实")
     validate_remote.add_argument("--remote", default="origin")
     validate_remote.set_defaults(func=cmd_validate_remote)
 

@@ -1,6 +1,7 @@
 # 配置策略
 
-`config/versions/v1.yaml` 是 `GTPJ-v1` 的固定配置。
+`config/versions/v2.yaml` 是当前 active baseline `GTPJ-v2` 的固定配置。
+`config/versions/v1.yaml` 保留为 `GTPJ-v1` 的历史固定配置。
 
 规则：
 
@@ -15,5 +16,5 @@
 当前别名：
 
 ```text
-config/GTPJ_cub_gzsl.yaml -> 与 config/versions/v1.yaml 内容相同
+config/GTPJ_cub_gzsl.yaml -> 与 config/versions/v2.yaml 内容相同
 ```

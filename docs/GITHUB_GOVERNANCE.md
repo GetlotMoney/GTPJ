@@ -6,21 +6,29 @@
 当前核心 workflow 已经生效；任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、
 agent 凭证和 promotion gate 以 `docs/workflow/` 中的规范为准。
 
-## 当前唯一权威基线
+## 当前权威基线
 
-当前仓库只承认一个正式基线：
+当前 active baseline：
+
+```text
+GTPJ-v2
+code_tag: v2
+baseline H: 74.29
+长期分支: main
+```
+
+历史 baseline：
 
 ```text
 GTPJ-v1
 code_tag: v1
 baseline H: 73.93
-长期分支: main
 ```
 
-`main` 是唯一长期分支。`v1` 是 tag，不是分支。
+`main` 是唯一长期分支。`v1`、`v2` 是 tag，不是分支。
 
-早期错误指向旧结果的 `v1` tag 不再作为有效基线。当前初始化阶段允许一次性把
-`v1` 修正到 `H=73.93` 的 GTPJ-v1 快照；修正后 `v1` 按永久 tag 管理，不再移动。
+早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
+后按永久 tag 管理，不再移动。`v2` 是 2026-06-27 owner activated 的当前主线 tag。
 
 ## 当前阶段只管理什么
 

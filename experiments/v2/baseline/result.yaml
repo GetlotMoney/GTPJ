@@ -1,0 +1,49 @@
+schema_version: gtpj-result/v1
+experiment_id: GTPJ-v2
+experiment_name: GTPJ-v2-baseline
+kind: baseline
+version: v2
+metrics:
+  U: "71.32"
+  S: "77.52"
+  H: "74.29"
+  ZS: "81.59"
+  best_epoch: "33"
+  baseline_H: "73.93"
+  delta_H: "+0.36"
+  seed: "5"
+  source: training_log
+  metric_semantics: GZSL U/S/H/ZS from protected evaluator
+baseline:
+  version: v1
+  H: "73.93"
+delta:
+  H: "+0.36"
+run:
+  seed: "5"
+  source_trial_run_commit: "453acc0"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-019/config.yaml"
+decision:
+  status: owner_activated
+  promotion_decision: promote
+  promote_to: v2
+  owner_override: true
+evidence:
+  log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
+  best_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:best
+  full_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:full
+  runner_console_artifact_id: receipt:v1:module_trial:TRIAL-001:attempt-019:runner_console
+  manifest: manifest.yaml
+  label_mapping_id: standard_v1
+  split_id: standard_v1
+  class_order_id: standard_v1
+quality:
+  manifest_verified: true
+  boundary_audit_passed: true
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+warnings:
+  - "ATTEMPT-019 has not yet received an independent clean confirmation rerun."
+  - "The v2 result is seen-heavy: U=71.32, S=77.52, S-U=6.20."
+  - "Owner accepted these risks when activating v2 as the current mainline on 2026-06-27."
+recorded_at: "2026-06-27T09:01:15+08:00"

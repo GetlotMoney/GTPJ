@@ -24,9 +24,9 @@ manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
 agent_summary: agent_summary.md
-trial_decision: revise
-promotion_decision: blocked
-promote_to:
+trial_decision: promote
+promotion_decision: promote
+promote_to: v2
 ```
 
 ## Changed Files
@@ -72,16 +72,17 @@ result evidence. `ATTEMPT-021` through `ATTEMPT-028` remain uncompleted.
 - [x] switch-off path remains the validated TRIAL-001 implementation path.
 - [x] current best attempt evidence directory and external artifact pointers are complete.
 - [x] raw logs, checkpoints, and runner receipts are registered in Warehouse rather than Git.
-- [ ] current best `ATTEMPT-019` has not yet received a clean confirmation rerun.
+- [x] owner accepted `ATTEMPT-019` as formal `GTPJ-v2` mainline evidence on 2026-06-27.
+- [x] `trial_decision: promote` and `promotion_decision: promote` are recorded for `promote_to: v2`.
+- [ ] current best `ATTEMPT-019` has not yet received a clean confirmation rerun; this remains a follow-up requirement.
 - [ ] U/S gap remains large: `S - U = 6.20`, so the result is seen-heavy.
-- [ ] automatic promotion is allowed only after `trial_decision: promote` and `promotion_decision: promote`.
 
 ## Decision
 
-`revise`
+`promote`
 
 `ATTEMPT-019` is now the formal best recorded experiment for TRIAL-001 with `H=74.29`
 (`U=71.32`, `S=77.52`, `ZS=81.59`, best epoch 33). It is recorded through the
-attempt ledger and external artifact ids, not through an attempt-level git tag. It is not promoted to
-a new baseline because the result is seen-heavy and still
-needs a clean confirmation run.
+attempt ledger and external artifact ids, not through an attempt-level git tag. By owner decision on
+2026-06-27, this trial is promoted to `GTPJ-v2` and activated as the current mainline while preserving
+the clean-confirmation and seen-heavy follow-up risks.

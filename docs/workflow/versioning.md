@@ -20,7 +20,15 @@ v3
 
 注意：`v1`、`v2`、`v3` 是 tag，不是长期分支。仓库只有一个长期分支 `main`。
 
-当前唯一权威基线：
+当前 active baseline：
+
+```text
+GTPJ-v2
+code_tag: v2
+H: 74.29
+```
+
+历史 baseline：
 
 ```text
 GTPJ-v1
