@@ -114,6 +114,13 @@ agents:
   activation_mode:
   activation_reason:
   decision_basis:
+    fastest_valid_path:
+      selected:
+      why_fastest:
+      why_still_valid:
+      skipped_agents:
+      parallelized_roles:
+      serialized_roles:
   required_roles:
   disabled_roles:
   required_real_agents:
@@ -241,6 +248,12 @@ debug/smoke 降级。
 - 只做账本格式整理且不改变实验结论。
 
 如果选择 `role_only`，启动卡必须写明为什么不启用真实多 agents，以及哪些角色由主 agent 代执行。
+
+`agents.decision_basis.fastest_valid_path` 必须说明本次为什么选择最快合规路径：
+
+- 简单只读、debug/smoke、单 Runner frozen config、账本格式整理等任务，默认选择 `role_only`，不启动不必要 agents。
+- 如果 hard gate 或 owner 要求 `real_multi_agent`，默认并行执行只读审查角色，只串行 Implementer、Runner 和 Coordinator 写账本。
+- 被跳过的角色必须写入 `skipped_agents`，并说明跳过后为什么仍然满足 hard gates。
 
 `agents.required_real_agents` 是真实 sub-agent 硬需求角色列表：
 
@@ -426,7 +439,7 @@ GitHub 写入：
 启用 agents：
 agents.activation_mode：
 agents.activation_reason：
-agents.decision_basis：
+agents.decision_basis.fastest_valid_path：
 agents.required_roles：
 agents.required_real_agents：
 agents.tool_support：

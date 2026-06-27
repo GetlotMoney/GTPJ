@@ -151,6 +151,30 @@ owner 明确接受它只作为 debug/smoke 证据。
 - `activation_mode: role_only` 时，写 `[]`；如果本应有真实多 agent 但工具不可用，必须在
   `tool_support.fallback_mode` 写明 fallback，并触发阻断或 debug-only 降级。
 
+### 最快合规路径
+
+Coordinator 默认必须选择“最快的有效执行路径”，而不是默认选择最重流程。
+
+规则：
+
+- 如果任务只是只读解释、状态检查、配置查看、窄范围 rerun/confirmation 准备、单 Runner frozen-config 执行、debug/smoke，或不改变结论的账本格式整理，默认用 `role_only`。
+- 如果 hard gate 或 owner 明确要求 `real_multi_agent`，必须用 `real_multi_agent`，但要把 Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 这类只读角色并行执行。
+- 不能为了“显得规范”而串行等待不必要 agents；未被 hard gate 要求、也不影响当前结论的角色必须跳过，并在启动卡里写明 `skipped_agents`。
+- Runner 永远串行并持有 GPU lock；Implementer 对同一代码路径永远单 writer；Coordinator 是最终 GitHub 账本唯一 writer。
+- 如果 real multi-agent 工具不可用，而任务没有 hard gate 要求真实多 agent，走 `role_only` 是最快合规路径；如果任务硬性要求真实多 agent，则阻断或降级为 debug/smoke，不能把正式证据伪装成已独立审查。
+
+启动卡里的 `agents.decision_basis` 必须包含：
+
+```yaml
+fastest_valid_path:
+  selected:
+  why_fastest:
+  why_still_valid:
+  skipped_agents:
+  parallelized_roles:
+  serialized_roles:
+```
+
 ### 启用矩阵
 
 | 场景 | 默认模式 | 触发理由 |
