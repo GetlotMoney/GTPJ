@@ -460,6 +460,7 @@ GitHub 远端应设置保护规则：
 | 普通实验协议 | `docs/workflow/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
 | 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料、账本回流、main active code 或不自动 push 边界时更新。 |
 | agent 编排 | `docs/workflow/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
+| 长期 agent 记忆 | `docs/workflow/agents/long_term_memory.md` | 改长期 agent 身份、角色记忆、实例加载、记忆写回或复用经验规则时更新。 |
 | 进度看板协议 | `docs/workflow/progress_dashboard.md` | 改本地网页看板、`.gtpj_runtime/` 状态文件、agent 进度、GPU/Runner 展示或只读边界时更新。 |
 
 ## 本地 skill 和 GitHub 的同步

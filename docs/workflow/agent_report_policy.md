@@ -71,6 +71,9 @@ tool_support:
 memory_policy:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
@@ -92,6 +95,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -105,6 +111,7 @@ verified_against_current_repo:
 - 多个 agents 不得同时写同一个 GitHub 账本文件。
 - `real_multi_agent` 必须保留各 agent 的独立输入、发现和结论；如果当前工具不可用，只能在 `tool_support.fallback_mode` 记录 `role_only_with_independent_sequential_review`，不能冒充真实多 agent。
 - memory 只能用于定位和背景提醒；没有被当前 repo、日志或 artifact 验证的 memory-derived fact 不能写入正式结果、质量门或 promotion 证据。
+- 长期 agent 记忆来自 `docs/workflow/agents/shared_roles/<role>/memory.md`；每次真实实验必须记录读取了哪些角色记忆，以及是否需要写回更新。
 
 ## 入账时机
 

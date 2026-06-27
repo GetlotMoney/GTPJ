@@ -135,6 +135,8 @@ agents:
     repo_state_required:
     memory_used:
     memory_sources:
+    agent_profile_files:
+    agent_memory_files:
     verified_against_current_repo:
 
 hard_gates:
@@ -264,6 +266,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 
 - session context 只能作为任务上下文，不能直接当证据；
 - Codex 全局 memory 或历史会话摘要只能用于定位，必须回到当前仓库、日志或 artifact 验证；
+- 长期 agent 记忆必须来自 `docs/workflow/agents/shared_roles/<role>/memory.md`，并记录实际读取文件；
 - repo state 和 artifact 是正式实验事实源；
 - 使用 memory 时，必须记录 `memory_sources` 和 `verified_against_current_repo`。
 

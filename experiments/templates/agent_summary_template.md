@@ -18,6 +18,9 @@ tool_support:
 memory_policy:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
@@ -38,6 +41,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -57,6 +63,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -76,6 +85,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -93,6 +105,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -110,6 +125,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -127,6 +145,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -146,6 +167,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -165,6 +189,9 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```
 
@@ -184,5 +211,8 @@ decision:
 evidence_refs:
 memory_used:
 memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
 verified_against_current_repo:
 ```

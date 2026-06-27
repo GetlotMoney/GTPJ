@@ -653,7 +653,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/artifact_policy.md",
         "docs/workflow/result_index_protocol.md",
         "docs/workflow/agent_contracts.md",
+        "docs/workflow/agent_orchestration.md",
         "docs/workflow/agent_report_policy.md",
+        "docs/workflow/agents/README.md",
+        "docs/workflow/agents/long_term_memory.md",
         "docs/workflow/idea_tree_protocol.md",
         "docs/workflow/quality_gate.md",
         "docs/workflow/runbook.md",
@@ -856,6 +859,35 @@ def cmd_validate(_: argparse.Namespace) -> int:
     ]:
         if marker not in agent_contracts:
             raise WorkflowError(f"agent_contracts.md missing section: {marker}")
+
+    agent_roles = [
+        "coordinator",
+        "reader_planner",
+        "runner",
+        "implementer",
+        "interface_checker",
+        "quality_checker",
+        "log_analyst",
+        "result_analyst",
+        "reviewer",
+    ]
+    for role in agent_roles:
+        role_dir = REPO_ROOT / "docs" / "workflow" / "agents" / "shared_roles" / role
+        for filename in ["profile.md", "memory.md"]:
+            if not (role_dir / filename).exists():
+                raise WorkflowError(f"Missing long-term agent file: {rel(role_dir / filename)}")
+
+    long_term_memory = read_text(REPO_ROOT / "docs" / "workflow" / "agents" / "long_term_memory.md")
+    for marker in [
+        "长期 agent",
+        "profile.md",
+        "memory.md",
+        "启动加载规则",
+        "记忆写回规则",
+        "证据边界",
+    ]:
+        if marker not in long_term_memory:
+            raise WorkflowError(f"long_term_memory.md missing section: {marker}")
 
     implementation_template = read_text(
         REPO_ROOT / "experiments" / "templates" / "implementation_template.md"
@@ -1116,10 +1148,22 @@ run_id:
 base_version: {version}
 code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
 code_commit:
+activation_mode:
+activation_reason:
+required_roles:
+required_real_agents:
 agent_set: {agent_set}
 serial_agents: {serial_agents}
 parallel_agents: {parallel_agents}
 disabled_agents: {disabled_agents}
+tool_support:
+memory_policy:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
 runtime_state:
 warehouse_report_artifacts:
 final_decision: pending
@@ -1129,48 +1173,80 @@ final_decision: pending
 
 ```text
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
 ```
 
 ## Runner
 
 ```text
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
 ```
 
 ## Log Analyst
 
 ```text
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
 ```
 
 ## Quality Checker
 
 ```text
 role:
+agent_instance_type:
+independence_scope:
 inputs_checked:
 actions:
 outputs:
 issues:
 decision:
 evidence_refs:
+memory_used:
+memory_sources:
+agent_profile_files:
+agent_memory_files:
+agent_memory_updates:
+verified_against_current_repo:
 ```
 
 ## Interface Checker

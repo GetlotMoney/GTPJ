@@ -35,6 +35,7 @@ docs/workflow/quality_gate.md
 docs/workflow/promotion.md
 docs/workflow/agent_contracts.md
 docs/workflow/agent_orchestration.md
+docs/workflow/agents/long_term_memory.md
 docs/workflow/agent_report_policy.md
 ```
 
@@ -109,6 +110,7 @@ runtime 规则：
 23. `agent_report_policy.md`
 24. `agent_orchestration.md`
 25. `agents/README.md`
-26. `progress_dashboard.md`
-27. `runbook.md`
-28. `../../workflow/README.md`
+26. `agents/long_term_memory.md`
+27. `progress_dashboard.md`
+28. `runbook.md`
+29. `../../workflow/README.md`
