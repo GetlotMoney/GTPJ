@@ -1,0 +1,43 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_fae_memory_jepa"
+  kind: "module-trial"
+  status: "planned"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-06-27T15:11:51+00:00"
+version:
+  base_version: "v2"
+  base_code_tag: "v2"
+  code_branch: "dev/v2-idea-0002-trial-001-fae-memory-jepa"
+  code_commit: "c8003b4"
+  git_dirty: "true"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/config.yaml"
+  config_sha256: "9a7f1853326d16bf9e5bb12146d2f1708b5f570f16c70cf8f1de7b9e9331dadb"
+  command: ""
+  seed: ""
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: "IDEA-0002"
+  uri: "research://ideas/IDEA-0002.md"
+  title: "FAE-memory JEPA auxiliary loss"
+  hypothesis: "Using FAE-enhanced visual memory as JEPA context while keeping the prediction target as detached pre-FAE patch_z should make AG-JEPA regularize the main visual memory path without changing class order, seen/unseen split, logits shape, or evaluation semantics."
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "false"

@@ -87,7 +87,7 @@
         "v2": {
           "score": 72.0,
           "applicability": "needs_adaptation",
-          "stage": "selected",
+          "stage": "trialing",
           "rationale": "Current v2 already includes CLIP-A-self and AG-JEPA. This idea keeps the text condition and evaluation path unchanged, but moves the JEPA visual context to FAE memory so the auxiliary loss can directly regularize the visual memory used by local_score.",
           "blockers": []
         }
@@ -112,7 +112,9 @@
       "compatibility": "Switch-off or jepa_context_mode=embed must preserve the current AG-JEPA path. The forward output can include extra auxiliary keys, but logits, class order, label mapping, seen/unseen split, and metric calculation must remain unchanged.",
       "transfer_notes": "Future versions must re-check whether CrossModalTransformer still exposes embed_cv, FAE memory, and the same selected-patch semantics before reusing this idea.",
       "priority": 0.72,
-      "linked_trials": [],
+      "linked_trials": [
+        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa"
+      ],
       "linked_versions": [
         "v2"
       ],

@@ -19,3 +19,4 @@
 | Idea | Trial | 状态 | 目录 | 说明 |
 |---|---|---|---|---|
 | `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | owner_activated_to_v2 | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | ATTEMPT-019 best_observed_H=74.29 is owner-activated as `GTPJ-v2`; clean confirmation and U/S gap review remain blocking follow-ups before confirmed/baseline-grade claims. |
+| `IDEA-0002` | `TRIAL-001_fae_memory_jepa` | planned | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | 待运行。 |
