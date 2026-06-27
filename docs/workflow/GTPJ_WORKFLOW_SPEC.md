@@ -170,6 +170,7 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/workflow/promotion.md` | 从 trial/result 到新版本 tag 的提升规范。 |
 | `docs/workflow/progress_dashboard.md` | 未来本地只读看板协议。 |
 | `docs/workflow/runbook.md` | 常见操作手册。 |
+| `docs/workflow/issues/` | 日期化实验问题知识库，保存具体问题、解决方案和预防规则。 |
 
 ### 2.6 agents 目录
 

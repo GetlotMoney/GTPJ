@@ -50,7 +50,11 @@ workflow/openclaw/README.md
 ```text
 docs/workflow/progress_dashboard.md
 docs/workflow/runbook.md
+docs/workflow/issues/README.md
 ```
+
+实验执行中的具体问题、解决方案和预防规则放在 `docs/workflow/issues/`。新对话只需要先读
+`issues/README.md` 和最近日期的问题文档，不需要每次全量读取所有历史问题。
 
 GTPJ workflow 使用“版本优先”的实验结构。
 

@@ -62,8 +62,8 @@ promote_to:
 | ATTEMPT-020 | 0.35 | 0.175 | 71.13 | 77.63 | 74.24 | 81.42 | keep |
 
 `ATTEMPT-021` failed before training epochs began and is recorded as a runner/environment issue in
-`docs/workflow/EXPERIMENT_ISSUES.md`; it is not valid result evidence. `ATTEMPT-021` through
-`ATTEMPT-028` remain uncompleted.
+`docs/workflow/issues/2026-06-27-trial001-batch-runner-and-tag-boundary.md`; it is not valid
+result evidence. `ATTEMPT-021` through `ATTEMPT-028` remain uncompleted.
 
 ## Promotion Gate
 

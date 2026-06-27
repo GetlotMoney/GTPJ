@@ -142,6 +142,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
 | `docs/workflow/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
 | `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
+| `docs/workflow/issues/` | 日期化实验问题知识库；新对话默认先读 `issues/README.md` 和最近日期文档，不全量读取历史问题。 |
 
 ## `workflow/`
 

@@ -87,7 +87,9 @@ hard gates 和当前阻断后，才进入具体实验命令。
 
 ```text
 docs/workflow/runbook.md: 操作经验和反复踩坑的处理方法。
-docs/workflow/EXPERIMENT_ISSUES.md: 具体实验执行问题、影响范围和下次预防规则。
+docs/workflow/issues/README.md: 具体实验执行问题索引，默认只读最近日期的问题文档。
+docs/workflow/issues/YYYY-MM-DD-*.md: 按日期沉淀的问题、解决方案和预防规则。
+docs/workflow/EXPERIMENT_ISSUES.md: 兼容入口，指向新的日期化问题库。
 docs/workflow/*.md: 长期规范和硬门。
 experiments/**/ATTEMPTS.md: 某个 trial 内部每次尝试的账本。
 experiments/**/result.yaml / quality_check.md: 可引用的正式证据。

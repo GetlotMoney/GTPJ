@@ -21,7 +21,7 @@ promotion_decision: blocked
 - The U/S gap is large: `S - U = 6.20`, so the result is seen-heavy.
 - `ATTEMPT-019` started from a clean run commit (`453acc0`) and has complete artifact registration.
 - No code-path change occurred during `ATTEMPT-009` through `ATTEMPT-020`; these are trial-internal parameter attempts.
-- `ATTEMPT-021` failed before epochs began. It is documented in `docs/workflow/EXPERIMENT_ISSUES.md` and is excluded from result evidence.
+- `ATTEMPT-021` failed before epochs began. It is documented in `docs/workflow/issues/2026-06-27-trial001-batch-runner-and-tag-boundary.md` and is excluded from result evidence.
 
 ## Artifact Check
 
