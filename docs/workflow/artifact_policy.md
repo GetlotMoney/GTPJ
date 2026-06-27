@@ -1,10 +1,10 @@
 # Artifact Policy
 
-This file defines the GitHub boundary and external artifact boundary for GTPJ. The goal is to keep GitHub lightweight while preserving a complete evidence chain.
+This file defines the GitHub boundary and external artifact boundary for GTPJ. The goal is to keep GitHub as a lightweight fact index while preserving a complete evidence chain.
 
 ## GitHub Boundary
 
-GitHub is the reproducible control plane, governance source, and lightweight result index. It must answer:
+GitHub is the reproducible control plane, governance source, and lightweight fact index. It must answer:
 
 ```text
 How can this result be reproduced?
@@ -14,7 +14,15 @@ Which code, config, command, seed, dataset split, label mapping, class order, an
 Which external artifact is the raw evidence, where is it, and what is its hash?
 ```
 
-GitHub does not store raw logs, checkpoints, generated experiment figures, full paper-reading material, or complete idea-tree reasoning.
+GitHub does not store raw logs, checkpoints, generated experiment figures, full paper-reading material, full idea-tree reasoning, long innovation drafts, or paper-note libraries.
+
+For idea records, GitHub stores only the stable fields needed to reproduce and audit an experiment:
+
+```text
+idea_id, title, source reference, source_status, global_score,
+version_scores.vX, hypothesis, implementation_scope, risk,
+linked_trials, evidence artifact ids or research URIs, and next_action.
+```
 
 ## External Stores
 
@@ -22,7 +30,7 @@ External directories carry complete materials and large assets:
 
 ```text
 GTPJ_Research
-  Paper PDFs, reading notes, full idea trees, source reviews, and long-form reasoning.
+  Paper PDFs, reading notes, full idea trees, source reviews, long-form reasoning, and innovation drafts.
 
 GTPJ_Warehouse
   Raw logs, checkpoints, experiment visualizations, experiment tables, failure cases, and run receipts.

@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0001
 title: CLIP-A-self text prototype adapter
-status: selected
+status: validated
 source_type: paper
 source_ref: paper:Enhancing CLIP with GPT-4; code:https://github.com/mayug/VDT-Adapter
 source_status: verified
@@ -15,6 +15,8 @@ idea_dir: idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/
 
 - 论文：`C:/Users/Administrator/Desktop/CV论文/2023/Enhancing CLIP with GPT-4：Harnessing Visual Descriptions as Prompts.pdf`
 - 官方代码：`https://github.com/mayug/VDT-Adapter`
+- 本地长版研究材料：`D:/Backup/Documents/Myself/GTPJ_Research/ideas/IDEA-0001_clip_a_self_text_prototype/`
+- 本地论文复核：`D:/Backup/Documents/Myself/GTPJ_Research/papers/PAPER-2023-VDT-Adapter/`
 
 来源复核：
 
@@ -36,10 +38,11 @@ idea_dir: idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/
 
 ## 实现范围
 
-TRIAL-001 只允许修改文本 prototype 构造路径：
+TRIAL-001 只修改文本 prototype 构造路径：
 
 - 保留 GPT/VDT sentence-level embeddings，形状为 `[C（类别数量）, M（每类句子数量）, D（文本特征维度）]`。
-- seen 类使用 CLIP-A-self 处理句子集合。
+- seen 类使用 CLIP-A-self 处理每类内部的句子集合。
+- 不是 K 类文本之间做相互 attention。
 - 保留外层 prototype residual：
 
 ```text
@@ -56,7 +59,8 @@ out = normalize(out)
 
 | 版本 | 优先级 | 适用性 | 阶段 | 理由 |
 |---|---:|---|---|---|
-| `v1` | 78.0 | needs_adaptation | selected | v1 已经有 GPT/VDT 文本和 seen prototype adapter，CLIP-A-self 可作为最小替换 trial；需要补 sentence-level 输入和 switch-off 等价检查。 |
+| `v1` | 78.0 | needs_adaptation | validated | v1 已经有 GPT/VDT 文本和 seen prototype adapter，CLIP-A-self 可作为最小替换 trial；已通过 TRIAL-001 验证并进入 v2。 |
+| `v2` | 82.0 | direct | validated | IDEA-0001 已按 ATTEMPT-019 结果提升为 GTPJ-v2 主线，后续围绕 confirmation、U/S gap 和消融继续。 |
 
 机器可读版本适配记录写在 `idea_tree/idea_tree.json` 的 `version_scores` 字段。
 新增 `v2`、`v3` 时必须重新评估，不能复制 `v1` 适配记录。
@@ -114,6 +118,6 @@ L2SP = prototype drift 风险下的 follow-up ablation / anchoring question
 
 | Trial | U | S | H | ZS | Best epoch | Decision |
 |---|---:|---:|---:|---:|---:|---|
-| `TRIAL-001_clip_a_self_residual_seenonly` | 72.32 | 75.19 | 73.72 | 81.13 | 30 | revise |
+| `TRIAL-001_clip_a_self_residual_seenonly / ATTEMPT-019` | 71.32 | 77.52 | 74.29 | 81.59 | 33 | promoted to `GTPJ-v2` |
 
-结论：TRIAL-001 没有超过权威 v1 baseline `H=73.93`，不进入 promotion。下一步如果继续该 idea，优先分析 prototype drift，再考虑更小 `clip_a_self_outer_ratio` 或 L2SP anchoring follow-up。
+结论：TRIAL-001 的当前最好结果已由用户决策提升为 `GTPJ-v2` 主线。下一步不是重复证明它能不能进入主线，而是在 v2 口径下做 confirmation、U/S gap 分析和必要消融。

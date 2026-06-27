@@ -42,9 +42,25 @@ baseline H: 73.93
 - 证据目录：代码验证、trial 记录、调参、消融和确认实验都放在 `experiments/`。
 - 大文件边界：数据集、cache、checkpoint、大日志不进入 Git。
 
-## GitHub 轻量边界
+## GitHub 轻量事实索引
 
-GitHub 只回答：
+GitHub 不是只记录来源，而是记录“轻量事实索引”：最小但可复现、可审计、可追溯的事实。
+完整论文笔记、长创意树、长推理、草稿和原始运行资产放在本地外部目录。
+
+三层分工：
+
+```text
+GitHub 仓库
+= 轻量索引 + 实验账本 + 可复现引用
+
+GTPJ_Research
+= 本地完整创意树 + 论文阅读 + 长推理 + 创新草稿
+
+GTPJ_Warehouse
+= 原始日志 + checkpoint + 大文件 artifact
+```
+
+GitHub 负责回答：
 
 ```text
 怎么复现？
@@ -53,7 +69,7 @@ GitHub 只回答：
 是否满足 promotion / activate-version / set-current-version 的治理边界？
 ```
 
-GitHub 保存：
+GitHub 保存轻量事实：
 
 ```text
 code
@@ -70,6 +86,23 @@ VERSION_TREE
 agent contracts
 ```
 
+GitHub 中的 `idea_tree/` 保存：
+
+```text
+idea_id
+标题
+来源 paper/code/user observation
+source_status
+global_score
+version_scores.v1/v2/vX
+hypothesis
+implementation_scope
+risk
+linked_trials
+evidence artifact id / research URI
+next_action
+```
+
 GitHub 不保存：
 
 ```text
@@ -79,6 +112,8 @@ generated figures
 feature cache
 完整论文阅读材料
 完整创意树
+长推理
+创新草稿
 ```
 
 这些外部资产分别放在：

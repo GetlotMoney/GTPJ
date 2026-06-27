@@ -28,7 +28,7 @@ GTPJ 仓库分成三层：
 完整材料和大型资产在 GitHub 外：
 
 ```text
-GTPJ_Research：论文、完整阅读笔记、完整创意树和来源复核。
+GTPJ_Research：论文、完整阅读笔记、完整创意树、长推理、创新草稿和来源复核。
 GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment tables、failure cases。
 ```
 
@@ -209,7 +209,8 @@ idea_tree/                 # 创意来源、评分、排序
 
 ## `idea_tree/`
 
-创意树目录。它管理想法来源、评分和优先级，不保存训练日志。
+创意树目录。它是 GitHub 中的轻量 idea 事实索引，管理想法来源、评分和优先级，
+不保存完整论文笔记、长推理、创新草稿或训练日志。长版材料放在本地 `GTPJ_Research`。
 
 | 路径 | 用途 |
 |---|---|

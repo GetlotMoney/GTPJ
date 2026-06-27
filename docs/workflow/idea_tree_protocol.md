@@ -1,6 +1,9 @@
 # 创意树协议
 
-`idea_tree/` 是模块创新的严格来源。
+`idea_tree/` 是模块创新的 GitHub 轻量事实索引。
+
+完整论文阅读、长版创意树、长推理、创新草稿、失败路线和图示草稿放在本地
+`GTPJ_Research`，不进入 GitHub。GitHub 只保存能让实验可追溯的最小证据。
 
 核心原则：创意全局共用一个总库，但选择清单必须按 baseline 版本分开。
 
@@ -15,6 +18,75 @@
 因此，tune、ablation、confirmation、debug 不会因为有“想法”就自动进入
 `idea_tree/`；只有可复用的新模块、新机制、新方法，或可能成为新 baseline 的设计，
 才进入创意树。
+
+## 三层分工
+
+```text
+GitHub 仓库
+= 轻量索引 + 实验账本 + 可复现引用
+
+GTPJ_Research
+= 本地完整创意树 + 论文阅读 + 长推理 + 创新草稿
+
+GTPJ_Warehouse
+= 原始日志 + checkpoint + 大文件 artifact
+```
+
+GitHub idea 记录只写：
+
+```text
+idea_id
+标题
+来源 paper/code/user observation
+source_status
+global_score
+version_scores.v1/v2/vX
+hypothesis
+implementation_scope
+risk
+linked_trials
+evidence artifact id / research URI
+next_action
+```
+
+不要把完整论文笔记、长摘录、完整方法复盘、长版草稿或大量失败分支写入 GitHub。
+
+本地完整创意树建议结构：
+
+```text
+GTPJ_Research/
+├─ papers/
+│  └─ PAPER-YYYY-short-name/
+│     ├─ paper_meta.yaml
+│     ├─ reading_notes.md
+│     ├─ source_review.md
+│     ├─ code_review.md
+│     ├─ extracted_ideas.md
+│     └─ figures/
+├─ ideas/
+│  └─ IDEA-xxxx_short_name/
+│     ├─ idea_full.md
+│     ├─ mechanism.md
+│     ├─ relation_to_v1.md
+│     ├─ variants.md
+│     ├─ risks.md
+│     ├─ experiment_plan.md
+│     └─ decision_history.md
+├─ versions/
+│  ├─ v1/
+│  │  ├─ idea_board.md
+│  │  ├─ selected_next.md
+│  │  └─ rejected_or_deferred.md
+│  └─ v2/
+│     ├─ idea_board.md
+│     └─ transfer_review.md
+└─ source_reviews/
+   └─ PAPER-YYYY-short-name_review.md
+```
+
+论文先进入本地 `GTPJ_Research/papers/PAPER-.../`，形成阅读和来源复核。
+只有抽出的机制足够稳定、来源状态明确、并且能映射到 GTPJ 接口时，才在 GitHub
+`idea_tree/` 中创建轻量 idea 索引。
 
 ```text
 同一个 idea
