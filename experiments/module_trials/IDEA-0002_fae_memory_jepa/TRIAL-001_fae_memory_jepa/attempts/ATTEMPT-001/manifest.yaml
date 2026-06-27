@@ -66,4 +66,3 @@ quality:
   raw_artifacts_in_git: false
   interface_contract_required: "true"
   evaluation_semantics_verified: "true"
-  decision: "PASS_REVISE"

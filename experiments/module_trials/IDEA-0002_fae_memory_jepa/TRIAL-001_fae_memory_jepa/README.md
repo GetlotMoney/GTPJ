@@ -12,20 +12,20 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-001-fae-memory-jepa
 code_tag: trial/v2/idea-0002/trial-001
-code_commit: pending_pre_run_freeze_commit
-trial_decision: pending
+code_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
+trial_decision: revise
 promotion_decision: not_applicable
 promote_to:
-evidence_level: pending
+evidence_level: valid_single_run
 best_observed_H:
-confirmed_H:
-confirmation_status: pending
+confirmed_H: pending
+confirmation_status: not_applicable
 changed_files:
 run_config: attempts/ATTEMPT-001/config.yaml
-log_artifact_id:
-log_uri:
-log_sha256:
-log_size_bytes:
+log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-001
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-001/logs/training_log_CUB_2026-06-27_23-44-35.txt
+log_sha256: c0fce9c6d031851479f7dafb7aee1db7d86cc80f3415826ced985f4c83f1b2c1
+log_size_bytes: 92239
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -50,6 +50,7 @@ agent_summary: agent_summary.md
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
+| CUB | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` |
 
 ## Innovation Code Review
 
@@ -74,4 +75,4 @@ activation_mode: real_multi_agent
 
 ## 决策
 
-待记录。
+ATTEMPT-001 completed but underperformed active v2 by `-0.47` H. Decision: `revise`; no promotion.

@@ -78,7 +78,7 @@
       "idea_id": "IDEA-0002",
       "idea_dir": "idea_tree/ideas/IDEA-0002_fae_memory_jepa/",
       "title": "FAE-memory JEPA auxiliary loss",
-      "status": "selected",
+      "status": "weakened",
       "source_type": "user",
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
@@ -134,9 +134,14 @@
           "type": "research",
           "ref": "D:/backup/Documents/Myself/GTPJ_Research/ideas/IDEA-0002_fae_memory_jepa/idea_full.md",
           "note": "Long-form motivation, hypothesis, intended boundary, risks, and minimum evidence."
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/result.yaml",
+          "note": "ATTEMPT-001 ran cleanly from commit 5ca8245e and reached H=73.82, delta_H=-0.47 vs active v2 best_observed_H=74.29; trial decision is revise, not promote."
         }
       ],
-      "next_action": "Start TRIAL-001_fae_memory_jepa on v2 with real_multi_agent Review 0-3; first prove gradient coverage before interpreting training metrics."
+      "next_action": "TRIAL-001 ATTEMPT-001 completed as valid single-run evidence but underperformed v2 (H=73.82, delta_H=-0.47). Do not promote; continue only with a targeted ATTEMPT-002 param/ablation if the owner wants to keep exploring the mechanism."
     }
   ]
 }

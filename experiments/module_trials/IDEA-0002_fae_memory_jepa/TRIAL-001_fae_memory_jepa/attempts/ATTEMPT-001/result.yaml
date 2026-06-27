@@ -3,7 +3,7 @@ experiment_id: "TRIAL-001"
 experiment_name: "TRIAL-001_fae_memory_jepa"
 kind: "module-trial"
 version: "v2"
-best_attempt_id: "ATTEMPT-001"
+attempt_id: "ATTEMPT-001"
 metrics:
   U: "70.32"
   S: "77.68"
@@ -21,15 +21,12 @@ baseline:
 delta:
   H: "-0.47"
 run:
-  run_id: "RUN-20260627-234226-trial001-fae-memory-jepa"
   seed: "5"
   pre_run_freeze_commit: "5ca8245e37856e426407612b1a95bcdcfbd92697"
-  attempt_manifest: "attempts/ATTEMPT-001/manifest.yaml"
   command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml"
 decision:
   status: "revise"
   result_status: "valid_observation"
-  trial_decision: "revise"
   promotion_decision: "not_applicable"
   promote_to: ""
 evidence:
@@ -41,8 +38,7 @@ evidence:
   best_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-001:best"
   full_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-001:full"
   runner_console_artifact_id: "receipt:v2:module_trial:TRIAL-001:attempt-001:runner_console"
-  manifest: "attempts/ATTEMPT-001/manifest.yaml"
-  agent_summary: "agent_summary.md"
+  manifest: "manifest.yaml"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
   class_order_id: "standard_v1"

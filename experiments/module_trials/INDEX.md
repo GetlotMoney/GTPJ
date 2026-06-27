@@ -1,22 +1,17 @@
-# 模块 Trials 索引
+# Module Trials Index
 
-权威 idea 记录放在 `idea_tree/ideas/`。本目录只在某个 idea 被选中并开始代码实现后，
-保存 implementation trial 和证据。
+Authoritative idea records live under `idea_tree/ideas/`. This directory stores implementation trials and lightweight evidence after an idea is selected and code work starts.
 
-| Idea | 源 idea 文件 | Trial 证据目录 | Trial 状态 |
-|---|---|---|---|
-| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | owner_activated_to_v2 |
+## Trial Records
 
-启动任何 trial 前：
-
-- 验证或明确记录来源；
-- 在 `idea_tree/INDEX.md` 中确认被选版本的分数；
-- 通过 workflow helper 创建 `TRIAL-001_<slug>/`；
-- 保证 default-off path 等价于选定 base version。
-
-## Trial 记录
-
-| Idea | Trial | 状态 | 目录 | 说明 |
+| Idea | Source idea file | Trial evidence directory | Trial status | Summary |
 |---|---|---|---|---|
-| `IDEA-0001` | `TRIAL-001_clip_a_self_residual_seenonly` | owner_activated_to_v2 | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | ATTEMPT-019 best_observed_H=74.29 is owner-activated as `GTPJ-v2`; clean confirmation and U/S gap review remain blocking follow-ups before confirmed/baseline-grade claims. |
-| `IDEA-0002` | `TRIAL-001_fae_memory_jepa` | planned | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | 待运行。 |
+| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | owner_activated_to_v2 | ATTEMPT-019 best_observed_H=74.29 is owner-activated as `GTPJ-v2`; clean confirmation and U/S gap review remain blocking follow-ups before confirmed/baseline-grade claims. |
+| `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | revise | ATTEMPT-001 H=73.82, delta_H=-0.47 vs active v2 H=74.29; no promotion. |
+
+## Start Rules
+
+- Verify or explicitly record source status before any trial starts.
+- Confirm the selected-version score in `idea_tree/versions/<base_version>.md`.
+- Create the trial directory through the workflow helper.
+- Keep a default-off path equivalent to the selected base version.

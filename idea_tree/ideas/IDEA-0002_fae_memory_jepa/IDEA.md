@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0002
 title: FAE-memory JEPA auxiliary loss
-status: selected
+status: weakened
 source_type: user
 source_ref: owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target
 source_status: local_heuristic
@@ -11,75 +11,82 @@ global_score: 72.0
 idea_dir: idea_tree/ideas/IDEA-0002_fae_memory_jepa/
 ```
 
-## 来源
+## Source
 
-本 idea 来自 owner 对当前 AG-JEPA 梯度流的代码审查讨论。当前实现中 AG-JEPA 使用
-`patches -> cross_tf.embed_cv -> context/target`，没有经过 FAE 和 CrossModal decoder。
-因此它能优化 `embed_cv`、`embed_text`、seen 文本 adapter 路径和 `jepa_predictor`，但不能直接
-把辅助损失施加到 FAE visual memory。
+This idea came from the owner/code-review observation that the previous AG-JEPA loss used:
 
-本地长版材料：
+```text
+patches -> cross_tf.embed_cv -> context/target
+```
+
+That path optimized `embed_cv`, `embed_text`, the seen text adapter path, and `jepa_predictor`, but it did not directly regularize the FAE visual memory used by the local-score path.
+
+Long-form local note:
 
 ```text
 D:/backup/Documents/Myself/GTPJ_Research/ideas/IDEA-0002_fae_memory_jepa/idea_full.md
 ```
 
-## 基于什么
+## Base Version
 
 - `v2`
 
-## 目标组件
+## Target Component
 
 - `model/MyModel.py`
 - `CrossModalTransformer.forward`
 - `GTPJ._ag_jepa_loss`
-- `config/GTPJ_cub_gzsl.yaml` 或 trial-local config
+- trial-local config for `jepa_context_mode`
 
-## 假设
+## Hypothesis
 
-将 AG-JEPA 的视觉 context 从 FAE 前的 `patch_z` 平均值改为 FAE 后的 `memory` 平均值，
-同时保持预测 target 为 FAE 前 `patch_z` 的 masked 部分并 `detach`。这样 JEPA 仍然预测较干净的
-视觉投影目标，但正向梯度可以穿过 FAE，约束实际 local-score 路径使用的视觉 memory。
+Use an FAE-enhanced visual context to predict a detached pre-FAE visual target:
 
-## 实现范围
+```text
+target  = mean(masked patch_z).detach()
+context = mean(kept FAE memory)
+text_z  = embed_text(adapted class text)
+pred    = jepa_predictor([context, text_z])
+loss    = 1 - cosine(pred, target)
+```
 
-- 新增或切换 JEPA mode，例如 `jepa_context_mode: embed` / `fae_memory`。
-- `fae_memory` 模式下，mask 选择和 `lastvit_select_k` 后的 patch 集合保持一致。
-- `target = mean(masked patch_z).detach()`。
-- `context = mean(kept memory)`。
-- 文本端继续使用 `all_text[labels] -> cross_tf.embed_text -> text_z`，其中 seen 类文本仍经过
-  CLIP-A-self adapter。
-- 不改变 logits、eval、label mapping、seen/unseen split、class order 和 metric calculation。
+The goal is to make positive JEPA loss reach `cross_tf.fae.*` while preserving class order, seen/unseen split, label mapping, logits shape, and GZSL metric semantics.
 
-## 版本适配记录
+## Implementation Scope
 
-| 版本 | 优先级 | 适用性 | 理由 |
+- Add `jepa_context_mode: embed | fae_memory`.
+- Keep `embed` as the baseline-off path.
+- In `fae_memory` mode, align selected patches, mask, `patch_z`, FAE geometry, and context.
+- Keep `target = mean(masked patch_z).detach()`.
+- Keep negative JEPA visual context detached.
+- Leave CLIP encoders frozen.
+- Do not change scoring/eval semantics.
+
+## Version Fit
+
+| Version | Score | Applicability | Rationale |
 |---|---:|---|---|
-| `v2` | 72.0 | needs_adaptation | 当前 v2 已包含 CLIP-A-self 和 AG-JEPA；本 idea 不改变文本 adapter 或 eval 口径，只把 JEPA visual context 接到 FAE memory，以验证辅助损失能否真正约束主 local-score 视觉路径。 |
+| `v2` | 72.0 | needs_adaptation | v2 already includes CLIP-A-self and AG-JEPA. This idea tests whether moving JEPA visual context to FAE memory improves regularization of the visual memory path. |
 
-机器可读版本适配记录写在 `idea_tree/idea_tree.json` 的 `version_scores` 字段。
-新增 `v2`、`v3` 时必须重新评估，不能复制 `v2` 适配记录。
+## Risks
 
-## 迁移说明
+- Target and context live at different representation depths.
+- Patch selection alignment can silently break when `lastvit_select_k` is active.
+- Strong JEPA weights may over-regularize FAE.
+- Negative loss can destabilize visual memory if visual context is not detached.
 
-这个 idea 依赖当前 `CrossModalTransformer` 中的 `embed_cv -> FAE -> decoder_s2v/decoder_v2s`
-结构。如果未来版本重写 FAE 或 patch selection，需要重新检查 `patch_z`、`memory`、mask 和文本
-condition 的对应关系。
+## Trial Result: TRIAL-001 / ATTEMPT-001
 
-## 风险
+```text
+run_id: RUN-20260627-234226-trial001-fae-memory-jepa
+pre_run_freeze_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
+seed: 5
+U/S/H/ZS: 70.32 / 77.68 / 73.82 / 81.39
+best_epoch: 34
+baseline_v2_H: 74.29
+delta_H: -0.47
+decision: revise
+promotion_decision: not_applicable
+```
 
-- `target` 和 `context` 位于不同深度，可能造成优化目标不稳定。
-- `lastvit_select_k=32` 时，如果 mask 基于 576 个原 patch 而 context 基于 32 个 selected patch，
-  会产生语义错位；实现必须统一到同一 patch 集。
-- 负样本损失若反传到 visual context，可能扰乱 FAE；第一版应保持 negative context detach。
-- 结果即便提升，也只能先作为 `valid_single_run` 或 trial evidence，不能直接作为 confirmed baseline。
-
-## 阻塞点
-
-无当前已知阻塞。Review 1 必须确认 shape、switch-off path 和 gradient probe 方案。
-
-## 决策规则
-
-- 如果梯度检查不能证明 `cross_tf.fae.*` 接收到 JEPA positive loss 梯度，标记为 `blocked`。
-- 如果 switch-off path 不能恢复当前行为，标记为 `blocked`。
-- 如果训练结果下降或质量门发现接口污染，标记为 `revise` 或 `reject`。
+ATTEMPT-001 proves the intended gradient path can be implemented and run cleanly, but the current parameterization underperforms active v2. This weakens the idea for v2 in its current form; it does not prove that every FAE-memory JEPA variant is invalid. Any continuation should be a targeted ATTEMPT-002 param/ablation run, not a promotion path.

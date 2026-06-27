@@ -1,59 +1,51 @@
 # Quality Check: TRIAL-001_fae_memory_jepa
 
 ```text
-runtime: pre_run
+runtime: post_run
 quality_check_mode: STRICT
-decision: allow_after_clean_pre_run_freeze_commit
+decision: PASS_REVISE
 promotion_decision: not_applicable
-evidence_level: pending_run
+evidence_level: valid_single_run
 confirmation_status: not_applicable
 ```
 
 ## Scope
 
-This is the Review 2 pre-run quality check for ATTEMPT-001. It verifies code/config/evidence readiness before training. It does not claim metrics, best attempt status, confirmation, or promotion.
+This root quality check summarizes ATTEMPT-001 after the run and artifact registration. Attempt-local details are stored in `attempts/ATTEMPT-001/`.
 
 ## Findings
 
-- Implementation scope is limited to `model/MyModel.py`, `train_GTPJ_CUB.py`, and `tests/test_fae_memory_jepa.py`.
-- Trial config is stored at `attempts/ATTEMPT-001/config.yaml` and sets `jepa_context_mode: fae_memory`.
-- Baseline-off path is explicit: missing config or `jepa_context_mode: embed` preserves the old AG-JEPA pre-FAE context behavior.
-- No dataset, split, label mapping, class order, evaluator, or metric code was changed.
-- Unit tests cover positive FAE gradient reachability, negative visual-context detach, full-patch mode, `use_fae` guard, and train/eval logits shapes.
-- No raw log, checkpoint, generated figure, or feature cache has been added to GitHub.
+- ATTEMPT-001 ran from clean pre-run freeze commit `5ca8245e37856e426407612b1a95bcdcfbd92697`; it is valid single-run evidence, but not best/confirmed evidence.
+- Metrics parsed from the registered training log: U=70.32, S=77.68, H=73.82, ZS=81.39, best_epoch=34.
+- H is below active v2 best_observed_H=74.29 by -0.47.
+- Attempt decision is `revise`; promotion is not applicable.
+- Raw artifacts are registered in Warehouse; GitHub keeps only artifact ids, URIs, sha256, and sizes.
+- Interface and evaluation semantics remain unchanged from Review 2.
+
+## Artifact Check
+
+- [x] `log:v2:module_trial:TRIAL-001:attempt-001` exists in Warehouse.
+- [x] `checkpoint:v2:module_trial:TRIAL-001:attempt-001:best` exists in Warehouse.
+- [x] `checkpoint:v2:module_trial:TRIAL-001:attempt-001:full` exists in Warehouse.
+- [x] `receipt:v2:module_trial:TRIAL-001:attempt-001:runner_console` exists in Warehouse.
+- [x] Manifest records artifact URI, sha256, and size.
+- [x] Result records the same artifact ids.
+- [x] GitHub has no tracked raw log, checkpoint, generated figure, or feature cache.
 
 ## Quality Checklist
 
-- [x] Base version and base code tag are explicit: `v2`.
+- [x] Code commit / base version are explicit.
 - [x] Trial config copy exists in the trial directory.
-- [x] Run command is planned in `manifest.yaml`.
+- [x] External log artifact URI, sha256, and size are explicit.
+- [x] Result path and decision are explicit.
 - [x] `evidence_level`, `best_observed_H`, `confirmed_H`, and `confirmation_status` are separated.
-- [x] Eval path, class order, and logits shape changes are declared as unchanged.
-- [x] Seen/unseen split, label mapping, class order, and metric calculation are unchanged.
-- [x] GitHub trial directory contains no new raw log, checkpoint, or generated figure.
-- [x] `interface_check.md` exists and records Review 2 interface decision.
-- [x] `code.diff` is required before freeze commit and must be generated from the current code diff.
-- [ ] External training log artifact URI, sha256, and size are pending until Runner finishes.
-- [ ] Warehouse artifact registry is pending until Runner finishes.
-- [ ] Attempt-local post-run `manifest.yaml`, `result.yaml`, `result.md`, and `quality_check.md` are pending until Runner finishes.
-
-## Runner Gate
-
-Runner may start only after all of the following are true:
-
-- Review 2 files are present: `review_round_1.md`, `interface_check.md`, `quality_check.md`, and `code.diff`.
-- `python -m py_compile model/MyModel.py train_GTPJ_CUB.py` passes.
-- `python -m unittest tests.test_fae_memory_jepa` passes.
-- `python -m unittest tests.test_gtpj_workflow` passes.
-- `python workflow/gtpj_workflow.py validate`, `audit-boundary`, and `validate-remote` pass.
-- `git diff --check` passes.
-- A clean pre-run freeze commit exists and `git status --short` is empty.
-- GPU runner lock is acquired and `.gtpj_runtime/runs/<run_id>/` is created.
+- [x] Eval path, class order, logits shape, seen/unseen split, label mapping, and metric calculation are unchanged.
+- [x] Post-run Review 3 records the decision boundary.
 
 ## Promotion Gate
 
-Not applicable for ATTEMPT-001 pre-run state. A single completed run can only produce `best_observed_H`. Promotion remains blocked unless later evidence reaches the required confirmation grade and explicitly records `promotion_decision: promote`.
+Not triggered. ATTEMPT-001 underperforms v2 and is not a best/keep result. It must not be used as `confirmed_H`, `baseline_grade`, or `promotion_decision: promote`.
 
 ## Decision
 
-Allow creation of the pre-run freeze commit. Do not start Runner while the worktree is dirty or before `code.diff` and validation evidence are complete.
+PASS_REVISE.
