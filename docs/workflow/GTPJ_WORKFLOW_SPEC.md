@@ -422,8 +422,8 @@ Warehouse 的职责：
 trial 可以有永久快照 tag：
 
 ```text
-trial/v1/IDEA-0001-short-name/pass-001
-trial/v1/IDEA-0001-short-name/fail-001
+trial/v1/idea-0001/trial-001
+trial/v2/idea-0003/trial-002
 ```
 
 用途：
@@ -431,6 +431,8 @@ trial/v1/IDEA-0001-short-name/fail-001
 - 锁定某次重要 trial 的代码快照。
 - 让后续 promotion 能说明自己从哪个 trial 来。
 - 不替代正式 `vX` tag。
+- 不表示某个 `ATTEMPT-xxx`、某次调参结果或某个 best H 值。attempt 级证据写入
+  `ATTEMPTS.md`、`attempts/ATTEMPT-xxx/`、commit hash 和 Warehouse artifact id。
 
 ### 4.4 临时分支
 

@@ -33,7 +33,9 @@ log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
 best_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:best
 full_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:full
 runner_console_artifact_id: receipt:v1:module_trial:TRIAL-001:attempt-019:runner_console
-best_attempt_tag: trial/v1/idea-0001/trial-001-attempt-019-best-h7429
+attempt_dir: attempts/ATTEMPT-019
+best_attempt_record_commit: 3a7945a
+attempt_git_tag_policy: not_used_for_trial_internal_attempts
 ```
 
 ## Decision

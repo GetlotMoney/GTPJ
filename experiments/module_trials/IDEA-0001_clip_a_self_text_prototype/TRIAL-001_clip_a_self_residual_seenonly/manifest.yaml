@@ -11,7 +11,8 @@ version:
   base_code_tag: "v1"
   code_branch: "dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly"
   code_commit: "453acc0"
-  best_attempt_tag: "trial/v1/idea-0001/trial-001-attempt-019-best-h7429"
+  best_attempt_record_commit: "3a7945a"
+  best_attempt_git_tag: ""
   git_dirty_at_run: "false"
 reproducibility:
   config_file: "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-019/config.yaml"

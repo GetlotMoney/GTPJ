@@ -25,6 +25,9 @@ code_branch: dev/v1-idea-0001-trial-001-short-name
 code_tag: trial/v1/idea-0001/trial-001
 ```
 
+`code_tag` 是 trial 级代码快照，不是 attempt 级结果标签。一个 `TRIAL-xxx`
+最多使用一个 trial 级 `code_tag` 来标识这条实现线；`ATTEMPT-xxx` 不创建 git tag。
+
 其中 `v1` 表示这个 trial 的代码来源是 `v1` baseline tag。临时分支仍从当前
 `main` 开出，以继承最新账本；如果当前 `main` 代码不是 `v1`，只恢复代码层到
 `v1`，不要恢复账本层。
@@ -143,6 +146,8 @@ Rules:
 - A clean rerun that confirms the current best attempt may stay in the same trial as `confirmation`.
 - If the change becomes a new implementation hypothesis, a new forward path, or a new loss mechanism, open `TRIAL-002` instead of extending `TRIAL-001`.
 - The trial root `README.md`, `result.yaml`, and `quality_check.md` should point to the current decision-driving `best_attempt_id` rather than trying to inline every attempt detail.
+- Trial-internal attempts must not create git tags. Record the attempt with `best_attempt_id`,
+  `attempts/ATTEMPT-xxx/`, `run_commit`, `record_commit`, and Warehouse artifact ids.
 - Existing historical trials with only one root-level attempt may remain readable as legacy evidence, but any new attempt added after this rule should be recorded in `ATTEMPTS.md`.
 - If a real attempt run starts while the worktree is dirty, or before the attempt config and planned `ATTEMPTS.md` row are frozen into Git, the result cannot be treated as promotion-ready evidence; at most it may be recorded as debug or `revise`.
 

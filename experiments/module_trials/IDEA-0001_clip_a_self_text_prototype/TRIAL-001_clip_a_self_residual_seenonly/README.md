@@ -15,8 +15,8 @@ code_tag: trial/v1/idea-0001/trial-001
 code_commit: da2e295cb15b0d55afdcf4785bce4bc6a4bff80e
 best_attempt_id: ATTEMPT-019
 best_attempt_dir: attempts/ATTEMPT-019
-best_attempt_tag: trial/v1/idea-0001/trial-001-attempt-019-best-h7429
 best_attempt_run_commit: 453acc0
+best_attempt_record_commit: 3a7945a
 run_config: attempts/ATTEMPT-019/config.yaml
 log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
 log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-019/logs/training_log_CUB_2026-06-27_01-27-48.txt
@@ -81,6 +81,7 @@ promote_to:
 `revise`
 
 `ATTEMPT-019` is now the formal best recorded experiment for TRIAL-001 with `H=74.29`
-(`U=71.32`, `S=77.52`, `ZS=81.59`, best epoch 33). It is tagged as the current best
-trial attempt, but it is not promoted to a new baseline because the result is seen-heavy and still
+(`U=71.32`, `S=77.52`, `ZS=81.59`, best epoch 33). It is recorded through the
+attempt ledger and external artifact ids, not through an attempt-level git tag. It is not promoted to
+a new baseline because the result is seen-heavy and still
 needs a clean confirmation run.

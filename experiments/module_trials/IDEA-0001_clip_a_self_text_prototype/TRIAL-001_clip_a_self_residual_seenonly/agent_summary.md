@@ -68,7 +68,8 @@ final_decision: revise; promotion remains blocked
 run_id: RUN-20260626-235934-trial001-009-028
 attempt_range: ATTEMPT-009..020 completed; ATTEMPT-021 startup failed before epochs
 best_attempt_id: ATTEMPT-019
-best_attempt_tag: trial/v1/idea-0001/trial-001-attempt-019-best-h7429
+best_attempt_record_commit: 3a7945a
+attempt_git_tag_policy: not_used_for_trial_internal_attempts
 pre_run_freeze_commit: 453acc0
 activation_mode: role_only
 activation_reason: frozen trial-internal parameter sweep with no code, loss, eval, split, class order, label mapping, or logits-shape change

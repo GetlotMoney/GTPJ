@@ -73,6 +73,11 @@ trial/v1/idea-0003/trial-001
 trial/v2/idea-0003/trial-002
 ```
 
+一个 `trial/...` tag 只对应一个 module trial 的代码快照，不对应某次
+`ATTEMPT-xxx`、某个 H 值或某个 best result。trial 内部的参数尝试、窄消融、
+confirmation/rerun 和 debug-fix 只写入 `ATTEMPTS.md`、`attempts/ATTEMPT-xxx/`、
+commit hash 和 Warehouse artifact id；不要创建 attempt 级 git tag。
+
 Promote 分支：
 
 ```text
@@ -166,6 +171,8 @@ trial/v1/idea-0003/trial-001
 - tag 必须打在明确 commit 上，不打在 dirty working tree 上。
 - 打 trial tag 前，先把 trial README 的 `code_commit` 填成 `git rev-parse HEAD`。
 - 命令使用 `git tag <tag-name> <code_commit>`，不要省略 `<code_commit>`。
+- 不为 `ATTEMPT-xxx`、`best_attempt`、单次指标值或调参结果创建 git tag。
+  这些证据由 trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。
 - 新 `vX` tag 必须打在包含正式版本代码和版本材料的明确 commit 上，而不是打在中间 trial
   commit 或 dirty working tree 上；该 commit 不必是当前 `main` commit。
 - 推送后的 `vX` 和 `trial/...` tag 视为不可移动对象。

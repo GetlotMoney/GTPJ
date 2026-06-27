@@ -274,6 +274,10 @@ trial/v1/idea-0003/trial-001
 trial/v2/idea-0003/trial-002
 ```
 
+`trial/...` tag 是 module trial 级代码快照，不是 attempt 级结果标签。不要为
+`ATTEMPT-xxx`、best attempt、单次 H 值或调参结果创建 git tag；这些证据由
+trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。
+
 ## 命名怎么看
 
 ```text
