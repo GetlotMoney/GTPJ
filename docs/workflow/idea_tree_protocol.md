@@ -51,6 +51,33 @@ next_action
 
 不要把完整论文笔记、长摘录、完整方法复盘、长版草稿或大量失败分支写入 GitHub。
 
+## GitHub 和 Research 联动更新
+
+不是所有任务都要同时改 GitHub 和本地 Research。是否联动由 Router 判断：
+
+- `paper intake / idea discovery`：先写 `GTPJ_Research/papers/`、`source_reviews/` 和必要的
+  `ideas/` 长版材料；当来源和机制稳定后，同一任务内把 GitHub `idea_tree/sources/`、
+  `idea_tree/inbox.md` 或 `idea_tree/ideas/IDEA-xxxx/` 的轻量索引补上。
+- `local heuristic idea`：先在 `GTPJ_Research/ideas/` 写长版动机、机制、风险和 owner 接受理由；
+  只有可复核后才写 GitHub 轻量 idea。
+- `innovation / module trial`：trial 运行证据写 GitHub `experiments/module_trials/...`，
+  raw artifacts 写 Warehouse；如果 trial 结论改变 idea 状态、风险或版本适配分，必须同步更新
+  GitHub `idea_tree/` 和 Research 的 `decision_history.md` / `experiment_plan.md`。
+- `tune`、`ablation`、`confirmation`：默认不改 Research；只有产生新的可复用机制、来源判断或
+  创意决策变化时，才联动更新 Research 和 GitHub idea index。
+
+联动顺序：
+
+```text
+1. Research 写完整上下文。
+2. GitHub 写轻量事实索引和 research:// URI。
+3. Warehouse 写 raw artifact；GitHub 写 warehouse:// URI、sha256、size 和指标摘要。
+4. 收尾检查 GitHub 轻量记录是否能反向找到 Research/Warehouse 证据。
+```
+
+禁止只在聊天里确认 idea、来源或决策。能影响后续实验选择的结论，必须落到
+`GTPJ_Research` 的长版记录和 GitHub 的轻量索引之一；如果两者都适用，必须在同一任务收尾前同步。
+
 本地完整创意树建议结构：
 
 ```text

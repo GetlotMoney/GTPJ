@@ -378,6 +378,15 @@ Research 的职责：
 - 支持 Reader/Planner 找来源、做比较、避免重复造轮子。
 - 不承担实验结果事实源；实验结果事实源在 GitHub 轻量账本和 Warehouse artifact。
 
+Research 和 GitHub 的联动规则：
+
+- 论文、来源复核、新机制和长版推理先写 Research。
+- 稳定事实、idea id、版本评分、linked trials、next_action 和证据 URI 写 GitHub。
+- 如果 Research 中的判断会影响实验选择、version score、trial 结论或 promotion，必须在同一任务内
+  同步 GitHub 轻量索引。
+- 如果只是普通 tune / confirmation 结果，不产生新的机制判断，Research 可以不更新，但启动卡和收尾
+  必须写明 skip reason。
+
 ### 3.3 `GTPJ_Warehouse`
 
 ```text
@@ -988,6 +997,8 @@ python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --
 ```text
 1. 记录来源或想法
    Research 可保存长推理；GitHub 只保存轻量 idea/source 索引。
+
+   如果来源或想法会影响后续实验选择，Research 和 GitHub 轻量索引必须在同一任务收尾前同步。
 
 2. 进入创意树
    GitHub 保存最小 idea 索引，记录来源、假设、版本评分、接口风险。

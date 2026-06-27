@@ -126,6 +126,15 @@ GTPJ_Warehouse
 GitHub 使用 `warehouse://`、`research://` URI 和 sha256/size 引用它们。
 本地真实路径只写入 ignored 的 `.gtpj/local_paths.yaml`。
 
+联动更新原则：
+
+- GitHub 和本地不是机械每次同时写；是否联动由 `docs/workflow/WORKFLOW_ROUTER.md` 分类决定。
+- 论文阅读、来源复核、新 idea 和长推理先写 `GTPJ_Research`，再把轻量事实和 `research://` 引用写入 GitHub。
+- 训练日志、checkpoint 和大文件先写 `GTPJ_Warehouse`，再把 `warehouse://`、sha256、size、指标摘要写入 GitHub。
+- 如果某次结果改变 idea 状态、version score、trial 结论、promotion 判断或 next_action，必须同步更新
+  Research 长版记录和 GitHub 轻量索引。
+- 如果某次任务不需要联动，启动卡和收尾说明必须写出 skip reason。
+
 ## Runtime 不强制什么
 
 - 不强制绑定某一个 runtime；OpenClaw、Codex 或手工执行都必须遵循同一套 workflow 事实源。

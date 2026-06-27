@@ -91,6 +91,10 @@ router:
   enters_idea_tree:
   github_writes:
   local_writes:
+  coupled_update:
+    required:
+    order:
+    skip_reason:
   required_protocols:
 
 version:
@@ -144,6 +148,7 @@ expected_outputs:
   github:
   research:
   warehouse:
+  sync_check:
 
 stop_if: copy the mandatory blocker checklist from section 5; never leave this field empty.
 ```
@@ -172,6 +177,24 @@ progress dashboard
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
 实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
 实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+```
+
+`router.coupled_update` 必须写清 GitHub、Research、Warehouse 是否需要联动：
+
+- 读论文、提取 idea、新机制设计：通常 `required: true`，先 Research，后 GitHub 轻量索引。
+- 真实实验运行：通常 `required: true`，先 Warehouse raw artifact，后 GitHub 账本。
+- 普通 tune / ablation / confirmation：如果只改变结果账本，不改变 idea 结论，可写 `required: false`，
+  但必须在 `skip_reason` 说明为什么不更新 Research。
+- trial 结论、version score、promotion 或 next_action 改变：必须同步 GitHub idea index 和
+  Research decision/history。
+
+`expected_outputs.sync_check` 必须回答：
+
+```text
+GitHub 轻量记录能否找到 Research 长版材料？
+GitHub 结果记录能否找到 Warehouse artifact？
+人类版记录和机器版记录是否一致？
+哪些同步被跳过，原因是什么？
 ```
 
 `agents.activation_mode` 只能选择：
@@ -382,6 +405,7 @@ agents.tool_support：
 pre-run freeze commit：
 run_commit：
 post-run result commit：
+sync_check：
 ```
 
 这段输出就是后续 agent 的共同入口。
