@@ -6,12 +6,14 @@
 - `v1`、`v2`、`v3`：永久 baseline tag，不是分支。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
-当前 active baseline 是：
+当前 active mainline code 是：
 
 ```text
 GTPJ-v2
 tag: v2
-H: 74.29
+best_observed_H: 74.29
+confirmed_H: pending
+status: owner_activated_unconfirmed
 ```
 
 历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。如果本地或远端 baseline tag

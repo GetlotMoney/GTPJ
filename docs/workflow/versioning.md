@@ -25,7 +25,9 @@ v3
 ```text
 GTPJ-v2
 code_tag: v2
-H: 74.29
+best_observed_H: 74.29
+confirmed_H: pending
+status: owner_activated_unconfirmed
 ```
 
 历史 baseline：
@@ -148,7 +150,8 @@ GTPJ-v1 -> IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
 ```
 
 不要因为每个小尝试都创建一个新的 `vX`。只有实验记录明确写
-`promotion_decision: promote`，并通过硬门后，才自动创建本地新版本材料和本地 tag。
+`promotion_decision: promote`、`evidence_level: baseline_grade`，并通过硬门后，
+才自动创建本地新版本材料和本地 tag。
 推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。promotion 不自动切换 `main` 当前代码。
 
 `vX` 不要求严格线性继承。`v3` 可以基于 `v1` 的新 trial 产生，
@@ -180,6 +183,10 @@ v1
 一个实验或 trial 只有同时满足下面条件，才能提升为正式 `vX`：
 
 - 指标有效：记录父版本 baseline H、trial H、delta H、U、S、ZS、best epoch。
+- 证据等级有效：单次最高 H 只能是 `best_observed_H`；正式 baseline 必须有
+  `confirmation_grade` 或 `baseline_grade` 证据。
+- 运行干净：`run_commit` 指向 clean pre-run freeze commit，`dirty_state: clean`，
+  `git_dirty: false`。
 - 对照一致：至少同 seed 对照；高风险改动需要重复运行或多 seed 复核。
 - 口径一致：class order、seen/unseen split、logits shape、metric calculation 不变。
 - 配置可追溯：使用的 config 副本保存在 trial 或新版本目录。
@@ -195,3 +202,6 @@ v1
 
 如果只满足 `H` 提升，但无法证明口径一致或关闭等价，结论只能是 `revise`，
 不能是 `promote`。
+
+如果只满足单次 `best_observed_H`，但 clean confirmation 失败或尚未完成，结论可以保留为
+`owner_activated_unconfirmed` 或 `needs_confirmation`，不能写成 `confirmed baseline`。

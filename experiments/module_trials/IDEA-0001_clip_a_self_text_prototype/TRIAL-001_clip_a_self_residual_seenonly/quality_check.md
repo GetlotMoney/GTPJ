@@ -3,10 +3,14 @@
 ```text
 runtime:
 quality_check_mode: STRICT
-decision: PASS_OWNER_PROMOTE
-promotion_decision: promote
+decision: PASS_OWNER_ACTIVATED_UNCONFIRMED
+promotion_decision: blocked
 promote_to: v2
 owner_override: true
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
 ```
 
 ## Scope
@@ -18,7 +22,7 @@ owner_override: true
 
 ## Findings
 
-- `ATTEMPT-019` is the current formal best setting: `H=74.29`, `U=71.32`, `S=77.52`, `ZS=81.59`.
+- `ATTEMPT-019` is the current best observed setting: `H=74.29`, `U=71.32`, `S=77.52`, `ZS=81.59`.
 - The result improves over the authoritative v1 baseline by `+0.36 H`.
 - The U/S gap is large: `S - U = 6.20`, so the result is seen-heavy.
 - `ATTEMPT-019` started from a clean run commit (`453acc0`) and has complete artifact registration.
@@ -33,7 +37,7 @@ owner_override: true
 - [x] `receipt:v1:module_trial:TRIAL-001:attempt-019:runner_console` exists in Warehouse.
 - [x] GitHub only records artifact ids, URIs, sha256, and size.
 - [x] No raw logs, checkpoints, generated figures, or feature caches are tracked in Git.
-- [x] Owner accepted `ATTEMPT-019` as `GTPJ-v2` formal mainline evidence on 2026-06-27.
+- [x] Owner accepted `ATTEMPT-019` as `GTPJ-v2` current mainline code evidence on 2026-06-27.
 
 ## Promotion Gate
 
@@ -43,13 +47,15 @@ owner_override: true
 - [x] current best config path is explicit.
 - [x] class order, seen/unseen split, logits shape, and metric calculation are unchanged.
 - [x] artifact boundary is complete for the current best attempt.
-- [x] promotion review has upgraded `trial_decision` to `promote` by owner decision.
+- [x] owner activation review records the current best as `best_observed_H`.
+- [ ] promotion remains blocked until `evidence_level: baseline_grade`.
 - [ ] `ATTEMPT-019` has not yet been clean-confirmed; this is a follow-up requirement.
 - [ ] seen-heavy behavior needs follow-up analysis.
 
 ## Decision
 
-PASS_OWNER_PROMOTE.
+PASS_OWNER_ACTIVATED_UNCONFIRMED.
 
-`ATTEMPT-019` is accepted as the current formal best experiment record for TRIAL-001 and is promoted
-to `GTPJ-v2` by owner decision. Clean confirmation and seen-bias analysis remain required follow-ups.
+`ATTEMPT-019` is accepted as the current best observed experiment record for TRIAL-001 and is
+owner-activated as `GTPJ-v2` current mainline code. Clean confirmation and seen-bias analysis remain
+required follow-ups before any confirmed/baseline-grade claim.

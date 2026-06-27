@@ -1,6 +1,7 @@
 # Promotion Agents
 
-Promotion agents 在实验记录已经写出 `promotion_decision: promote` 和 `promote_to: vX` 后启动。
+Promotion agents 在实验记录已经写出 `promotion_decision: promote`、`promote_to: vX`、
+`evidence_level: baseline_grade` 和 `confirmation_status: confirmed` 后启动。
 
 Promotion 必须保留 `agent_summary.md`，记录 Quality Checker、Interface Checker、Result Analyst 和 Reviewer 的准入结论。长报告放 Warehouse，GitHub 只保存摘要和 artifact id。
 
@@ -22,6 +23,7 @@ Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinat
 ## 关键规则
 
 - Quality Checker 检查 hard gate 证据、artifact hash、GitHub 边界和 Warehouse 引用。
+- Quality Checker 必须拒绝只有 `best_observed_H`、缺 `confirmed_H` 的 promotion。
 - Interface Checker 只在来源为消融或创新等代码改动时必须启用。
 - Result Analyst 确认指标、delta、U/S/ZS、seed、best epoch、对照 seed 和目标版本合理。
 - Interface Checker 必须确认 class order、seen/unseen split、label mapping、logits shape 和 metric calculation 没有未声明变化。

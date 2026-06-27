@@ -106,4 +106,6 @@ metrics          = result.metrics
 decision         = result.decision
 ```
 
-`record-result` only records evidence. It does not grant promotion. `promotion_decision: promote` triggers the promotion hard gate, but does not by itself create a formal version.
+`record-result` only records evidence. It does not grant promotion. `promotion_decision: promote`
+triggers the promotion hard gate only together with `evidence_level: baseline_grade` and
+`confirmation_status: confirmed`; by itself it does not create a formal version.

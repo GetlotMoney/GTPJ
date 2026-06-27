@@ -22,7 +22,7 @@ v1
 | 版本 | 父版本 | 代码 tag | 账本来源 | 变更类型 | Trial | 说明 |
 |---|---|---|---|---|---|---|
 | `v1` | none | `v1` | initial | initial_baseline | none | 第一版正式 baseline。 |
-| `v2` | `v1` | `v2` | `dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly@f24a277` | add_module | `trial/v1/idea-0001/trial-001` | CLIP-A-self text prototype adapter 主线版；ATTEMPT-019 CUB seed=5 H=74.29。 |
+| `v2` | `v1` | `v2` | `dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly@f24a277` | add_module | `trial/v1/idea-0001/trial-001` | CLIP-A-self text prototype adapter 主线版；ATTEMPT-019 CUB seed=5 best_observed_H=74.29，confirmed_H=pending。 |
 
 ## 记录模板
 

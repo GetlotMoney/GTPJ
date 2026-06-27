@@ -10,6 +10,19 @@
 
 全局硬门：接口、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 任一不清，实验结果无效。该结果只能标记为 `blocked`、`rerun` 或 `rejected`，不得标记为 `keep` 或 `promote`，也不得作为 baseline 可比证据。
 
+证据等级硬门：任何结果必须先标明 `evidence_level`，再决定用途。
+
+```text
+quick_local          本地快速复线或 debug；不得 promotion。
+valid_single_run     单次完整证据；可记录 best_observed_H，但仍需确认。
+confirmation_grade   clean confirmation 证据；可确认目标结果。
+baseline_grade       可作为稳定 baseline 的证据。
+```
+
+只有 `baseline_grade` 才允许写成稳定 baseline。只有 `valid_single_run` 时，可以登记
+`best_observed_H` 和 owner 选择的当前主线，但必须同时写 `needs_confirmation`、
+`owner_activated_unconfirmed` 或 `provisional`。不得把一次最高 H 结果直接表述为 confirmed baseline。
+
 运行实验前：
 
 1. 检查 Git status。
@@ -52,6 +65,11 @@ promote_to: vX
 - [ ] 来源 commit/tag 明确：module trial 的 trial tag 指向 README 中记录的 `code_commit`；
   普通实验或 tuned configuration 必须记录 `run_commit`，并可映射为 `code_commit`。
 - [ ] 指标明确：父版本 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。
+- [ ] 证据等级明确：`evidence_level` 至少是 `confirmation_grade`；正式 baseline 必须是
+  `baseline_grade`，或显式标成 owner provisional activation。
+- [ ] 干净确认明确：结果来自 clean pre-run freeze commit，`dirty_state: clean` 且
+  `git_dirty: false`；否则只能记为 best_observed/debug，不能 promotion。
+- [ ] 结果字段明确：`best_observed_H`、`confirmed_H`、`confirmation_status` 已区分记录。
 - [ ] 对照明确：同 seed 对照已记录；高风险改动已说明是否需要多 seed。
 - [ ] 配置明确：trial config 和新版本 config 路径已记录。
 - [ ] 日志明确：外部日志 artifact id、URI、sha256、size 和保留位置已记录。
@@ -68,6 +86,9 @@ promote_to: vX
 
 只满足 `H` 提升，但上面任一关键项缺失时，不允许 promotion；应记录
 `promotion_decision: blocked` 或 `promotion_decision: rejected`。
+
+clean confirmation 失败时，不回滚或抹掉原 run；必须把原 run 降级为 `valid_single_run`
+或 `needs_confirmation`，并把 promotion 阻断原因写入 `quality_check.md` 和结果索引。
 
 未来工作流可以使用的决策值：
 

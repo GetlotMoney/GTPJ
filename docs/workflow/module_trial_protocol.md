@@ -197,6 +197,8 @@ not_applicable / promote / blocked / rejected
 只有 `trial_decision: promote` 且 `promotion_decision: promote` 时，trial 才会进入
 `docs/workflow/promotion.md` 的自动 promotion gate。
 `H` 提升但证据不完整时，必须写 `revise`、`blocked` 或 `rejected`，不能写 `promote`。
+单次最高 attempt 必须记录为 `best_observed_H`；只有 clean confirmation 或质量门要求的
+多 run 稳定性通过后，才能升级为 `confirmed_H` 或 `baseline_grade`。
 
 Promotion 必填证据：
 
@@ -204,6 +206,8 @@ Promotion 必填证据：
 - trial code tag；
 - trial tag 指向 README 中记录的 code_commit；
 - baseline H、trial H、delta H；
+- `evidence_level: baseline_grade`；
+- `best_observed_H`、`confirmed_H` 和 `confirmation_status`；
 - U/S/ZS、best epoch、seed；
 - config 副本路径；
 - 外部日志 artifact id、URI、sha256、size 和保留位置；

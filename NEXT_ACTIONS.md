@@ -4,7 +4,7 @@
 
 ## P0
 
-- [ ] 跑 `CONFIRM-001_v2_seed5`，确认 `GTPJ-v2 / H=74.29` 是否可在 clean confirmation 中复现。
+- [ ] 跑 `CONFIRM-001_v2_seed5`，确认 `GTPJ-v2 / best_observed_H=74.29` 是否可在 clean confirmation 中复现，并决定是否升级为 `confirmed_H`。
 
 ## P1
 
@@ -18,4 +18,4 @@
 - [x] 确定 `GTPJ-v1` 第一版正式 baseline，CUB seed=5 H=73.93。
 - [x] 清空来源不明的旧创意树和待做实验队列。
 - [x] 登记并完成 `IDEA-0001 / TRIAL-001`。
-- [x] 将 `TRIAL-001 / ATTEMPT-019` 提升为 `GTPJ-v2` 当前主线，CUB seed=5 H=74.29。
+- [x] 将 `TRIAL-001 / ATTEMPT-019` owner-activated 为 `GTPJ-v2` 当前主线，CUB seed=5 best_observed_H=74.29，confirmed_H 待确认。

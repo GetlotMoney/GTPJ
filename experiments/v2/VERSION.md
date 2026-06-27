@@ -3,7 +3,7 @@
 ```text
 version: v2
 baseline_name: GTPJ-v2
-status: activated_by_owner
+status: owner_activated_unconfirmed
 code_tag: v2
 parent_version: v1
 parent_tag: v1
@@ -18,6 +18,10 @@ ledger_source_commit: f24a277
 code_source: v1 + TRIAL-001 CLIP-A-self text prototype adapter
 config: experiments/v2/config.yaml
 baseline_evidence: experiments/v2/baseline/
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
 active_main_update: activated_by_owner
 owner_decision_date: 2026-06-27
 ```
@@ -58,17 +62,25 @@ conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config expe
 
 - 有效 schedule 仍是三阶段 `20 + 20 + 10`，`epochs: 30` 只是配置中的历史字段，不是实际总轮数上限。
 
-## 正式结果
+## 结果状态
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Delta H vs v1 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | CUB GZSL | 5 | 71.32 | 77.52 | 74.29 | 81.59 | 33 | +0.36 |
 
+```text
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
+```
+
 ## 质量说明
 
-`GTPJ-v2` 是 owner 在 2026-06-27 明确要求主线化的正式版本。已保留以下风险：
+`GTPJ-v2` 是 owner 在 2026-06-27 明确要求主线化的当前代码版本。已保留以下风险：
 
-- `ATTEMPT-019` 尚未补充独立 clean confirmation rerun；
+- `ATTEMPT-019` 尚未补充独立 clean confirmation rerun，因此 `H=74.29` 只能作为
+  `best_observed_H`，不能写成 `confirmed_H`；
 - `S - U = 6.20`，结果偏 seen-heavy；
 - 后续论文级结论仍建议补做 v2 confirmation、seen/unseen gap analysis 和关键 ablation。
 
@@ -77,7 +89,7 @@ conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config expe
 ```text
 parent_version: v1
 children: none yet
-notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline。
+notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline；证据状态为 owner_activated_unconfirmed。
 ```
 
 ## 允许的实验类型

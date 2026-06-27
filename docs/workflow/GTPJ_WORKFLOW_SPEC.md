@@ -10,14 +10,16 @@
 - 本地外部目录已经被定位为材料和资产面：保存来源材料、完整创意来源、raw logs、checkpoint 和实验诊断材料。
 - agents 的角色边界已经落地：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
 - 代码接口、评估标注、结果记录、artifact 引用和质量门已经形成规范入口。
-- `IDEA-0001 / TRIAL-001` 已提升为 `GTPJ-v2`，当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。
+- `IDEA-0001 / TRIAL-001` 已由 owner 激活为 `GTPJ-v2` 当前主线代码；
+  `H=74.29` 是 `best_observed_H`，`confirmed_H` 仍待 clean confirmation。
 
 当前还没有完成的是“自动 runtime 产品化和 v2 后续复核”：
 
 - 还没有把本地看板或自动 runtime 变成日常强制入口。
-- `GTPJ-v2` 仍建议补 clean confirmation、seen/unseen gap analysis 和关键 ablation。
+- `GTPJ-v2` 仍必须补 clean confirmation，之后才可把 `best_observed_H=74.29`
+  升级成 `confirmed_H` 或 baseline-grade 证据；seen/unseen gap analysis 和关键 ablation 仍是后续项。
 
-所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active baseline `v2`，
+所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active mainline `v2`，
 除非 owner 明确要求从历史版本 tag 开始。
 
 落地状态不要靠口述判断。每次需要确认哪些文件已经实体化、哪些仍是设计时，读取：
@@ -748,6 +750,9 @@ confirmation 必须说明：
 
 ```text
 promotion_decision: promote
+promote_to: vY
+evidence_level: baseline_grade
+confirmation_status: confirmed
   -> Quality Checker 硬门
   -> Reviewer 复核接口、评估、证据和可复现性
   -> 建立 config/versions/vY.yaml

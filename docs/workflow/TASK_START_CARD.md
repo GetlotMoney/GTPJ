@@ -145,6 +145,8 @@ hard_gates:
   source_status:
   artifact_boundary:
   metric_semantics:
+  evidence_level:
+  confirmation_grade:
   promotion_gate:
 
 expected_outputs:
@@ -327,6 +329,9 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - seed；
 - 数据 split、class order、label mapping；
 - 预期对齐的旧结果；
+- 证据等级目标：`quick_local`、`valid_single_run`、`confirmation_grade` 或 `baseline_grade`；
+- `best_observed_H` 和 `confirmed_H` 的当前状态；
+- confirmation target、tolerance 和失败时的降级规则；
 - 将被锁定的 `run_commit`；
 - 这次 confirmation 是从哪个 `pre-run freeze commit` 启动。
 
@@ -372,6 +377,10 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - baseline H、trial H、delta H；
 - U/S/ZS、seed、best epoch；
 - complete manifest/result/quality/interface evidence；
+- `evidence_level: baseline_grade`；
+- `confirmation_status: confirmed`；
+- `best_observed_H` 和 `confirmed_H` 已区分；
+- owner override 是否只是激活主线代码，且是否需要标成 `owner_activated_unconfirmed`；
 - target version；
 - 是否只是生成版本账本，还是 owner 明确要求 activate-version。
 
@@ -398,6 +407,8 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
   Quality Checker、Reviewer 等必须独立复核角色写入 `required_real_agents`；
 - Review 0-3 任一轮存在 blocking issue，却要启动 Runner、选择 best 或 promotion；
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚；
+- 没有填写 `evidence_level`，或把 `quick_local` / `valid_single_run` 结果写成 confirmed baseline；
+- `best_observed_H` 和 `confirmed_H` 混写，导致无法判断复现失败影响哪个结论；
 - raw logs、checkpoint、generated figures 会写进 GitHub；
 - Runner 需要 GPU，但 lock 状态未知；
 - promotion 只看 H 提升，没有完整证据链。

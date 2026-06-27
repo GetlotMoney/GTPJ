@@ -16,13 +16,18 @@ log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
 log_uri: warehouse://gtpj/runs/v1/module_trial/TRIAL-001/attempt-019/logs/training_log_CUB_2026-06-27_01-27-48.txt
 log_sha256: 8d49983c455ca5ce1d52336d8294a4a1eaa8acc6f43b46bc5cef100f015fd59c
 log_size_bytes: 92057
-status: owner_activated
+status: owner_activated_unconfirmed
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
 ```
 
 ## Purpose
 
-This directory records the promoted baseline evidence for `GTPJ-v2`. It is based on the
-current best CLIP-A-self module trial result, not on a separate version-level confirmation run.
+This directory records the owner-activated `GTPJ-v2` mainline evidence. It is based on the
+current best CLIP-A-self module trial result, not on a separate version-level confirmation run;
+therefore `H=74.29` is `best_observed_H`, not `confirmed_H`.
 
 ## Key Configuration
 
@@ -59,6 +64,7 @@ total_epochs: 50
 
 ## Conclusion
 
-The accepted CUB seed=5 mainline baseline for `GTPJ-v2` is `H=74.29`. Future module
-trials, tuning, ablations, and confirmation runs should treat `v2` as the active baseline
-unless the owner explicitly switches back to another version.
+The accepted CUB seed=5 owner-activated mainline result for `GTPJ-v2` is
+`best_observed_H=74.29`. Future module trials, tuning, ablations, and confirmation runs
+should treat `v2` as the active code/config baseline unless the owner explicitly switches
+back to another version. Do not describe `74.29` as `confirmed_H` until clean confirmation passes.

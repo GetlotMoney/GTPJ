@@ -7,7 +7,10 @@
 ```text
 GTPJ-v2
 code tag: v2
-baseline H: 74.29
+best_observed_H: 74.29
+confirmed_H: pending
+status: owner_activated_unconfirmed
+confirmation_status: needs_confirmation
 长期分支: main
 ```
 
@@ -22,7 +25,39 @@ baseline H: 73.93
 `v1` 和 `v2` 是代码快照 tag，不是分支。`main` 是唯一长期分支，保存 owner 明确选择的
 active code 和全部实验账本。
 
+当前 v2 的 `H=74.29` 是 `TRIAL-001 / ATTEMPT-019` 的完整单次观察高点，属于
+`valid_single_run / best_observed_H`。它保留为 owner 激活的当前主线代码和实验起点，
+但在 clean confirmation 通过前，不得表述为 `confirmed_H` 或稳定 baseline-grade 证据。
+
 如果本地 baseline tag 和对应版本账本不一致，必须先修正 tag，不能继续跑正式实验。
+
+## 快速复线和正式确认的区别
+
+```text
+quick_local:
+  目的: 看趋势、排查环境、估计能否复现。
+  要求: 可在本地快速跑，但必须标 debug/quick_local。
+  用途: 不进 promotion，不当论文或 baseline 证据。
+
+valid_single_run:
+  目的: 记录一次完整真实 run。
+  要求: manifest/result/quality/artifact/hash/size 完整。
+  用途: 可记录 best_observed_H；如果是高点，下一步必须 clean confirmation。
+
+confirmation_grade:
+  目的: 确认某个 best_observed 或 baseline。
+  要求: clean pre-run freeze commit、run_commit 唯一、git_dirty=false、目标和容忍范围明确。
+  用途: 复现通过后写 confirmed_H；失败时写 needs_confirmation/not_confirmed。
+
+baseline_grade:
+  目的: 作为稳定 baseline 或 promotion 证据。
+  要求: confirmation_grade 通过，或按质量门要求补足多 run 稳定性。
+  用途: 才能写成 confirmed baseline。
+```
+
+以后 owner 说“复现一下”时，Coordinator 必须先判断这是 `quick_local` 还是
+`confirmation_grade`。默认简单复线只跑最小命令和记录耗时，不自动升级为正式 confirmation；
+只有明确要入账或影响 baseline 时，才走完整 freeze/result/quality 流程。
 
 ## 实验前统一检查
 

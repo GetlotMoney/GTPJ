@@ -14,8 +14,9 @@ docs/workflow/quality_gate.md
 docs/workflow/agent_contracts.md
 ```
 
-当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。`GTPJ-v1 / tag v1 / H=73.93`
-仍是历史 baseline。`validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
+当前 active mainline code 是 `GTPJ-v2 / tag v2`。`H=74.29` 记录为
+`best_observed_H`，`confirmed_H` 仍待 clean confirmation；`GTPJ-v1 / tag v1 / H=73.93`
+仍是历史 confirmed baseline。`validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
 用于核对远端 `main` 和 baseline tags 是否与本地治理事实对齐。
 
 ## Commands

@@ -25,8 +25,12 @@ result_yaml: result.yaml
 result_md: result.md
 agent_summary: agent_summary.md
 trial_decision: promote
-promotion_decision: promote
+promotion_decision: blocked
 promote_to: v2
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
 ```
 
 ## Changed Files
@@ -38,7 +42,7 @@ promote_to: v2
 | `experiments/module_trials/.../ATTEMPTS.md` | Records the trial-internal parameter sweep and confirmation attempts. | no |
 | `experiments/module_trials/.../attempts/` | Stores attempt-local configs, manifests, results, and quality checks. | no |
 
-## Current Formal Best
+## Current Best Observed
 
 | Attempt ID | Dataset | Seed | Heads | Dropout | Inner | Outer | U | S | H | ZS | Best epoch | Log artifact |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -72,17 +76,18 @@ result evidence. `ATTEMPT-021` through `ATTEMPT-028` remain uncompleted.
 - [x] switch-off path remains the validated TRIAL-001 implementation path.
 - [x] current best attempt evidence directory and external artifact pointers are complete.
 - [x] raw logs, checkpoints, and runner receipts are registered in Warehouse rather than Git.
-- [x] owner accepted `ATTEMPT-019` as formal `GTPJ-v2` mainline evidence on 2026-06-27.
-- [x] `trial_decision: promote` and `promotion_decision: promote` are recorded for `promote_to: v2`.
+- [x] owner accepted `ATTEMPT-019` as `GTPJ-v2` current mainline code evidence on 2026-06-27.
+- [x] `ATTEMPT-019` is recorded as `best_observed_H=74.29`.
+- [x] `promotion_decision: blocked` is recorded until clean confirmation passes.
 - [ ] current best `ATTEMPT-019` has not yet received a clean confirmation rerun; this remains a follow-up requirement.
 - [ ] U/S gap remains large: `S - U = 6.20`, so the result is seen-heavy.
 
 ## Decision
 
-`promote`
+`owner_activated_unconfirmed`
 
-`ATTEMPT-019` is now the formal best recorded experiment for TRIAL-001 with `H=74.29`
+`ATTEMPT-019` is now the best observed recorded experiment for TRIAL-001 with `H=74.29`
 (`U=71.32`, `S=77.52`, `ZS=81.59`, best epoch 33). It is recorded through the
 attempt ledger and external artifact ids, not through an attempt-level git tag. By owner decision on
-2026-06-27, this trial is promoted to `GTPJ-v2` and activated as the current mainline while preserving
-the clean-confirmation and seen-heavy follow-up risks.
+2026-06-27, this trial is activated as the current `GTPJ-v2` mainline code while preserving
+the clean-confirmation and seen-heavy follow-up risks. It is not baseline-grade until clean confirmation passes.

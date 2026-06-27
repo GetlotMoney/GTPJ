@@ -88,11 +88,41 @@ S:
 H:
 ZS:
 best_epoch:
-decision: keep | reject | rerun | needs_confirmation
 decision: keep | reject | rejected | rerun | needs_confirmation | blocked
 promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
+evidence_level: quick_local | valid_single_run | confirmation_grade | baseline_grade
+result_status: debug | valid_observation | needs_confirmation | confirmed | blocked | rejected
+best_observed_H:
+confirmed_H:
+confirmation_target:
+confirmation_tolerance_H:
+confirmation_status: not_applicable | pending | confirmed | failed
 ```
+
+## 证据等级和做数规则
+
+实验结果不是只有“做数/不做数”两种状态。以后所有结果必须先标证据等级，再决定能不能用于
+baseline、论文结论或下一步调参。
+
+```text
+quick_local          只用于本地排查、快速复线、debug 趋势；不能用于 promotion 或正式 baseline。
+valid_single_run     config、log、checkpoint、manifest、result、quality 完整；可记录 best_observed_H。
+confirmation_grade   从 clean pre-run freeze commit 启动，复现目标在容忍范围内；可确认某个结果。
+baseline_grade       confirmation_grade 通过，或按质量门要求完成多 run 稳定性证据；可写成稳定 baseline。
+```
+
+硬规则：
+
+- 单次最高结果只能写为 `best_observed_H`，不能直接写成 `confirmed_H`。
+- `git_dirty: true`、`dirty_state: dirty`、`run_commit` 缺失或运行前未冻结时，结果最多是
+  `quick_local` 或普通 debug 证据，不能进入 `confirmation_grade` 或 `baseline_grade`。
+- clean confirmation 失败不会删除原始实验记录；它会把该结果维持在 `valid_single_run` 或
+  `needs_confirmation`，并阻断 promotion。
+- owner 可以显式把某个版本激活为当前主线代码，但如果缺 clean confirmation，状态必须写成
+  `owner_activated_unconfirmed` 或 `provisional`，不能写成 `confirmed baseline`。
+- 后续比较必须同时区分 `best_observed_H` 和 `confirmed_H`；没有 confirmed 值时写
+  `confirmed_H: pending` 或留空，并说明 confirmation 状态。
 
 ## 运行前冻结与运行后记账
 

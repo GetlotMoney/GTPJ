@@ -24,11 +24,18 @@ run:
   source_trial_run_commit: "453acc0"
   command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/attempts/ATTEMPT-019/config.yaml"
 decision:
-  status: owner_activated
-  promotion_decision: promote
+  status: owner_activated_unconfirmed
+  result_status: needs_confirmation
+  promotion_decision: blocked
   promote_to: v2
   owner_override: true
 evidence:
+  evidence_level: valid_single_run
+  best_observed_H: "74.29"
+  confirmed_H: pending
+  confirmation_status: needs_confirmation
+  confirmation_target: "74.29"
+  confirmation_tolerance_H: ""
   log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-019
   best_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:best
   full_checkpoint_artifact_id: checkpoint:v1:module_trial:TRIAL-001:attempt-019:full
@@ -44,6 +51,7 @@ quality:
   evaluation_semantics_verified: true
 warnings:
   - "ATTEMPT-019 has not yet received an independent clean confirmation rerun."
+  - "H=74.29 is best_observed_H, not confirmed_H, until clean confirmation passes."
   - "The v2 result is seen-heavy: U=71.32, S=77.52, S-U=6.20."
   - "Owner accepted these risks when activating v2 as the current mainline on 2026-06-27."
 recorded_at: "2026-06-27T09:01:15+08:00"

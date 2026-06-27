@@ -63,6 +63,12 @@ VERSION_STAGES = {
     "blocked",
     "not_applicable",
 }
+EVIDENCE_LEVELS = {
+    "quick_local",
+    "valid_single_run",
+    "confirmation_grade",
+    "baseline_grade",
+}
 SOURCE_STATUS_RANK = {
     "verified": 3,
     "local_heuristic": 2,
@@ -103,6 +109,11 @@ CANONICAL_BASELINES = {
         "H": "74.29",
         "result_file": "experiments/v2/result.md",
         "version_file": "experiments/v2/VERSION.md",
+        "evidence_level": "valid_single_run",
+        "best_observed_H": "74.29",
+        "confirmed_H": "pending",
+        "confirmation_status": "needs_confirmation",
+        "status": "owner_activated_unconfirmed",
     }
 }
 TUNE_CANDIDATE_RULES = [
@@ -181,6 +192,45 @@ def yaml_scalar(value: object) -> str:
         return '""'
     escaped = text.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def result_evidence_defaults(kind_name: str, h_value: str, decision: str, git_dirty: str) -> dict[str, str]:
+    if not h_value:
+        return {
+            "evidence_level": "pending",
+            "result_status": "pending",
+            "best_observed_H": "",
+            "confirmed_H": "",
+            "confirmation_status": "pending" if kind_name == "confirmation" else "not_applicable",
+            "confirmation_target": "",
+            "confirmation_tolerance_H": "",
+        }
+
+    if git_dirty == "true" or decision in {"blocked", "debug", "rerun", "reject", "rejected"}:
+        evidence_level = "quick_local"
+        best_observed_h = ""
+    else:
+        evidence_level = "valid_single_run"
+        best_observed_h = h_value
+
+    if decision in {"keep", "best", "needs_confirmation"}:
+        result_status = "needs_confirmation"
+    elif decision in {"reject", "rejected"}:
+        result_status = "rejected"
+    elif decision in {"blocked", "rerun", "debug"}:
+        result_status = decision
+    else:
+        result_status = "valid_observation" if evidence_level == "valid_single_run" else "debug"
+
+    return {
+        "evidence_level": evidence_level,
+        "result_status": result_status,
+        "best_observed_H": best_observed_h,
+        "confirmed_H": "pending",
+        "confirmation_status": "pending" if kind_name == "confirmation" else "not_applicable",
+        "confirmation_target": h_value if kind_name == "confirmation" else "",
+        "confirmation_tolerance_H": "",
+    }
 
 
 def sha256_file(path: Path) -> str:
@@ -801,6 +851,25 @@ def cmd_validate(_: argparse.Namespace) -> int:
             local_text = read_text(REPO_ROOT / local_file)
             if expected_h not in local_text:
                 raise WorkflowError(f"{local_file} must record canonical H={expected_h}")
+        if meta.get("evidence_level"):
+            evidence_markers = [
+                f"evidence_level: {meta['evidence_level']}",
+                f"best_observed_H: {meta['best_observed_H']}",
+                f"confirmed_H: {meta['confirmed_H']}",
+                f"confirmation_status: {meta['confirmation_status']}",
+            ]
+            for local_file in [meta["result_file"], meta["version_file"]]:
+                local_text = read_text(REPO_ROOT / local_file)
+                for marker in evidence_markers:
+                    if marker not in local_text:
+                        raise WorkflowError(f"{local_file} must record evidence marker: {marker}")
+            baseline_result = read_text(REPO_ROOT / "experiments" / version / "baseline" / "result.yaml")
+            baseline_quality = read_text(REPO_ROOT / "experiments" / version / "baseline" / "quality_check.md")
+            for marker in [*evidence_markers, f"status: {meta['status']}"]:
+                if marker not in baseline_result and marker not in baseline_quality:
+                    raise WorkflowError(f"{version} baseline evidence must record marker: {marker}")
+            if meta["confirmation_status"] != "confirmed" and "promotion_decision: blocked" not in baseline_result + baseline_quality:
+                raise WorkflowError(f"{version} unconfirmed baseline evidence must block promotion")
 
     for version in sorted(CANONICAL_BASELINES):
         version_config = read_text(REPO_ROOT / "config" / "versions" / f"{version}.yaml")
@@ -932,6 +1001,43 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in implementation_template:
             raise WorkflowError(f"implementation_template.md missing section: {marker}")
 
+    evidence_docs = {
+        "docs/workflow/experiment_protocol.md": [
+            "quick_local",
+            "valid_single_run",
+            "confirmation_grade",
+            "baseline_grade",
+            "best_observed_H",
+            "confirmed_H",
+        ],
+        "docs/workflow/quality_gate.md": [
+            "evidence_level",
+            "baseline_grade",
+            "owner_activated_unconfirmed",
+        ],
+        "docs/workflow/promotion.md": [
+            "evidence_level: baseline_grade",
+            "confirmation_status: confirmed",
+            "owner_activated_unconfirmed",
+        ],
+        "docs/workflow/runbook.md": [
+            "quick_local",
+            "valid_single_run",
+            "confirmation_grade",
+            "baseline_grade",
+        ],
+        "docs/workflow/TASK_START_CARD.md": [
+            "best_observed_H",
+            "confirmed_H",
+            "confirmation_grade",
+        ],
+    }
+    for doc, markers in evidence_docs.items():
+        text = read_text(REPO_ROOT / doc)
+        for marker in markers:
+            if marker not in text:
+                raise WorkflowError(f"{doc} missing evidence-grade marker: {marker}")
+
     offenders: list[str] = []
     for path in list_files_for_scan():
         try:
@@ -1034,6 +1140,13 @@ best_epoch:
 decision:
 promotion_decision: not_applicable
 promote_to:
+evidence_level: pending
+result_status: pending
+best_observed_H:
+confirmed_H:
+confirmation_target:
+confirmation_tolerance_H:
+confirmation_status: pending
 status: planned
 ```
 
@@ -1110,6 +1223,8 @@ runtime:
 quality_check_mode: {kind.default_check}
 decision: PENDING
 promotion_decision: not_applicable
+evidence_level: pending
+confirmation_status: pending
 ```
 
 ## 范围
@@ -1122,6 +1237,7 @@ promotion_decision: not_applicable
 - [ ] 配置副本保存在实验目录。
 - [ ] 外部日志 artifact URI、sha256、size 明确。
 - [ ] 结果口径明确。
+- [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
 - [ ] seen/unseen split、label mapping、class order 和 metric calculation 未改变或已按高风险记录。
 - [ ] GitHub 目录中没有新增 raw log、checkpoint、generated figures。
@@ -1131,6 +1247,8 @@ promotion_decision: not_applicable
 - [ ] parent_version / parent_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
+- [ ] `evidence_level: baseline_grade` 或明确标成 owner_activated_unconfirmed / provisional。
+- [ ] clean confirmation 或多 run 稳定性证据明确；单次最高 H 不直接 promotion。
 - [ ] U/S/ZS、best epoch、seed 明确。
 - [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
 - [ ] trial config 和新版本 config 路径明确。
@@ -1512,6 +1630,7 @@ def make_result_yaml(
     promote_to: str = "",
     log_artifact_id: str = "",
     recorded_at: str = "",
+    git_dirty: str = "false",
 ) -> str:
     metrics = metrics or {}
     baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
@@ -1522,6 +1641,7 @@ def make_result_yaml(
             delta_h = f"{float(h_value) - float(baseline_h):+.2f}"
         except ValueError:
             delta_h = ""
+    evidence_defaults = result_evidence_defaults(kind.name, h_value, decision, git_dirty)
     return f"""schema_version: gtpj-result/v1
 experiment_id: {yaml_scalar(exp_id)}
 experiment_name: {yaml_scalar(f"{exp_id}_{slug}")}
@@ -1547,9 +1667,16 @@ run:
   seed: {yaml_scalar(seed)}
 decision:
   status: {yaml_scalar(decision)}
+  result_status: {yaml_scalar(evidence_defaults["result_status"])}
   promotion_decision: {yaml_scalar(promotion_decision)}
   promote_to: {yaml_scalar(promote_to)}
 evidence:
+  evidence_level: {yaml_scalar(evidence_defaults["evidence_level"])}
+  best_observed_H: {yaml_scalar(evidence_defaults["best_observed_H"])}
+  confirmed_H: {yaml_scalar(evidence_defaults["confirmed_H"])}
+  confirmation_status: {yaml_scalar(evidence_defaults["confirmation_status"])}
+  confirmation_target: {yaml_scalar(evidence_defaults["confirmation_target"])}
+  confirmation_tolerance_H: {yaml_scalar(evidence_defaults["confirmation_tolerance_H"])}
   log_artifact_id: {yaml_scalar(log_artifact_id)}
   manifest: {yaml_scalar("manifest.yaml")}
   agent_summary: {yaml_scalar("agent_summary.md")}
@@ -1887,6 +2014,7 @@ def update_manifest_and_result_files(
         promote_to=promote_to,
         log_artifact_id=log_artifact_id,
         recorded_at=recorded_at,
+        git_dirty=git_dirty,
     )
     result_md = make_result_md(
         exp_id=exp_id,
@@ -1954,6 +2082,8 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     )
     log_artifact_id = args.log_artifact_id or default_log_artifact_id(exp_id, slug, args.attempt_id)
     dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
+    git_dirty = "true" if dirty_before == "dirty" else "false"
+    evidence_defaults = result_evidence_defaults(kind.name, metrics["H"], args.decision, git_dirty)
     readme_path = exp_dir / "README.md"
     content = read_text(readme_path)
     fields = {
@@ -1979,6 +2109,13 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         "decision": args.decision,
         "promotion_decision": args.promotion_decision,
         "promote_to": args.promote_to,
+        "evidence_level": evidence_defaults["evidence_level"],
+        "result_status": evidence_defaults["result_status"],
+        "best_observed_H": evidence_defaults["best_observed_H"],
+        "confirmed_H": evidence_defaults["confirmed_H"],
+        "confirmation_target": evidence_defaults["confirmation_target"],
+        "confirmation_tolerance_H": evidence_defaults["confirmation_tolerance_H"],
+        "confirmation_status": evidence_defaults["confirmation_status"],
         "status": "recorded",
     }
     if args.kind == "tune":
@@ -2011,7 +2148,7 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         log_uri=log_uri,
         log_sha256=log_sha256,
         log_size_bytes=log_size_bytes,
-        git_dirty="true" if dirty_before == "dirty" else "false",
+        git_dirty=git_dirty,
     )
     append_readme_result_row(
         readme_path,
@@ -2173,9 +2310,14 @@ run:
   command: {yaml_scalar(command)}
 decision:
   status: {yaml_scalar(decision)}
+  result_status: {yaml_scalar("needs_confirmation" if decision in {"best", "keep"} else decision)}
   promotion_decision: {yaml_scalar("blocked" if decision in {"best", "keep"} else "not_applicable")}
   promote_to: {yaml_scalar("")}
 evidence:
+  evidence_level: {yaml_scalar("valid_single_run" if decision in {"best", "keep"} else "quick_local")}
+  best_observed_H: {yaml_scalar(metrics.get("H", "") if decision in {"best", "keep"} else "")}
+  confirmed_H: {yaml_scalar("pending")}
+  confirmation_status: {yaml_scalar("needs_confirmation" if decision in {"best", "keep"} else "not_applicable")}
 {evidence_block}
   manifest: {yaml_scalar("manifest.yaml")}
   label_mapping_id: {yaml_scalar("standard_v1")}
@@ -3178,6 +3320,10 @@ code_commit:
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
+evidence_level: pending
+best_observed_H:
+confirmed_H:
+confirmation_status: pending
 changed_files:
 run_config: config.yaml
 log_artifact_id:
@@ -3217,6 +3363,8 @@ activation_mode: real_multi_agent
 ## Promotion Gate
 
 - [ ] baseline H、trial H、delta H 已记录。
+- [ ] `evidence_level: baseline_grade`；单次最高 H 只能写 `best_observed_H`。
+- [ ] clean confirmation 或多 run 稳定性证据明确，`confirmed_H` 和 `confirmation_status` 已记录。
 - [ ] U/S/ZS 没有不可接受退化。
 - [ ] class order、split、logits shape、metric calculation 未改变。
 - [ ] switch off 能回到 `{base_version}` 行为。

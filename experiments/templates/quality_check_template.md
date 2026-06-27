@@ -4,6 +4,8 @@
 runtime:
 decision: pending
 promotion_decision: not_applicable
+evidence_level: pending
+confirmation_status: not_applicable
 ```
 
 ## 范围
@@ -16,6 +18,7 @@ promotion_decision: not_applicable
 - [ ] 配置副本保存在实验目录。
 - [ ] 外部日志 artifact id、URI、sha256、size 和保留位置明确。
 - [ ] 结果口径明确。
+- [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
 - [ ] class order、seen/unseen split、label mapping、logits shape、metric calculation 未改变或已按高风险记录。
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
@@ -25,6 +28,9 @@ promotion_decision: not_applicable
 - [ ] parent_version / parent_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
+- [ ] `evidence_level: baseline_grade`；如果只是 owner 激活，已标为 provisional /
+  owner_activated_unconfirmed。
+- [ ] clean confirmation 或多 run 稳定性证据明确；单次最高 H 不直接 promotion。
 - [ ] U/S/ZS、best epoch、seed 明确。
 - [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。
 - [ ] trial config 和新版本 config 路径明确。

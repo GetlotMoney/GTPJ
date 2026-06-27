@@ -12,10 +12,11 @@ GeoTopoPatch-JEPA 实验仓库。
 | 版本 | 代码 tag | 状态 | 主数据集 | 说明 |
 |---|---|---|---|---|
 | `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 新仓库第一版正式 baseline，seed=5，H=73.93。 |
-| `GTPJ-v2` | `v2` | 当前主线 | CUB GZSL | CLIP-A-self text prototype adapter，seed=5，H=74.29。 |
+| `GTPJ-v2` | `v2` | owner-activated / needs confirmation | CUB GZSL | CLIP-A-self text prototype adapter，seed=5，best_observed_H=74.29。 |
 
-当前 active baseline 是 `GTPJ-v2 / tag v2 / H=74.29`。`GTPJ-v1 / tag v1 / H=73.93`
-仍是永久历史 baseline。`main` 是唯一长期分支；`v1`、`v2` 都是代码快照 tag，不是分支。
+当前 active mainline code 是 `GTPJ-v2 / tag v2`；其单次最高观察值是
+`best_observed_H=74.29`，`confirmed_H` 仍待 clean confirmation。`GTPJ-v1 / tag v1 / H=73.93`
+仍是永久历史 confirmed baseline。`main` 是唯一长期分支；`v1`、`v2` 都是代码快照 tag，不是分支。
 
 ## 当前管理重点
 

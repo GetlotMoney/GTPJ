@@ -25,6 +25,12 @@ agent_summary: agent_summary.md
 attempt_id:
 failure_stage:
 decision:
+promotion_decision:
+evidence_level:
+result_status:
+best_observed_H:
+confirmed_H:
+confirmation_status:
 ```
 
 ## 问题

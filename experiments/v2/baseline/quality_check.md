@@ -2,10 +2,14 @@
 
 ```text
 quality_check_mode: STRICT_WITH_OWNER_OVERRIDE
-decision: PASS_OWNER_ACTIVATED
-promotion_decision: promote
+decision: PASS_OWNER_ACTIVATED_UNCONFIRMED
+promotion_decision: blocked
 promote_to: v2
 owner_override: true
+evidence_level: valid_single_run
+best_observed_H: 74.29
+confirmed_H: pending
+confirmation_status: needs_confirmation
 ```
 
 ## Scope
@@ -14,6 +18,7 @@ owner_override: true
 - Promoted trial: `TRIAL-001_clip_a_self_residual_seenonly`
 - Promoted attempt: `ATTEMPT-019`
 - Active mainline target: `GTPJ-v2 / tag v2`
+- Evidence status: `valid_single_run`; `H=74.29` is `best_observed_H`, not `confirmed_H`.
 
 ## Findings
 
@@ -33,13 +38,15 @@ owner_override: true
 - [x] External log artifact id, URI, sha256, and size are recorded.
 - [x] Artifact boundary passes: no raw logs, checkpoints, generated figures, or cache files are tracked.
 - [x] Evaluation contract is unchanged.
-- [x] Owner explicitly requested that the current best result become the formal mainline on 2026-06-27.
+- [x] Owner explicitly requested that the current best result become the current mainline code on 2026-06-27.
+- [x] Owner override and missing confirmation are explicitly recorded.
 - [ ] Independent clean confirmation is still recommended.
+- [ ] Baseline-grade promotion evidence is blocked until clean confirmation passes.
 - [ ] Seen-heavy behavior still needs follow-up analysis.
 
 ## Decision
 
-PASS_OWNER_ACTIVATED.
+PASS_OWNER_ACTIVATED_UNCONFIRMED.
 
-`GTPJ-v2` is accepted as the current formal mainline by owner decision. The remaining confirmation
-and U/S-gap risks are preserved as follow-up requirements instead of being erased from the record.
+`GTPJ-v2` is accepted as the current mainline code by owner decision. The remaining confirmation
+and U/S-gap risks are preserved as blocking follow-up requirements before any confirmed/baseline-grade claim.

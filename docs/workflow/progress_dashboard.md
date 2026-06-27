@@ -242,6 +242,8 @@ Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
 ```text
 promotion_decision: promote
 promote_to: vX
+evidence_level: baseline_grade
+confirmation_status: confirmed
 ```
 
 Coordinator 进入 `promotion_gate` 阶段，并按 `docs/workflow/promotion.md` 检查硬门。

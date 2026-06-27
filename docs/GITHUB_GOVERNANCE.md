@@ -8,12 +8,14 @@ agent 凭证和 promotion gate 以 `docs/workflow/` 中的规范为准。
 
 ## 当前权威基线
 
-当前 active baseline：
+当前 active mainline code：
 
 ```text
 GTPJ-v2
 code_tag: v2
-baseline H: 74.29
+best_observed_H: 74.29
+confirmed_H: pending
+status: owner_activated_unconfirmed
 长期分支: main
 ```
 
@@ -28,7 +30,8 @@ baseline H: 73.93
 `main` 是唯一长期分支。`v1`、`v2` 是 tag，不是分支。
 
 早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
-后按永久 tag 管理，不再移动。`v2` 是 2026-06-27 owner activated 的当前主线 tag。
+后按永久 tag 管理，不再移动。`v2` 是 2026-06-27 owner activated 的当前主线 tag；
+`H=74.29` 在 clean confirmation 通过前只作为 `best_observed_H`。
 
 ## 当前阶段只管理什么
 
@@ -404,7 +407,10 @@ trial/v1/idea-0003/trial-001
 Promotion 硬门：
 
 - `H` 相比父版本有明确提升，且记录 baseline H、trial H 和 delta H。
-- 不能只凭一次偶然结果；至少要记录同 seed 对照，必要时补充多 seed 或重复运行。
+- 不能只凭一次偶然结果；必须区分 `best_observed_H` 和 `confirmed_H`，并达到
+  `evidence_level: baseline_grade`。
+- 运行必须来自 clean pre-run freeze commit；`dirty_state: dirty` 或 `git_dirty: true`
+  只能记录为 debug/best_observed，不能 promotion。
 - `U`、`S`、`ZS` 没有出现不可接受退化；如果有退化，必须解释为什么仍然接受。
 - 训练命令、seed、配置副本、日志路径、best epoch 和结果表完整。
 - evaluation 口径没有改变，包括 class order、seen/unseen split、logits shape 和 metric calculation。
@@ -535,11 +541,14 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 
 但 baseline promotion 是强制门。任何 trial、ablation 或 tuned configuration 想成为正式
 `vX`，必须通过 `docs/workflow/promotion.md` 的自动 promotion gate，不能只看一次 `H` 提升。
+单次最高结果只能写成 `best_observed_H`；没有 clean confirmation 或多 run 稳定性证据时，
+只能由 owner 选择 provisional/owner-activated 主线，不能写 confirmed baseline。
 
 以后如果把 `quality_check` 自动化接入 OpenClaw/Codex runtime，可以把它升级成自动化质量门。
 在此之前，普通实验的 `quality_check` 是 GitHub 证据完整性的检查表；
 promotion 的 `quality_check` 是正式版本准入门。当实验记录明确写
-`promotion_decision: promote` 且硬门全部通过时，Coordinator 可以自动创建本地新版本材料和本地 tag，
+`promotion_decision: promote`、`evidence_level: baseline_grade` 且硬门全部通过时，
+Coordinator 可以自动创建本地新版本材料和本地 tag，
 并把版本账本回流到 `main`；但不自动切换 `main` 当前代码，也不自动 push GitHub。
 
 ## agent_summary 是什么

@@ -30,6 +30,10 @@ agent_summary: agent_summary.md
 trial_decision:
 promote_to:
 promotion_decision:
+evidence_level:
+best_observed_H:
+confirmed_H:
+confirmation_status:
 ```
 
 `code_branch` is cut from current `main`. `base_code_tag` is the true code source.
@@ -70,6 +74,10 @@ trial_H:
 delta_H:
 same_seed_control:
 multi_seed_required:
+evidence_level: baseline_grade
+best_observed_H:
+confirmed_H:
+confirmation_status: confirmed
 config_snapshot:
 log_artifact_id:
 log_uri:
