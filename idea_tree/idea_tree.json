@@ -73,6 +73,68 @@
         }
       ],
       "next_action": "Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml."
+    },
+    {
+      "idea_id": "IDEA-0002",
+      "idea_dir": "idea_tree/ideas/IDEA-0002_fae_memory_jepa/",
+      "title": "FAE-memory JEPA auxiliary loss",
+      "status": "selected",
+      "source_type": "user",
+      "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
+      "source_status": "local_heuristic",
+      "global_score": 72.0,
+      "version_scores": {
+        "v2": {
+          "score": 72.0,
+          "applicability": "needs_adaptation",
+          "stage": "selected",
+          "rationale": "Current v2 already includes CLIP-A-self and AG-JEPA. This idea keeps the text condition and evaluation path unchanged, but moves the JEPA visual context to FAE memory so the auxiliary loss can directly regularize the visual memory used by local_score.",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v2"
+      ],
+      "based_on_modules": [
+        "GTPJ-v2 AG-JEPA",
+        "FAE geometry-aware visual memory",
+        "CLIP-A-self seen text adapter"
+      ],
+      "target_component": "AG-JEPA auxiliary loss path in model/MyModel.py",
+      "hypothesis": "Using FAE-enhanced visual memory as JEPA context while keeping the prediction target as detached pre-FAE patch_z should make AG-JEPA regularize the main visual memory path without changing class order, seen/unseen split, logits shape, or evaluation semantics.",
+      "expected_effect": {
+        "U": "may improve if FAE memory learns class-conditioned visual evidence that transfers to unseen classes",
+        "S": "should remain comparable if seen-class text and CE label mapping are unchanged",
+        "H": "target metric; any improvement remains trial evidence until clean confirmation"
+      },
+      "implementation_scope": "Add a trial-local JEPA context mode that returns patch_z and FAE memory from CrossModalTransformer, uses memory keep-token pooling as context, keeps target as detached masked patch_z, and preserves the existing embed/pre-FAE mode as baseline-off behavior.",
+      "risk": "The target and context live at different representation depths; lastvit-selected patch alignment must be explicit; high JEPA weight may over-regularize FAE; negative loss should keep visual context detached in the first implementation.",
+      "compatibility": "Switch-off or jepa_context_mode=embed must preserve the current AG-JEPA path. The forward output can include extra auxiliary keys, but logits, class order, label mapping, seen/unseen split, and metric calculation must remain unchanged.",
+      "transfer_notes": "Future versions must re-check whether CrossModalTransformer still exposes embed_cv, FAE memory, and the same selected-patch semantics before reusing this idea.",
+      "priority": 0.72,
+      "linked_trials": [],
+      "linked_versions": [
+        "v2"
+      ],
+      "linked_experiments": [],
+      "evidence": [
+        {
+          "type": "owner_observation",
+          "ref": "owner:2026-06-27:AG-JEPA gradient flow discussion",
+          "note": "Owner identified that the current AG-JEPA loss does not directly optimize FAE or CrossModal decoder parameters."
+        },
+        {
+          "type": "code",
+          "ref": "model/MyModel.py",
+          "note": "Current _ag_jepa_loss recomputes embed_cv/embed_text and bypasses FAE; CrossModalTransformer.forward computes FAE memory but does not return it."
+        },
+        {
+          "type": "research",
+          "ref": "D:/backup/Documents/Myself/GTPJ_Research/ideas/IDEA-0002_fae_memory_jepa/idea_full.md",
+          "note": "Long-form motivation, hypothesis, intended boundary, risks, and minimum evidence."
+        }
+      ],
+      "next_action": "Start TRIAL-001_fae_memory_jepa on v2 with real_multi_agent Review 0-3; first prove gradient coverage before interpreting training metrics."
     }
   ]
 }
