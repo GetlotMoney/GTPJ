@@ -41,7 +41,7 @@ ISSUE-YYYYMMDD-001
 | ISSUE-20260627-007 | 2026-06-27 | Long batch stopped at ATTEMPT-021 | `2026-06-27-trial001-batch-runner-and-tag-boundary.md` | retry-needed |
 | ISSUE-20260627-008 | 2026-06-27 | Trial tag and attempt tag boundary confusion | `2026-06-27-trial001-batch-runner-and-tag-boundary.md` | fixed |
 | ISSUE-20260627-009 | 2026-06-27 | Trial/root indexes drift from current best attempt | `2026-06-27-trial001-batch-runner-and-tag-boundary.md` | fixed |
-| ISSUE-20260628-010 | 2026-06-28 | Post-run closeout still required too much manual root-ledger sync | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | active |
+| ISSUE-20260628-010 | 2026-06-28 | Post-run closeout still required too much manual root-ledger sync | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | fixed |
 | ISSUE-20260628-011 | 2026-06-28 | Workflow diagram standard was missing | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | fixed |
 | ISSUE-20260628-012 | 2026-06-28 | Full innovation review is correct but too heavy for simple reruns | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | policy-clarified |
 

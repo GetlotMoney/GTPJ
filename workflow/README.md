@@ -45,6 +45,8 @@ git switch main
 git status --short
 git switch -c dev/v1-idea-xxxx-trial-001-short-name
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
+python workflow/gtpj_workflow.py record-module-attempt --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --log train_log/CUB/<log>.txt --decision revise
+python workflow/gtpj_workflow.py sync-trial-summary --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --decision revise
 ```
 
 ## Boundary Rules
@@ -52,6 +54,7 @@ python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-
 - `new-experiment` only runs on the exact clean `exp/...` branch and that branch must contain current local `main`.
 - `new-trial` only runs on the exact clean `dev/...` branch and that branch must contain current local `main`.
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.
+- `record-module-attempt` writes attempt-local evidence under `attempts/ATTEMPT-xxx/`; `sync-trial-summary` then promotes that attempt's lightweight evidence into the trial root README/result/quality, `experiments/module_trials/INDEX.md`, and `idea_tree/`.
 - `audit-boundary` blocks raw logs, checkpoints, generated images, feature caches, and copied-log evidence from entering GitHub.
 - Historical `GTPJ-v1` baseline raw log has been migrated to `GTPJ_Warehouse`; GitHub keeps only artifact id, URI, hash, size, config, result, and quality records.
 

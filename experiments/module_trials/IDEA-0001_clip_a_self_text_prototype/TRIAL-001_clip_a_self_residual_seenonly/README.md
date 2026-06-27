@@ -69,6 +69,18 @@ confirmation_status: needs_confirmation
 `docs/workflow/issues/2026-06-27-trial001-batch-runner-and-tag-boundary.md`; it is not valid
 result evidence. `ATTEMPT-021` through `ATTEMPT-028` remain uncompleted.
 
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea["IDEA-0001: CLIP-A-self text prototype"] --> Reviews["Review 0-2: intent, interface, code"]
+  Reviews --> Attempts["ATTEMPT-001..020 sweep"]
+  Attempts --> Best["ATTEMPT-019 best_observed_H=74.29"]
+  Best --> Warehouse["Warehouse logs/checkpoints"]
+  Warehouse --> Root["trial root README/result/quality"]
+  Root --> Decision["owner activated to GTPJ-v2; confirmation still pending"]
+```
+
 ## Promotion Gate
 
 - [x] baseline H, current best H, and delta H recorded.

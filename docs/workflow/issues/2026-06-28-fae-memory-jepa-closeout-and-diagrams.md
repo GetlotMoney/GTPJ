@@ -11,7 +11,7 @@
 
 ## ISSUE-20260628-010: Post-run closeout still required too much manual root-ledger sync
 
-Status: active
+Status: fixed
 
 Symptom:
 
@@ -45,6 +45,8 @@ Root Cause:
 Resolution:
 
 - Root trial summary, Review 3 files, idea-tree state, and module-trial index were manually synchronized.
+- Added `sync-trial-summary` to `workflow/gtpj_workflow.py` so future attempt-local evidence can be synchronized into the trial root summary, module-trial index, and idea-tree views with one command.
+- Extended `validate` so formal version records and module trial READMEs must carry the required Mermaid flow sections.
 - Final checks passed:
 
 ```text
@@ -73,8 +75,13 @@ validate/audit-boundary/validate-remote
 
 Helper Candidate:
 
-- Add `sync-trial-summary --trial-dir ... --attempt-id ... --decision ...`.
-- It should update trial root result/quality/README, module-trial index, and idea-tree status from one source of truth.
+- Implemented:
+
+```text
+python workflow/gtpj_workflow.py sync-trial-summary --trial-dir ... --attempt-id ... --decision ...
+```
+
+- It updates trial root `manifest.yaml`, `result.yaml`, `result.md`, `quality_check.md`, README summary fields, `experiments/module_trials/INDEX.md`, and idea-tree machine/human views from the attempt-local manifest/result.
 
 ## ISSUE-20260628-011: Workflow diagram standard was missing
 
@@ -118,8 +125,10 @@ Prevention:
 
 Helper Candidate:
 
-- Extend `validate` to warn when a formal `experiments/vX/VERSION.md` lacks `## Version Flow`.
-- Extend `new-trial` templates to ensure every new trial includes `## Trial Flow`.
+- Implemented:
+  - `validate` now fails if a formal `experiments/vX/VERSION.md` lacks `## Version Flow`.
+  - `validate` now fails if a module trial README lacks `## Trial Flow`.
+  - `new-trial` now emits a default `## Trial Flow` Mermaid section.
 
 ## ISSUE-20260628-012: Full innovation review is correct but too heavy for simple reruns
 

@@ -639,6 +639,149 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("dirty_state: clean", readme)
         self.assertIn('git_dirty: "false"', manifest)
 
+    def test_sync_trial_summary_updates_root_ledgers_and_idea_tree(self) -> None:
+        self._write_selected_idea_files()
+        trial_dir = "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router"
+        self._write(
+            f"{trial_dir}/README.md",
+            """# TRIAL-001_token_router
+
+```text
+trial_id: TRIAL-001
+idea_id: IDEA-0001
+base_version: v1
+base_code_tag: v1
+branch_source: main
+idea_source_file: idea_tree/ideas/IDEA-0001_token_router/IDEA.md
+idea_title: Token Router
+code_branch: dev/v1-idea-0001-trial-001-token-router
+code_tag: trial/v1/idea-0001/trial-001
+code_commit:
+trial_decision: pending
+promotion_decision: not_applicable
+promote_to:
+evidence_level: pending
+best_observed_H:
+confirmed_H:
+confirmation_status: pending
+run_config: config.yaml
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
+```
+
+## 结果
+
+| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
+|---|---:|---:|---:|---:|---:|---:|---|
+
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea --> Run
+```
+""",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-001/manifest.yaml",
+            """schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_token_router"
+  kind: "module-trial"
+  status: "completed"
+  attempt_id: "attempt-001"
+version:
+  base_version: "v1"
+  base_code_tag: "v1"
+  code_branch: "dev/v1-idea-0001-trial-001-token-router"
+  code_commit: "abc123"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router/attempts/ATTEMPT-001/config.yaml"
+  config_sha256: "sha-config"
+  pre_run_freeze_commit: "abc123"
+  command: "python train_GTPJ_CUB.py --config config.yaml"
+  seed: "5"
+idea:
+  idea_id: "IDEA-0001"
+  title: "Token Router"
+  hypothesis: "Improve routing."
+artifacts:
+  train_log:
+    artifact_id: "log:v1:module_trial:TRIAL-001:attempt-001"
+    role: "training_log"
+    uri: "warehouse://gtpj/runs/v1/module_trials/TRIAL-001/attempt-001/logs/train.log"
+    sha256: "sha-log"
+    size_bytes: "123"
+    required_for: "audit"
+    status: "available"
+""",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-001/result.yaml",
+            """schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+kind: "module-trial"
+version: "v1"
+attempt_id: "attempt-001"
+metrics:
+  U: "70.00"
+  S: "72.00"
+  H: "70.99"
+  ZS: "80.00"
+  best_epoch: "12"
+  baseline_H: "73.93"
+  delta_H: "-2.94"
+  seed: "5"
+run:
+  seed: "5"
+  pre_run_freeze_commit: "abc123"
+  command: "python train_GTPJ_CUB.py --config config.yaml"
+decision:
+  status: "revise"
+  promotion_decision: "not_applicable"
+evidence:
+  evidence_level: "quick_local"
+""",
+        )
+
+        code, stdout, stderr = self._run_main(
+            "sync-trial-summary",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-001",
+            "--decision",
+            "revise",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("sync-trial-summary-ok", stdout)
+        root_result = (self.repo / trial_dir / "result.yaml").read_text(encoding="utf-8")
+        root_readme = (self.repo / trial_dir / "README.md").read_text(encoding="utf-8")
+        module_index = (self.repo / "experiments/module_trials/INDEX.md").read_text(encoding="utf-8")
+        idea_json = json.loads((self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        idea = idea_json["ideas"][0]
+
+        self.assertIn('evidence_level: "valid_single_run"', root_result)
+        self.assertIn('best_observed_H: ""', root_result)
+        self.assertIn('attempt_manifest: "attempts/ATTEMPT-001/manifest.yaml"', root_result)
+        self.assertIn("trial_decision: revise", root_readme)
+        self.assertIn("log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-001", root_readme)
+        self.assertIn("| CUB | 5 | 70.00 | 72.00 | 70.99 | 80.00 | 12 |", root_readme)
+        self.assertIn("| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_token_router/IDEA.md` |", module_index)
+        self.assertIn("delta_H=-2.94", module_index)
+        self.assertEqual("weakened", idea["status"])
+        self.assertEqual("trialing", idea["version_scores"]["v1"]["stage"])
+        self.assertIn(f"{trial_dir}/result.yaml", {item["ref"] for item in idea["evidence"]})
+
     def test_audit_boundary_rejects_raw_experiment_log(self) -> None:
         self._write("experiments/v1/tune/TUNE-999_bad/logs/train.log", "raw log\n")
 

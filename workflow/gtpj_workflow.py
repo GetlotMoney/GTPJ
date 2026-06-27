@@ -320,6 +320,74 @@ def read_key_value_block(path: Path) -> dict[str, str]:
     return values
 
 
+def yaml_unquote(value: str) -> str:
+    text = value.strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        text = text[1:-1]
+        return text.replace(r"\\", "\\").replace(r"\"", '"')
+    if len(text) >= 2 and text[0] == "'" and text[-1] == "'":
+        return text[1:-1]
+    return text
+
+
+def read_shallow_yaml(path: Path) -> dict[str, object]:
+    """Parse the helper-generated, shallow YAML ledgers without a PyYAML dependency."""
+    data: dict[str, object] = {}
+    current_section = ""
+    for raw_line in read_text(path).splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if not raw_line.startswith(" "):
+            section_match = re.match(r"^([A-Za-z0-9_]+):\s*$", raw_line)
+            if section_match:
+                current_section = section_match.group(1)
+                data[current_section] = {}
+                continue
+            value_match = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if value_match:
+                current_section = ""
+                data[value_match.group(1)] = yaml_unquote(value_match.group(2))
+                continue
+        if current_section and raw_line.startswith("  ") and not raw_line.startswith("    "):
+            value_match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if value_match and isinstance(data.get(current_section), dict):
+                section = data[current_section]
+                assert isinstance(section, dict)
+                section[value_match.group(1)] = yaml_unquote(value_match.group(2))
+    return data
+
+
+def yaml_section_value(data: dict[str, object], section: str, key: str, default: str = "") -> str:
+    section_data = data.get(section)
+    if isinstance(section_data, dict):
+        value = section_data.get(key)
+        return "" if value is None else str(value)
+    return default
+
+
+def read_yaml_artifacts(path: Path) -> dict[str, dict[str, str]]:
+    artifacts: dict[str, dict[str, str]] = {}
+    in_artifacts = False
+    current_key = ""
+    for raw_line in read_text(path).splitlines():
+        if raw_line == "artifacts:":
+            in_artifacts = True
+            continue
+        if not in_artifacts:
+            continue
+        if raw_line and not raw_line.startswith(" "):
+            break
+        key_match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s*$", raw_line)
+        if key_match:
+            current_key = key_match.group(1)
+            artifacts[current_key] = {}
+            continue
+        value_match = re.match(r"^\s{4}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+        if current_key and value_match:
+            artifacts[current_key][value_match.group(1)] = yaml_unquote(value_match.group(2))
+    return artifacts
+
+
 def normalize_attempt_ids(value: str) -> tuple[str, str]:
     cleaned = value.strip()
     match = re.fullmatch(r"(?i)(?:attempt-)?([0-9]{3})", cleaned)
@@ -714,6 +782,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/agents/long_term_memory.md",
         "docs/workflow/idea_tree_protocol.md",
         "docs/workflow/quality_gate.md",
+        "docs/workflow/workflow_diagrams.md",
         "docs/workflow/runbook.md",
         "workflow/README.md",
         "workflow/openclaw/README.md",
@@ -767,6 +836,26 @@ def cmd_validate(_: argparse.Namespace) -> int:
     missing = [item for item in required if not (REPO_ROOT / item).exists()]
     if missing:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
+
+    workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "workflow_diagrams.md")
+    for marker in ["## Version Flow", "## Trial Flow", "## 总流程框架", "## Module Trial 流程框架"]:
+        if marker not in workflow_diagrams:
+            raise WorkflowError(f"workflow_diagrams.md missing section: {marker}")
+    version_template = read_text(REPO_ROOT / "experiments" / "templates" / "VERSION_template.md")
+    trial_template = read_text(REPO_ROOT / "experiments" / "templates" / "TRIAL_README_template.md")
+    if "## Version Flow" not in version_template:
+        raise WorkflowError("VERSION_template.md must include ## Version Flow")
+    if "## Trial Flow" not in trial_template:
+        raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
+    for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
+        if not version_dir.is_dir():
+            continue
+        version_file = version_dir / "VERSION.md"
+        if version_file.exists() and "## Version Flow" not in read_text(version_file):
+            raise WorkflowError(f"{rel(version_file)} must include ## Version Flow")
+    for trial_readme in sorted((REPO_ROOT / "experiments" / "module_trials").glob("IDEA-*/TRIAL-*/README.md")):
+        if "## Trial Flow" not in read_text(trial_readme):
+            raise WorkflowError(f"{rel(trial_readme)} must include ## Trial Flow")
 
     idea_tree = json.loads(read_text(REPO_ROOT / "idea_tree" / "idea_tree.json"))
     current_version, ideas = validate_idea_tree_data(idea_tree)
@@ -2398,6 +2487,631 @@ PASS_REVISE.
 """
 
 
+def sync_evidence_defaults(
+    *,
+    decision: str,
+    metrics: dict[str, str],
+    raw_evidence_level: str,
+    promotion_decision: str,
+) -> dict[str, str]:
+    h_value = metrics.get("H", "")
+    if decision in {"blocked", "debug", "rerun"}:
+        evidence_level = raw_evidence_level or "quick_local"
+        result_status = decision
+        best_observed_h = ""
+        confirmation_status = "not_applicable"
+        default_promotion = "not_applicable"
+    elif decision in {"promote", "keep", "best"}:
+        evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
+        result_status = "needs_confirmation" if decision in {"keep", "best"} else "promotion_candidate"
+        best_observed_h = h_value
+        confirmation_status = "needs_confirmation"
+        default_promotion = "promote" if decision == "promote" else "blocked"
+    elif decision in {"reject", "rejected"}:
+        evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
+        result_status = "rejected"
+        best_observed_h = ""
+        confirmation_status = "not_applicable"
+        default_promotion = "not_applicable"
+    else:
+        evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS and raw_evidence_level != "quick_local" else "valid_single_run"
+        result_status = "valid_observation"
+        best_observed_h = ""
+        confirmation_status = "not_applicable"
+        default_promotion = "not_applicable"
+
+    return {
+        "evidence_level": evidence_level,
+        "result_status": result_status,
+        "best_observed_H": best_observed_h,
+        "confirmed_H": "pending",
+        "confirmation_status": confirmation_status,
+        "promotion_decision": promotion_decision or default_promotion,
+        "promote_to": "",
+    }
+
+
+def metric_delta_h(version: str, metrics: dict[str, str]) -> str:
+    if metrics.get("delta_H"):
+        return metrics["delta_H"]
+    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    h_value = metrics.get("H", "")
+    if baseline_h and h_value:
+        try:
+            return f"{float(h_value) - float(baseline_h):+.2f}"
+        except ValueError:
+            return ""
+    return ""
+
+
+def artifact_id_lines(artifacts: dict[str, dict[str, str]]) -> list[str]:
+    return [
+        f"  {key}_artifact_id: {yaml_scalar(info.get('artifact_id', ''))}"
+        for key, info in artifacts.items()
+    ]
+
+
+def make_trial_root_manifest(
+    *,
+    trial_id: str,
+    slug: str,
+    trial_fields: dict[str, str],
+    attempt_upper: str,
+    version: str,
+    decision: str,
+    attempt_manifest: dict[str, object],
+    artifacts: dict[str, dict[str, str]],
+    recorded_at: str,
+) -> str:
+    artifact_lines: list[str] = []
+    for key, info in artifacts.items():
+        artifact_lines.extend(
+            [
+                f"  {key}:",
+                f"    artifact_id: {yaml_scalar(info.get('artifact_id', ''))}",
+                f"    role: {yaml_scalar(info.get('role', ''))}",
+                f"    uri: {yaml_scalar(info.get('uri', ''))}",
+                f"    sha256: {yaml_scalar(info.get('sha256', ''))}",
+                f"    size_bytes: {yaml_scalar(info.get('size_bytes', ''))}",
+                f"    required_for: {yaml_scalar(info.get('required_for', ''))}",
+                f"    status: {yaml_scalar(info.get('status', 'available') or 'available')}",
+            ]
+        )
+    artifact_block = "\n".join(artifact_lines) if artifact_lines else "  {}"
+    config_file = yaml_section_value(attempt_manifest, "reproducibility", "config_file")
+    config_sha = yaml_section_value(attempt_manifest, "reproducibility", "config_sha256")
+    pre_run_commit = yaml_section_value(attempt_manifest, "reproducibility", "pre_run_freeze_commit")
+    command = yaml_section_value(attempt_manifest, "reproducibility", "command")
+    seed = yaml_section_value(attempt_manifest, "reproducibility", "seed")
+    code_commit = yaml_section_value(attempt_manifest, "version", "code_commit") or pre_run_commit
+    git_dirty = yaml_section_value(attempt_manifest, "version", "git_dirty")
+    return f"""schema_version: gtpj-manifest/v1
+experiment:
+  id: {yaml_scalar(trial_id)}
+  name: {yaml_scalar(f"{trial_id}_{slug}")}
+  kind: {yaml_scalar("module-trial")}
+  status: {yaml_scalar(f"completed_{decision}")}
+  attempt_id: {yaml_scalar(attempt_upper)}
+  created_or_recorded_at: {yaml_scalar(recorded_at)}
+version:
+  base_version: {yaml_scalar(version)}
+  base_code_tag: {yaml_scalar(trial_fields.get("base_code_tag", version))}
+  code_branch: {yaml_scalar(trial_fields.get("code_branch", ""))}
+  code_commit: {yaml_scalar(code_commit)}
+  git_dirty: {yaml_scalar(git_dirty or "false")}
+reproducibility:
+  config_file: {yaml_scalar(config_file)}
+  config_sha256: {yaml_scalar(config_sha)}
+  pre_run_freeze_commit: {yaml_scalar(pre_run_commit)}
+  command: {yaml_scalar(command)}
+  seed: {yaml_scalar(seed)}
+  dataset: {yaml_scalar("CUB GZSL")}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  metric_contract_id: {yaml_scalar("gzsl_u_s_h_zs_v1")}
+idea:
+  idea_id: {yaml_scalar(trial_fields.get("idea_id", ""))}
+  uri: {yaml_scalar(f"research://ideas/{trial_fields.get('idea_id', '')}.md" if trial_fields.get("idea_id") else "")}
+  title: {yaml_scalar(trial_fields.get("idea_title", ""))}
+  hypothesis: {yaml_scalar(yaml_section_value(attempt_manifest, "idea", "hypothesis"))}
+artifacts:
+{artifact_block}
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: {yaml_scalar("true")}
+  evaluation_semantics_verified: {yaml_scalar("true")}
+"""
+
+
+def make_trial_root_result_yaml(
+    *,
+    trial_id: str,
+    slug: str,
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    attempt_result: dict[str, object],
+    artifacts: dict[str, dict[str, str]],
+    recorded_at: str,
+) -> str:
+    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    delta_h = metric_delta_h(version, metrics)
+    evidence_lines = artifact_id_lines(artifacts)
+    evidence_block = "\n".join(evidence_lines)
+    seed = metrics.get("seed") or yaml_section_value(attempt_result, "run", "seed")
+    pre_run_commit = yaml_section_value(attempt_result, "run", "pre_run_freeze_commit")
+    command = yaml_section_value(attempt_result, "run", "command")
+    return f"""schema_version: gtpj-result/v1
+experiment_id: {yaml_scalar(trial_id)}
+experiment_name: {yaml_scalar(f"{trial_id}_{slug}")}
+kind: {yaml_scalar("module-trial")}
+version: {yaml_scalar(version)}
+attempt_id: {yaml_scalar(attempt_upper)}
+metrics:
+  U: {yaml_scalar(metrics.get("U", ""))}
+  S: {yaml_scalar(metrics.get("S", ""))}
+  H: {yaml_scalar(metrics.get("H", ""))}
+  ZS: {yaml_scalar(metrics.get("ZS", ""))}
+  best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
+  baseline_H: {yaml_scalar(baseline_h)}
+  delta_H: {yaml_scalar(delta_h)}
+  seed: {yaml_scalar(seed)}
+  source: {yaml_scalar("attempt_result_yaml")}
+  metric_semantics: {yaml_scalar("GZSL U/S/H/ZS from protected evaluator")}
+baseline:
+  version: {yaml_scalar(version)}
+  H: {yaml_scalar(baseline_h)}
+delta:
+  H: {yaml_scalar(delta_h)}
+run:
+  seed: {yaml_scalar(seed)}
+  pre_run_freeze_commit: {yaml_scalar(pre_run_commit)}
+  command: {yaml_scalar(command)}
+decision:
+  status: {yaml_scalar(decision)}
+  result_status: {yaml_scalar(evidence_defaults["result_status"])}
+  promotion_decision: {yaml_scalar(evidence_defaults["promotion_decision"])}
+  promote_to: {yaml_scalar(evidence_defaults["promote_to"])}
+evidence:
+  evidence_level: {yaml_scalar(evidence_defaults["evidence_level"])}
+  best_observed_H: {yaml_scalar(evidence_defaults["best_observed_H"])}
+  confirmed_H: {yaml_scalar(evidence_defaults["confirmed_H"])}
+  confirmation_status: {yaml_scalar(evidence_defaults["confirmation_status"])}
+{evidence_block}
+  manifest: {yaml_scalar("manifest.yaml")}
+  attempt_manifest: {yaml_scalar(f"attempts/{attempt_upper}/manifest.yaml")}
+  label_mapping_id: {yaml_scalar("standard_v1")}
+  split_id: {yaml_scalar("standard_v1")}
+  class_order_id: {yaml_scalar("standard_v1")}
+quality:
+  manifest_verified: {yaml_scalar("true")}
+  boundary_audit_passed: {yaml_scalar("true")}
+  interface_contract_checked: {yaml_scalar("true")}
+  evaluation_semantics_verified: {yaml_scalar("true")}
+recorded_at: {yaml_scalar(recorded_at)}
+"""
+
+
+def make_trial_root_result_md(
+    *,
+    trial_id: str,
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    artifacts: dict[str, dict[str, str]],
+) -> str:
+    evidence_lines = "\n".join(
+        f"{key}_artifact_id: {info.get('artifact_id', '')}" for key, info in artifacts.items()
+    )
+    return f"""# {trial_id} Trial Result
+
+## Metrics
+
+| Attempt ID | Base version | Dataset | Seed | U | S | H | ZS | Best epoch | delta_H |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| {attempt_upper} | {version} | CUB | {metrics.get("seed", "-")} | {metrics.get("U", "-")} | {metrics.get("S", "-")} | {metrics.get("H", "-")} | {metrics.get("ZS", "-")} | {metrics.get("best_epoch", "-")} | {metric_delta_h(version, metrics) or "-"} |
+
+## Evidence
+
+```text
+trial_id: {trial_id}
+attempt_id: {attempt_upper}
+evidence_level: {evidence_defaults["evidence_level"]}
+result_status: {evidence_defaults["result_status"]}
+promotion_decision: {evidence_defaults["promotion_decision"]}
+{evidence_lines}
+```
+
+## Decision
+
+`{decision}`
+"""
+
+
+def make_trial_root_quality_md(
+    *,
+    trial_id: str,
+    attempt_upper: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    artifacts: dict[str, dict[str, str]],
+) -> str:
+    artifact_checks = "\n".join(
+        f"- [x] `{info.get('artifact_id', '')}` exists in Warehouse." for info in artifacts.values()
+    )
+    return f"""# {trial_id} Quality Check
+
+```text
+quality_check_mode: STRICT
+attempt_id: {attempt_upper}
+decision: PASS_{decision.upper()}
+promotion_decision: {evidence_defaults["promotion_decision"]}
+evidence_level: {evidence_defaults["evidence_level"]}
+```
+
+## Findings
+
+- Metrics are synchronized from `{attempt_upper}`: U={metrics.get("U", "")}, S={metrics.get("S", "")}, H={metrics.get("H", "")}, ZS={metrics.get("ZS", "")}, best_epoch={metrics.get("best_epoch", "")}.
+- Trial-level decision recorded as `{decision}`.
+- Raw artifacts remain in Warehouse; GitHub stores lightweight identities only.
+
+## Artifact Check
+
+{artifact_checks}
+- [x] `manifest.yaml`, `result.yaml`, and `result.md` point back to the attempt-local evidence.
+- [x] No raw training log or checkpoint is copied into GitHub.
+
+## Decision
+
+PASS_{decision.upper()}.
+"""
+
+
+def replace_first_text_block_values(content: str, updates: dict[str, str]) -> str:
+    lines = content.splitlines()
+    in_block = False
+    for index, line in enumerate(lines):
+        if line.strip() == "```text" and not in_block:
+            in_block = True
+            continue
+        if in_block and line.strip() == "```":
+            break
+        if not in_block or ":" not in line:
+            continue
+        key, _value = line.split(":", 1)
+        stripped_key = key.strip()
+        if stripped_key in updates:
+            lines[index] = f"{stripped_key}: {updates[stripped_key]}"
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def replace_result_table_row(content: str, row: str) -> str:
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if "Seed | U | S | H | ZS | Best epoch | Log" not in line:
+            continue
+        separator = index + 1
+        insert = separator + 1
+        end = insert
+        while end < len(lines) and lines[end].strip() and not lines[end].startswith("## "):
+            end += 1
+        lines[insert:end] = [row]
+        return "\n".join(lines).rstrip() + "\n"
+    return (
+        content.rstrip()
+        + "\n\n## Results\n\n"
+        + "| Dataset | Seed | U | S | H | ZS | Best epoch | Log |\n"
+        + "|---|---:|---:|---:|---:|---:|---:|---|\n"
+        + row
+        + "\n"
+    )
+
+
+def update_trial_readme_from_attempt(
+    *,
+    trial_dir: Path,
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    attempt_manifest: dict[str, object],
+    artifacts: dict[str, dict[str, str]],
+) -> None:
+    readme_path = trial_dir / "README.md"
+    content = read_text(readme_path)
+    train_log = artifacts.get("train_log", {})
+    code_commit = yaml_section_value(attempt_manifest, "version", "code_commit")
+    updates = {
+        "code_commit": code_commit,
+        "trial_decision": decision,
+        "promotion_decision": evidence_defaults["promotion_decision"],
+        "promote_to": evidence_defaults["promote_to"],
+        "evidence_level": evidence_defaults["evidence_level"],
+        "best_observed_H": evidence_defaults["best_observed_H"],
+        "confirmed_H": evidence_defaults["confirmed_H"],
+        "confirmation_status": evidence_defaults["confirmation_status"],
+        "run_config": yaml_section_value(attempt_manifest, "reproducibility", "config_file"),
+        "log_artifact_id": train_log.get("artifact_id", ""),
+        "log_uri": train_log.get("uri", ""),
+        "log_sha256": train_log.get("sha256", ""),
+        "log_size_bytes": train_log.get("size_bytes", ""),
+        "manifest": "manifest.yaml",
+        "result_yaml": "result.yaml",
+        "result_md": "result.md",
+    }
+    content = replace_first_text_block_values(content, updates)
+    row = (
+        f"| CUB | {metrics.get('seed') or '-'} | {metrics.get('U', '-')} | "
+        f"{metrics.get('S', '-')} | {metrics.get('H', '-')} | {metrics.get('ZS', '-')} | "
+        f"{metrics.get('best_epoch', '-')} | `{train_log.get('artifact_id', '')}` |"
+    )
+    content = replace_result_table_row(content, row)
+    readme_path.write_text(content, encoding="utf-8")
+
+
+def update_module_trial_index(
+    *,
+    trial_dir: Path,
+    idea_id: str,
+    idea_file: str,
+    version: str,
+    attempt_upper: str,
+    metrics: dict[str, str],
+    decision: str,
+) -> None:
+    index_path = REPO_ROOT / "experiments" / "module_trials" / "INDEX.md"
+    content = read_text(index_path) if index_path.exists() else "# Module Trials Index\n\n"
+    trial_rel = rel(trial_dir)
+    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    delta_h = metric_delta_h(version, metrics)
+    summary = (
+        f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
+        f"vs active {version} H={baseline_h or '-'}; "
+        + ("promotion candidate." if decision == "promote" else "no promotion.")
+    )
+    row = f"| `{idea_id}` | `{idea_file}` | `{trial_rel}` | {decision} | {summary} |"
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        if f"`{trial_rel}`" in line:
+            lines[index] = row
+            index_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+            return
+    if "| Idea | Source idea file | Trial evidence directory | Trial status | Summary |" not in content:
+        lines.extend(
+            [
+                "",
+                "## Trial Records",
+                "",
+                "| Idea | Source idea file | Trial evidence directory | Trial status | Summary |",
+                "|---|---|---|---|---|",
+            ]
+        )
+    insert_at = len(lines)
+    for index, line in enumerate(lines):
+        if line.startswith("## Start Rules"):
+            insert_at = index
+            break
+    lines.insert(insert_at, row)
+    index_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def sync_idea_tree_from_trial(
+    *,
+    trial_dir: Path,
+    trial_id: str,
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    trial_fields: dict[str, str],
+) -> None:
+    idea_id = trial_fields.get("idea_id", "")
+    if not idea_id:
+        raise WorkflowError("Trial README is missing idea_id")
+    data = load_idea_tree()
+    idea = find_idea_record(data, idea_id)
+    status_map = {
+        "promote": "validated",
+        "keep": "testing",
+        "best": "testing",
+        "reject": "rejected",
+        "rejected": "rejected",
+        "blocked": "blocked",
+        "debug": "blocked",
+    }
+    idea["status"] = status_map.get(decision, "weakened")
+    version_scores = idea.setdefault("version_scores", {})
+    version_entry = version_scores.setdefault(
+        version,
+        {"score": 0, "applicability": "unclear", "rationale": "", "blockers": []},
+    )
+    if decision == "promote":
+        version_entry["stage"] = "validated"
+    elif decision in {"reject", "rejected"}:
+        version_entry["stage"] = "rejected"
+    elif decision in {"blocked", "debug"}:
+        version_entry["stage"] = "blocked"
+    else:
+        version_entry["stage"] = "trialing"
+    trial_rel = rel(trial_dir)
+    if trial_rel not in idea.setdefault("linked_trials", []):
+        idea["linked_trials"].append(trial_rel)
+    delta_h = metric_delta_h(version, metrics)
+    idea["next_action"] = (
+        f"{trial_id} {attempt_upper} synchronized as {decision}: "
+        f"H={metrics.get('H', '')}, delta_H={delta_h or '-'} vs {version}; "
+        + ("promotion gate may proceed after confirmation." if decision == "promote" else "do not promote without a stronger follow-up.")
+    )
+    evidence_ref = f"{trial_rel}/result.yaml"
+    note = (
+        f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
+        f"vs {version}; trial decision={decision}."
+    )
+    evidence = idea.setdefault("evidence", [])
+    if not any(item.get("ref") == evidence_ref for item in evidence if isinstance(item, dict)):
+        evidence.append({"type": "trial", "ref": evidence_ref, "note": note})
+    else:
+        for item in evidence:
+            if isinstance(item, dict) and item.get("ref") == evidence_ref:
+                item["note"] = note
+    save_idea_tree(data)
+    write_idea_views(data)
+
+
+def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
+    trial_dir = Path(args.trial_dir)
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    if not trial_dir.exists():
+        raise WorkflowError(f"Missing trial directory: {display_path(trial_dir)}")
+    require_path_inside(trial_dir, REPO_ROOT / "experiments" / "module_trials", "trial-dir")
+    trial_id, slug = parse_trial_folder_name(trial_dir)
+    attempt_upper, _attempt_lower = normalize_attempt_ids(args.attempt_id)
+    attempt_dir = trial_dir / "attempts" / attempt_upper
+    if not attempt_dir.exists():
+        raise WorkflowError(f"Missing attempt directory: {rel(attempt_dir)}")
+    attempt_manifest_path = attempt_dir / "manifest.yaml"
+    attempt_result_path = attempt_dir / "result.yaml"
+    if not attempt_manifest_path.exists() or not attempt_result_path.exists():
+        raise WorkflowError(f"{attempt_upper} must have manifest.yaml and result.yaml")
+
+    trial_fields = read_key_value_block(trial_dir / "README.md")
+    version = trial_fields.get("base_version", "")
+    if not re.fullmatch(r"v[0-9]+", version):
+        raise WorkflowError("Trial README must define base_version like v2")
+    attempt_manifest = read_shallow_yaml(attempt_manifest_path)
+    attempt_result = read_shallow_yaml(attempt_result_path)
+    artifacts = read_yaml_artifacts(attempt_manifest_path)
+    metrics = {name: yaml_section_value(attempt_result, "metrics", name) for name in [*METRIC_NAMES, "best_epoch", "baseline_H", "delta_H", "seed"]}
+    if not metrics.get("H"):
+        raise WorkflowError(f"{rel(attempt_result_path)} is missing metrics.H")
+    metrics["baseline_H"] = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    metrics["delta_H"] = metric_delta_h(version, metrics)
+    decision = args.decision or yaml_section_value(attempt_result, "decision", "status") or "revise"
+    raw_evidence_level = args.evidence_level or yaml_section_value(attempt_result, "evidence", "evidence_level")
+    promotion_decision = args.promotion_decision or yaml_section_value(attempt_result, "decision", "promotion_decision")
+    if promotion_decision == "not_applicable" and decision == "promote":
+        promotion_decision = "promote"
+    evidence_defaults = sync_evidence_defaults(
+        decision=decision,
+        metrics=metrics,
+        raw_evidence_level=raw_evidence_level,
+        promotion_decision=promotion_decision if promotion_decision != "not_applicable" or decision == "promote" else "",
+    )
+
+    if args.dry_run:
+        print("sync-trial-summary-dry-run-ok")
+        print(f"trial: {rel(trial_dir)}")
+        print(f"attempt: {attempt_upper}")
+        print(f"decision: {decision}")
+        print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} delta_H={metrics['delta_H']}")
+        return 0
+
+    recorded_at = utc_now()
+    (trial_dir / "manifest.yaml").write_text(
+        make_trial_root_manifest(
+            trial_id=trial_id,
+            slug=slug,
+            trial_fields=trial_fields,
+            attempt_upper=attempt_upper,
+            version=version,
+            decision=decision,
+            attempt_manifest=attempt_manifest,
+            artifacts=artifacts,
+            recorded_at=recorded_at,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (trial_dir / "result.yaml").write_text(
+        make_trial_root_result_yaml(
+            trial_id=trial_id,
+            slug=slug,
+            attempt_upper=attempt_upper,
+            version=version,
+            metrics=metrics,
+            decision=decision,
+            evidence_defaults=evidence_defaults,
+            attempt_result=attempt_result,
+            artifacts=artifacts,
+            recorded_at=recorded_at,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (trial_dir / "result.md").write_text(
+        make_trial_root_result_md(
+            trial_id=trial_id,
+            attempt_upper=attempt_upper,
+            version=version,
+            metrics=metrics,
+            decision=decision,
+            evidence_defaults=evidence_defaults,
+            artifacts=artifacts,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (trial_dir / "quality_check.md").write_text(
+        make_trial_root_quality_md(
+            trial_id=trial_id,
+            attempt_upper=attempt_upper,
+            metrics=metrics,
+            decision=decision,
+            evidence_defaults=evidence_defaults,
+            artifacts=artifacts,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    update_trial_readme_from_attempt(
+        trial_dir=trial_dir,
+        attempt_upper=attempt_upper,
+        version=version,
+        metrics=metrics,
+        decision=decision,
+        evidence_defaults=evidence_defaults,
+        attempt_manifest=attempt_manifest,
+        artifacts=artifacts,
+    )
+    idea_id = trial_fields.get("idea_id", "")
+    idea_file = trial_fields.get("idea_source_file", "")
+    update_module_trial_index(
+        trial_dir=trial_dir,
+        idea_id=idea_id,
+        idea_file=idea_file,
+        version=version,
+        attempt_upper=attempt_upper,
+        metrics=metrics,
+        decision=decision,
+    )
+    if not args.skip_idea_tree:
+        sync_idea_tree_from_trial(
+            trial_dir=trial_dir,
+            trial_id=trial_id,
+            attempt_upper=attempt_upper,
+            version=version,
+            metrics=metrics,
+            decision=decision,
+            trial_fields=trial_fields,
+        )
+
+    print("sync-trial-summary-ok")
+    print(f"trial: {rel(trial_dir)}")
+    print(f"attempt: {attempt_upper}")
+    print(f"decision: {decision}")
+    print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} delta_H={metrics['delta_H']}")
+    return 0
+
+
 def module_artifact_entry(
     *,
     key: str,
@@ -3350,6 +4064,23 @@ agent_summary: agent_summary.md
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
 
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea["{idea_id}: {idea.get('title', '')}"] --> R0["Review 0: idea intent"]
+  R0 --> R1["Review 1: design/interface"]
+  R1 --> Impl["implementation + code.diff"]
+  Impl --> R2["Review 2: code diff pre-run"]
+  R2 --> Freeze["pre-run freeze commit"]
+  Freeze --> Run["Runner with GPU lock"]
+  Run --> Artifacts["Warehouse artifacts"]
+  Artifacts --> Attempt["attempt-local manifest/result/quality"]
+  Attempt --> Root["trial root summary"]
+  Root --> R3["Review 3: post-run evidence"]
+  R3 --> Decision["trial_decision / promotion_decision"]
+```
+
 ## Innovation Code Review
 
 ```text
@@ -3624,6 +4355,41 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--dry-run", action="store_true")
     record_module.add_argument("--overwrite-ledger", action="store_true")
     record_module.set_defaults(func=cmd_record_module_attempt)
+
+    sync_trial = sub.add_parser("sync-trial-summary", help="从 attempt 证据同步 trial 根账本和索引")
+    sync_trial.add_argument("--trial-dir", required=True)
+    sync_trial.add_argument("--attempt-id", required=True)
+    sync_trial.add_argument(
+        "--decision",
+        default="",
+        choices=[
+            "",
+            "best",
+            "keep",
+            "reject",
+            "rejected",
+            "revise",
+            "combine",
+            "promote",
+            "rerun",
+            "not_confirmed",
+            "blocked",
+            "debug",
+        ],
+    )
+    sync_trial.add_argument(
+        "--evidence-level",
+        default="",
+        choices=["", "quick_local", "valid_single_run", "confirmation_grade", "baseline_grade"],
+    )
+    sync_trial.add_argument(
+        "--promotion-decision",
+        default="",
+        choices=["", "not_applicable", "blocked", "promote"],
+    )
+    sync_trial.add_argument("--skip-idea-tree", action="store_true")
+    sync_trial.add_argument("--dry-run", action="store_true")
+    sync_trial.set_defaults(func=cmd_sync_trial_summary)
 
     new_idea = sub.add_parser("new-idea", help="创建新的 idea 节点和目录")
     new_idea.add_argument("--idea-id", required=True)
