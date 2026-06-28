@@ -218,6 +218,21 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("comparison_reference: best_observed_H=74.29 (unconfirmed)", stdout)
         self.assertIn("can_claim_confirmed_baseline: no", stdout)
 
+    def test_confirmation_grade_keep_sync_defaults_mark_attempt_confirmed(self) -> None:
+        defaults = self.module.sync_evidence_defaults(
+            decision="keep",
+            metrics={"H": "74.24"},
+            raw_evidence_level="confirmation_grade",
+            promotion_decision="blocked",
+        )
+
+        self.assertEqual("confirmation_grade", defaults["evidence_level"])
+        self.assertEqual("confirmed", defaults["result_status"])
+        self.assertEqual("74.24", defaults["best_observed_H"])
+        self.assertEqual("74.24", defaults["confirmed_H"])
+        self.assertEqual("confirmed", defaults["confirmation_status"])
+        self.assertEqual("blocked", defaults["promotion_decision"])
+
     def test_start_open_new_module_outputs_mini_card_without_writing(self) -> None:
         self._write_selected_idea_files()
         idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
@@ -373,6 +388,30 @@ evidence:
         )
         self._write(f"{trial_dir}/result.md", "# Result\n\nATTEMPT-001\n")
         self._write(f"{trial_dir}/quality_check.md", "# Quality\n\nATTEMPT-001\n")
+        self._write(
+            f"{trial_dir}/review_round_2.md",
+            """# Review 3
+
+```text
+attempt_id: ATTEMPT-001
+decision: keep
+```
+
+log:v1:module_trial:TRIAL-001:attempt-001
+""",
+        )
+        self._write(
+            f"{trial_dir}/agent_summary.md",
+            """# Agent Summary
+
+```text
+attempt_id: ATTEMPT-001
+final_decision: keep
+```
+
+log:v1:module_trial:TRIAL-001:attempt-001
+""",
+        )
         readme_before = (self.repo / trial_dir / "README.md").read_text(encoding="utf-8")
         index_before = (self.repo / "experiments/module_trials/INDEX.md").read_text(encoding="utf-8")
 
@@ -389,6 +428,8 @@ evidence:
         self.assertIn("closeout-check-ok", stdout)
         self.assertIn("attempt: ok", stdout)
         self.assertIn("trial_root: ok", stdout)
+        self.assertIn("review_round_2: ok", stdout)
+        self.assertIn("agent_summary: ok", stdout)
         self.assertIn("module_index: ok", stdout)
         self.assertIn("idea_tree: ok", stdout)
         self.assertIn("warehouse_artifacts: ok", stdout)
@@ -993,6 +1034,30 @@ evidence:
   evidence_level: "quick_local"
 """,
         )
+        self._write(
+            f"{trial_dir}/review_round_2.md",
+            """# Stale Review
+
+```text
+attempt_id: ATTEMPT-000
+decision: pending
+```
+
+No training result has been recorded.
+""",
+        )
+        self._write(
+            f"{trial_dir}/agent_summary.md",
+            """# Stale Agent Summary
+
+```text
+attempt_id: ATTEMPT-000
+final_decision: pending
+```
+
+No training result has been recorded.
+""",
+        )
 
         code, stdout, stderr = self._run_main(
             "sync-trial-summary",
@@ -1009,6 +1074,8 @@ evidence:
         self.assertIn("sync-trial-summary-ok", stdout)
         root_result = (self.repo / trial_dir / "result.yaml").read_text(encoding="utf-8")
         root_readme = (self.repo / trial_dir / "README.md").read_text(encoding="utf-8")
+        review_round_2 = (self.repo / trial_dir / "review_round_2.md").read_text(encoding="utf-8")
+        agent_summary = (self.repo / trial_dir / "agent_summary.md").read_text(encoding="utf-8")
         module_index = (self.repo / "experiments/module_trials/INDEX.md").read_text(encoding="utf-8")
         idea_json = json.loads((self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
         idea = idea_json["ideas"][0]
@@ -1019,6 +1086,12 @@ evidence:
         self.assertIn("trial_decision: revise", root_readme)
         self.assertIn("log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-001", root_readme)
         self.assertIn("| CUB | 5 | 70.00 | 72.00 | 70.99 | 80.00 | 12 |", root_readme)
+        self.assertIn("attempt_id: ATTEMPT-001", review_round_2)
+        self.assertIn("log:v1:module_trial:TRIAL-001:attempt-001", review_round_2)
+        self.assertNotIn("No training result has been recorded", review_round_2)
+        self.assertIn("attempt_id: ATTEMPT-001", agent_summary)
+        self.assertIn("log:v1:module_trial:TRIAL-001:attempt-001", agent_summary)
+        self.assertNotIn("No training result has been recorded", agent_summary)
         self.assertIn("| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_token_router/IDEA.md` |", module_index)
         self.assertIn("delta_H=-2.94", module_index)
         self.assertEqual("weakened", idea["status"])

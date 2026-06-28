@@ -4,98 +4,47 @@
 review_round: Review 3
 scope: post-run evidence review
 activation_mode: real_multi_agent
-decision: revise
-promotion_decision: not_applicable
+attempt_id: ATTEMPT-003
+decision: keep
+promotion_decision: blocked
+evidence_level: confirmation_grade
 ```
 
 ## Inputs Checked
 
-- `attempts/ATTEMPT-001/manifest.yaml`
-- `attempts/ATTEMPT-001/result.yaml`
-- `attempts/ATTEMPT-001/result.md`
-- `attempts/ATTEMPT-001/quality_check.md`
+- `attempts/ATTEMPT-003/manifest.yaml`
+- `attempts/ATTEMPT-003/result.yaml`
+- `attempts/ATTEMPT-003/result.md`
+- `attempts/ATTEMPT-003/quality_check.md`
 - `ATTEMPTS.md`
+- `manifest.yaml`
 - `result.yaml`
 - `result.md`
 - `quality_check.md`
-- `D:/backup/Documents/Myself/GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml`
-- Warehouse artifacts for ATTEMPT-001
+- Warehouse artifact identities below
 
-## Log Analyst
+## Review 3 Findings
 
-```text
-role: Log Analyst
-agent_instance_type: sub_agent
-decision: allow
-```
+- Metrics synchronized from `ATTEMPT-003`: U=71.32, S=77.40, H=74.24, ZS=81.62, best_epoch=33.
+- Base version: `v2`.
+- Code commit / pre-run freeze: `666557dd4ba03062b326d96268ccc4adcaa97d2d`.
+- Command: `conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-003/config.yaml`.
+- Trial decision: `keep`.
+- Promotion decision: `blocked`.
+- Evidence level: `confirmation_grade`.
+- Boundary check: raw artifacts remain in Warehouse; GitHub records lightweight ids, URIs, sha256, and size only.
 
-Parsed facts:
-- Best epoch: `34`
-- U/S/H/ZS: `70.32 / 77.68 / 73.82 / 81.39`
-- Log artifact: `log:v2:module_trial:TRIAL-001:attempt-001`
-- No training failure traceback in the completed log.
+## Artifact Refs
 
-## Quality Checker
-
-```text
-role: Quality Checker
-agent_instance_type: sub_agent
-decision: pass_revise
-```
-
-Findings:
-- `run_commit` / `code_commit` points to clean pre-run freeze commit `5ca8245e37856e426407612b1a95bcdcfbd92697`.
-- Manifest/result/quality files reference the same ATTEMPT-001 artifacts.
-- Warehouse contains log, best checkpoint, full checkpoint, and runner receipt with sha256 and size.
-- GitHub tracks only lightweight artifact identities, not raw logs or checkpoints.
-
-## Result Analyst
-
-```text
-role: Result Analyst
-agent_instance_type: sub_agent
-decision: revise
-```
-
-Interpretation:
-- H `73.82` is below active v2 best_observed_H `74.29` by `-0.47`.
-- U `70.32` and S `77.68` show no promotion-worthy improvement.
-- Because this is a single clean attempt and it underperforms v2, it is valid single-run evidence for `revise`, but it must not be written as `best_observed_H`, `confirmed_H`, or a baseline-grade result.
-
-## Reviewer
-
-```text
-role: Reviewer
-agent_instance_type: sub_agent
-decision: allow_revise
-```
-
-Conclusion:
-- The run is valid evidence for the attempted parameterization.
-- The correct trial-level decision is `revise`, not `promote`.
-- Further work, if any, should be a controlled trial-internal parameter/ablation attempt rather than rewriting this result.
+- `log:v2:module_trial:TRIAL-001:attempt-003` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-003/logs/training_log_CUB_2026-06-28_17-55-57.txt`
+- `checkpoint:v2:module_trial:TRIAL-001:attempt-003:best` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-003/checkpoints/best_model_CUB_2026-06-28_17-55-57_H7424.pth`
+- `checkpoint:v2:module_trial:TRIAL-001:attempt-003:full` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-003/checkpoints/ckpt_full_CUB_2026-06-28_17-55-57.pth`
+- `receipt:v2:module_trial:TRIAL-001:attempt-003:runner_console` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-003/receipts/stdout.log`
 
 ## Blocking Issues
 
-None for recording a `revise` result.
+None recorded by automated closeout for `ATTEMPT-003`.
 
-## Non-Blocking Issues
+## Decision
 
-- v2 itself remains `owner_activated_unconfirmed`; this trial does not change that baseline status.
-- A follow-up attempt should be justified before spending more GPU time because the first result is below v2.
-
-## Evidence Refs
-
-```text
-train_log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-001
-best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-001:attempt-001:best
-full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-001:attempt-001:full
-runner_console_artifact_id: receipt:v2:module_trial:TRIAL-001:attempt-001:runner_console
-pre_run_freeze_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
-```
-
-```text
-memory_used: yes
-memory_sources: docs/workflow/agents/shared_roles/log_analyst/memory.md; docs/workflow/agents/shared_roles/quality_checker/memory.md; docs/workflow/agents/shared_roles/result_analyst/memory.md; docs/workflow/agents/shared_roles/reviewer/memory.md
-verified_against_current_repo: yes
-```
+`keep`

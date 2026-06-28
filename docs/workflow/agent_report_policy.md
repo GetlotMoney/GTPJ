@@ -126,3 +126,12 @@ blocking_issues:
 - `activation_mode`、`agent_instance_type`、`independence_scope` 和 memory 字段已填写；
 - blocking issue 已处理或结果被标记为 blocked/rerun/reject；
 - 需要长期保存的完整报告已经进入 Warehouse，GitHub 只记录 artifact id/URI。
+
+Module trial attempt closeout must use the helper path when attempt evidence exists:
+
+```bash
+python workflow/gtpj_workflow.py sync-trial-summary --trial-dir ... --attempt-id ... --decision ...
+python workflow/gtpj_workflow.py closeout-check --trial-dir ... --attempt-id ...
+```
+
+The helper-generated `agent_summary.md` and `review_round_2.md` are the current-attempt GitHub summaries. Longer sub-agent reports may be kept in Warehouse, but they must not be required for the root closeout files to point at the latest attempt.

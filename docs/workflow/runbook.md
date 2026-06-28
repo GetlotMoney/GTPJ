@@ -218,7 +218,16 @@ python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 6. 更新 GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml。
 ```
 
-它不会自动判断 trial 根目录 README/result/quality_check/idea_tree 的最终结论。只有当本次 attempt 改变 trial-level 结论，例如 best、reject、promotion blocked 原因变化时，Coordinator 再做少量人工 review 和根账本同步。
+随后必须运行：
+
+```bash
+python workflow/gtpj_workflow.py sync-trial-summary --trial-dir ... --attempt-id ... --decision ...
+python workflow/gtpj_workflow.py closeout-check --trial-dir ... --attempt-id ...
+```
+
+`sync-trial-summary` 负责把 attempt-local 证据同步到 trial root `manifest/result/quality`、README、module index、idea_tree，并自动重写当前 attempt 的 `review_round_2.md` 和 `agent_summary.md`。`closeout-check` 会阻断 stale agent/review 摘要。
+
+它仍不会替代 Coordinator 的研究判断：是否改变 trial-level 结论、是否进入 promotion、是否需要新 trial，仍由 Coordinator 按证据决定。
 
 ## 运行 v2 确认实验
 

@@ -12,9 +12,8 @@ evidence_level: confirmation_grade
 
 - Metrics are synchronized from `ATTEMPT-003`: U=71.32, S=77.40, H=74.24, ZS=81.62, best_epoch=33.
 - Trial-level decision recorded as `keep`.
-- Clean confirmation passed for the 74-level ATTEMPT-002 result.
-- Promotion/tag remains blocked because the active v2 comparison reference is unconfirmed:
-  `best_observed_H=74.29`, `confirmed_H=pending`; ATTEMPT-003 is 0.05 below that unconfirmed reference.
+- Attempt confirmation status: confirmed_H=74.24, confirmation_status=confirmed.
+- Promotion/tag remains blocked because active v2 comparison reference is unconfirmed: v2 best_observed_H=74.29 (unconfirmed), confirmed_H=pending.
 - Raw artifacts remain in Warehouse; GitHub stores lightweight identities only.
 
 ## Artifact Check
@@ -28,4 +27,4 @@ evidence_level: confirmation_grade
 
 ## Decision
 
-PASS_KEEP. No formal mainline tag is allowed from this evidence because the promotion gate is blocked and the v2 reference has not been clean-confirmed.
+PASS_KEEP.

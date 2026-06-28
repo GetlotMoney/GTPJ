@@ -171,3 +171,56 @@ Prevention:
 Helper Candidate:
 
 - Add a `classify-request` helper or lightweight `workflow status --task` output that prints the expected path and estimated bookkeeping overhead.
+
+## ISSUE-20260628-013: Agent summary and Review 3 drift after root sync
+
+Status: fixed
+
+Symptom:
+
+- `sync-trial-summary` synchronized trial root `manifest/result/quality`, module index, and idea-tree state.
+- `agent_summary.md` and `review_round_2.md` could still describe an older attempt.
+- `closeout-check` could return OK even when those two human-facing review files were stale.
+
+Impact:
+
+- Owner could see contradictory evidence: root result points to the latest attempt, while agent/review summaries still mention an older attempt.
+- New agents could inherit stale wording and explain the current code or result incorrectly.
+- The workflow was not fully automatic because Coordinator still had to remember to rewrite the review summary.
+
+Root Cause:
+
+- `record-module-attempt` correctly wrote attempt-local evidence.
+- `sync-trial-summary` originally treated `review_round_2.md` and `agent_summary.md` as manual narrative files rather than root closeout ledgers.
+- `closeout-check` verified attempt/root/index/idea/Warehouse closure but did not require current-attempt agent/review evidence.
+
+Resolution:
+
+- `sync-trial-summary` now writes current-attempt `review_round_2.md` from the attempt manifest/result/artifact ids.
+- `sync-trial-summary` now writes current-attempt `agent_summary.md` from the same evidence.
+- `closeout-check` now requires both files and verifies:
+  - their first text block has `attempt_id: ATTEMPT-xxx`;
+  - the attempt id matches the closeout target;
+  - current artifact ids are referenced;
+  - known stale markers such as `No training result has been recorded` are absent.
+- `tests.test_gtpj_workflow` covers stale summary overwrite and closeout acceptance.
+
+Prevention:
+
+- After every module-trial attempt:
+
+```text
+record-module-attempt
+sync-trial-summary
+closeout-check
+```
+
+- Do not manually patch `agent_summary.md` or `review_round_2.md` for ordinary closeout when the helper can derive them from attempt evidence.
+- Long sub-agent reports can stay external, but GitHub root summaries must be regenerated from current attempt evidence.
+
+Helper Candidate:
+
+- Implemented in `workflow/gtpj_workflow.py`:
+  - current-attempt Review 3 generator;
+  - current-attempt agent summary generator;
+  - closeout hard gate for stale agent/review files.

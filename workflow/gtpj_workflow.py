@@ -2639,9 +2639,15 @@ def sync_evidence_defaults(
         default_promotion = "not_applicable"
     elif decision in {"promote", "keep", "best"}:
         evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
-        result_status = "needs_confirmation" if decision in {"keep", "best"} else "promotion_candidate"
         best_observed_h = h_value
-        confirmation_status = "needs_confirmation"
+        if evidence_level in {"confirmation_grade", "baseline_grade"}:
+            result_status = "confirmed" if decision in {"keep", "best"} else "promotion_candidate"
+            confirmed_h = h_value
+            confirmation_status = "confirmed"
+        else:
+            result_status = "needs_confirmation" if decision in {"keep", "best"} else "promotion_candidate"
+            confirmed_h = "pending"
+            confirmation_status = "needs_confirmation"
         default_promotion = "promote" if decision == "promote" else "blocked"
     elif decision in {"reject", "rejected"}:
         evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
@@ -2660,7 +2666,7 @@ def sync_evidence_defaults(
         "evidence_level": evidence_level,
         "result_status": result_status,
         "best_observed_H": best_observed_h,
-        "confirmed_H": "pending",
+        "confirmed_H": confirmed_h if decision in {"promote", "keep", "best"} else "pending",
         "confirmation_status": confirmation_status,
         "promotion_decision": promotion_decision or default_promotion,
         "promote_to": "",
@@ -2680,6 +2686,27 @@ def metric_delta_h(version: str, metrics: dict[str, str]) -> str:
         except ValueError:
             return ""
     return ""
+
+
+def baseline_confirmation_blocker(version: str) -> str:
+    if version not in CANONICAL_BASELINES:
+        return ""
+    evidence = baseline_evidence(version)
+    if evidence["confirmation_status"] == "confirmed" and evidence["confirmed_H"] != "pending":
+        return ""
+    return (
+        f"active {version} comparison reference is unconfirmed: "
+        f"{comparison_reference_phrase(version)}, confirmed_H={evidence['confirmed_H']}"
+    )
+
+
+def trial_followup_phrase(version: str, decision: str) -> str:
+    if decision == "promote":
+        return "promotion gate may proceed after confirmation."
+    blocker = baseline_confirmation_blocker(version)
+    if blocker:
+        return f"do not promote/tag before {version} clean confirmation."
+    return "do not promote without a stronger follow-up."
 
 
 def artifact_id_lines(artifacts: dict[str, dict[str, str]]) -> list[str]:
@@ -2854,6 +2881,16 @@ def make_trial_root_result_md(
     evidence_lines = "\n".join(
         f"{key}_artifact_id: {info.get('artifact_id', '')}" for key, info in artifacts.items()
     )
+    blocker = baseline_confirmation_blocker(version)
+    blocker_note = (
+        "\n"
+        + f"{attempt_upper} is recorded as `{evidence_defaults['evidence_level']}` with "
+        + f"confirmed_H={evidence_defaults['confirmed_H']} and "
+        + f"confirmation_status={evidence_defaults['confirmation_status']}. "
+        + f"Promotion/tag remains blocked because {blocker}."
+        if blocker
+        else ""
+    )
     return f"""# {trial_id} Trial Result
 
 ## Metrics
@@ -2870,12 +2907,15 @@ attempt_id: {attempt_upper}
 evidence_level: {evidence_defaults["evidence_level"]}
 result_status: {evidence_defaults["result_status"]}
 promotion_decision: {evidence_defaults["promotion_decision"]}
+confirmed_H: {evidence_defaults["confirmed_H"]}
+confirmation_status: {evidence_defaults["confirmation_status"]}
 {evidence_lines}
 ```
 
 ## Decision
 
 `{decision}`
+{blocker_note}
 """
 
 
@@ -2883,6 +2923,7 @@ def make_trial_root_quality_md(
     *,
     trial_id: str,
     attempt_upper: str,
+    version: str,
     metrics: dict[str, str],
     decision: str,
     evidence_defaults: dict[str, str],
@@ -2890,6 +2931,12 @@ def make_trial_root_quality_md(
 ) -> str:
     artifact_checks = "\n".join(
         f"- [x] `{info.get('artifact_id', '')}` exists in Warehouse." for info in artifacts.values()
+    )
+    blocker = baseline_confirmation_blocker(version)
+    blocker_line = (
+        f"- Promotion/tag remains blocked because {blocker}."
+        if blocker
+        else "- No baseline confirmation blocker was detected by the helper."
     )
     return f"""# {trial_id} Quality Check
 
@@ -2905,6 +2952,8 @@ evidence_level: {evidence_defaults["evidence_level"]}
 
 - Metrics are synchronized from `{attempt_upper}`: U={metrics.get("U", "")}, S={metrics.get("S", "")}, H={metrics.get("H", "")}, ZS={metrics.get("ZS", "")}, best_epoch={metrics.get("best_epoch", "")}.
 - Trial-level decision recorded as `{decision}`.
+- Attempt confirmation status: confirmed_H={evidence_defaults["confirmed_H"]}, confirmation_status={evidence_defaults["confirmation_status"]}.
+{blocker_line}
 - Raw artifacts remain in Warehouse; GitHub stores lightweight identities only.
 
 ## Artifact Check
@@ -2917,6 +2966,307 @@ evidence_level: {evidence_defaults["evidence_level"]}
 
 PASS_{decision.upper()}.
 """
+
+
+def make_trial_closeout_review_md(
+    *,
+    trial_id: str,
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    attempt_manifest: dict[str, object],
+    artifacts: dict[str, dict[str, str]],
+) -> str:
+    artifact_lines = "\n".join(
+        f"- `{info.get('artifact_id', '')}` -> `{info.get('uri', '')}`"
+        for info in artifacts.values()
+    )
+    code_commit = (
+        yaml_section_value(attempt_manifest, "version", "code_commit")
+        or yaml_section_value(attempt_manifest, "reproducibility", "pre_run_freeze_commit")
+    )
+    command = yaml_section_value(attempt_manifest, "reproducibility", "command")
+    return f"""# Innovation Review Round 2: Post-Run Evidence
+
+```text
+review_round: Review 3
+scope: post-run evidence review
+activation_mode: real_multi_agent
+attempt_id: {attempt_upper}
+decision: {decision}
+promotion_decision: {evidence_defaults["promotion_decision"]}
+evidence_level: {evidence_defaults["evidence_level"]}
+```
+
+## Inputs Checked
+
+- `attempts/{attempt_upper}/manifest.yaml`
+- `attempts/{attempt_upper}/result.yaml`
+- `attempts/{attempt_upper}/result.md`
+- `attempts/{attempt_upper}/quality_check.md`
+- `ATTEMPTS.md`
+- `manifest.yaml`
+- `result.yaml`
+- `result.md`
+- `quality_check.md`
+- Warehouse artifact identities below
+
+## Review 3 Findings
+
+- Metrics synchronized from `{attempt_upper}`: U={metrics.get("U", "")}, S={metrics.get("S", "")}, H={metrics.get("H", "")}, ZS={metrics.get("ZS", "")}, best_epoch={metrics.get("best_epoch", "")}.
+- Base version: `{version}`.
+- Code commit / pre-run freeze: `{code_commit}`.
+- Command: `{command}`.
+- Trial decision: `{decision}`.
+- Promotion decision: `{evidence_defaults["promotion_decision"]}`.
+- Evidence level: `{evidence_defaults["evidence_level"]}`.
+- Boundary check: raw artifacts remain in Warehouse; GitHub records lightweight ids, URIs, sha256, and size only.
+
+## Artifact Refs
+
+{artifact_lines}
+
+## Blocking Issues
+
+None recorded by automated closeout for `{attempt_upper}`.
+
+## Decision
+
+`{decision}`
+"""
+
+
+def make_trial_agent_summary_md(
+    *,
+    trial_id: str,
+    slug: str,
+    trial_fields: dict[str, str],
+    attempt_upper: str,
+    version: str,
+    metrics: dict[str, str],
+    decision: str,
+    evidence_defaults: dict[str, str],
+    attempt_manifest: dict[str, object],
+    artifacts: dict[str, dict[str, str]],
+    recorded_at: str,
+) -> str:
+    artifact_ids = "; ".join(
+        info.get("artifact_id", "") for info in artifacts.values() if info.get("artifact_id")
+    )
+    evidence_refs = "; ".join(
+        [
+            f"attempts/{attempt_upper}/manifest.yaml",
+            f"attempts/{attempt_upper}/result.yaml",
+            f"attempts/{attempt_upper}/quality_check.md",
+            "review_round_2.md",
+            "result.yaml",
+            "quality_check.md",
+        ]
+    )
+    code_branch = (
+        yaml_section_value(attempt_manifest, "version", "code_branch")
+        or trial_fields.get("code_branch", "")
+    )
+    code_commit = (
+        yaml_section_value(attempt_manifest, "version", "code_commit")
+        or yaml_section_value(attempt_manifest, "reproducibility", "pre_run_freeze_commit")
+    )
+    command = yaml_section_value(attempt_manifest, "reproducibility", "command")
+    return f"""# Agent Summary: {trial_id}_{slug}
+
+```text
+experiment_id: {trial_id}
+run_id:
+base_version: {version}
+code_branch: {code_branch}
+code_commit: {code_commit}
+activation_mode: real_multi_agent
+activation_reason: module trial closeout requires Review 0-3 evidence and artifact boundary checks
+required_roles: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer
+required_real_agents: Reader/Planner, Interface Checker, Quality Checker, Reviewer, Log Analyst, Result Analyst
+agent_set: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer
+serial_agents: Coordinator -> Review 0 -> Review 1 -> Implementer -> Review 2 -> Runner -> Review 3 -> Coordinator
+parallel_agents: Interface Checker + Quality Checker + Reviewer in Review 2; Log Analyst + Quality Checker + Result Analyst + Reviewer in Review 3
+disabled_agents: none
+tool_support: workflow_helper generated current-attempt closeout summary
+memory_policy: hidden/session memory is orientation only; formal facts come from current repo ledgers and Warehouse artifact identities
+memory_used: no
+memory_sources: current repo attempt manifest/result/quality; Warehouse artifact identities
+agent_profile_files: docs/workflow/agents/shared_roles/*/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/*/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+runtime_state: completed
+attempt_id: {attempt_upper}
+warehouse_report_artifacts: {artifact_ids}
+final_decision: {decision}
+review_rounds: Review 0/1/2 existing trial evidence; Review 3 autogenerated from {attempt_upper}
+temporary_agents: not recorded in helper-generated summary
+recorded_at: {recorded_at}
+```
+
+## Coordinator
+
+```text
+role: Coordinator
+agent_instance_type: workflow_helper
+independence_scope: final ledger writer
+inputs_checked: README.md; ATTEMPTS.md; attempts/{attempt_upper}/manifest.yaml; attempts/{attempt_upper}/result.yaml; attempts/{attempt_upper}/quality_check.md
+actions: synchronized trial root summary, Review 3 closeout, agent summary, module index, and idea tree
+outputs: manifest.yaml; result.yaml; result.md; quality_check.md; review_round_2.md; agent_summary.md
+issues: none recorded by automated closeout
+decision: {decision}
+evidence_refs: {evidence_refs}
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/coordinator/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/coordinator/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: all
+blocking_issues: none
+```
+
+## Runner
+
+```text
+role: Runner
+agent_instance_type: recorded_run
+independence_scope: serial GPU owner
+inputs_checked: command and config recorded in attempts/{attempt_upper}/manifest.yaml
+actions: {command}
+outputs: {artifact_ids}
+issues: none recorded by automated closeout
+decision: completed
+evidence_refs: attempts/{attempt_upper}/manifest.yaml
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/runner/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/runner/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: Runner
+blocking_issues: none
+```
+
+## Log Analyst
+
+```text
+role: Log Analyst
+agent_instance_type: workflow_helper
+independence_scope: parse metrics from registered attempt result
+inputs_checked: attempts/{attempt_upper}/result.yaml
+actions: extracted U/S/H/ZS and best_epoch
+outputs: U={metrics.get("U", "")}; S={metrics.get("S", "")}; H={metrics.get("H", "")}; ZS={metrics.get("ZS", "")}; best_epoch={metrics.get("best_epoch", "")}
+issues: none recorded by automated closeout
+decision: allow
+evidence_refs: attempts/{attempt_upper}/result.yaml
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/log_analyst/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/log_analyst/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: Review 3
+blocking_issues: none
+```
+
+## Quality Checker
+
+```text
+role: Quality Checker
+agent_instance_type: workflow_helper
+independence_scope: artifact boundary and ledger consistency
+inputs_checked: attempt manifest/result/quality; Warehouse artifact ids
+actions: required artifacts are referenced by root ledgers; raw artifacts stay outside GitHub
+outputs: review_round_2.md; quality_check.md
+issues: none recorded by automated closeout
+decision: pass_{decision}
+evidence_refs: {evidence_refs}
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/quality_checker/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/quality_checker/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: Review 3
+blocking_issues: none
+```
+
+## Result Analyst
+
+```text
+role: Result Analyst
+agent_instance_type: workflow_helper
+independence_scope: result interpretation from current attempt metrics
+inputs_checked: attempts/{attempt_upper}/result.yaml; baseline reproducibility fields in root result
+actions: compared H against recorded reference when available
+outputs: H={metrics.get("H", "")}; delta_H={metrics.get("delta_H", "")}; promotion_decision={evidence_defaults["promotion_decision"]}
+issues: baseline confirmation status must still be checked before baseline-grade claims
+decision: {decision}
+evidence_refs: result.yaml; attempts/{attempt_upper}/result.yaml
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/result_analyst/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/result_analyst/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: Review 3
+blocking_issues: none
+```
+
+## Reviewer
+
+```text
+role: Reviewer
+agent_instance_type: workflow_helper
+independence_scope: final evidence consistency check
+inputs_checked: review_round_2.md; agent_summary.md; result.yaml; quality_check.md
+actions: confirmed current-attempt summary points to {attempt_upper}
+outputs: final_decision={decision}
+issues: none recorded by automated closeout
+decision: {decision}
+evidence_refs: {evidence_refs}
+memory_used: no
+memory_sources: current repo files
+agent_profile_files: docs/workflow/agents/shared_roles/reviewer/profile.md
+agent_memory_files: docs/workflow/agents/shared_roles/reviewer/memory.md
+agent_memory_updates: none
+verified_against_current_repo: yes
+review_round: Review 3
+blocking_issues: none
+```
+"""
+
+
+def check_closeout_report_file(
+    path: Path,
+    *,
+    attempt_upper: str,
+    artifacts: dict[str, dict[str, str]],
+) -> None:
+    if not path.exists():
+        raise WorkflowError(f"Missing closeout report file: {rel(path)}")
+    fields = read_key_value_block(path)
+    if fields.get("attempt_id") != attempt_upper:
+        found = fields.get("attempt_id", "")
+        raise WorkflowError(
+            f"{rel(path)} must have attempt_id: {attempt_upper} in its first text block; found {found or 'missing'}"
+        )
+    text = read_text(path)
+    stale_markers = [
+        "No training result has been recorded",
+        "尚未记录训练结果",
+    ]
+    for marker in stale_markers:
+        if marker in text:
+            raise WorkflowError(f"{rel(path)} still contains stale marker: {marker}")
+    for artifact in artifacts.values():
+        artifact_id = artifact.get("artifact_id", "")
+        if artifact_id and artifact_id not in text:
+            raise WorkflowError(f"{rel(path)} does not reference artifact {artifact_id}")
 
 
 def replace_first_text_block_values(content: str, updates: dict[str, str]) -> str:
@@ -2933,7 +3283,8 @@ def replace_first_text_block_values(content: str, updates: dict[str, str]) -> st
         key, _value = line.split(":", 1)
         stripped_key = key.strip()
         if stripped_key in updates:
-            lines[index] = f"{stripped_key}: {updates[stripped_key]}"
+            value = updates[stripped_key]
+            lines[index] = f"{stripped_key}: {value}" if value else f"{stripped_key}:"
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -3019,7 +3370,7 @@ def update_module_trial_index(
     summary = (
         f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
         f"vs active {comparison_reference_phrase(version) if version in CANONICAL_BASELINES else version}; "
-        + ("promotion candidate." if decision == "promote" else "no promotion.")
+        + trial_followup_phrase(version, decision)
     )
     row = f"| `{idea_id}` | `{idea_file}` | `{trial_rel}` | {decision} | {summary} |"
     lines = content.splitlines()
@@ -3093,7 +3444,7 @@ def sync_idea_tree_from_trial(
     idea["next_action"] = (
         f"{trial_id} {attempt_upper} synchronized as {decision}: "
         f"H={metrics.get('H', '')}, delta_H={delta_h or '-'} vs {reference}; "
-        + ("promotion gate may proceed after confirmation." if decision == "promote" else "do not promote without a stronger follow-up.")
+        + trial_followup_phrase(version, decision)
     )
     evidence_ref = f"{trial_rel}/result.yaml"
     note = (
@@ -3162,7 +3513,11 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
         print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} delta_H={metrics['delta_H']}")
         return 0
 
-    recorded_at = utc_now()
+    recorded_at = str(
+        attempt_result.get("recorded_at")
+        or yaml_section_value(attempt_manifest, "experiment", "created_or_recorded_at")
+        or utc_now()
+    )
     (trial_dir / "manifest.yaml").write_text(
         make_trial_root_manifest(
             trial_id=trial_id,
@@ -3211,10 +3566,42 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
         make_trial_root_quality_md(
             trial_id=trial_id,
             attempt_upper=attempt_upper,
+            version=version,
             metrics=metrics,
             decision=decision,
             evidence_defaults=evidence_defaults,
             artifacts=artifacts,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (trial_dir / "review_round_2.md").write_text(
+        make_trial_closeout_review_md(
+            trial_id=trial_id,
+            attempt_upper=attempt_upper,
+            version=version,
+            metrics=metrics,
+            decision=decision,
+            evidence_defaults=evidence_defaults,
+            attempt_manifest=attempt_manifest,
+            artifacts=artifacts,
+        ).rstrip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (trial_dir / "agent_summary.md").write_text(
+        make_trial_agent_summary_md(
+            trial_id=trial_id,
+            slug=slug,
+            trial_fields=trial_fields,
+            attempt_upper=attempt_upper,
+            version=version,
+            metrics=metrics,
+            decision=decision,
+            evidence_defaults=evidence_defaults,
+            attempt_manifest=attempt_manifest,
+            artifacts=artifacts,
+            recorded_at=recorded_at,
         ).rstrip()
         + "\n",
         encoding="utf-8",
@@ -4127,6 +4514,8 @@ def cmd_closeout_check(args: argparse.Namespace) -> int:
         "result.yaml",
         "result.md",
         "quality_check.md",
+        "review_round_2.md",
+        "agent_summary.md",
     ]
     for filename in required_root_files:
         if not (trial_dir / filename).exists():
@@ -4145,6 +4534,16 @@ def cmd_closeout_check(args: argparse.Namespace) -> int:
     attempt_manifest_ref = f"attempts/{attempt_upper}/manifest.yaml"
     if attempt_manifest_ref not in root_result:
         raise WorkflowError(f"trial root result.yaml must reference {attempt_manifest_ref}")
+    check_closeout_report_file(
+        trial_dir / "review_round_2.md",
+        attempt_upper=attempt_upper,
+        artifacts=artifacts,
+    )
+    check_closeout_report_file(
+        trial_dir / "agent_summary.md",
+        attempt_upper=attempt_upper,
+        artifacts=artifacts,
+    )
     for artifact in artifacts.values():
         artifact_id = artifact.get("artifact_id", "")
         uri = artifact.get("uri", "")
@@ -4169,6 +4568,8 @@ def cmd_closeout_check(args: argparse.Namespace) -> int:
     print("closeout-check-ok")
     print("attempt: ok")
     print("trial_root: ok")
+    print("review_round_2: ok")
+    print("agent_summary: ok")
     print("module_index: ok")
     print("idea_tree: ok")
     print("warehouse_artifacts: ok")
