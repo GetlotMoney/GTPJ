@@ -39,6 +39,18 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/flow.md
 
 生成出来的 PNG、HTML、临时截图默认不是权威证据。除非它是小型稳定文档资产，否则不要提交到 GitHub；大图、渲染图和临时可视化进入 `GTPJ_Warehouse`，GitHub 只记录引用。
 
+## Owner 可视化交付
+
+仓库中的权威流程图仍优先使用 Markdown + Mermaid，方便 diff、review 和随账本提交。
+
+但给 owner 解释模型框架、代码路径、实验链路或流程差异时，默认再生成一个可本地打开的 HTML 视图，并在回复中给出 `file:///D:/.../xxx.html` 形式的绝对本地链接，例如：
+
+```text
+file:///D:/backup/Documents/xwechat_files/wxid_gv04544qttp922_8f75/msg/file/2026-06/FRAMEWORK_DIAGRAM_BASELINE(2).html
+```
+
+HTML 视图用于阅读和沟通，不自动成为实验事实源。若该 HTML 需要长期留档，优先放入 `GTPJ_Warehouse/diagrams/` 或对应外部 artifact 目录；GitHub 只记录轻量引用、哈希或说明。
+
 ## 必填图
 
 每个正式版本 `experiments/vX/VERSION.md` 必须包含：
