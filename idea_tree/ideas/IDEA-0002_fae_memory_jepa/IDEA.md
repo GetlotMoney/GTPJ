@@ -121,3 +121,15 @@ confirmation_status: needs_confirmation
 ```
 
 The owner accepted the mixed reruns as stochastic variance on 2026-06-28 and requested a formal `GTPJ-v3` tag. The idea is therefore validated as a versioned code path, while strict confirmed/baseline-grade claims remain pending.
+
+## Follow-up: TRIAL-003 conditional BVSA text
+
+```text
+base_version: v3
+trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text
+change: all_text_cond [B,C,768] directly enters BVSA / CrossModalTransformer
+switch: bvsa_text_mode=conditional
+status: code_verified_not_run
+```
+
+TRIAL-003 is a new implementation hypothesis on top of `GTPJ-v3`: conditional text no longer only affects `base_logits`, `loss_consist`, and AG-JEPA; it also directly conditions BVSA's `decoder_v2s` and `decoder_s2v` text input. Local shape/backward tests pass, but no training result exists yet.

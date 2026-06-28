@@ -311,7 +311,20 @@ class CrossModalTransformer(nn.Module):
             memory = vis
 
         txt_com = self.embed_text(text)
-        txt_batch = txt_com.unsqueeze(0).expand(B, -1, -1)
+        if txt_com.dim() == 2:
+            txt_batch = txt_com.unsqueeze(0).expand(B, -1, -1)
+        elif txt_com.dim() == 3:
+            if txt_com.size(0) != B:
+                raise ValueError(
+                    "Batched BVSA text must have shape [B, C, D] with the same B "
+                    f"as patches; got text batch {txt_com.size(0)} and patches batch {B}."
+                )
+            txt_batch = txt_com
+        else:
+            raise ValueError(
+                "BVSA text must be [C, D] for shared class text or [B, C, D] "
+                f"for sample-conditioned class text; got {tuple(text.shape)}."
+            )
 
         F_p_v2s = self.decoder_v2s(tgt=txt_batch, memory=memory)
         F_p_s2v = self.decoder_s2v(tgt=memory, memory=txt_batch)
@@ -323,7 +336,10 @@ class CrossModalTransformer(nn.Module):
         s2v_pooled = F_p_s2v.mean(dim=1)
         s2v_n = F.normalize(s2v_pooled, dim=-1)
         txt_single = F.normalize(txt_com, dim=-1)
-        score_s2v = s2v_n @ txt_single.T
+        if txt_single.dim() == 2:
+            score_s2v = s2v_n @ txt_single.T
+        else:
+            score_s2v = torch.einsum("bd,bcd->bc", s2v_n, txt_single)
 
         local_score = self.weight_s2v * score_s2v + (1.0 - self.weight_s2v) * score_v2s
         return {
@@ -478,6 +494,17 @@ class GTPJ(nn.Module):
             self.cond_text_ratio = float(getattr(config, "conditional_text_ratio", 0.05))
         else:
             self.cond_text_ratio = 0.0
+        self.bvsa_text_mode = str(getattr(config, "bvsa_text_mode", "adapted")).lower()
+        if self.bvsa_text_mode not in {"adapted", "conditional"}:
+            raise ValueError(
+                "bvsa_text_mode must be 'adapted' or 'conditional', "
+                f"got {self.bvsa_text_mode!r}."
+            )
+        if self.bvsa_text_mode == "conditional":
+            if not self.use_conditional_text:
+                raise ValueError("bvsa_text_mode='conditional' requires use_conditional_text=True.")
+            if self.cond_text_ratio <= 0:
+                raise ValueError("bvsa_text_mode='conditional' requires conditional_text_ratio > 0.")
         self.jepa_text_mode = str(getattr(config, "jepa_text_mode", "adapted")).lower()
         if self.jepa_text_mode not in {"adapted", "conditional"}:
             raise ValueError(
@@ -781,9 +808,17 @@ class GTPJ(nn.Module):
             text_n = F.normalize(all_text, dim=1)
             base_logits = vis_n @ text_n.T * logit_scale
 
+        bvsa_text = all_text
+        if self.bvsa_text_mode == "conditional":
+            if all_text_cond is None:
+                raise ValueError(
+                    "bvsa_text_mode='conditional' requires all_text_cond from GTPJ.forward."
+                )
+            bvsa_text = all_text_cond
+
         cm_out = self.cross_tf(
             patches,
-            all_text,
+            bvsa_text,
             cls_token,
             lastvit_select_k=self.lastvit_select_k,
             lastvit_select_sigma=self.lastvit_select_sigma,

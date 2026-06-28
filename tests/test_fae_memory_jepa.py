@@ -15,6 +15,7 @@ def make_config(
     lastvit_select_k=8,
     use_conditional_text=False,
     conditional_text_ratio=0.008,
+    bvsa_text_mode="adapted",
 ):
     return SimpleNamespace(
         num_class=200,
@@ -45,6 +46,7 @@ def make_config(
         lastvit_select_formula="v2_abs_mean",
         use_conditional_text=use_conditional_text,
         conditional_text_ratio=conditional_text_ratio,
+        bvsa_text_mode=bvsa_text_mode,
         meta_net_hidden=48,
         lambda_consist=0.0,
         lambda_topo_pearson=0.0,
@@ -191,6 +193,51 @@ class FaeMemoryJepaTest(unittest.TestCase):
         self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
         self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
 
+    def test_default_bvsa_text_keeps_local_score_off_meta_net(self):
+        model = make_model(
+            make_config(
+                "fae_main_memory",
+                jepa_text_mode="conditional",
+                lambda_jepa=0.0,
+                lambda_jepa_neg=0.0,
+                use_conditional_text=True,
+                bvsa_text_mode="adapted",
+            )
+        )
+        clip_features = torch.randn(2, 577, 768)
+
+        out = model(clip_features, is_train=True)
+
+        model.zero_grad(set_to_none=True)
+        out["local_score"].sum().backward()
+
+        self.assertEqual(tuple(out["local_score"].shape), (2, 200))
+        self.assertEqual(grad_norm(model.meta_net.parameters()), 0.0)
+
+    def test_conditional_bvsa_text_reaches_local_score_and_meta_net(self):
+        model = make_model(
+            make_config(
+                "fae_main_memory",
+                jepa_text_mode="conditional",
+                lambda_jepa=0.0,
+                lambda_jepa_neg=0.0,
+                use_conditional_text=True,
+                bvsa_text_mode="conditional",
+            )
+        )
+        clip_features = torch.randn(2, 577, 768)
+
+        out = model(clip_features, is_train=True)
+
+        model.zero_grad(set_to_none=True)
+        out["local_score"].sum().backward()
+
+        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
+        self.assertEqual(tuple(out["score_v2s"].shape), (2, 200))
+        self.assertEqual(tuple(out["score_s2v"].shape), (2, 200))
+        self.assertEqual(tuple(out["local_score"].shape), (2, 200))
+        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
+
     def test_conditional_jepa_requires_conditional_text(self):
         with self.assertRaisesRegex(ValueError, "requires use_conditional_text=True"):
             make_model(
@@ -198,6 +245,16 @@ class FaeMemoryJepaTest(unittest.TestCase):
                     "fae_main_memory",
                     jepa_text_mode="conditional",
                     use_conditional_text=False,
+                )
+            )
+
+    def test_conditional_bvsa_requires_conditional_text(self):
+        with self.assertRaisesRegex(ValueError, "requires use_conditional_text=True"):
+            make_model(
+                make_config(
+                    "fae_main_memory",
+                    use_conditional_text=False,
+                    bvsa_text_mode="conditional",
                 )
             )
 
