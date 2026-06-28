@@ -138,10 +138,10 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/result.yaml",
-          "note": "ATTEMPT-001 ran cleanly from commit 5ca8245e and reached H=73.82, delta_H=-0.47 vs active v2 best_observed_H=74.29; trial decision is revise, not promote."
+          "note": "ATTEMPT-002 H=74.01, delta_H=-0.28 vs v2; trial decision=keep."
         }
       ],
-      "next_action": "TRIAL-001 ATTEMPT-001 completed as valid keep-only FAE-memory JEPA evidence but underperformed v2 (H=73.82, delta_H=-0.47). ATTEMPT-002 is planned to test strict main-path jepa_memory context plus conditional AG-JEPA text; do not promote without a clean successful run and confirmation."
+      "next_action": "TRIAL-001 ATTEMPT-002 synchronized as keep: H=74.01, delta_H=-0.28 vs v2; do not promote without a stronger follow-up."
     }
   ]
 }

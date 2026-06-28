@@ -5,7 +5,7 @@
 | Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|
 | ATTEMPT-001 | valid_single_run | jepa_context_mode | embed | fae_memory | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` | revise | `attempts/ATTEMPT-001/` |
-| ATTEMPT-002 | planned | jepa_context_mode + jepa_text_mode | fae_memory + adapted | fae_main_memory + conditional | 5 | | | | | | | planned | `attempts/ATTEMPT-002/` |
+| ATTEMPT-002 | strict main-path FAE memory + conditional AG-JEPA text | jepa_context_mode=fae_main_memory; jepa_text_mode=conditional | ATTEMPT-001 keep-only FAE context + raw CLIP text in AG-JEPA | main-path jepa_memory context + sample-conditioned adapted text in AG-JEPA | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | `log:v2:module_trial:TRIAL-001:attempt-002` | keep | `attempts/ATTEMPT-002/` |
 
 ## Notes
 

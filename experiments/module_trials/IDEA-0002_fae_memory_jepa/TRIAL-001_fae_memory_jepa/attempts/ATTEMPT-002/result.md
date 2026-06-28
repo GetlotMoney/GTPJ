@@ -1,19 +1,15 @@
-# TRIAL-001 Trial Result
+# ATTEMPT-002 Result
 
 ## Metrics
 
-| Attempt ID | Base version | Dataset | Seed | U | S | H | ZS | Best epoch | delta_H |
-|---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| ATTEMPT-002 | v2 | CUB | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | -0.28 |
+| Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| ATTEMPT-002 | CUB | - | 71.15 | 77.11 | 74.01 | 81.31 | 33 |
 
 ## Evidence
 
 ```text
 trial_id: TRIAL-001
-attempt_id: ATTEMPT-002
-evidence_level: valid_single_run
-result_status: needs_confirmation
-promotion_decision: blocked
 train_log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-002
 best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-001:attempt-002:best
 full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-001:attempt-002:full

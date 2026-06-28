@@ -10,22 +10,22 @@ idea_source_file: idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md
 idea_title: FAE-memory JEPA auxiliary loss
 version_score: 72.0
 applicability: needs_adaptation
-code_branch: dev/v2-idea-0002-trial-001-fae-memory-jepa
+code_branch: dev/v2-idea-0002-trial-001-attempt-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-001
-code_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
-trial_decision: revise
-promotion_decision: not_applicable
+code_commit: c9fc2539d745c13b677b00a84aa151da77fc31dd
+trial_decision: keep
+promotion_decision: blocked
 promote_to:
 evidence_level: valid_single_run
-best_observed_H:
+best_observed_H: 74.01
 confirmed_H: pending
-confirmation_status: not_applicable
+confirmation_status: needs_confirmation
 changed_files:
-run_config: attempts/ATTEMPT-001/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-001
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-001/logs/training_log_CUB_2026-06-27_23-44-35.txt
-log_sha256: c0fce9c6d031851479f7dafb7aee1db7d86cc80f3415826ced985f4c83f1b2c1
-log_size_bytes: 92239
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-002/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-002
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-002/logs/training_log_CUB_2026-06-28_17-36-46.txt
+log_sha256: 262b5e91059bd835bf1d0f1000d84e4f1eca53cecb8cdbda9e6301e5abec55f0
+log_size_bytes: 91969
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -52,8 +52,7 @@ framework_diagram: framework_diagram.md
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` |
-| CUB | 5 |  |  |  |  |  | ATTEMPT-002 planned |
+| CUB | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | `log:v2:module_trial:TRIAL-001:attempt-002` |
 
 ## Trial Flow
 
