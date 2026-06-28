@@ -233,6 +233,31 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual("confirmed", defaults["confirmation_status"])
         self.assertEqual("blocked", defaults["promotion_decision"])
 
+    def test_not_confirmed_sync_preserves_existing_trial_best(self) -> None:
+        defaults = self.module.sync_evidence_defaults(
+            decision="not_confirmed",
+            metrics={"H": "73.79"},
+            raw_evidence_level="quick_local",
+            promotion_decision="not_applicable",
+        )
+        preserved = self.module.preserve_trial_best_for_non_best_sync(
+            defaults,
+            {
+                "evidence_level": "valid_single_run",
+                "best_observed_H": "74.27",
+                "confirmed_H": "pending",
+                "confirmation_status": "needs_confirmation",
+            },
+            "not_confirmed",
+        )
+
+        self.assertEqual("not_confirmed", preserved["result_status"])
+        self.assertEqual("valid_single_run", preserved["evidence_level"])
+        self.assertEqual("74.27", preserved["best_observed_H"])
+        self.assertEqual("pending", preserved["confirmed_H"])
+        self.assertEqual("needs_confirmation", preserved["confirmation_status"])
+        self.assertEqual("blocked", preserved["promotion_decision"])
+
     def test_start_open_new_module_outputs_mini_card_without_writing(self) -> None:
         self._write_selected_idea_files()
         idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")

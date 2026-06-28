@@ -29,6 +29,7 @@ The old training logs recorded `random_seed`, but did not record the runtime det
 - Add optional `strict_determinism`, `deterministic_warn_only`, `use_dedicated_batch_rng`, and `batch_sampling_seed` config controls.
 - Route training batch `randperm` / `randint` through the optional dedicated CPU generator when enabled.
 - Add tests proving the dedicated batch generator replays the same sequence and is independent from unrelated global RNG calls.
+- Update `sync-trial-summary` so `not_confirmed` diagnostic closeout can point root review/agent summaries at the latest attempt without overwriting the existing trial `best_observed_H`.
 
 ### Prevention Rule
 

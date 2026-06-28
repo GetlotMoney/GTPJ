@@ -2641,6 +2641,12 @@ def sync_evidence_defaults(
         best_observed_h = ""
         confirmation_status = "not_applicable"
         default_promotion = "not_applicable"
+    elif decision == "not_confirmed":
+        evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "quick_local"
+        result_status = "not_confirmed"
+        best_observed_h = ""
+        confirmation_status = "needs_confirmation"
+        default_promotion = "blocked"
     elif decision in {"promote", "keep", "best"}:
         evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
         best_observed_h = h_value
@@ -2675,6 +2681,28 @@ def sync_evidence_defaults(
         "promotion_decision": promotion_decision or default_promotion,
         "promote_to": "",
     }
+
+
+def preserve_trial_best_for_non_best_sync(
+    evidence_defaults: dict[str, str],
+    trial_fields: dict[str, str],
+    decision: str,
+) -> dict[str, str]:
+    if decision not in {"not_confirmed", "blocked", "debug", "rerun"}:
+        return evidence_defaults
+    preserved = dict(evidence_defaults)
+    for key in ["best_observed_H", "confirmed_H", "confirmation_status"]:
+        value = trial_fields.get(key, "")
+        if value:
+            preserved[key] = value
+    if trial_fields.get("evidence_level"):
+        preserved["evidence_level"] = trial_fields["evidence_level"]
+    if decision == "not_confirmed":
+        preserved["result_status"] = "not_confirmed"
+        preserved["promotion_decision"] = "blocked"
+        if not preserved.get("confirmation_status") or preserved["confirmation_status"] == "not_applicable":
+            preserved["confirmation_status"] = "needs_confirmation"
+    return preserved
 
 
 def metric_delta_h(version: str, metrics: dict[str, str]) -> str:
@@ -3507,6 +3535,11 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
         metrics=metrics,
         raw_evidence_level=raw_evidence_level,
         promotion_decision=promotion_decision if promotion_decision != "not_applicable" or decision == "promote" else "",
+    )
+    evidence_defaults = preserve_trial_best_for_non_best_sync(
+        evidence_defaults,
+        trial_fields,
+        decision,
     )
 
     if args.dry_run:

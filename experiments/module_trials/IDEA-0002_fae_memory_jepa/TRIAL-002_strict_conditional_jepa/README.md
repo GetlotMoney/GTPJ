@@ -12,8 +12,8 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-002
-code_commit: c8daa9cb68edcaca3226fe8af3f7fb54757903e4
-trial_decision: keep
+code_commit: 78d964b
+trial_decision: not_confirmed
 promotion_decision: blocked
 promote_to:
 evidence_level: valid_single_run
@@ -21,11 +21,11 @@ best_observed_H: 74.27
 confirmed_H: pending
 confirmation_status: needs_confirmation
 changed_files:
-run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/logs/training_log_CUB_2026-06-28_20-46-21.txt
-log_sha256: 9d6dfb11c97ccab8cdab23608364f8efd81825390bc1773e10a0fbd18e415b3a
-log_size_bytes: 91977
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-005/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-005
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-005/logs/training_log_CUB_2026-06-28_21-57-13.txt
+log_sha256: f703b5227ae1807eb4f70706e3094a8a5acb8eedd16a03255eb04ac8b84892f1
+log_size_bytes: 93373
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -58,12 +58,13 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | `attempts/ATTEMPT-002/config.yaml` | Clean confirmation rerun of ATTEMPT-001 config | no |
 | `attempts/ATTEMPT-003/config.yaml` | Same-config confirmation rerun; did not confirm 74-level result | no |
 | `attempts/ATTEMPT-004/config.yaml` | Same-config confirmation rerun; reached 74-level result again | no |
+| `attempts/ATTEMPT-005/config.yaml` | Reproducibility diagnosis with strict determinism and dedicated batch RNG | no |
 
 ## Results
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 71.22 | 77.60 | 74.27 | 81.38 | 33 | `log:v2:module_trial:TRIAL-002:attempt-004` |
+| CUB | 5 | 71.69 | 76.01 | 73.79 | 81.32 | 43 | `log:v2:module_trial:TRIAL-002:attempt-005` |
 
 ## Confirmation Gate
 
@@ -72,8 +73,9 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | ATTEMPT-002 | first clean confirmation | 74.24 | keep |
 | ATTEMPT-003 | second same-config rerun | 73.81 | not_confirmed |
 | ATTEMPT-004 | third same-config rerun | 74.27 | keep |
+| ATTEMPT-005 | deterministic diagnosis rerun | 73.79 | not_confirmed |
 
-The repeated confirmation evidence is mixed. Latest observed best is `H=74.27`, but stability is not proven because ATTEMPT-003 dropped to `H=73.81`. Tuning, promotion, and tagging remain blocked until the owner explicitly accepts this variance or requests a new confirmation strategy.
+The repeated confirmation evidence is mixed. Best observed strict result remains `H=74.27`, but stability is not proven because ATTEMPT-003 dropped to `H=73.81` and ATTEMPT-005 with `strict_determinism=True` plus `use_dedicated_batch_rng=True` produced `H=73.79`. Tuning, promotion, and tagging remain blocked.
 
 ## Trial Flow
 
@@ -87,10 +89,11 @@ flowchart TD
   A1 --> A2["ATTEMPT-002 clean confirmation"]
   A2 --> A3["ATTEMPT-003 same-config rerun: not_confirmed"]
   A3 --> A4["ATTEMPT-004 same-config rerun: keep"]
-  A4 --> Warehouse["Warehouse log/checkpoints/receipt"]
+  A4 --> A5["ATTEMPT-005 deterministic diagnosis: not_confirmed"]
+  A5 --> Warehouse["Warehouse log/checkpoints/receipt"]
   Warehouse --> Attempt["attempt-local manifest/result/quality"]
   Attempt --> R3["Review 3: post-run evidence"]
-  R3 --> Decision["trial_decision: keep; confirmation gate mixed; promotion_decision: blocked"]
+  R3 --> Decision["trial_decision: not_confirmed; best_observed_H kept at 74.27; promotion_decision: blocked"]
 ```
 
 ## Framework Diagram
@@ -113,4 +116,4 @@ activation_mode: real_multi_agent for the original code semantic change; later f
 
 ## Decision
 
-TRIAL-002 remains a keep-worthy idea, but the confirmation gate is mixed: ATTEMPT-003 produced `H=73.81`, while ATTEMPT-004 produced `H=74.27`. This blocks the planned 10-run tuning sweep, formal promotion, and tagging until the owner explicitly accepts the observed variance or asks for a new confirmation strategy. The active v2 comparison value also remains an unconfirmed `best_observed_H=74.29`.
+TRIAL-002 is not confirmed. ATTEMPT-004 remains the best observed strict result at `H=74.27`, but ATTEMPT-005 reproduced the deterministic-diagnosis path at only `H=73.79` with strict determinism and dedicated batch sampling RNG enabled. This keeps `confirmed_H=pending` and blocks the planned 10-run tuning sweep, formal promotion, and tagging. The active v2 comparison value also remains an unconfirmed `best_observed_H=74.29`.

@@ -78,7 +78,7 @@
       "idea_id": "IDEA-0002",
       "idea_dir": "idea_tree/ideas/IDEA-0002_fae_memory_jepa/",
       "title": "FAE-memory JEPA auxiliary loss",
-      "status": "testing",
+      "status": "weakened",
       "source_type": "user",
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
@@ -144,10 +144,10 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/result.yaml",
-          "note": "ATTEMPT-004 H=74.27, delta_H=-0.02 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=keep."
+          "note": "ATTEMPT-005 H=73.79, delta_H=-0.50 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=not_confirmed."
         }
       ],
-      "next_action": "TRIAL-002 ATTEMPT-004 synchronized as keep: H=74.27, delta_H=-0.02 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
+      "next_action": "TRIAL-002 ATTEMPT-005 synchronized as not_confirmed: H=73.79, delta_H=-0.50 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
     }
   ]
 }
