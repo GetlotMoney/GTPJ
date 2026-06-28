@@ -27,6 +27,7 @@ interface_precheck: interface_precheck.md
 review_round_1: review_round_1.md
 review_round_2: review_round_2.md
 agent_summary: agent_summary.md
+framework_diagram: framework_diagram.md
 trial_decision:
 promote_to:
 promotion_decision:
@@ -67,6 +68,23 @@ flowchart TD
   Attempt --> Review3["Review 3: post-run evidence"]
   Review3 --> Decision["trial_decision / promotion_decision"]
 ```
+
+## Framework Diagram
+
+```text
+path: framework_diagram.md
+html_view:
+warehouse_artifact:
+code_vs_intent:
+```
+
+`framework_diagram.md` must include:
+
+- variable glossary: every diagram variable's source, shape, meaning, gradient/detach status, and train/eval difference.
+- method glossary: every diagram method/module's code location, inputs, outputs, responsibility, config switch, and baseline-off behavior.
+- embedded loss flow: each loss is attached to the tensors it reads; do not list all losses only at the end.
+- line semantics: each arrow says whether it is data flow, supervision/target, read-only reference, or config/control.
+- code vs intent note: explicitly state whether the implemented path matches the idea/design.
 
 ## Innovation Code Review
 

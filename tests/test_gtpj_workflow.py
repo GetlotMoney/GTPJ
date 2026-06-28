@@ -510,6 +510,41 @@ evidence:
         self.assertIn("new-trial branch must contain current local main", stderr)
         self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
 
+    def test_new_trial_creates_framework_diagram_entrypoint(self) -> None:
+        self._write_selected_idea_files()
+        self._write(
+            "experiments/module_trials/INDEX.md",
+            "# Module Trials Index\n\n当前还没有已经启动的模块 trial。\n",
+        )
+        self._git("add", ".")
+        self._git("commit", "-m", "select idea")
+        self._git("switch", "-c", "dev/v1-idea-0001-trial-001-token-router")
+
+        code, stdout, stderr = self._run_main(
+            "new-trial",
+            "--idea-id",
+            "IDEA-0001",
+            "--trial-id",
+            "TRIAL-001",
+            "--slug",
+            "token_router",
+            "--base-version",
+            "v1",
+        )
+
+        trial_dir = self.repo / "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router"
+        readme = (trial_dir / "README.md").read_text(encoding="utf-8")
+        framework = (trial_dir / "framework_diagram.md").read_text(encoding="utf-8")
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("已创建 experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router", stdout)
+        self.assertIn("framework_diagram: framework_diagram.md", readme)
+        self.assertIn("## Framework Diagram", readme)
+        self.assertIn("## Variable Glossary", framework)
+        self.assertIn("## Method Glossary", framework)
+        self.assertIn("## Loss Flow", framework)
+        self.assertIn("## Code vs Intent", framework)
+
     def test_new_experiment_rejects_main_branch(self) -> None:
         registry_before = self._registry_text()
         index_before = self._confirmation_index_text()

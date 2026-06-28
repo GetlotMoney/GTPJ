@@ -51,6 +51,36 @@ file:///D:/backup/Documents/xwechat_files/wxid_gv04544qttp922_8f75/msg/file/2026
 
 HTML 视图用于阅读和沟通，不自动成为实验事实源。若该 HTML 需要长期留档，优先放入 `GTPJ_Warehouse/diagrams/` 或对应外部 artifact 目录；GitHub 只记录轻量引用、哈希或说明。
 
+## Framework Diagram
+
+每个新的 innovation / module trial 必须在对应 trial 目录下保留框架图记录：
+
+```text
+experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/framework_diagram.md
+experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/framework_diagram.html  # 可选，小型稳定 HTML
+```
+
+如果 HTML 太大、包含临时截图、或只是沟通视图，HTML 放入 `GTPJ_Warehouse/diagrams/`，
+trial 目录中的 `framework_diagram.md` 只记录本地 `file:///D:/...` 链接、artifact id、哈希或说明。
+
+框架图不能只写模块名。每张创新框架图必须解释清楚：
+
+- 主 forward 链路：从原始输入到最终 logits，每个张量在哪一步产生、被谁消费。
+- 辅助训练链路：每个 loss 的输入、target、teacher/source、权重、detach/梯度边界。
+- 每条箭头的语义：数据流、监督信号、只读引用、还是配置/控制信号。
+- 每个关键变量：变量名、来源、shape、dtype/device 如 relevant、含义、是否参与梯度、train/eval 差异。
+- 每个方法/模块：代码位置、输入变量、输出变量、职责、开关条件、baseline-off 行为。
+- 配置开关：默认值、trial 覆盖值、关闭后是否回到 base version。
+- 类别与评估边界：class order、seen/unseen split、logits shape、metric calculation 是否改变。
+- 与 intent 的差异：如果代码实际流程和 idea/设计图不同，必须用显式 “code vs intent” 标注。
+
+视觉规范：
+
+- 线不能覆盖文字或穿过节点主体；必要时转弯。
+- 不同语义的线不能重合；如果必须靠近，使用不同路径和图例。
+- loss 不要全部堆在末尾；应该嵌入它实际读取张量的位置。
+- 同一模块内部的子方法要分层，不要把所有方法都塞进一个大框里。
+
 ## 必填图
 
 每个正式版本 `experiments/vX/VERSION.md` 必须包含：
@@ -74,6 +104,7 @@ HTML 视图用于阅读和沟通，不自动成为实验事实源。若该 HTML 
 
 ```text
 ## Trial Flow
+## Framework Diagram
 ```
 
 图里至少标出：
@@ -88,6 +119,15 @@ HTML 视图用于阅读和沟通，不自动成为实验事实源。若该 HTML 
 - Warehouse artifact registration
 - Review 3
 - final decision
+
+`## Framework Diagram` 至少必须包含：
+
+- `framework_diagram.md` 的相对路径。
+- 如果有 HTML 视图，记录 `file:///D:/...` 或 Warehouse artifact 引用。
+- 变量词典：所有图中变量的来源、shape 和含义。
+- 方法词典：所有图中方法/模块的代码位置、输入、输出和职责。
+- loss 嵌入说明：每个 loss 在哪条链路读取哪些变量，不允许只在末尾列 loss 名。
+- code vs intent 说明：代码实现与原始 idea/讨论图是否一致。
 
 ## 总流程框架
 

@@ -42,6 +42,7 @@ experiments/module_trials/IDEA-xxxx_short_name/
 `-- TRIAL-001_short_name/
     |-- README.md
     |-- ATTEMPTS.md
+    |-- framework_diagram.md
     |-- implementation.md
     |-- code.diff
     |-- idea_intent_check.md
@@ -63,6 +64,7 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - base version
 - base code tag
 - version-specific idea score
+- framework diagram path and glossary
 - insertion point
 - input contract
 - output contract
@@ -76,6 +78,7 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - best attempt id
 - changed files
 - implementation summary
+- framework diagram with every key variable and method explained
 - Review 0 idea/source intent check
 - Review 1 design/interface precheck
 - Review 2 code diff pre-run review
@@ -135,6 +138,23 @@ Review 3 -> review_round_2.md + agent_summary.md
 ```
 
 这些文件是轻量审查凭证，允许进入 GitHub。完整长报告、日志和大文件仍进入 Warehouse。
+
+### Framework diagram gate
+
+新 module trial 的框架图是实现说明的一部分，不是可选插图。
+
+每个新 trial 必须在 `README.md` 的 `## Framework Diagram` 中引用对应目录下的
+`framework_diagram.md`。如果同时生成 HTML 视图，稳定小型 HTML 可以放在 trial 目录；
+临时或较大的 HTML 进入 `GTPJ_Warehouse/diagrams/`，`framework_diagram.md` 记录
+`file:///D:/...` 链接、artifact id、哈希或说明。
+
+`framework_diagram.md` 必须解释：
+
+- 每个图中变量的来源、shape、含义、是否参与梯度、train/eval 差异；
+- 每个图中方法/模块的代码位置、输入、输出、职责和开关条件；
+- 主 forward 链路、辅助 loss 链路、teacher/target/source、detach/梯度边界；
+- 每个 loss 在流程中的读取位置，不能只把 loss 名集中列在末尾；
+- 代码实际流程与 idea/设计图是否一致，不一致时必须显式标注 “code vs intent”。
 
 硬规则：
 

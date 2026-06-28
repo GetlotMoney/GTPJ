@@ -130,7 +130,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
 | `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
-| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、Mermaid 权威格式和更新时机。 |
+| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
 | `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
 | `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
 | `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |

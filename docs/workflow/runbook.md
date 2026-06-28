@@ -153,16 +153,19 @@ GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
 docs/workflow/workflow_diagrams.md
 experiments/vX/VERSION.md 的 ## Version Flow
 module trial README.md 的 ## Trial Flow
+module trial README.md 的 ## Framework Diagram
+module trial 目录下的 framework_diagram.md
 ```
 
 要求：
 
 ```text
 1. 正式版本必须有 Version Flow。
-2. 新 module trial 必须有 Trial Flow。
+2. 新 module trial 必须有 Trial Flow 和 Framework Diagram。
 3. 图用 Mermaid 写在 Markdown 中，作为 GitHub 权威流程图。
-4. PNG/HTML/截图不是权威流程图；除非是小型稳定文档资产，否则放 Warehouse。
-5. 图和账本冲突时，先以 manifest/result/VERSION_TREE/tag 为准修账本，再修图。
+4. framework_diagram.md 必须解释图中每个变量、方法、shape、输入输出、loss 读取位置和 code-vs-intent。
+5. PNG/HTML/截图不是权威流程图；除非是小型稳定文档资产，否则放 Warehouse。
+6. 图和账本冲突时，先以 manifest/result/VERSION_TREE/tag 为准修账本，再修图。
 ```
 
 ### 后处理最小闭环

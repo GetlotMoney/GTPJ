@@ -846,7 +846,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
 
     workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "workflow_diagrams.md")
-    for marker in ["## Version Flow", "## Trial Flow", "## 总流程框架", "## Module Trial 流程框架"]:
+    for marker in ["## Version Flow", "## Trial Flow", "## Framework Diagram", "## 总流程框架", "## Module Trial 流程框架"]:
         if marker not in workflow_diagrams:
             raise WorkflowError(f"workflow_diagrams.md missing section: {marker}")
     version_template = read_text(REPO_ROOT / "experiments" / "templates" / "VERSION_template.md")
@@ -855,6 +855,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("VERSION_template.md must include ## Version Flow")
     if "## Trial Flow" not in trial_template:
         raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
+    if "## Framework Diagram" not in trial_template:
+        raise WorkflowError("TRIAL_README_template.md must include ## Framework Diagram")
     for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
         if not version_dir.is_dir():
             continue
@@ -4301,6 +4303,55 @@ trial_folder: {rel(idea_dir)}
     ensure_dir(trial_dir)
     copy_new(REPO_ROOT / "experiments" / base_version / "config.yaml", trial_dir / "config.yaml")
     write_new(trial_dir / "code.diff", "")
+    write_new(
+        trial_dir / "framework_diagram.md",
+        f"""# Framework Diagram
+
+```text
+trial_id: {trial_id}
+idea_id: {idea_id}
+base_version: {base_version}
+source_idea_file: {rel(source_idea_file)}
+html_view:
+warehouse_artifact:
+code_vs_intent: pending
+```
+
+## Diagram
+
+Add the authoritative Mermaid diagram here. If an HTML view is generated for owner review,
+record its local `file:///D:/...` link or Warehouse artifact above.
+
+```mermaid
+flowchart TD
+  Input["input tensors"] --> Forward["main forward path"]
+  Forward --> Logits["logits"]
+  Forward -. "loss reads tensors here" .-> Loss["auxiliary loss"]
+```
+
+## Variable Glossary
+
+| Variable | Produced by | Consumed by | Shape | Meaning | Grad / detach | Train/eval difference |
+|---|---|---|---|---|---|---|
+
+## Method Glossary
+
+| Method / module | Code location | Inputs | Outputs | Responsibility | Config switch | Baseline-off behavior |
+|---|---|---|---|---|---|---|
+
+## Loss Flow
+
+| Loss | Reads | Target / teacher / source | Weight key | Gradient boundary | Where it appears in the diagram |
+|---|---|---|---|---|---|
+
+## Code vs Intent
+
+- [ ] The diagram is grounded in inspected code, not memory.
+- [ ] The implemented path matches the idea/design.
+- [ ] Any mismatch is explicitly marked as code vs intent.
+- [ ] Lines do not overlap nodes or other semantic lines in the owner HTML view.
+""",
+    )
     review_template = """# Innovation Review
 
 ```text
@@ -4362,6 +4413,7 @@ interface_precheck: interface_precheck.md
 review_round_1: review_round_1.md
 review_round_2: review_round_2.md
 agent_summary: agent_summary.md
+framework_diagram: framework_diagram.md
 ```
 
 ## 改动文件
@@ -4390,6 +4442,22 @@ flowchart TD
   Root --> R3["Review 3: post-run evidence"]
   R3 --> Decision["trial_decision / promotion_decision"]
 ```
+
+## Framework Diagram
+
+```text
+path: framework_diagram.md
+html_view:
+warehouse_artifact:
+code_vs_intent: pending
+```
+
+`framework_diagram.md` must explain every diagram variable and method:
+
+- variable glossary: source, shape, meaning, gradient/detach status, and train/eval difference.
+- method glossary: code location, inputs, outputs, responsibility, config switch, and baseline-off behavior.
+- embedded loss flow: each loss is attached to the tensors it reads.
+- code vs intent: whether inspected code matches the idea/design.
 
 ## Innovation Code Review
 
