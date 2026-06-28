@@ -23,6 +23,11 @@ baseline_grade       可作为稳定 baseline 的证据。
 `best_observed_H` 和 owner 选择的当前主线，但必须同时写 `needs_confirmation`、
 `owner_activated_unconfirmed` 或 `provisional`。不得把一次最高 H 结果直接表述为 confirmed baseline。
 
+复现状态硬门：任何状态检查、结果比较、promotion 或 tag 前，先检查 `baseline_repro_status`
+或运行 `python workflow/gtpj_workflow.py repro-status --version <vX>`。若输出
+`verdict: needs_confirmation`，该版本只能作为 active code / unconfirmed reference，不能作为
+baseline-grade 证据，也不能让 agent 靠记忆把 `best_observed_H` 写成 `confirmed_H`。
+
 运行实验前：
 
 1. 检查 Git status。

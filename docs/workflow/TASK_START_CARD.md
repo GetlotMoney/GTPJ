@@ -438,6 +438,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚；
 - 没有填写 `evidence_level`，或把 `quick_local` / `valid_single_run` 结果写成 confirmed baseline；
 - `best_observed_H` 和 `confirmed_H` 混写，导致无法判断复现失败影响哪个结论；
+- 启动卡涉及状态、复现、结果比较、promotion 或 tag，但没有先检查 `baseline_repro_status`；
 - raw logs、checkpoint、generated figures 会写进 GitHub；
 - Runner 需要 GPU，但 lock 状态未知；
 - promotion 只看 H 提升，没有完整证据链。

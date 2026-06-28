@@ -197,6 +197,27 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("docs/workflow/QUICK_START.md", required)
         self.assertIn("docs/workflow/TASK_START_MINI.md", required)
 
+    def test_repro_status_marks_best_observed_as_unconfirmed(self) -> None:
+        self.module.CANONICAL_BASELINES["v2"] = {
+            "name": "GTPJ-v2",
+            "H": "74.29",
+            "result_file": "experiments/v2/result.md",
+            "version_file": "experiments/v2/VERSION.md",
+            "evidence_level": "valid_single_run",
+            "best_observed_H": "74.29",
+            "confirmed_H": "pending",
+            "confirmation_status": "needs_confirmation",
+            "status": "owner_activated_unconfirmed",
+        }
+
+        code, stdout, stderr = self._run_main("repro-status", "--version", "v2")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("verdict: needs_confirmation", stdout)
+        self.assertIn("comparison_reference: best_observed_H=74.29 (unconfirmed)", stdout)
+        self.assertIn("can_claim_confirmed_baseline: no", stdout)
+
     def test_start_open_new_module_outputs_mini_card_without_writing(self) -> None:
         self._write_selected_idea_files()
         idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")

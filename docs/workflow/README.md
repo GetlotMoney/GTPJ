@@ -17,6 +17,10 @@ docs/workflow/TASK_START_MINI.md
 可见的 8 字段启动卡。完整 `WORKFLOW_ROUTER.md` 和 `TASK_START_CARD.md` 保留为 Coordinator
 后台展开和审查依据。
 
+状态、复现、结果比较、promotion 或 tag 前，Coordinator 必须先检查 `baseline_repro_status`
+或运行 `python workflow/gtpj_workflow.py repro-status --version <vX>`，不要靠聊天记忆判断
+某个 `best_observed_H` 是否已经变成 `confirmed_H`。
+
 当前主规范是：
 
 ```text

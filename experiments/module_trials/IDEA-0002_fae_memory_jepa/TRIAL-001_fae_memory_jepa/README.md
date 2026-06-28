@@ -75,7 +75,7 @@ flowchart TD
 ```text
 path: framework_diagram.md
 html_view: file:///D:/Backup/Documents/Myself/GTPJ_Warehouse/diagrams/IDEA-0002_fae_memory_jepa_code_vs_intent.html
-code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA; ATTEMPT-002 is planned as strict main-path jepa_memory + conditional text.
+code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA; ATTEMPT-002/003 test strict main-path jepa_memory + conditional text.
 ```
 
 ## Innovation Code Review
@@ -101,9 +101,14 @@ activation_mode: real_multi_agent
 
 ## 决策
 
-ATTEMPT-001 completed but underperformed active v2 by `-0.47` H. Decision: `revise`; no promotion.
+ATTEMPT-001 completed but was `-0.47` H below active v2 `best_observed_H=74.29`
+(`confirmed_H=pending`). Decision: `revise`; no promotion.
 
 Implementation clarification: ATTEMPT-001 is a valid keep-only FAE-memory JEPA variant. In that run, `_ag_jepa_loss`
 recomputed FAE over keep tokens inside the loss branch, rather than consuming the main forward path's full `jepa_memory`.
 ATTEMPT-002 is planned to test the corrected owner intent: `context = mean(kept main-path jepa_memory)`,
 `target = mean(masked patch_z).detach()`, and AG-JEPA positive/negative text both use sample-conditioned text.
+
+ATTEMPT-003 cleanly confirmed the ATTEMPT-002 74-level result (`confirmed_H=74.24`). It is a keep result for
+IDEA-0002, but not a formal promotion/tag basis: the current v2 comparison value remains an unconfirmed
+`best_observed_H=74.29`, so a v2 clean confirmation is still required before any baseline-grade comparison.

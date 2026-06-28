@@ -66,6 +66,7 @@ baseline_grade:
 ```bash
 git switch main
 git status --short
+python workflow/gtpj_workflow.py repro-status --version v2
 python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-remote
 ```
@@ -76,6 +77,7 @@ python workflow/gtpj_workflow.py validate-remote
 working tree: clean
 validate-ok
 validate-remote-ok
+repro-status 明确区分 best_observed_H 和 confirmed_H
 ```
 
 如果工作区不干净，先提交或处理当前改动，不要直接开实验分支。

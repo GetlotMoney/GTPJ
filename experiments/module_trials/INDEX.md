@@ -7,7 +7,7 @@ Authoritative idea records live under `idea_tree/ideas/`. This directory stores 
 | Idea | Source idea file | Trial evidence directory | Trial status | Summary |
 |---|---|---|---|---|
 | `IDEA-0001` | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | `experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly` | owner_activated_to_v2 | ATTEMPT-019 best_observed_H=74.29 is owner-activated as `GTPJ-v2`; clean confirmation and U/S gap review remain blocking follow-ups before confirmed/baseline-grade claims. |
-| `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | keep | ATTEMPT-003 H=74.24, delta_H=-0.05 vs active v2 H=74.29; no promotion. |
+| `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | keep | ATTEMPT-003 H=74.24, delta_H=-0.05 vs active v2 best_observed_H=74.29 (unconfirmed); no promotion/tag before v2 clean confirmation. |
 
 ## Start Rules
 

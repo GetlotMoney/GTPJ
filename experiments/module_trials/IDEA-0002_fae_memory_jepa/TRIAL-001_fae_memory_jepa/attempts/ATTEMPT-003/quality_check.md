@@ -10,7 +10,8 @@ promotion_decision: blocked
 
 - Metrics parsed from the registered training log: U=71.32, S=77.40, H=74.24, ZS=81.62, best_epoch=33.
 - Clean confirmation of the 74-level ATTEMPT-002 result passed.
-- Promotion remains blocked because H=74.24 is below active v2 H=74.29 by 0.05.
+- Promotion/tag remains blocked because the active v2 comparison reference is unconfirmed:
+  `best_observed_H=74.29`, `confirmed_H=pending`; ATTEMPT-003 is 0.05 below that unconfirmed reference.
 - Attempt decision recorded as `keep`.
 - Raw artifacts are registered in Warehouse; GitHub keeps only lightweight identities.
 

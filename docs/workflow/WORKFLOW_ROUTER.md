@@ -35,8 +35,8 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 
 | owner 口令 | Router 默认归类 | 默认行为 |
 |---|---|---|
-| `查状态` | read-only status | 只读检查仓库、active baseline、队列和阻塞项。 |
-| `复现` | confirmation | 默认当前 active baseline；未要求正式证据时优先 `quick_local` 或准备路径。 |
+| `查状态` | read-only status | 只读检查仓库、active baseline 复现状态、队列和阻塞项。 |
+| `复现` | confirmation | 默认先查当前 active baseline 是否已复现；未要求正式证据时优先 `quick_local` 或准备路径。 |
 | `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
 | `消融` | ablation | 判断 version-level 或 trial-internal，并先检查接口门。 |
 | `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
@@ -57,12 +57,34 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 
 1. 用户本轮明确要求。
 2. 安全边界：不 push、不发布、不删远端、不重写历史，除非用户明确要求。
-3. 硬门：`code_interface_contract.md`、`quality_gate.md`、`promotion.md`。
-4. 本文件的路由判断。
-5. 具体协议：`idea_tree_protocol.md`、`experiment_protocol.md`、`module_trial_protocol.md` 等。
-6. `IMPLEMENTATION_STATUS.md` 的已落地/按需创建状态。
+3. 复现状态硬门：先判断 `baseline_repro_status`，不能把未确认 `best_observed_H` 当 confirmed baseline。
+4. 硬门：`code_interface_contract.md`、`quality_gate.md`、`promotion.md`。
+5. 本文件的路由判断。
+6. 具体协议：`idea_tree_protocol.md`、`experiment_protocol.md`、`module_trial_protocol.md` 等。
+7. `IMPLEMENTATION_STATUS.md` 的已落地/按需创建状态。
 
 Router 只负责决定走哪条路；证据是否有效，由接口硬门、质量门和 promotion gate 决定。
+
+## 0.1 复现状态快速判定
+
+每次 `查状态`、`复现`、`升版本`、结果比较、tag 或 promotion 前，Coordinator 必须读取当前版本的
+`evidence_level`、`best_observed_H`、`confirmed_H`、`confirmation_status` 和 `status`，或直接运行：
+
+```bash
+python workflow/gtpj_workflow.py repro-status --version <vX>
+```
+
+判定：
+
+```text
+confirmation_status=confirmed 且 confirmed_H 非 pending -> confirmed baseline。
+best_observed_H 有值但 confirmed_H=pending -> unconfirmed reference。
+status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-grade 结论必须阻断。
+```
+
+因此，`H=74.29` 这类单次高点只能写成 `best_observed_H`，不能让 agent 凭记忆或聊天上下文把它当
+已复现 baseline。任何 mini 启动卡如果涉及状态、复现、比较或 promotion，`gates` 必须包含
+`baseline_repro_status`。
 
 ## 1. 总判断规则
 

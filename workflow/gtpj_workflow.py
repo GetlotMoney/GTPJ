@@ -118,6 +118,61 @@ CANONICAL_BASELINES = {
         "status": "owner_activated_unconfirmed",
     }
 }
+
+
+def baseline_evidence(version: str) -> dict[str, str]:
+    meta = CANONICAL_BASELINES.get(version)
+    if meta is None:
+        raise WorkflowError(f"Unknown baseline version: {version}")
+
+    h_value = meta.get("H", "")
+    evidence_level = meta.get("evidence_level") or "baseline_grade"
+    best_observed_h = meta.get("best_observed_H") or h_value
+    confirmed_h = meta.get("confirmed_H") or h_value
+    confirmation_status = meta.get("confirmation_status") or (
+        "confirmed" if confirmed_h and confirmed_h != "pending" else "needs_confirmation"
+    )
+    status = meta.get("status") or (
+        "confirmed" if confirmation_status == "confirmed" else "owner_activated_unconfirmed"
+    )
+    return {
+        "name": meta.get("name", version),
+        "H": h_value,
+        "evidence_level": evidence_level,
+        "best_observed_H": best_observed_h,
+        "confirmed_H": confirmed_h,
+        "confirmation_status": confirmation_status,
+        "status": status,
+    }
+
+
+def baseline_is_confirmed(version: str) -> bool:
+    evidence = baseline_evidence(version)
+    return (
+        evidence["confirmation_status"] == "confirmed"
+        and evidence["confirmed_H"] not in {"", "pending"}
+        and evidence["evidence_level"] in {"confirmation_grade", "baseline_grade"}
+    )
+
+
+def comparison_reference_h(version: str) -> str:
+    evidence = baseline_evidence(version)
+    return evidence["confirmed_H"] if baseline_is_confirmed(version) else evidence["best_observed_H"]
+
+
+def comparison_reference_field(version: str) -> str:
+    return "confirmed_H" if baseline_is_confirmed(version) else "best_observed_H"
+
+
+def comparison_reference_phrase(version: str) -> str:
+    field = comparison_reference_field(version)
+    value = comparison_reference_h(version) or "-"
+    suffix = "" if baseline_is_confirmed(version) else " (unconfirmed)"
+    return f"{version} {field}={value}{suffix}"
+
+
+def reproducibility_verdict(version: str) -> str:
+    return "confirmed" if baseline_is_confirmed(version) else "needs_confirmation"
 TUNE_CANDIDATE_RULES = [
     {
         "parameter": "clip_a_self_outer_ratio",
@@ -740,21 +795,70 @@ def cmd_status(_: argparse.Namespace) -> int:
     head = git(["rev-parse", "--short", "HEAD"], check=False)
     tags = git(["tag", "--points-at", "HEAD"], check=False)
     porcelain = git(["status", "--short"], check=False)
+    current_version = ""
+    idea_tree_path = REPO_ROOT / "idea_tree" / "idea_tree.json"
+    if idea_tree_path.exists():
+        try:
+            current_version = str(json.loads(read_text(idea_tree_path)).get("current_version", ""))
+        except json.JSONDecodeError:
+            current_version = ""
 
     print("GTPJ repository 状态")
     print(f"- branch: {branch}")
     print(f"- head: {head}")
     print(f"- tags at head: {tags or '(none)'}")
     print(f"- working tree: {'dirty' if porcelain else 'clean'}")
+    if current_version:
+        print(f"- current_version: {current_version}")
     print()
     print("可用版本:")
     for version_dir in sorted((REPO_ROOT / "experiments").glob("v*")):
         if version_dir.is_dir():
             print(f"- {version_dir.name}: {rel(version_dir)}")
     print()
+    print("复现状态:")
+    for version in sorted(CANONICAL_BASELINES):
+        evidence = baseline_evidence(version)
+        active = " (active)" if version == current_version else ""
+        print(
+            f"- {version}{active}: {reproducibility_verdict(version)}; "
+            f"evidence_level={evidence['evidence_level']}; "
+            f"best_observed_H={evidence['best_observed_H']}; "
+            f"confirmed_H={evidence['confirmed_H']}; "
+            f"confirmation_status={evidence['confirmation_status']}"
+        )
+    print()
     print("后续队列:")
     for queue in sorted((REPO_ROOT / "idea_tree" / "queues").glob("*.md")):
         print(f"- {rel(queue)}")
+    return 0
+
+
+def cmd_repro_status(args: argparse.Namespace) -> int:
+    version = args.version.strip()
+    if not version:
+        data = load_idea_tree()
+        version = str(data.get("current_version", "")).strip()
+    if not version:
+        raise WorkflowError("Unable to infer current version; pass --version vX")
+    evidence = baseline_evidence(version)
+    confirmed = baseline_is_confirmed(version)
+    print(f"{version} reproducibility")
+    print(f"- name: {evidence['name']}")
+    print(f"- status: {evidence['status']}")
+    print(f"- evidence_level: {evidence['evidence_level']}")
+    print(f"- best_observed_H: {evidence['best_observed_H']}")
+    print(f"- confirmed_H: {evidence['confirmed_H']}")
+    print(f"- confirmation_status: {evidence['confirmation_status']}")
+    print(f"- verdict: {reproducibility_verdict(version)}")
+    print(
+        f"- comparison_reference: {comparison_reference_field(version)}="
+        f"{comparison_reference_h(version) or '-'}"
+        f"{'' if confirmed else ' (unconfirmed)'}"
+    )
+    print(f"- can_claim_confirmed_baseline: {'yes' if confirmed else 'no'}")
+    if not confirmed:
+        print("- next_action: run clean confirmation before baseline-grade or tag/promotion claims")
     return 0
 
 
@@ -844,6 +948,18 @@ def cmd_validate(_: argparse.Namespace) -> int:
     missing = [item for item in required if not (REPO_ROOT / item).exists()]
     if missing:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
+
+    marker_requirements = {
+        "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
+        "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H"],
+        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status"],
+        "workflow/README.md": ["repro-status", "confirmed_H"],
+    }
+    for path_text, markers in marker_requirements.items():
+        text = read_text(REPO_ROOT / path_text)
+        for marker in markers:
+            if marker not in text:
+                raise WorkflowError(f"{path_text} missing reproducibility marker: {marker}")
 
     workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "workflow_diagrams.md")
     for marker in ["## Version Flow", "## Trial Flow", "## Framework Diagram", "## 总流程框架", "## Module Trial 流程框架"]:
@@ -1732,7 +1848,7 @@ def make_result_yaml(
     git_dirty: str = "false",
 ) -> str:
     metrics = metrics or {}
-    baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
+    baseline_h = comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
     h_value = metrics.get("H", "")
     delta_h = ""
     if baseline_h and h_value:
@@ -1753,6 +1869,7 @@ metrics:
   ZS: {yaml_scalar(metrics.get("ZS", ""))}
   best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
   baseline_H: {yaml_scalar(baseline_h)}
+  baseline_reference: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
   delta_H: {yaml_scalar(delta_h)}
   seed: {yaml_scalar(seed)}
   source: {yaml_scalar("training_log")}
@@ -1760,6 +1877,10 @@ metrics:
 baseline:
   version: {yaml_scalar(version)}
   H: {yaml_scalar(baseline_h)}
+  reference_field: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
+  reference_status: {yaml_scalar(baseline_evidence(version)["status"] if version in CANONICAL_BASELINES else "")}
+  confirmed_H: {yaml_scalar(baseline_evidence(version)["confirmed_H"] if version in CANONICAL_BASELINES else "")}
+  confirmation_status: {yaml_scalar(baseline_evidence(version)["confirmation_status"] if version in CANONICAL_BASELINES else "")}
 delta:
   H: {yaml_scalar(delta_h)}
 run:
@@ -2369,7 +2490,7 @@ def make_module_attempt_result_yaml(
     artifacts: dict[str, dict[str, str]],
     recorded_at: str,
 ) -> str:
-    baseline_h = CANONICAL_BASELINES.get(version, {}).get("H", "")
+    baseline_h = comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
     delta_h = ""
     if baseline_h and metrics.get("H"):
         try:
@@ -2394,6 +2515,7 @@ metrics:
   ZS: {yaml_scalar(metrics.get("ZS", ""))}
   best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
   baseline_H: {yaml_scalar(baseline_h)}
+  baseline_reference: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
   delta_H: {yaml_scalar(delta_h)}
   seed: {yaml_scalar(seed)}
   source: {yaml_scalar("training_log")}
@@ -2401,6 +2523,10 @@ metrics:
 baseline:
   version: {yaml_scalar(version)}
   H: {yaml_scalar(baseline_h)}
+  reference_field: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
+  reference_status: {yaml_scalar(baseline_evidence(version)["status"] if version in CANONICAL_BASELINES else "")}
+  confirmed_H: {yaml_scalar(baseline_evidence(version)["confirmed_H"] if version in CANONICAL_BASELINES else "")}
+  confirmation_status: {yaml_scalar(baseline_evidence(version)["confirmation_status"] if version in CANONICAL_BASELINES else "")}
 delta:
   H: {yaml_scalar(delta_h)}
 run:
@@ -2544,7 +2670,9 @@ def sync_evidence_defaults(
 def metric_delta_h(version: str, metrics: dict[str, str]) -> str:
     if metrics.get("delta_H"):
         return metrics["delta_H"]
-    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    baseline_h = metrics.get("baseline_H") or (
+        comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
+    )
     h_value = metrics.get("H", "")
     if baseline_h and h_value:
         try:
@@ -2648,7 +2776,9 @@ def make_trial_root_result_yaml(
     artifacts: dict[str, dict[str, str]],
     recorded_at: str,
 ) -> str:
-    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    baseline_h = metrics.get("baseline_H") or (
+        comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
+    )
     delta_h = metric_delta_h(version, metrics)
     evidence_lines = artifact_id_lines(artifacts)
     evidence_block = "\n".join(evidence_lines)
@@ -2668,6 +2798,7 @@ metrics:
   ZS: {yaml_scalar(metrics.get("ZS", ""))}
   best_epoch: {yaml_scalar(metrics.get("best_epoch", ""))}
   baseline_H: {yaml_scalar(baseline_h)}
+  baseline_reference: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
   delta_H: {yaml_scalar(delta_h)}
   seed: {yaml_scalar(seed)}
   source: {yaml_scalar("attempt_result_yaml")}
@@ -2675,6 +2806,10 @@ metrics:
 baseline:
   version: {yaml_scalar(version)}
   H: {yaml_scalar(baseline_h)}
+  reference_field: {yaml_scalar(comparison_reference_field(version) if version in CANONICAL_BASELINES else "")}
+  reference_status: {yaml_scalar(baseline_evidence(version)["status"] if version in CANONICAL_BASELINES else "")}
+  confirmed_H: {yaml_scalar(baseline_evidence(version)["confirmed_H"] if version in CANONICAL_BASELINES else "")}
+  confirmation_status: {yaml_scalar(baseline_evidence(version)["confirmation_status"] if version in CANONICAL_BASELINES else "")}
 delta:
   H: {yaml_scalar(delta_h)}
 run:
@@ -2880,11 +3015,10 @@ def update_module_trial_index(
     index_path = REPO_ROOT / "experiments" / "module_trials" / "INDEX.md"
     content = read_text(index_path) if index_path.exists() else "# Module Trials Index\n\n"
     trial_rel = rel(trial_dir)
-    baseline_h = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
     delta_h = metric_delta_h(version, metrics)
     summary = (
         f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
-        f"vs active {version} H={baseline_h or '-'}; "
+        f"vs active {comparison_reference_phrase(version) if version in CANONICAL_BASELINES else version}; "
         + ("promotion candidate." if decision == "promote" else "no promotion.")
     )
     row = f"| `{idea_id}` | `{idea_file}` | `{trial_rel}` | {decision} | {summary} |"
@@ -2955,15 +3089,16 @@ def sync_idea_tree_from_trial(
     if trial_rel not in idea.setdefault("linked_trials", []):
         idea["linked_trials"].append(trial_rel)
     delta_h = metric_delta_h(version, metrics)
+    reference = comparison_reference_phrase(version) if version in CANONICAL_BASELINES else version
     idea["next_action"] = (
         f"{trial_id} {attempt_upper} synchronized as {decision}: "
-        f"H={metrics.get('H', '')}, delta_H={delta_h or '-'} vs {version}; "
+        f"H={metrics.get('H', '')}, delta_H={delta_h or '-'} vs {reference}; "
         + ("promotion gate may proceed after confirmation." if decision == "promote" else "do not promote without a stronger follow-up.")
     )
     evidence_ref = f"{trial_rel}/result.yaml"
     note = (
         f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
-        f"vs {version}; trial decision={decision}."
+        f"vs {reference}; trial decision={decision}."
     )
     evidence = idea.setdefault("evidence", [])
     if not any(item.get("ref") == evidence_ref for item in evidence if isinstance(item, dict)):
@@ -3003,7 +3138,9 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
     metrics = {name: yaml_section_value(attempt_result, "metrics", name) for name in [*METRIC_NAMES, "best_epoch", "baseline_H", "delta_H", "seed"]}
     if not metrics.get("H"):
         raise WorkflowError(f"{rel(attempt_result_path)} is missing metrics.H")
-    metrics["baseline_H"] = metrics.get("baseline_H") or CANONICAL_BASELINES.get(version, {}).get("H", "")
+    metrics["baseline_H"] = metrics.get("baseline_H") or (
+        comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
+    )
     metrics["delta_H"] = metric_delta_h(version, metrics)
     decision = args.decision or yaml_section_value(attempt_result, "decision", "status") or "revise"
     raw_evidence_level = args.evidence_level or yaml_section_value(attempt_result, "evidence", "evidence_level")
@@ -3837,19 +3974,19 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
     defaults = {
         "查状态": {
             "task_type": "read-only status",
-            "target": "repository state, active baseline, queues, blockers",
+            "target": "repository state, active baseline reproducibility, queues, blockers",
             "writes": "none",
             "agent_mode": "role_only, because this is a read-only check",
-            "gates": "repo_state, current_version",
-            "next_action": "inspect branch, dirty tree, active version, and ready queues",
+            "gates": "repo_state, current_version, baseline_repro_status",
+            "next_action": "run status/repro-status before comparing or promoting results",
         },
         "复现": {
             "task_type": "confirmation",
             "target": "current baseline result",
             "writes": "none until owner confirms run and evidence level",
             "agent_mode": "role_only for preparation; Runner serial if a run starts",
-            "gates": "metric_semantics, evidence_level, artifact_boundary",
-            "next_action": "decide quick_local vs formal confirmation target",
+            "gates": "baseline_repro_status, metric_semantics, evidence_level, artifact_boundary",
+            "next_action": "check current baseline repro-status, then decide quick_local vs formal confirmation target",
         },
         "调参": {
             "task_type": "tune",
@@ -4638,6 +4775,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status", help="显示仓库状态")
     status.set_defaults(func=cmd_status)
+
+    repro_status = sub.add_parser("repro-status", help="只读显示 baseline 复现状态")
+    repro_status.add_argument("--version", default="")
+    repro_status.set_defaults(func=cmd_repro_status)
 
     validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)

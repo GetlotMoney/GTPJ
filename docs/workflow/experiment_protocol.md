@@ -115,6 +115,9 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 硬规则：
 
 - 单次最高结果只能写为 `best_observed_H`，不能直接写成 `confirmed_H`。
+- 任意结果比较、`delta_H` 解释、promotion 或 tag 决策前，先运行或等价执行
+  `python workflow/gtpj_workflow.py repro-status --version <vX>`。如果对照版本只有
+  `best_observed_H` 且 `confirmed_H=pending`，它只能写成未确认参考，不能写成 confirmed baseline。
 - `git_dirty: true`、`dirty_state: dirty`、`run_commit` 缺失或运行前未冻结时，结果最多是
   `quick_local` 或普通 debug 证据，不能进入 `confirmation_grade` 或 `baseline_grade`。
 - clean confirmation 失败不会删除原始实验记录；它会把该结果维持在 `valid_single_run` 或

@@ -11,6 +11,7 @@ metrics:
   ZS: "81.62"
   best_epoch: "33"
   baseline_H: "74.29"
+  baseline_reference: "best_observed_H"
   delta_H: "-0.05"
   seed: "5"
   source: "training_log"
@@ -18,6 +19,10 @@ metrics:
 baseline:
   version: "v2"
   H: "74.29"
+  reference_field: "best_observed_H"
+  reference_status: "owner_activated_unconfirmed"
+  confirmed_H: "pending"
+  confirmation_status: "needs_confirmation"
 delta:
   H: "-0.05"
 run:

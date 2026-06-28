@@ -18,6 +18,9 @@
 - 还没有把本地看板或自动 runtime 变成日常强制入口。
 - `GTPJ-v2` 仍必须补 clean confirmation，之后才可把 `best_observed_H=74.29`
   升级成 `confirmed_H` 或 baseline-grade 证据；seen/unseen gap analysis 和关键 ablation 仍是后续项。
+- 数据是否可复现是高优先级硬门。任何状态检查、结果比较、promotion 或 tag 前，必须用
+  `python workflow/gtpj_workflow.py repro-status --version <vX>` 或等价字段读取确认
+  `baseline_repro_status`，不能靠聊天记忆判断。
 
 所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active mainline `v2`，
 除非 owner 明确要求从历史版本 tag 开始。

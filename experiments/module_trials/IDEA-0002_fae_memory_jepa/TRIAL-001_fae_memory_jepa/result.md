@@ -26,5 +26,6 @@ runner_console_artifact_id: receipt:v2:module_trial:TRIAL-001:attempt-003:runner
 
 `keep`
 
-ATTEMPT-003 cleanly reproduces the 74-level ATTEMPT-002 result, but promotion remains blocked because
-`H=74.24` is still below the active v2 baseline `H=74.29` by `0.05`.
+ATTEMPT-003 cleanly reproduces the 74-level ATTEMPT-002 result. Promotion/tag remains blocked because
+the active v2 comparison reference is still `best_observed_H=74.29` with `confirmed_H=pending`;
+`H=74.24` is `0.05` below that unconfirmed reference, not below a confirmed v2 baseline.

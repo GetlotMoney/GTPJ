@@ -26,6 +26,7 @@
 | Workflow Router | 已落地 | `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，任何 GTPJ 任务先用它判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | Task Start Card | 已落地 | `docs/workflow/TASK_START_CARD.md` | 每次改文件、跑实验或登记结果前填写，记录 Router 分类、写入边界、agents、硬门和阻断条件。 |
 | Owner 薄入口 | 已落地 | `docs/workflow/QUICK_START.md`, `docs/workflow/TASK_START_MINI.md` | owner 日常使用 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令；Coordinator 展开完整 Router 和启动卡。 |
+| 复现状态快速判定 | 已落地 | `workflow/gtpj_workflow.py`, `docs/workflow/QUICK_START.md`, `docs/workflow/WORKFLOW_ROUTER.md` | `repro-status --version <vX>` 只读输出 `best_observed_H`、`confirmed_H` 和 `confirmation_status`；状态/比较/promotion/tag 前必须检查 `baseline_repro_status`。 |
 | First Closed Loop | 已落地 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 第一次开跑工作流时使用，先用 readiness check / tune-suggest / confirmation 验证闭环，不直接从复杂 module trial 开始。 |
 | 总工作流规范 | 已落地 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
 | workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |

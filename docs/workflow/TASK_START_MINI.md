@@ -78,8 +78,8 @@ base_version: current active baseline
 target: current baseline result
 writes: none until owner confirms run and evidence level
 agent_mode: role_only for preparation; Runner serial if a run starts
-gates: metric_semantics, evidence_level, artifact_boundary
-next_action: decide quick_local vs formal confirmation target
+gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
+next_action: run repro-status, then decide quick_local vs formal confirmation target
 ```
 
 ### 试这个

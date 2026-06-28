@@ -83,13 +83,14 @@ pre_run_freeze_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
 seed: 5
 U/S/H/ZS: 70.32 / 77.68 / 73.82 / 81.39
 best_epoch: 34
-baseline_v2_H: 74.29
+baseline_v2_best_observed_H: 74.29
+baseline_v2_confirmed_H: pending
 delta_H: -0.47
 decision: revise
 promotion_decision: not_applicable
 ```
 
-ATTEMPT-001 proves the intended gradient path can be implemented and run cleanly, but the current parameterization underperforms active v2. This weakens the idea for v2 in its current form; it does not prove that every FAE-memory JEPA variant is invalid. Any continuation should be a targeted ATTEMPT-002 param/ablation run, not a promotion path.
+ATTEMPT-001 proves the intended gradient path can be implemented and run cleanly, but the current parameterization is below active v2 `best_observed_H=74.29` (`confirmed_H=pending`). This weakens the idea for v2 in its current form; it does not prove that every FAE-memory JEPA variant is invalid. Any continuation should be a targeted follow-up, not a promotion path.
 
 ## Follow-up: ATTEMPT-002 strict main-path memory + conditional text
 
