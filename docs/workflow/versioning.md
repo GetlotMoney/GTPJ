@@ -23,11 +23,11 @@ v3
 当前 active baseline：
 
 ```text
-GTPJ-v2
-code_tag: v2
-best_observed_H: 74.29
+GTPJ-v3
+code_tag: v3
+best_observed_H: 74.27
 confirmed_H: pending
-status: owner_activated_unconfirmed
+status: owner_accepted_stochastic_unconfirmed
 ```
 
 历史 baseline：

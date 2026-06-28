@@ -9,11 +9,11 @@
 当前 active mainline code 是：
 
 ```text
-GTPJ-v2
-tag: v2
-best_observed_H: 74.29
+GTPJ-v3
+tag: v3
+best_observed_H: 74.27
 confirmed_H: pending
-status: owner_activated_unconfirmed
+status: owner_accepted_stochastic_unconfirmed
 ```
 
 历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。如果本地或远端 baseline tag
@@ -201,8 +201,8 @@ trial/v1/idea-0003/trial-001
 - `trial/**`：保护 trial 快照 tag，禁止移动、覆盖或删除。
 
 当前仓库初始化阶段如果发现 `v1` tag 错指旧基线，允许做一次性更正；更正后 `v1`
-必须指向 `H=73.93` 的 GTPJ-v1 快照，之后按不可移动对象管理。`v2` 是当前 active
-baseline tag，也按不可移动对象管理。
+必须指向 `H=73.93` 的 GTPJ-v1 快照，之后按不可移动对象管理。`v2` 和 `v3`
+都是正式 baseline tag；当前 owner-accepted tag 是 `v3`，也按不可移动对象管理。
 
 Push 规则：
 

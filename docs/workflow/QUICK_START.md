@@ -8,7 +8,7 @@
 
 ```bash
 python workflow/gtpj_workflow.py start --phrase "开新模块"
-python workflow/gtpj_workflow.py repro-status --version v2
+python workflow/gtpj_workflow.py repro-status --version v3
 ```
 
 这些命令只输出 mini 启动卡或复现状态，不写文件、不建分支、不跑训练。
@@ -53,7 +53,7 @@ mini 启动卡的 `gates` 必须包含 `baseline_repro_status`。未确认版本
 
 ```text
 1. 只读检查仓库状态、active baseline 和当前分支。
-2. 读取当前 active baseline 的 idea 视图，例如 idea_tree/versions/v2.md。
+2. 读取当前 active baseline 的 idea 视图，例如 idea_tree/versions/v3.md。
 3. 找 selected 且无 blocker 的最高优先级 idea。
 4. 检查 idea_id、source/ref/status、version_scores、hypothesis、scope、risk 是否齐全。
 5. 输出 mini 启动卡，说明能不能开工和下一步最小动作。
@@ -62,7 +62,7 @@ mini 启动卡的 `gates` 必须包含 `baseline_repro_status`。未确认版本
 8. 不 push，除非 owner 明确说提交推送。
 ```
 
-当前 active mainline 是 `GTPJ-v2 / tag v2` 时，`开新模块` 默认基于 `v2`。未来 active
+当前 active mainline 是 `GTPJ-v3 / tag v3` 时，`开新模块` 默认基于 `v3`。未来 active
 baseline 改变后，默认跟随新的 active baseline。
 
 ## 4. Ready Idea 条件
@@ -84,7 +84,7 @@ risk: not empty
 如果没有 ready idea，Coordinator 只能问一个最小问题，例如：
 
 ```text
-当前 v2 没有可直接开工的 selected idea。要我先列 3 个候选，还是把你的想法登记成 local heuristic idea？
+当前 v3 没有可直接开工的 selected idea。要我先列 3 个候选，还是把你的想法登记成 local heuristic idea？
 ```
 
 ## 5. Owner 不需要说的内部词
@@ -92,7 +92,7 @@ risk: not empty
 下面这些都是后台动作，不应该要求 owner 口头指定：
 
 ```text
-基于 v2
+基于 v3
 允许改代码
 module trial
 innovation workflow

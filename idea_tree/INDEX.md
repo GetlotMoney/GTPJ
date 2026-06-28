@@ -1,14 +1,14 @@
 # 总创意清单
 
-当前实验版本视图：`idea_tree/versions/v2.md`
+当前实验版本视图：`idea_tree/versions/v3.md`
 
 这是给人读的全局创意总表，只回答“有哪些创意”。
 具体某个版本下一步试什么，请读取 `idea_tree/versions/vX.md`。
 
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
-| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2` | validated | Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml. |
-| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2` | weakened | TRIAL-002 ATTEMPT-010 synchronized as not_confirmed: H=74.01, delta_H=-0.28 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation. |
+| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2`, `v3` | validated | Use GTPJ-v3 as the current owner-accepted mainline; keep v2/v3 confirmation and U/S gap analysis as follow-up evidence work. |
+| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2`, `v3` | validated | GTPJ-v3 is the owner-accepted stochastic mainline tag; next work should run v3 confirmation/multi-seed analysis before manuscript-grade confirmed claims. |
 
 ## 使用规则
 

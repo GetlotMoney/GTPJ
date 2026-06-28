@@ -1,0 +1,69 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: GTPJ-v3
+  name: GTPJ-v3-baseline
+  kind: baseline
+  status: owner_accepted_stochastic_unconfirmed
+  source_trial: TRIAL-002_strict_conditional_jepa
+  source_attempt: ATTEMPT-004
+  created_or_recorded_at: "2026-06-28T00:00:00+08:00"
+version:
+  version: v3
+  parent_version: v2
+  parent_tag: v2
+  code_branch: dev/v2-idea-0002-trial-002-strict-conditional-jepa
+  code_tag: v3
+  source_trial_code_tag: trial/v2/idea-0002/trial-002
+  source_trial_run_commit: c8daa9cb68edcaca3226fe8af3f7fb54757903e4
+  ledger_source_commit: 875cbb634325b2b94fcd09a4f337cd3e90d683f6
+reproducibility:
+  config_file: experiments/v3/config.yaml
+  config_sha256: 7dac00c7607fd784cf97e7a9a65c90849c1b1f32112fcfa16700fbf847c741a8
+  source_attempt_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml
+  source_attempt_config_sha256: 7dac00c7607fd784cf97e7a9a65c90849c1b1f32112fcfa16700fbf847c741a8
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml"
+  seed: "5"
+  dataset: CUB GZSL
+  split_id: standard_v1
+  class_order_id: standard_v1
+  label_mapping_id: standard_v1
+  metric_contract_id: gzsl_u_s_h_zs_v1
+artifacts:
+  train_log:
+    artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
+    role: training_log
+    uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/logs/training_log_CUB_2026-06-28_20-46-21.txt
+    sha256: 9d6dfb11c97ccab8cdab23608364f8efd81825390bc1773e10a0fbd18e415b3a
+    size_bytes: "91977"
+    required_for: audit
+    status: available
+  best_checkpoint:
+    artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:best
+    role: best_model
+    uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/checkpoints/best_model_CUB_2026-06-28_20-46-21_H7427.pth
+    sha256: 4ad897436cde3534b0c9e60447ec605b14aa263eb0504161e617e8a38d62c9f2
+    size_bytes: "102640233"
+    required_for: reproduce_best
+    status: available
+  full_checkpoint:
+    artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:full
+    role: full_checkpoint
+    uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/checkpoints/ckpt_full_CUB_2026-06-28_20-46-21.pth
+    sha256: 136b540da68d6cea3a00bb0e4723e662ae7b1f442330ce50c169ee067f836d41
+    size_bytes: "206854147"
+    required_for: debug
+    status: available
+  runner_console:
+    artifact_id: receipt:v2:module_trial:TRIAL-002:attempt-004:runner_console
+    role: runner_console
+    uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/receipts/stdout_ATTEMPT-004.log
+    sha256: e30d2876695c235a260a29604caa4d58249f48c84405c1f646ab6f7b3d9c3963
+    size_bytes: "98572"
+    required_for: audit
+    status: available
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: true
+  evaluation_semantics_verified: true
+  owner_stochastic_override: true

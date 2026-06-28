@@ -20,7 +20,7 @@
 - TRIAL-002 exists because the strict path changes the implementation hypothesis relative to TRIAL-001.
 - ATTEMPT-001 and ATTEMPT-002 were originally misfiled under TRIAL-001 as ATTEMPT-002 and ATTEMPT-003. They are re-registered here with corrected trial identity and Warehouse artifact ids.
 - ATTEMPT-003 and ATTEMPT-004 are exact same-config confirmation reruns of the strict path. ATTEMPT-003 did not confirm the 74-level result, while ATTEMPT-004 reached H=74.27.
-- Confirmation gate is mixed, not stable. Do not start the planned 10-run tuning sweep, promotion, or tag until the owner explicitly accepts this variance or requests a new confirmation strategy.
+- Confirmation gate is mixed, not stable. The owner explicitly accepted this variance on 2026-06-28 for a formal `GTPJ-v3` tag; keep `confirmed_H=pending` until future confirmation/multi-seed evidence upgrades the record.
 - ATTEMPT-005 is the first reproducibility diagnosis run for `mixed_confirmation`. It keeps the strict main-path FAE-memory + conditional AG-JEPA semantics unchanged and only enables deterministic runtime logging plus dedicated batch sampling RNG.
 - ATTEMPT-006 repeats ATTEMPT-005 exactly to check whether the deterministic diagnosis path itself is reproducible.
 - ATTEMPT-007 and ATTEMPT-008 repeat the deterministic diagnosis path with `random_seed=42` and `batch_sampling_seed=42` to test whether the seed-5 behavior is seed-sensitive.

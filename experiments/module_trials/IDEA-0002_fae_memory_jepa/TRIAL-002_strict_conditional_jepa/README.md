@@ -12,20 +12,21 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-002
-code_commit: cabd509efc754c266f583255cd295d1a81a272a3
-trial_decision: not_confirmed
-promotion_decision: blocked
-promote_to:
+code_commit: c8daa9cb68edcaca3226fe8af3f7fb54757903e4
+trial_decision: owner_accepted_to_v3
+promotion_decision: owner_accepted_stochastic_tag
+baseline_grade_promotion_decision: blocked
+promote_to: v3
 evidence_level: valid_single_run
 best_observed_H: 74.27
 confirmed_H: pending
 confirmation_status: needs_confirmation
 changed_files:
-run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-010/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-010
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-010/logs/training_log_CUB_2026-06-28_23-38-46.txt
-log_sha256: 4c822e25c6cfcc6ec1cf4d58163bbd4b71eb73c5cc690fe5dc4dc96382f6e36f
-log_size_bytes: 93067
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/logs/training_log_CUB_2026-06-28_20-46-21.txt
+log_sha256: 9d6dfb11c97ccab8cdab23608364f8efd81825390bc1773e10a0fbd18e415b3a
+log_size_bytes: 91977
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -70,7 +71,9 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 42 | 71.13 | 77.14 | 74.01 | 81.65 | 42 | `log:v2:module_trial:TRIAL-002:attempt-010` |
+| CUB | 5 | 71.22 | 77.60 | 74.27 | 81.38 | 33 | `log:v2:module_trial:TRIAL-002:attempt-004` |
+
+ATTEMPT-009 and ATTEMPT-010 are retained as clean seed-42 stochastic-variance evidence: `H=74.14` and `H=74.01`.
 
 ## Confirmation Gate
 
@@ -83,8 +86,10 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | ATTEMPT-006 | exact deterministic diagnosis rerun | 73.91 | not_confirmed |
 | ATTEMPT-007 | seed-42 deterministic diagnosis rerun | 73.94 | not_confirmed |
 | ATTEMPT-008 | exact seed-42 deterministic diagnosis rerun | 73.83 | not_confirmed |
+| ATTEMPT-009 | clean seed-42 deterministic rerun after config/diagram freeze | 74.14 | variance_evidence |
+| ATTEMPT-010 | exact clean rerun of ATTEMPT-009 | 74.01 | variance_evidence |
 
-The repeated confirmation evidence is mixed. Best observed strict result remains `H=74.27`, but stability is not proven because ATTEMPT-003 dropped to `H=73.81`; seed-5 deterministic diagnosis produced `H=73.79` and `H=73.91`; seed-42 deterministic diagnosis produced `H=73.94` and `H=73.83`. Tuning, promotion, and tagging remain blocked.
+The repeated confirmation evidence is mixed. Best observed strict result remains `H=74.27`, but stability is not proven because ATTEMPT-003 dropped to `H=73.81`; seed-5 deterministic diagnosis produced `H=73.79` and `H=73.91`; seed-42 deterministic diagnosis produced `H=73.94`, `H=73.83`, `H=74.14`, and `H=74.01`. The owner explicitly accepted this stochastic variance on 2026-06-28 and requested a formal `GTPJ-v3` tag. `confirmed_H` remains pending.
 
 ## Trial Flow
 
@@ -105,7 +110,7 @@ flowchart TD
   A8 --> Warehouse["Warehouse log/checkpoints/receipt"]
   Warehouse --> Attempt["attempt-local manifest/result/quality"]
   Attempt --> R3["Review 3: post-run evidence"]
-  R3 --> Decision["trial_decision: not_confirmed; best_observed_H kept at 74.27; promotion_decision: blocked"]
+  R3 --> Decision["trial_decision: owner_accepted_to_v3; best_observed_H=74.27; confirmed_H=pending"]
 ```
 
 ## Framework Diagram
@@ -128,4 +133,4 @@ activation_mode: real_multi_agent for the original code semantic change; later f
 
 ## Decision
 
-TRIAL-002 is not confirmed. ATTEMPT-004 remains the best observed strict result at `H=74.27`, but deterministic-diagnosis reruns reached only `H=73.79`, `H=73.91`, `H=73.94`, and `H=73.83` with strict determinism and dedicated batch sampling RNG enabled. ATTEMPT-007/008 also preserved a PyTorch warning that memory-efficient attention defaults to a non-deterministic backward algorithm under warn-only mode. This keeps `confirmed_H=pending` and blocks the planned 10-run tuning sweep, formal promotion, and tagging. The active v2 comparison value also remains an unconfirmed `best_observed_H=74.29`.
+TRIAL-002 is owner-accepted as `GTPJ-v3` by explicit stochastic-variance decision on 2026-06-28. ATTEMPT-004 remains the best observed strict result at `H=74.27`; deterministic and seed-42 reruns reached `H=73.79`, `H=73.91`, `H=73.94`, `H=73.83`, `H=74.14`, and `H=74.01`. This supports a formal owner tag but keeps `confirmed_H=pending` and blocks baseline-grade manuscript claims until a future confirmation/multi-seed protocol upgrades the evidence.

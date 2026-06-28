@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0002
 title: FAE-memory JEPA auxiliary loss
-status: weakened
+status: validated
 source_type: user
 source_ref: owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target
 source_status: local_heuristic
@@ -105,3 +105,19 @@ text_z  = embed_text(sample-conditioned text)
 ```
 
 Positive and negative AG-JEPA text conditions both use sample-conditioned text. This run answers whether the longer, paper-diagram-friendly chain can constrain the main classification memory path without changing logits shape, class order, seen/unseen split, label mapping, or metric semantics.
+
+## Trial Result: TRIAL-002 / GTPJ-v3
+
+```text
+source_attempt: ATTEMPT-004
+U/S/H/ZS: 71.22 / 77.60 / 74.27 / 81.38
+best_epoch: 33
+clean_seed42_variance_evidence: ATTEMPT-009 H=74.14; ATTEMPT-010 H=74.01
+decision: owner_accepted_to_v3
+promotion_decision: owner_accepted_stochastic_tag
+baseline_grade_promotion_decision: blocked
+confirmed_H: pending
+confirmation_status: needs_confirmation
+```
+
+The owner accepted the mixed reruns as stochastic variance on 2026-06-28 and requested a formal `GTPJ-v3` tag. The idea is therefore validated as a versioned code path, while strict confirmed/baseline-grade claims remain pending.

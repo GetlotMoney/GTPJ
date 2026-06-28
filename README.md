@@ -3,7 +3,7 @@
 GTPJ 是面向广义零样本学习（generalized zero-shot learning）的
 GeoTopoPatch-JEPA 实验仓库。
 
-这个仓库用于维护当前正式主线 `GTPJ-v2`。它只保留当前认可的框架：
+这个仓库用于维护当前 owner-accepted 正式 tag `GTPJ-v3`。它只保留当前认可的框架：
 冻结 CLIP、GPT 文本描述、CLIP-A-self 文本原型 adapter、patch bottleneck、几何感知局部编码、拓扑保持文本约束、
 条件文本适配、视觉-文本双分支互蒸馏，以及 AG-JEPA 辅助训练。
 
@@ -13,10 +13,11 @@ GeoTopoPatch-JEPA 实验仓库。
 |---|---|---|---|---|
 | `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 新仓库第一版正式 baseline，seed=5，H=73.93。 |
 | `GTPJ-v2` | `v2` | owner-activated / needs confirmation | CUB GZSL | CLIP-A-self text prototype adapter，seed=5，best_observed_H=74.29。 |
+| `GTPJ-v3` | `v3` | owner-accepted stochastic / needs confirmation | CUB GZSL | Strict conditional FAE-memory JEPA，seed=5，best_observed_H=74.27。 |
 
-当前 active mainline code 是 `GTPJ-v2 / tag v2`；其单次最高观察值是
-`best_observed_H=74.29`，`confirmed_H` 仍待 clean confirmation。`GTPJ-v1 / tag v1 / H=73.93`
-仍是永久历史 confirmed baseline。`main` 是唯一长期分支；`v1`、`v2` 都是代码快照 tag，不是分支。
+当前 owner-accepted tag 是 `GTPJ-v3 / tag v3`；其单次最高观察值是
+`best_observed_H=74.27`，`confirmed_H` 仍待 clean confirmation。`GTPJ-v1 / tag v1 / H=73.93`
+仍是永久历史 confirmed baseline。`main` 是唯一长期分支；`v1`、`v2`、`v3` 都是代码快照 tag，不是分支。
 
 ## 当前管理重点
 
@@ -33,14 +34,16 @@ GTPJ/
 |-- tools/                  # 数据、特征、评估工具
 |-- config/
 |   |-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
-|   `-- versions/v2.yaml    # 固定的 GTPJ-v2 配置
+|   |-- versions/v2.yaml    # 固定的 GTPJ-v2 配置
+|   `-- versions/v3.yaml    # 固定的 GTPJ-v3 配置
 |-- docs/                   # GitHub 治理、项目状态和 workflow 规范
 |-- workflow/               # 结构辅助工具和 runtime 接入口
 |-- idea_tree/              # 总创意库和按版本生成的创意选择清单
 `-- experiments/
     |-- module_trials/      # 模块 trial 证据；trial 内部 attempts 可做调参、窄消融、确认
     |-- v1/                 # GTPJ-v1 baseline 和 version-level 调参、消融、确认记录
-    `-- v2/                 # GTPJ-v2 baseline 和 version-level 调参、消融、确认记录
+    |-- v2/                 # GTPJ-v2 baseline 和 version-level 调参、消融、确认记录
+    `-- v3/                 # GTPJ-v3 baseline 和 version-level 调参、消融、确认记录
 ```
 
 ## GitHub 管理规则
@@ -107,7 +110,7 @@ conda activate dvsr_gpu
 或者直接使用：
 
 ```bash
-conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v2.yaml
+conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v3.yaml
 ```
 
 优先阅读：
@@ -118,6 +121,7 @@ conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v2.yaml
 - `docs/PROJECT_STATUS.md`
 - `docs/workflow/README.md`（workflow 入口）
 - `workflow/README.md`（结构辅助工具）
+- `experiments/v3/VERSION.md`
 - `experiments/v2/VERSION.md`
 - `experiments/v1/VERSION.md`
 - `idea_tree/README.md`

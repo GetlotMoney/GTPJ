@@ -10,19 +10,19 @@
 - 本地外部目录已经被定位为材料和资产面：保存来源材料、完整创意来源、raw logs、checkpoint 和实验诊断材料。
 - agents 的角色边界已经落地：选创意、写代码、跑实验、读日志、查接口、审结果、做 promotion 各有边界。
 - 代码接口、评估标注、结果记录、artifact 引用和质量门已经形成规范入口。
-- `IDEA-0001 / TRIAL-001` 已由 owner 激活为 `GTPJ-v2` 当前主线代码；
-  `H=74.29` 是 `best_observed_H`，`confirmed_H` 仍待 clean confirmation。
+- `IDEA-0002 / TRIAL-002` 已由 owner 按随机性判断接受为 `GTPJ-v3` 当前正式 tag；
+  `H=74.27` 是 `best_observed_H`，`confirmed_H` 仍待 clean confirmation。
 
-当前还没有完成的是“自动 runtime 产品化和 v2 后续复核”：
+当前还没有完成的是“自动 runtime 产品化和 v3 后续复核”：
 
 - 还没有把本地看板或自动 runtime 变成日常强制入口。
-- `GTPJ-v2` 仍必须补 clean confirmation，之后才可把 `best_observed_H=74.29`
+- `GTPJ-v3` 仍必须补 clean confirmation，之后才可把 `best_observed_H=74.27`
   升级成 `confirmed_H` 或 baseline-grade 证据；seen/unseen gap analysis 和关键 ablation 仍是后续项。
 - 数据是否可复现是高优先级硬门。任何状态检查、结果比较、promotion 或 tag 前，必须用
   `python workflow/gtpj_workflow.py repro-status --version <vX>` 或等价字段读取确认
   `baseline_repro_status`，不能靠聊天记忆判断。
 
-所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active mainline `v2`，
+所以现在的正确动作是：核心 workflow 按本文件执行；后续实验默认基于当前 active mainline `v3`，
 除非 owner 明确要求从历史版本 tag 开始。
 
 落地状态不要靠口述判断。每次需要确认哪些文件已经实体化、哪些仍是设计时，读取：
@@ -118,7 +118,8 @@ D:\backup\Documents\Myself\GTPJ
 |---|---|
 | `config/README.md` | 说明版本配置、实验局部配置和候选模块开关的关系。 |
 | `config/versions/v1.yaml` | `GTPJ-v1` 权威 baseline 配置。正式版本配置放这里。 |
-| `config/versions/v2.yaml` | `GTPJ-v2` 权威 baseline 配置，是当前 active baseline 的配置源。 |
+| `config/versions/v2.yaml` | `GTPJ-v2` 历史 owner-activated baseline 配置。 |
+| `config/versions/v3.yaml` | `GTPJ-v3` 权威 baseline 配置，是当前 active baseline 的配置源。 |
 | `config/GTPJ_cub_gzsl.yaml` | 当前 CUB 运行别名。只有 owner 明确切换 active version 时才同步到某个 `vX`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | 当前 AWA2 运行别名。 |
 | `config/GTPJ_sun_gzsl.yaml` | 当前 SUN 运行别名。 |
@@ -447,8 +448,9 @@ Warehouse 的职责：
 | tag | 作用 |
 |---|---|
 | `v1` | `GTPJ-v1` 正式 baseline 快照。 |
-| `v2` | `GTPJ-v2` 正式 baseline 快照，当前 active mainline。 |
-| `v3`、后续 `vX` | 未来 promotion 后创建的新 baseline 快照。 |
+| `v2` | `GTPJ-v2` 历史 owner-activated baseline 快照。 |
+| `v3` | `GTPJ-v3` 当前 owner-accepted stochastic baseline 快照。 |
+| 后续 `vX` | 未来 promotion 后创建的新 baseline 快照。 |
 
 正式版本关系：
 

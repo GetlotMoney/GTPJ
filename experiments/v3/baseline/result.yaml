@@ -1,0 +1,63 @@
+schema_version: gtpj-result/v1
+experiment_id: GTPJ-v3
+experiment_name: GTPJ-v3-baseline
+kind: baseline
+version: v3
+metrics:
+  U: "71.22"
+  S: "77.60"
+  H: "74.27"
+  ZS: "81.38"
+  best_epoch: "33"
+  baseline_H: "74.29"
+  baseline_reference: best_observed_H
+  delta_H: "-0.02"
+  seed: "5"
+  source: training_log
+  metric_semantics: GZSL U/S/H/ZS from protected evaluator
+baseline:
+  version: v2
+  H: "74.29"
+  reference_field: best_observed_H
+  reference_status: owner_activated_unconfirmed
+  confirmed_H: pending
+  confirmation_status: needs_confirmation
+delta:
+  H: "-0.02"
+run:
+  seed: "5"
+  source_trial_run_commit: c8daa9cb68edcaca3226fe8af3f7fb54757903e4
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml"
+decision:
+  status: owner_accepted_stochastic_unconfirmed
+  result_status: needs_confirmation
+  promotion_decision: blocked
+  promote_to: v3
+  owner_override: true
+  owner_override_reason: owner accepts mixed reruns as stochastic variance for formal tag
+evidence:
+  evidence_level: valid_single_run
+  best_observed_H: "74.27"
+  confirmed_H: pending
+  confirmation_status: needs_confirmation
+  confirmation_target: "74.27"
+  confirmation_tolerance_H: ""
+  log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
+  best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:best
+  full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:full
+  runner_console_artifact_id: receipt:v2:module_trial:TRIAL-002:attempt-004:runner_console
+  manifest: manifest.yaml
+  label_mapping_id: standard_v1
+  split_id: standard_v1
+  class_order_id: standard_v1
+quality:
+  manifest_verified: true
+  boundary_audit_passed: true
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+warnings:
+  - "Owner accepted stochastic variance and requested a formal v3 tag on 2026-06-28."
+  - "H=74.27 is best_observed_H, not confirmed_H."
+  - "Clean seed-42 reruns reached H=74.14 and H=74.01, so strict confirmation remains pending."
+  - "Promotion remains blocked for baseline-grade claims until confirmation evidence is upgraded."
+recorded_at: "2026-06-28T00:00:00+08:00"

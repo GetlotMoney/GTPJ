@@ -116,6 +116,17 @@ CANONICAL_BASELINES = {
         "confirmed_H": "pending",
         "confirmation_status": "needs_confirmation",
         "status": "owner_activated_unconfirmed",
+    },
+    "v3": {
+        "name": "GTPJ-v3",
+        "H": "74.27",
+        "result_file": "experiments/v3/result.md",
+        "version_file": "experiments/v3/VERSION.md",
+        "evidence_level": "valid_single_run",
+        "best_observed_H": "74.27",
+        "confirmed_H": "pending",
+        "confirmation_status": "needs_confirmation",
+        "status": "owner_accepted_stochastic_unconfirmed",
     }
 }
 
@@ -858,7 +869,14 @@ def cmd_repro_status(args: argparse.Namespace) -> int:
     )
     print(f"- can_claim_confirmed_baseline: {'yes' if confirmed else 'no'}")
     if not confirmed:
-        print("- next_action: run clean confirmation before baseline-grade or tag/promotion claims")
+        status = evidence.get("status", "")
+        if "owner_accepted" in status or "owner_activated" in status:
+            print(
+                "- next_action: keep owner tag as an unconfirmed reference; "
+                "run clean confirmation before confirmed or baseline-grade claims"
+            )
+        else:
+            print("- next_action: run clean confirmation before baseline-grade or tag/promotion claims")
     return 0
 
 
@@ -937,6 +955,18 @@ def required_repository_files() -> list[str]:
         "experiments/v2/ablation/INDEX.md",
         "experiments/v2/confirmation/INDEX.md",
         "config/versions/v2.yaml",
+        "experiments/v3/VERSION.md",
+        "experiments/v3/config.yaml",
+        "experiments/v3/result.md",
+        "experiments/v3/baseline/README.md",
+        "experiments/v3/baseline/config.yaml",
+        "experiments/v3/baseline/manifest.yaml",
+        "experiments/v3/baseline/result.yaml",
+        "experiments/v3/baseline/quality_check.md",
+        "experiments/v3/tune/INDEX.md",
+        "experiments/v3/ablation/INDEX.md",
+        "experiments/v3/confirmation/INDEX.md",
+        "config/versions/v3.yaml",
         "schemas/manifest.schema.json",
         "schemas/result.schema.json",
         "schemas/artifact_ref.schema.json",

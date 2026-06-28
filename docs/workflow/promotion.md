@@ -161,7 +161,7 @@ evidence_level:
 best_observed_H:
 confirmed_H:
 confirmation_status:
-active_main_update: not_activated | activated_by_owner
+active_main_update: not_activated | activated_by_owner | owner_accepted_current_tag
 ```
 
 Promotion 创建正式 baseline。失败、阻塞或证据模糊的实验只保留为证据。

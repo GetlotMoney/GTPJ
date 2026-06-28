@@ -15,6 +15,7 @@
 ```text
 v1
 `-- v2 = parent v1 + IDEA-0001/TRIAL-001 CLIP-A-self text prototype adapter
+    `-- v3 = parent v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA
 ```
 
 ## 版本表
@@ -23,6 +24,7 @@ v1
 |---|---|---|---|---|---|---|
 | `v1` | none | `v1` | initial | initial_baseline | none | 第一版正式 baseline。 |
 | `v2` | `v1` | `v2` | `dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly@f24a277` | add_module | `trial/v1/idea-0001/trial-001` | CLIP-A-self text prototype adapter 主线版；ATTEMPT-019 CUB seed=5 best_observed_H=74.29，confirmed_H=pending。 |
+| `v3` | `v2` | `v3` | `dev/v2-idea-0002-trial-002-strict-conditional-jepa@875cbb6` | add_module | `trial/v2/idea-0002/trial-002` | Strict conditional FAE-memory JEPA；ATTEMPT-004 CUB seed=5 best_observed_H=74.27，confirmed_H=pending；owner accepted stochastic variance。 |
 
 ## 记录模板
 

@@ -162,3 +162,23 @@ verified_against_current_repo: yes
 review_round: Review 3
 blocking_issues: none
 ```
+
+## Owner Override Closeout
+
+```text
+role: Coordinator
+agent_instance_type: local_codex
+activation_mode: role_only_with_owner_override
+independence_scope: ledger correction after owner accepted stochastic variance
+inputs_checked: ATTEMPTS.md; attempts/ATTEMPT-004/result.yaml; attempts/ATTEMPT-009/result.yaml; attempts/ATTEMPT-010/result.yaml; experiments/v3/VERSION.md
+actions: recorded ATTEMPT-004 as best_observed_H=74.27; retained ATTEMPT-009/010 as stochastic-variance evidence; created GTPJ-v3 ledger
+outputs: trial_decision=owner_accepted_to_v3; promotion_decision=owner_accepted_stochastic_tag; confirmed_H=pending
+issues: no real sub-agent was spawned in this local closeout; baseline-grade confirmation remains pending
+decision: owner_accepted_to_v3
+evidence_refs: experiments/v3/VERSION.md; experiments/v3/baseline/result.yaml; attempts/ATTEMPT-004/result.yaml
+memory_used: yes
+memory_sources: MEMORY.md orientation only; verified against current repo files before ledger entry
+verified_against_current_repo: yes
+review_round: owner override closeout
+blocking_issues: baseline-grade claims remain blocked until confirmation/multi-seed evidence upgrades confirmed_H
+```

@@ -1,7 +1,7 @@
 {
   "project": "GTPJ",
   "version": "2026-06-20",
-  "current_version": "v2",
+  "current_version": "v3",
   "ideas": [
     {
       "idea_id": "IDEA-0001",
@@ -26,11 +26,19 @@
           "stage": "validated",
           "rationale": "IDEA-0001 was promoted into the active GTPJ-v2 mainline by owner decision on 2026-06-27 using TRIAL-001 ATTEMPT-019. It is no longer a pending v2 candidate; future v2 work should focus on confirmation, U/S gap analysis, and ablations around the accepted adapter.",
           "blockers": []
+        },
+        "v3": {
+          "score": 80,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "IDEA-0001 is inherited by GTPJ-v3 from the accepted v2 code path; it remains part of the mainline stack but is not the new v3 delta.",
+          "blockers": []
         }
       },
       "base_versions": [
         "v1",
-        "v2"
+        "v2",
+        "v3"
       ],
       "based_on_modules": [
         "v1_text_adapter",
@@ -52,13 +60,14 @@
         "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly"
       ],
       "linked_versions": [
-        "v2"
+        "v2",
+        "v3"
       ],
       "linked_experiments": [],
       "evidence": [
         {
           "type": "paper",
-          "ref": "C:/Users/Administrator/Desktop/CV论文/2023/Enhancing CLIP with GPT-4：Harnessing Visual Descriptions as Prompts.pdf",
+          "ref": "C:/Users/Administrator/Desktop/CV璁烘枃/2023/Enhancing CLIP with GPT-4锛欻arnessing Visual Descriptions as Prompts.pdf",
           "note": "PDF abstract states the code, prompts, and auxiliary text dataset are available at github.com/mayug/VDT-Adapter."
         },
         {
@@ -72,13 +81,13 @@
           "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
       ],
-      "next_action": "Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml."
+      "next_action": "Use GTPJ-v3 as the current owner-accepted mainline; keep v2/v3 confirmation and U/S gap analysis as follow-up evidence work."
     },
     {
       "idea_id": "IDEA-0002",
       "idea_dir": "idea_tree/ideas/IDEA-0002_fae_memory_jepa/",
       "title": "FAE-memory JEPA auxiliary loss",
-      "status": "weakened",
+      "status": "validated",
       "source_type": "user",
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
@@ -87,13 +96,21 @@
         "v2": {
           "score": 72.0,
           "applicability": "needs_adaptation",
-          "stage": "trialing",
-          "rationale": "Current v2 already includes CLIP-A-self, conditional text, FAE, and AG-JEPA. ATTEMPT-001 tested a keep-only FAE-memory JEPA variant and underperformed v2; ATTEMPT-002 tests the owner-corrected strict main-path jepa_memory context plus conditional AG-JEPA text.",
+          "stage": "validated",
+          "rationale": "TRIAL-002 strict main-path FAE-memory JEPA plus conditional text is accepted by owner as GTPJ-v3 despite mixed confirmation evidence; retain stochastic-variance warning.",
+          "blockers": []
+        },
+        "v3": {
+          "score": 74,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "Accepted as the GTPJ-v3 delta by owner decision on 2026-06-28. Best observed ATTEMPT-004 H=74.27; clean seed-42 reruns H=74.14 and H=74.01 show stochastic variance, so confirmed_H remains pending.",
           "blockers": []
         }
       },
       "base_versions": [
-        "v2"
+        "v2",
+        "v3"
       ],
       "based_on_modules": [
         "GTPJ-v2 AG-JEPA",
@@ -117,7 +134,8 @@
         "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa"
       ],
       "linked_versions": [
-        "v2"
+        "v2",
+        "v3"
       ],
       "linked_experiments": [],
       "evidence": [
@@ -145,9 +163,14 @@
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/result.yaml",
           "note": "ATTEMPT-010 H=74.01, delta_H=-0.28 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=not_confirmed."
+        },
+        {
+          "type": "version",
+          "ref": "experiments/v3/VERSION.md",
+          "note": "Owner accepted TRIAL-002 as GTPJ-v3 with stochastic variance explicitly preserved; confirmed_H remains pending."
         }
       ],
-      "next_action": "TRIAL-002 ATTEMPT-010 synchronized as not_confirmed: H=74.01, delta_H=-0.28 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
+      "next_action": "GTPJ-v3 is the owner-accepted stochastic mainline tag; next work should run v3 confirmation/multi-seed analysis before manuscript-grade confirmed claims."
     }
   ]
 }

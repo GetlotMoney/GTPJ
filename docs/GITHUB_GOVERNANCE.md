@@ -11,11 +11,11 @@ agent 凭证和 promotion gate 以 `docs/workflow/` 中的规范为准。
 当前 active mainline code：
 
 ```text
-GTPJ-v2
-code_tag: v2
-best_observed_H: 74.29
+GTPJ-v3
+code_tag: v3
+best_observed_H: 74.27
 confirmed_H: pending
-status: owner_activated_unconfirmed
+status: owner_accepted_stochastic_unconfirmed
 长期分支: main
 ```
 
@@ -27,11 +27,11 @@ code_tag: v1
 baseline H: 73.93
 ```
 
-`main` 是唯一长期分支。`v1`、`v2` 是 tag，不是分支。
+`main` 是唯一长期分支。`v1`、`v2`、`v3` 是 tag，不是分支。
 
 早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
-后按永久 tag 管理，不再移动。`v2` 是 2026-06-27 owner activated 的当前主线 tag；
-`H=74.29` 在 clean confirmation 通过前只作为 `best_observed_H`。
+后按永久 tag 管理，不再移动。`v3` 是 2026-06-28 owner accepted stochastic 的当前正式 tag；
+`H=74.27` 在 clean confirmation 通过前只作为 `best_observed_H`。
 
 ## 当前阶段只管理什么
 
