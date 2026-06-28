@@ -1,4 +1,4 @@
-# ATTEMPT-002 Quality Check
+# ATTEMPT-001 Quality Check
 
 ```text
 quality_check_mode: STRICT
@@ -14,10 +14,10 @@ promotion_decision: blocked
 
 ## Artifact Check
 
-- [x] `log:v2:module_trial:TRIAL-001:attempt-002` exists in Warehouse.
-- [x] `checkpoint:v2:module_trial:TRIAL-001:attempt-002:best` exists in Warehouse.
-- [x] `checkpoint:v2:module_trial:TRIAL-001:attempt-002:full` exists in Warehouse.
-- [x] `receipt:v2:module_trial:TRIAL-001:attempt-002:runner_console` exists in Warehouse.
+- [x] `log:v2:module_trial:TRIAL-002:attempt-001` exists in Warehouse.
+- [x] `checkpoint:v2:module_trial:TRIAL-002:attempt-001:best` exists in Warehouse.
+- [x] `checkpoint:v2:module_trial:TRIAL-002:attempt-001:full` exists in Warehouse.
+- [x] `receipt:v2:module_trial:TRIAL-002:attempt-001:runner_console` exists in Warehouse.
 - [x] GitHub only records artifact ids, URIs, sha256, and size.
 - [x] Raw logs and checkpoints are not tracked in Git.
 

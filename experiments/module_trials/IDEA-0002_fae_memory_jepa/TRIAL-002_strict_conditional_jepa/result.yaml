@@ -1,9 +1,9 @@
 schema_version: gtpj-result/v1
-experiment_id: "TRIAL-001"
-experiment_name: "TRIAL-001_fae_memory_jepa"
+experiment_id: "TRIAL-002"
+experiment_name: "TRIAL-002_strict_conditional_jepa"
 kind: "module-trial"
 version: "v2"
-attempt_id: "attempt-003"
+attempt_id: "ATTEMPT-002"
 metrics:
   U: "71.32"
   S: "77.40"
@@ -14,7 +14,7 @@ metrics:
   baseline_reference: "best_observed_H"
   delta_H: "-0.05"
   seed: "5"
-  source: "training_log"
+  source: "attempt_result_yaml"
   metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
 baseline:
   version: "v2"
@@ -28,7 +28,7 @@ delta:
 run:
   seed: "5"
   pre_run_freeze_commit: "666557dd4ba03062b326d96268ccc4adcaa97d2d"
-  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-003/config.yaml"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-002/config.yaml"
 decision:
   status: "keep"
   result_status: "confirmed"
@@ -39,11 +39,12 @@ evidence:
   best_observed_H: "74.24"
   confirmed_H: "74.24"
   confirmation_status: "confirmed"
-  train_log_artifact_id: "log:v2:module_trial:TRIAL-001:attempt-003"
-  best_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-003:best"
-  full_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-003:full"
-  runner_console_artifact_id: "receipt:v2:module_trial:TRIAL-001:attempt-003:runner_console"
+  train_log_artifact_id: "log:v2:module_trial:TRIAL-002:attempt-002"
+  best_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-002:best"
+  full_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-002:full"
+  runner_console_artifact_id: "receipt:v2:module_trial:TRIAL-002:attempt-002:runner_console"
   manifest: "manifest.yaml"
+  attempt_manifest: "attempts/ATTEMPT-002/manifest.yaml"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
   class_order_id: "standard_v1"
@@ -52,4 +53,4 @@ quality:
   boundary_audit_passed: "true"
   interface_contract_checked: "true"
   evaluation_semantics_verified: "true"
-recorded_at: "2026-06-28T10:04:26+00:00"
+recorded_at: "2026-06-28T12:23:33+00:00"

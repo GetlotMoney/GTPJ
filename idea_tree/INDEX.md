@@ -8,7 +8,7 @@
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
 | `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2` | validated | Run GTPJ-v2 confirmation and U/S gap analysis before manuscript-grade claims; then continue v2 tune or ablation from config/versions/v2.yaml. |
-| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2` | testing | TRIAL-001 ATTEMPT-003 synchronized as keep: H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation. |
+| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2` | testing | TRIAL-002 ATTEMPT-002 synchronized as keep: H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation. |
 
 ## 使用规则
 

@@ -1,9 +1,9 @@
 schema_version: gtpj-result/v1
-experiment_id: "TRIAL-001"
-experiment_name: "TRIAL-001_fae_memory_jepa"
+experiment_id: "TRIAL-002"
+experiment_name: "TRIAL-002_strict_conditional_jepa"
 kind: "module-trial"
 version: "v2"
-attempt_id: "attempt-002"
+attempt_id: "attempt-001"
 metrics:
   U: "71.15"
   S: "77.11"
@@ -28,7 +28,7 @@ delta:
 run:
   seed: "5"
   pre_run_freeze_commit: "c9fc2539d745c13b677b00a84aa151da77fc31dd"
-  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-002/config.yaml"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-001/config.yaml"
 decision:
   status: "keep"
   result_status: "needs_confirmation"
@@ -39,10 +39,10 @@ evidence:
   best_observed_H: "74.01"
   confirmed_H: "pending"
   confirmation_status: "needs_confirmation"
-  train_log_artifact_id: "log:v2:module_trial:TRIAL-001:attempt-002"
-  best_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-002:best"
-  full_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-001:attempt-002:full"
-  runner_console_artifact_id: "receipt:v2:module_trial:TRIAL-001:attempt-002:runner_console"
+  train_log_artifact_id: "log:v2:module_trial:TRIAL-002:attempt-001"
+  best_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-001:best"
+  full_checkpoint_artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-001:full"
+  runner_console_artifact_id: "receipt:v2:module_trial:TRIAL-002:attempt-001:runner_console"
   manifest: "manifest.yaml"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
@@ -52,4 +52,4 @@ quality:
   boundary_audit_passed: "true"
   interface_contract_checked: "true"
   evaluation_semantics_verified: "true"
-recorded_at: "2026-06-28T09:45:26+00:00"
+recorded_at: "2026-06-28T12:23:22+00:00"

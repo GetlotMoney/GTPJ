@@ -1,4 +1,4 @@
-# Interface Check: TRIAL-001_fae_memory_jepa
+# Interface Check: TRIAL-002_strict_conditional_jepa
 
 ```text
 review_round: Review 2
@@ -13,8 +13,8 @@ runner_status: allowed_after_clean_pre_run_freeze_commit
 - `model/MyModel.py`
 - `train_GTPJ_CUB.py`
 - `tests/test_fae_memory_jepa.py`
-- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/implementation.md`
-- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml`
+- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/implementation.md`
+- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-001/config.yaml`
 - `docs/workflow/code_interface_contract.md`
 - `docs/workflow/innovation_code_review_protocol.md`
 
@@ -53,7 +53,7 @@ None after the current code diff and tests.
 
 - `model/MyModel.py`
 - `tests/test_fae_memory_jepa.py`
-- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/code.diff`
+- `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/code.diff`
 
 ```text
 memory_used: yes
@@ -61,6 +61,23 @@ memory_sources: docs/workflow/agents/shared_roles/interface_checker/memory.md
 verified_against_current_repo: yes
 ```
 
-## Boundary Correction
+## TRIAL-002 Addendum
 
-The strict main-path jepa_memory + conditional AG-JEPA text addendum moved to TRIAL-002_strict_conditional_jepa. TRIAL-001 now covers only the keep-only fae_memory ATTEMPT-001 line.
+```text
+review_round: Review 2 addendum
+role: Interface Checker
+decision: allow_after_clean_pre_run_freeze_commit
+runner_status: blocked_until_clean_pre_run_freeze_commit
+```
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| `fae_main_memory` switch | allow | `jepa_context_mode` accepts `fae_main_memory`; it requires `use_fae=True`. |
+| Main-path memory handoff | allow | `GTPJ.forward` returns `cm_out["jepa_memory"]`; `compute_loss` passes it as `selected_memory`. |
+| Strict context path | allow | `_ag_jepa_loss` mean-pools kept positions from main-path `selected_memory` for `fae_main_memory`. |
+| Conditional text switch | allow | `jepa_text_mode` accepts `conditional`; invalid configs raise `ValueError`. |
+| Positive conditional text | allow | Positive AG-JEPA text uses `all_text_cond[batch, labels]`. |
+| Negative conditional text | allow | Negative AG-JEPA text uses `all_text_cond[batch, neg_labels]`; visual context remains detached. |
+| Logits/eval invariants | allow | Unit tests preserve train `[B,150]` and eval `[B,200]`; evaluator code is unchanged. |
+
+TRIAL-002 deliberately gives up TRIAL-001's keep-only leakage guard in order to test the owner's strict main-memory intent. This risk is recorded in `implementation.md` and `framework_diagram.md`; it must be considered when interpreting results.

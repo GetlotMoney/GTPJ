@@ -113,7 +113,8 @@
       "transfer_notes": "Future versions must re-check whether CrossModalTransformer still exposes embed_cv, FAE memory, and the same selected-patch semantics before reusing this idea.",
       "priority": 0.72,
       "linked_trials": [
-        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa"
+        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa",
+        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa"
       ],
       "linked_versions": [
         "v2"
@@ -138,10 +139,15 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/result.yaml",
-          "note": "ATTEMPT-003 H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=keep."
+          "note": "ATTEMPT-001 H=73.82, delta_H=-0.47 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=revise."
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/result.yaml",
+          "note": "ATTEMPT-002 H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=keep."
         }
       ],
-      "next_action": "TRIAL-001 ATTEMPT-003 synchronized as keep: H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
+      "next_action": "TRIAL-002 ATTEMPT-002 synchronized as keep: H=74.24, delta_H=-0.05 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
     }
   ]
 }

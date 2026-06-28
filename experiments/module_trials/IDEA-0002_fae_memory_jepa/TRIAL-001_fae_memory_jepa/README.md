@@ -12,20 +12,20 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-001-attempt-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-001
-code_commit: 666557dd4ba03062b326d96268ccc4adcaa97d2d
-trial_decision: keep
-promotion_decision: blocked
+code_commit: 5ca8245e37856e426407612b1a95bcdcfbd92697
+trial_decision: revise
+promotion_decision: not_applicable
 promote_to:
-evidence_level: confirmation_grade
-best_observed_H: 74.24
-confirmed_H: 74.24
-confirmation_status: confirmed
+evidence_level: valid_single_run
+best_observed_H:
+confirmed_H: pending
+confirmation_status: not_applicable
 changed_files:
-run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-003/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-003
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-003/logs/training_log_CUB_2026-06-28_17-55-57.txt
-log_sha256: 3fbf0fbf19910f6b6bb7541df125faa5cca5c2bfa65664e726caf807059527ee
-log_size_bytes: 91969
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-001:attempt-001
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-001/attempt-001/logs/training_log_CUB_2026-06-27_23-44-35.txt
+log_sha256: c0fce9c6d031851479f7dafb7aee1db7d86cc80f3415826ced985f4c83f1b2c1
+log_size_bytes: 92239
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -44,7 +44,6 @@ framework_diagram: framework_diagram.md
 |---|---|---|
 | `model/MyModel.py` | Add `jepa_context_mode` and FAE-memory JEPA auxiliary path | yes |
 | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml` | Enable `jepa_context_mode: fae_memory` | no |
-| `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-002/config.yaml` | Planned strict main-path memory + conditional AG-JEPA text run | no |
 | `tests/test_fae_memory_jepa.py` | Gradient and shape smoke tests | no |
 | `train_GTPJ_CUB.py` | Log `jepa_context_mode` in training header | yes |
 
@@ -52,7 +51,7 @@ framework_diagram: framework_diagram.md
 
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 71.32 | 77.40 | 74.24 | 81.62 | 33 | `log:v2:module_trial:TRIAL-001:attempt-003` |
+| CUB | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` |
 
 ## Trial Flow
 
@@ -75,7 +74,7 @@ flowchart TD
 ```text
 path: framework_diagram.md
 html_view: file:///D:/Backup/Documents/Myself/GTPJ_Warehouse/diagrams/IDEA-0002_fae_memory_jepa_code_vs_intent.html
-code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA; ATTEMPT-002/003 test strict main-path jepa_memory + conditional text.
+code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA; strict main-path jepa_memory + conditional text moved to TRIAL-002.
 ```
 
 ## Innovation Code Review
@@ -106,9 +105,7 @@ ATTEMPT-001 completed but was `-0.47` H below active v2 `best_observed_H=74.29`
 
 Implementation clarification: ATTEMPT-001 is a valid keep-only FAE-memory JEPA variant. In that run, `_ag_jepa_loss`
 recomputed FAE over keep tokens inside the loss branch, rather than consuming the main forward path's full `jepa_memory`.
-ATTEMPT-002 is planned to test the corrected owner intent: `context = mean(kept main-path jepa_memory)`,
-`target = mean(masked patch_z).detach()`, and AG-JEPA positive/negative text both use sample-conditioned text.
 
-ATTEMPT-003 cleanly confirmed the ATTEMPT-002 74-level result (`confirmed_H=74.24`). It is a keep result for
-IDEA-0002, but not a formal promotion/tag basis: the current v2 comparison value remains an unconfirmed
-`best_observed_H=74.29`, so a v2 clean confirmation is still required before any baseline-grade comparison.
+Boundary correction: the strict main-path `jepa_memory` + conditional AG-JEPA text line is now
+`TRIAL-002_strict_conditional_jepa`. The former TRIAL-001 ATTEMPT-002/003 records were moved there as
+TRIAL-002 ATTEMPT-001/002 with corrected Warehouse artifact ids.

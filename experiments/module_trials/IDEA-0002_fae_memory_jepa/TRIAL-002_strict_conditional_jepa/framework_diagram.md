@@ -1,11 +1,11 @@
 # Framework Diagram: IDEA-0002 / FAE-memory JEPA
 
 ```text
-trial_id: TRIAL-001
+trial_id: TRIAL-002
 idea_id: IDEA-0002
 base_version: v2
 html_view: file:///D:/Backup/Documents/Myself/GTPJ_Warehouse/diagrams/IDEA-0002_fae_memory_jepa_code_vs_intent.html
-code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA. Strict main-path memory + conditional text moved to TRIAL-002.
+code_vs_intent: TRIAL-002 ATTEMPT-001/002 use strict main-path memory + conditional AG-JEPA text. TRIAL-001 keep-only is the comparison boundary.
 ```
 
 ## Diagram
@@ -21,13 +21,15 @@ flowchart TD
   PatchZ --> Mask["AG-JEPA semantic top-k mask"]
   Mask --> Target["target = mean(masked patch_z).detach()"]
   Mask --> Keep["keep mask"]
-  Keep --> A1["ATTEMPT-001: FAE(keep patch_z, keep geometry) -> context"]
+  Keep --> A2["ATTEMPT-001/002: mean(kept main-path jepa_memory) -> context"]
 
-  AllText --> TextA1["ATTEMPT-001 text_z = embed_text(all_text[labels])"]
+  CLS["cls_token"] --> CondText["all_text_cond = all_text + ratio * meta_net(cls)"]
+  AllText["all_text from CLIP-A-self / Adapter"] --> CondText
+  CondText --> TextA2["ATTEMPT-001/002 text_z = embed_text(all_text_cond[b, labels])"]
 
-  A1 --> Pred1["jepa_predictor([context, text_z])"]
-  TextA1 --> Pred1
-  Pred1 --> Loss["L_jepa / L_jepa_neg"]
+  A2 --> Pred2["jepa_predictor([context, text_z])"]
+  TextA2 --> Pred2
+  Pred2 --> Loss
   Target --> Loss
 ```
 
@@ -37,10 +39,11 @@ flowchart TD
 |---|---|---|---|---|---|---|
 | `selected_patches` | `lastvit_select_patches` or full patches | `embed_cv`, AG-JEPA mask | `[B,K,768]` | CLIP visual patch subset | no upstream CLIP grad | train/eval same feature source |
 | `patch_z` / `vis` | `CrossModalTransformer.embed_cv(selected_patches)` | FAE, AG-JEPA target | `[B,K,512]` | pre-FAE visual patch representation | target side is detached | train/eval shape same |
-| `jepa_memory` | main `CrossModalTransformer.forward` FAE | local score only in TRIAL-001 | `[B,K,512]` | main-path FAE visual memory | not used as TRIAL-001 JEPA context | local score uses it in train/eval |
+| `jepa_memory` | main `CrossModalTransformer.forward` FAE | local score, TRIAL-002 JEPA context | `[B,K,512]` | main-path FAE visual memory | positive JEPA may update FAE | local score uses it in train/eval |
 | `mask` | `_ag_jepa_loss` semantic top-k | target/context split | `[B,K]` | selected semantic patches to predict | no grad | train loss only |
 | `keep` | inverse of `mask` | context split | `[B,K]` | visible context patches | no grad | train loss only |
-| `all_text` | `_make_all_text()` | local score, ATTEMPT-001 AG-JEPA text | `[200,768]` on CUB | adapted class prototypes | adapter path trainable | train/eval same prototypes |
+| `all_text` | `_make_all_text()` | local score and conditional-text base | `[200,768]` on CUB | adapted class prototypes | adapter path trainable | train/eval same prototypes |
+| `all_text_cond` | `meta_net(cls_token)` residual | TRIAL-002 AG-JEPA text | `[B,200,768]` | sample-conditioned class prototypes | positive/negative text path updates `meta_net` | only available when CLS exists |
 | `context` | ATTEMPT-specific visual path | `jepa_predictor` | `[B,512]` | visual condition for JEPA prediction | positive branch trainable; negative uses detach | train loss only |
 | `target` | masked `patch_z` mean | cosine target | `[B,512]` | pre-FAE masked visual target | always detached | train loss only |
 
@@ -63,6 +66,6 @@ flowchart TD
 
 ## Code vs Intent
 
-- ATTEMPT-001 is keep-only FAE-memory JEPA: `_ag_jepa_loss` re-runs FAE on keep tokens instead of consuming main-path `jepa_memory`.
-- The strict owner-corrected path that consumes main-path `jepa_memory` and sample-conditioned text moved to `TRIAL-002_strict_conditional_jepa`.
-- The target remains detached masked pre-FAE `patch_z`; logits shape, class order, seen/unseen split, and metric calculation remain unchanged.
+- TRIAL-002 matches the stricter owner intent: consume main-path `jepa_memory` for visual context and consume sample-conditioned text for AG-JEPA predictor.
+- ATTEMPT-001 is the migrated first run; ATTEMPT-002 is its clean confirmation.
+- Both attempts keep target as detached masked pre-FAE `patch_z`; logits shape, class order, seen/unseen split, and metric calculation remain unchanged.

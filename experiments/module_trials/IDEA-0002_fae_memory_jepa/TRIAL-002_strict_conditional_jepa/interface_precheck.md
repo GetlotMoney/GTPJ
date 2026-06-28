@@ -1,4 +1,4 @@
-# Interface Precheck: TRIAL-001_fae_memory_jepa
+# Interface Precheck: TRIAL-002_strict_conditional_jepa
 
 review_round: Review 1
 role: Interface Checker
@@ -78,6 +78,33 @@ memory_used: yes
 memory_sources: docs/workflow/agents/shared_roles/interface_checker/memory.md
 verified_against_current_repo: yes
 
-## Boundary Correction
+## TRIAL-002 Addendum: strict main-path memory + conditional text
 
-The strict main-path jepa_memory + conditional AG-JEPA text addendum moved to TRIAL-002_strict_conditional_jepa. TRIAL-001 now covers only the keep-only fae_memory ATTEMPT-001 line.
+```text
+review_round: Review 1 addendum
+role: Interface Checker
+decision: allow_after_review_2
+runner_status: blocked_until_code_diff_tests_and_clean_pre_run_freeze
+```
+
+TRIAL-002 intentionally changes the auxiliary AG-JEPA loss semantics while preserving scorer and evaluation semantics.
+
+Required switches:
+
+```text
+jepa_context_mode: fae_main_memory
+jepa_text_mode: conditional
+```
+
+Contract:
+
+- `fae_memory` remains ATTEMPT-001's keep-only FAE recomputation path.
+- `fae_main_memory` must consume `CrossModalTransformer.forward`'s main-path `jepa_memory` and mean-pool kept positions.
+- `conditional` text mode must consume `all_text_cond[batch, label]` for positive text and `all_text_cond[batch, neg_label]` for negative text.
+- `target` remains `mean(masked patch_z).detach()`.
+- Negative JEPA must continue using `context.detach()`.
+- `logits`, `logits_200`, class order, seen/unseen split, label mapping, and metric calculation must remain unchanged.
+
+Known risk:
+
+- This strict main-path memory variant can let kept `jepa_memory` carry information from masked tokens through FAE self-attention. That is accepted for TRIAL-002 because it directly tests whether the main classification memory path benefits from AG-JEPA.

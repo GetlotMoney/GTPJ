@@ -5,8 +5,6 @@
 | Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|
 | ATTEMPT-001 | valid_single_run | jepa_context_mode | embed | fae_memory | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` | revise | `attempts/ATTEMPT-001/` |
-| ATTEMPT-002 | strict main-path FAE memory + conditional AG-JEPA text | jepa_context_mode=fae_main_memory; jepa_text_mode=conditional | ATTEMPT-001 keep-only FAE context + raw CLIP text in AG-JEPA | main-path jepa_memory context + sample-conditioned adapted text in AG-JEPA | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | `log:v2:module_trial:TRIAL-001:attempt-002` | keep | `attempts/ATTEMPT-002/` |
-| ATTEMPT-003 | confirmation | clean rerun of ATTEMPT-002 frozen config | ATTEMPT-002 valid_single_run H=74.01 | ATTEMPT-003 confirmation rerun of same config/seed | 5 | 71.32 | 77.40 | 74.24 | 81.62 | 33 | `log:v2:module_trial:TRIAL-001:attempt-003` | keep | `attempts/ATTEMPT-003/` |
 
 ## Notes
 
@@ -15,5 +13,4 @@
 - ATTEMPT-001 completed from clean pre-run freeze commit `5ca8245e37856e426407612b1a95bcdcfbd92697`.
 - Post-run Review 3 decision is `revise`: H=73.82 is -0.47 below active v2 `best_observed_H=74.29`
   (`confirmed_H=pending`), so this is a comparison against an unconfirmed reference, not a confirmed baseline.
-- ATTEMPT-002 is planned to test the owner's corrected path: `context = mean(kept main-path jepa_memory)`, `target = mean(masked patch_z).detach()`, and AG-JEPA positive/negative text conditions both use sample-conditioned text.
-- ATTEMPT-003 is a clean confirmation rerun of ATTEMPT-002. It reuses the same config and seed to test whether the observed `H=74.01` is reproducible before any promotion/tag decision. It confirms the IDEA-0002 74-level result, but v2 itself still needs clean confirmation before baseline-grade claims.
+- Boundary correction: the strict main-path `jepa_memory` + conditional AG-JEPA text runs are a different implementation hypothesis, so the former ATTEMPT-002/003 have been moved to `TRIAL-002_strict_conditional_jepa` as ATTEMPT-001/002.

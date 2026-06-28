@@ -1,0 +1,14 @@
+# TRIAL-002 Attempts
+
+## Attempts
+
+| Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|
+| ATTEMPT-001 | valid_single_run | strict main-path FAE memory + conditional AG-JEPA text | TRIAL-001 keep-only | fae_main_memory + conditional | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | `log:v2:module_trial:TRIAL-002:attempt-001` | keep | `attempts/ATTEMPT-001/` |
+| ATTEMPT-002 | confirmation | clean rerun of ATTEMPT-001 frozen config | ATTEMPT-001 valid_single_run H=74.01 | same config and seed | 5 | 71.32 | 77.40 | 74.24 | 81.62 | 33 | `log:v2:module_trial:TRIAL-002:attempt-002` | keep | `attempts/ATTEMPT-002/` |
+
+## Notes
+
+- TRIAL-002 exists because the strict path changes the implementation hypothesis relative to TRIAL-001.
+- ATTEMPT-001 and ATTEMPT-002 were originally misfiled under TRIAL-001 as ATTEMPT-002 and ATTEMPT-003. They are re-registered here with corrected trial identity and Warehouse artifact ids.
+- Future confirmation and param tuning for this strict path must continue from ATTEMPT-003 onward in this TRIAL-002 directory.
