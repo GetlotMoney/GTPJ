@@ -54,6 +54,7 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | `model/MyModel.py` | Add `jepa_context_mode=fae_main_memory` and `jepa_text_mode=conditional` path | yes |
 | `train_GTPJ_CUB.py` | Log JEPA context/text mode in training header | yes |
 | `tests/test_fae_memory_jepa.py` | Add main-path memory and conditional-text probes | no |
+| `config/GTPJ_cub_gzsl.yaml` | Make branch-local default config explicit for `fae_main_memory + conditional` | no |
 | `attempts/ATTEMPT-001/config.yaml` | Strict main-path memory + conditional AG-JEPA text first run | no |
 | `attempts/ATTEMPT-002/config.yaml` | Clean confirmation rerun of ATTEMPT-001 config | no |
 | `attempts/ATTEMPT-003/config.yaml` | Same-config confirmation rerun; did not confirm 74-level result | no |
@@ -62,6 +63,8 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | `attempts/ATTEMPT-006/config.yaml` | Exact deterministic rerun of ATTEMPT-005 | no |
 | `attempts/ATTEMPT-007/config.yaml` | Seed-42 deterministic diagnosis rerun | no |
 | `attempts/ATTEMPT-008/config.yaml` | Exact seed-42 deterministic diagnosis rerun of ATTEMPT-007 | no |
+| `attempts/ATTEMPT-009/config.yaml` | Clean seed-42 deterministic rerun after config/diagram freeze | no |
+| `attempts/ATTEMPT-010/config.yaml` | Exact clean rerun of ATTEMPT-009 | no |
 
 ## Results
 

@@ -12,6 +12,8 @@
 | ATTEMPT-006 | reproducibility_diagnosis | exact deterministic rerun of ATTEMPT-005 | ATTEMPT-005 H=73.79 | same config and seed | 5 | 71.29 | 76.73 | 73.91 | 81.52 | 42 | `log:v2:module_trial:TRIAL-002:attempt-006` | not_confirmed | `attempts/ATTEMPT-006/` |
 | ATTEMPT-007 | reproducibility_diagnosis | seed sensitivity deterministic rerun | seed=5 | seed=42 | 42 | 71.32 | 76.76 | 73.94 | 81.25 | 42 | `log:v2:module_trial:TRIAL-002:attempt-007` | not_confirmed | `attempts/ATTEMPT-007/` |
 | ATTEMPT-008 | reproducibility_diagnosis | exact seed=42 deterministic rerun | ATTEMPT-007 seed=42 | same config and seed | 42 | 71.22 | 76.64 | 73.83 | 81.62 | 45 | `log:v2:module_trial:TRIAL-002:attempt-008` | not_confirmed | `attempts/ATTEMPT-008/` |
+| ATTEMPT-009 | reproducibility_diagnosis | clean seed=42 deterministic rerun after config/diagram freeze | ATTEMPT-008 git_dirty=true evidence | same model config and seed | 42 | pending | pending | pending | pending | pending | pending | planned | `attempts/ATTEMPT-009/` |
+| ATTEMPT-010 | reproducibility_diagnosis | exact clean rerun of ATTEMPT-009 | ATTEMPT-009 planned | same config and seed | 42 | pending | pending | pending | pending | pending | pending | planned | `attempts/ATTEMPT-010/` |
 
 ## Notes
 
@@ -22,3 +24,4 @@
 - ATTEMPT-005 is the first reproducibility diagnosis run for `mixed_confirmation`. It keeps the strict main-path FAE-memory + conditional AG-JEPA semantics unchanged and only enables deterministic runtime logging plus dedicated batch sampling RNG.
 - ATTEMPT-006 repeats ATTEMPT-005 exactly to check whether the deterministic diagnosis path itself is reproducible.
 - ATTEMPT-007 and ATTEMPT-008 repeat the deterministic diagnosis path with `random_seed=42` and `batch_sampling_seed=42` to test whether the seed-5 behavior is seed-sensitive.
+- ATTEMPT-008 was recorded with `git_dirty=true`; ATTEMPT-009 and ATTEMPT-010 are planned as clean seed-42 reruns so the manifest can record `git_dirty=false`.

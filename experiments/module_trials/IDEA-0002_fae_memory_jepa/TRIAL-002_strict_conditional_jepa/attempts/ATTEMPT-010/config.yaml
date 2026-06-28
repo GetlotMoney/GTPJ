@@ -11,7 +11,7 @@ batch_size:
 epochs:
   value: 30
 random_seed:
-  value: 5
+  value: 42
 text_source:
   value: gpt55
 adapter_ratio:
@@ -105,3 +105,11 @@ lr_stages:
     epochs: 10
     eta_min: 1e-7
     restart_from_best: false
+strict_determinism:
+  value: true
+deterministic_warn_only:
+  value: true
+use_dedicated_batch_rng:
+  value: true
+batch_sampling_seed:
+  value: 42
