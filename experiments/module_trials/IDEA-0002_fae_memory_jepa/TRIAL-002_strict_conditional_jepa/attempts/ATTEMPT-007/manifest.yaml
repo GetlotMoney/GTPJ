@@ -1,0 +1,68 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-002"
+  name: "TRIAL-002_strict_conditional_jepa"
+  kind: "module-trial"
+  status: "completed"
+  attempt_id: "attempt-007"
+  created_or_recorded_at: "2026-06-28T15:00:21+00:00"
+version:
+  base_version: "v2"
+  base_code_tag: "v2"
+  code_branch: "dev/v2-idea-0002-trial-002-strict-conditional-jepa"
+  code_commit: "a51ea9068869487980ec4f24744ade9ac0501aeb"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-007/config.yaml"
+  config_sha256: "5569f4fb55636c807839e3e4815c38d0629d6384a5085d6b9368874e9e052fa2"
+  pre_run_freeze_commit: "a51ea9068869487980ec4f24744ade9ac0501aeb"
+  command: "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-007/config.yaml"
+  seed: "42"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: "IDEA-0002"
+  uri: "research://ideas/IDEA-0002.md"
+  title: "FAE-memory JEPA auxiliary loss"
+  hypothesis: ""
+artifacts:
+  train_log:
+    artifact_id: "log:v2:module_trial:TRIAL-002:attempt-007"
+    role: "training_log"
+    uri: "warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-007/logs/training_log_CUB_2026-06-28_22-41-32.txt"
+    sha256: "b1ec64e4979c6d8b0da79645dff83e3f26094d662aa61d223e69d45b07ee7601"
+    size_bytes: "93273"
+    required_for: "audit"
+    status: "available"
+  best_checkpoint:
+    artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-007:best"
+    role: "best_model"
+    uri: "warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-007/checkpoints/best_model_CUB_2026-06-28_22-41-32_H7394.pth"
+    sha256: "ea7ca4abd4a90577f807eb5efcc3d7a49e6538f48021fdfab479b42610b89657"
+    size_bytes: "102640233"
+    required_for: "reproduce_best"
+    status: "available"
+  full_checkpoint:
+    artifact_id: "checkpoint:v2:module_trial:TRIAL-002:attempt-007:full"
+    role: "full_checkpoint"
+    uri: "warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-007/checkpoints/ckpt_full_CUB_2026-06-28_22-41-32.pth"
+    sha256: "d7aec62cfda5889136b5482c7befc09356aacb6d5252e276e6d6778848e05650"
+    size_bytes: "206854147"
+    required_for: "debug"
+    status: "available"
+  runner_console:
+    artifact_id: "receipt:v2:module_trial:TRIAL-002:attempt-007:runner_console"
+    role: "runner_console"
+    uri: "warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-007/receipts/runner_console.log"
+    sha256: "c4557ab48f790754e0fc1e99f0169cfee3e2ef0cf8b747c54cf53ea948256877"
+    size_bytes: "158406"
+    required_for: "audit"
+    status: "available"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "true"
