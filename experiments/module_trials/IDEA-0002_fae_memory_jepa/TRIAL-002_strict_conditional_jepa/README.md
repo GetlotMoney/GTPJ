@@ -12,20 +12,20 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-002
-code_commit: 8fea331
-trial_decision: not_confirmed
+code_commit: c8daa9cb68edcaca3226fe8af3f7fb54757903e4
+trial_decision: keep
 promotion_decision: blocked
 promote_to:
 evidence_level: valid_single_run
-best_observed_H:
+best_observed_H: 74.27
 confirmed_H: pending
-confirmation_status: not_applicable
+confirmation_status: needs_confirmation
 changed_files:
-run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-003/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-003
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-003/logs/training_log_CUB_2026-06-28_20-35-13.txt
-log_sha256: 79d4cf16691aef3a67d0b9672255c44a5a6bac1609df2f060fdbf4f10825c07d
-log_size_bytes: 92080
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-004/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-004/logs/training_log_CUB_2026-06-28_20-46-21.txt
+log_sha256: 9d6dfb11c97ccab8cdab23608364f8efd81825390bc1773e10a0fbd18e415b3a
+log_size_bytes: 91977
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
@@ -56,12 +56,24 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 | `tests/test_fae_memory_jepa.py` | Add main-path memory and conditional-text probes | no |
 | `attempts/ATTEMPT-001/config.yaml` | Strict main-path memory + conditional AG-JEPA text first run | no |
 | `attempts/ATTEMPT-002/config.yaml` | Clean confirmation rerun of ATTEMPT-001 config | no |
+| `attempts/ATTEMPT-003/config.yaml` | Same-config confirmation rerun; did not confirm 74-level result | no |
+| `attempts/ATTEMPT-004/config.yaml` | Same-config confirmation rerun; reached 74-level result again | no |
 
 ## Results
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 71.19 | 76.62 | 73.81 | 81.08 | 42 | `log:v2:module_trial:TRIAL-002:attempt-003` |
+| CUB | 5 | 71.22 | 77.60 | 74.27 | 81.38 | 33 | `log:v2:module_trial:TRIAL-002:attempt-004` |
+
+## Confirmation Gate
+
+| Attempt | Role | H | Decision |
+|---|---|---:|---|
+| ATTEMPT-002 | first clean confirmation | 74.24 | keep |
+| ATTEMPT-003 | second same-config rerun | 73.81 | not_confirmed |
+| ATTEMPT-004 | third same-config rerun | 74.27 | keep |
+
+The repeated confirmation evidence is mixed. Latest observed best is `H=74.27`, but stability is not proven because ATTEMPT-003 dropped to `H=73.81`. Tuning, promotion, and tagging remain blocked until the owner explicitly accepts this variance or requests a new confirmation strategy.
 
 ## Trial Flow
 
@@ -73,10 +85,12 @@ flowchart TD
   Impl --> R2["Review 2: code diff pre-run"]
   R2 --> A1["ATTEMPT-001 valid_single_run"]
   A1 --> A2["ATTEMPT-002 clean confirmation"]
-  A2 --> Warehouse["Warehouse log/checkpoints/receipt"]
+  A2 --> A3["ATTEMPT-003 same-config rerun: not_confirmed"]
+  A3 --> A4["ATTEMPT-004 same-config rerun: keep"]
+  A4 --> Warehouse["Warehouse log/checkpoints/receipt"]
   Warehouse --> Attempt["attempt-local manifest/result/quality"]
   Attempt --> R3["Review 3: post-run evidence"]
-  R3 --> Decision["trial_decision: keep; promotion_decision: blocked"]
+  R3 --> Decision["trial_decision: keep; confirmation gate mixed; promotion_decision: blocked"]
 ```
 
 ## Framework Diagram
@@ -99,4 +113,4 @@ activation_mode: real_multi_agent for the original code semantic change; later f
 
 ## Decision
 
-TRIAL-002 ATTEMPT-002 cleanly confirmed the strict conditional path at `H=74.24`. This is a keep result for IDEA-0002, but not a formal promotion/tag basis because the active v2 comparison value remains an unconfirmed `best_observed_H=74.29`.
+TRIAL-002 remains a keep-worthy idea, but the confirmation gate is mixed: ATTEMPT-003 produced `H=73.81`, while ATTEMPT-004 produced `H=74.27`. This blocks the planned 10-run tuning sweep, formal promotion, and tagging until the owner explicitly accepts the observed variance or asks for a new confirmation strategy. The active v2 comparison value also remains an unconfirmed `best_observed_H=74.29`.

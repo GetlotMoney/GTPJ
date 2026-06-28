@@ -1,0 +1,21 @@
+# ATTEMPT-004 Result
+
+## Metrics
+
+| Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| ATTEMPT-004 | CUB | - | 71.22 | 77.60 | 74.27 | 81.38 | 33 |
+
+## Evidence
+
+```text
+trial_id: TRIAL-002
+train_log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-004
+best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:best
+full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-004:full
+runner_console_artifact_id: receipt:v2:module_trial:TRIAL-002:attempt-004:runner_console
+```
+
+## Decision
+
+`keep`
