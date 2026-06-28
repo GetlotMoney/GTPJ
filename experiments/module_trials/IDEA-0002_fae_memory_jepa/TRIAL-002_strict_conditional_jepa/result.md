@@ -4,26 +4,26 @@
 
 | Attempt ID | Base version | Dataset | Seed | U | S | H | ZS | Best epoch | delta_H |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| ATTEMPT-009 | v2 | CUB | 42 | 71.69 | 76.77 | 74.14 | 81.55 | 36 | -0.15 |
+| ATTEMPT-010 | v2 | CUB | 42 | 71.13 | 77.14 | 74.01 | 81.65 | 42 | -0.28 |
 
 ## Evidence
 
 ```text
 trial_id: TRIAL-002
-attempt_id: ATTEMPT-009
+attempt_id: ATTEMPT-010
 evidence_level: valid_single_run
 result_status: not_confirmed
 promotion_decision: blocked
 confirmed_H: pending
 confirmation_status: needs_confirmation
-train_log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-009
-best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-009:best
-full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-009:full
-runner_console_artifact_id: receipt:v2:module_trial:TRIAL-002:attempt-009:runner_console
+train_log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-010
+best_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-010:best
+full_checkpoint_artifact_id: checkpoint:v2:module_trial:TRIAL-002:attempt-010:full
+runner_console_artifact_id: receipt:v2:module_trial:TRIAL-002:attempt-010:runner_console
 ```
 
 ## Decision
 
 `not_confirmed`
 
-ATTEMPT-009 is recorded as `valid_single_run` with confirmed_H=pending and confirmation_status=needs_confirmation. Promotion/tag remains blocked because active v2 comparison reference is unconfirmed: v2 best_observed_H=74.29 (unconfirmed), confirmed_H=pending.
+ATTEMPT-010 is recorded as `valid_single_run` with confirmed_H=pending and confirmation_status=needs_confirmation. Promotion/tag remains blocked because active v2 comparison reference is unconfirmed: v2 best_observed_H=74.29 (unconfirmed), confirmed_H=pending.

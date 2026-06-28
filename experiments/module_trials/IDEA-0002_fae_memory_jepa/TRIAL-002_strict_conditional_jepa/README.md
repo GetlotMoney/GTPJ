@@ -12,7 +12,7 @@ version_score: 72.0
 applicability: needs_adaptation
 code_branch: dev/v2-idea-0002-trial-002-strict-conditional-jepa
 code_tag: trial/v2/idea-0002/trial-002
-code_commit: 58625eb1c7c2a9d8a71576c0f413ae97e6607e5b
+code_commit: cabd509efc754c266f583255cd295d1a81a272a3
 trial_decision: not_confirmed
 promotion_decision: blocked
 promote_to:
@@ -21,10 +21,10 @@ best_observed_H: 74.27
 confirmed_H: pending
 confirmation_status: needs_confirmation
 changed_files:
-run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-009/config.yaml
-log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-009
-log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-009/logs/training_log_CUB_2026-06-28_23-26-59.txt
-log_sha256: 46c7e9d2c2c25140c494fd08243afe796fc2d24c99b072b77dd8735bc24a0c5b
+run_config: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-010/config.yaml
+log_artifact_id: log:v2:module_trial:TRIAL-002:attempt-010
+log_uri: warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-010/logs/training_log_CUB_2026-06-28_23-38-46.txt
+log_sha256: 4c822e25c6cfcc6ec1cf4d58163bbd4b71eb73c5cc690fe5dc4dc96382f6e36f
 log_size_bytes: 93067
 manifest: manifest.yaml
 result_yaml: result.yaml
@@ -70,7 +70,7 @@ The historical runs originally recorded as TRIAL-001 ATTEMPT-002/003 are re-regi
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 42 | 71.69 | 76.77 | 74.14 | 81.55 | 36 | `log:v2:module_trial:TRIAL-002:attempt-009` |
+| CUB | 42 | 71.13 | 77.14 | 74.01 | 81.65 | 42 | `log:v2:module_trial:TRIAL-002:attempt-010` |
 
 ## Confirmation Gate
 
