@@ -9,7 +9,7 @@
 | ATTEMPT-003 | confirmation | second clean rerun of ATTEMPT-002 confirmed config | ATTEMPT-002 confirmed_H=74.24 | same config and seed | 5 | 71.19 | 76.62 | 73.81 | 81.08 | 42 | `log:v2:module_trial:TRIAL-002:attempt-003` | not_confirmed | `attempts/ATTEMPT-003/` |
 | ATTEMPT-004 | confirmation | third clean rerun of ATTEMPT-002 confirmed config | ATTEMPT-002 confirmed_H=74.24; ATTEMPT-003 H=73.81 not_confirmed | same config and seed | 5 | 71.22 | 77.60 | 74.27 | 81.38 | 33 | `log:v2:module_trial:TRIAL-002:attempt-004` | keep | `attempts/ATTEMPT-004/` |
 | ATTEMPT-005 | reproducibility_diagnosis | deterministic confirmation of mixed same-seed result | ATTEMPT-004 config | same model config + strict_determinism + use_dedicated_batch_rng | 5 | 71.69 | 76.01 | 73.79 | 81.32 | 43 | `log:v2:module_trial:TRIAL-002:attempt-005` | not_confirmed | `attempts/ATTEMPT-005/` |
-| ATTEMPT-006 | reproducibility_diagnosis | exact deterministic rerun of ATTEMPT-005 | ATTEMPT-005 H=73.79 | same config and seed | 5 | | | | | | pending | planned | `attempts/ATTEMPT-006/` |
+| ATTEMPT-006 | reproducibility_diagnosis | exact deterministic rerun of ATTEMPT-005 | ATTEMPT-005 H=73.79 | same config and seed | 5 | 71.29 | 76.73 | 73.91 | 81.52 | 42 | `log:v2:module_trial:TRIAL-002:attempt-006` | not_confirmed | `attempts/ATTEMPT-006/` |
 
 ## Notes
 

@@ -9,10 +9,13 @@
 - `ATTEMPT-002`: H=74.24, best_epoch=33
 - `ATTEMPT-003`: H=73.81, best_epoch=42, not confirmed
 - `ATTEMPT-004`: H=74.27, best_epoch=33
+- `ATTEMPT-005`: H=73.79, best_epoch=43, strict determinism + dedicated batch RNG
+- `ATTEMPT-006`: H=73.91, best_epoch=42, exact deterministic rerun of ATTEMPT-005
 
 ### Impact
 
 The result can stay as `best_observed_H`, but it cannot be promoted to `confirmed_H`, `baseline_grade`, a formal tag, or a 10-run tune sweep starting point until reproducibility is diagnosed.
+After ATTEMPT-005/006, the diagnosis result is that the strict path is still below the 74-level line under deterministic controls, so tuning and promotion remain blocked.
 
 ### Root Cause
 

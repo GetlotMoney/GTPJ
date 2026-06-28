@@ -4,7 +4,7 @@
 review_round: Review 3
 scope: post-run evidence review
 activation_mode: real_multi_agent
-attempt_id: ATTEMPT-005
+attempt_id: ATTEMPT-006
 decision: not_confirmed
 promotion_decision: blocked
 evidence_level: valid_single_run
@@ -12,10 +12,10 @@ evidence_level: valid_single_run
 
 ## Inputs Checked
 
-- `attempts/ATTEMPT-005/manifest.yaml`
-- `attempts/ATTEMPT-005/result.yaml`
-- `attempts/ATTEMPT-005/result.md`
-- `attempts/ATTEMPT-005/quality_check.md`
+- `attempts/ATTEMPT-006/manifest.yaml`
+- `attempts/ATTEMPT-006/result.yaml`
+- `attempts/ATTEMPT-006/result.md`
+- `attempts/ATTEMPT-006/quality_check.md`
 - `ATTEMPTS.md`
 - `manifest.yaml`
 - `result.yaml`
@@ -25,10 +25,10 @@ evidence_level: valid_single_run
 
 ## Review 3 Findings
 
-- Metrics synchronized from `ATTEMPT-005`: U=71.69, S=76.01, H=73.79, ZS=81.32, best_epoch=43.
+- Metrics synchronized from `ATTEMPT-006`: U=71.29, S=76.73, H=73.91, ZS=81.52, best_epoch=42.
 - Base version: `v2`.
-- Code commit / pre-run freeze: `78d964b`.
-- Command: `conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-005/config.yaml`.
+- Code commit / pre-run freeze: `59e8cd7`.
+- Command: `conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/attempts/ATTEMPT-006/config.yaml`.
 - Trial decision: `not_confirmed`.
 - Promotion decision: `blocked`.
 - Evidence level: `valid_single_run`.
@@ -36,14 +36,14 @@ evidence_level: valid_single_run
 
 ## Artifact Refs
 
-- `log:v2:module_trial:TRIAL-002:attempt-005` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-005/logs/training_log_CUB_2026-06-28_21-57-13.txt`
-- `checkpoint:v2:module_trial:TRIAL-002:attempt-005:best` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-005/checkpoints/best_model_CUB_2026-06-28_21-57-13_H7379.pth`
-- `checkpoint:v2:module_trial:TRIAL-002:attempt-005:full` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-005/checkpoints/ckpt_full_CUB_2026-06-28_21-57-13.pth`
-- `receipt:v2:module_trial:TRIAL-002:attempt-005:runner_console` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-005/receipts/stdout_ATTEMPT-005.log`
+- `log:v2:module_trial:TRIAL-002:attempt-006` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-006/logs/training_log_CUB_2026-06-28_22-12-57.txt`
+- `checkpoint:v2:module_trial:TRIAL-002:attempt-006:best` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-006/checkpoints/best_model_CUB_2026-06-28_22-12-57_H7391.pth`
+- `checkpoint:v2:module_trial:TRIAL-002:attempt-006:full` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-006/checkpoints/ckpt_full_CUB_2026-06-28_22-12-57.pth`
+- `receipt:v2:module_trial:TRIAL-002:attempt-006:runner_console` -> `warehouse://gtpj/runs/v2/module_trial/TRIAL-002/attempt-006/receipts/stdout_ATTEMPT-006.log`
 
 ## Blocking Issues
 
-None recorded by automated closeout for `ATTEMPT-005`.
+None recorded by automated closeout for `ATTEMPT-006`.
 
 ## Decision
 

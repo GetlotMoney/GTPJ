@@ -144,10 +144,10 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/result.yaml",
-          "note": "ATTEMPT-005 H=73.79, delta_H=-0.50 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=not_confirmed."
+          "note": "ATTEMPT-006 H=73.91, delta_H=-0.38 vs v2 best_observed_H=74.29 (unconfirmed); trial decision=not_confirmed."
         }
       ],
-      "next_action": "TRIAL-002 ATTEMPT-005 synchronized as not_confirmed: H=73.79, delta_H=-0.50 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
+      "next_action": "TRIAL-002 ATTEMPT-006 synchronized as not_confirmed: H=73.91, delta_H=-0.38 vs v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation."
     }
   ]
 }
