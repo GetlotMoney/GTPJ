@@ -3,8 +3,8 @@ experiment:
   id: "TRIAL-001"
   name: "TRIAL-001_fae_memory_jepa"
   kind: "module-trial"
-  status: "completed_keep"
-  attempt_id: "ATTEMPT-003"
+  status: "completed"
+  attempt_id: "attempt-003"
   created_or_recorded_at: "2026-06-28T10:04:26+00:00"
 version:
   base_version: "v2"

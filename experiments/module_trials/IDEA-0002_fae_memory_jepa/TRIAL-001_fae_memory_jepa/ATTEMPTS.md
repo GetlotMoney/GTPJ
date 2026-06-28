@@ -6,7 +6,7 @@
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|
 | ATTEMPT-001 | valid_single_run | jepa_context_mode | embed | fae_memory | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` | revise | `attempts/ATTEMPT-001/` |
 | ATTEMPT-002 | strict main-path FAE memory + conditional AG-JEPA text | jepa_context_mode=fae_main_memory; jepa_text_mode=conditional | ATTEMPT-001 keep-only FAE context + raw CLIP text in AG-JEPA | main-path jepa_memory context + sample-conditioned adapted text in AG-JEPA | 5 | 71.15 | 77.11 | 74.01 | 81.31 | 33 | `log:v2:module_trial:TRIAL-001:attempt-002` | keep | `attempts/ATTEMPT-002/` |
-| ATTEMPT-003 | confirmation | clean rerun of ATTEMPT-002 frozen config | ATTEMPT-002 single-run evidence | same config, same seed, clean pre-run freeze | 5 | pending | pending | pending | pending | pending | pending | pending | `attempts/ATTEMPT-003/` |
+| ATTEMPT-003 | confirmation | clean rerun of ATTEMPT-002 frozen config | ATTEMPT-002 valid_single_run H=74.01 | ATTEMPT-003 confirmation rerun of same config/seed | 5 | 71.32 | 77.40 | 74.24 | 81.62 | 33 | `log:v2:module_trial:TRIAL-001:attempt-003` | keep | `attempts/ATTEMPT-003/` |
 
 ## Notes
 

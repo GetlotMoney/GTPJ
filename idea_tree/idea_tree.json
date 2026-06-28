@@ -138,10 +138,10 @@
         {
           "type": "trial",
           "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/result.yaml",
-          "note": "ATTEMPT-002 H=74.01, delta_H=-0.28 vs v2; trial decision=keep."
+          "note": "ATTEMPT-003 H=74.24, delta_H=-0.05 vs v2; trial decision=keep."
         }
       ],
-      "next_action": "TRIAL-001 ATTEMPT-002 synchronized as keep: H=74.01, delta_H=-0.28 vs v2; do not promote without a stronger follow-up."
+      "next_action": "TRIAL-001 ATTEMPT-003 synchronized as keep: H=74.24, delta_H=-0.05 vs v2; do not promote without a stronger follow-up."
     }
   ]
 }
