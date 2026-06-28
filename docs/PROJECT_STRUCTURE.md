@@ -121,7 +121,9 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `docs/workflow/README.md` | workflow 入口，说明核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
+| `docs/workflow/README.md` | workflow 入口，说明 owner 薄入口、核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
+| `docs/workflow/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
+| `docs/workflow/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
 | `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
 | `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |

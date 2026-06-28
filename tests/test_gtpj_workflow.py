@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -127,7 +128,10 @@ class WorkflowHelperTest(unittest.TestCase):
         stdout = io.StringIO()
         stderr = io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = self.module.main(list(args))
+            try:
+                code = self.module.main(list(args))
+            except SystemExit as exc:
+                code = int(exc.code or 0)
         return code, stdout.getvalue(), stderr.getvalue()
 
     def _registry_text(self) -> str:
@@ -186,6 +190,189 @@ class WorkflowHelperTest(unittest.TestCase):
         self._write("idea_tree/ideas/IDEA-0001_token_router/IDEA.md", "# IDEA-0001\n")
         self._write_idea_tree([idea])
         return idea
+
+    def test_required_files_include_owner_facing_start_docs(self) -> None:
+        required = self.module.required_repository_files()
+
+        self.assertIn("docs/workflow/QUICK_START.md", required)
+        self.assertIn("docs/workflow/TASK_START_MINI.md", required)
+
+    def test_start_open_new_module_outputs_mini_card_without_writing(self) -> None:
+        self._write_selected_idea_files()
+        idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
+        version_before = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
+
+        code, stdout, stderr = self._run_main("start", "--phrase", "开新模块")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 开新模块", stdout)
+        self.assertIn("task_type: innovation / module trial", stdout)
+        self.assertIn("base_version: v1", stdout)
+        self.assertIn("target: IDEA-0001 Token Router", stdout)
+        self.assertIn("writes: idea_tree + experiments/module_trials + Warehouse after run", stdout)
+        self.assertIn("agent_mode: real_multi_agent", stdout)
+        self.assertIn("Review 0-3", stdout)
+        self.assertIn("next_action: create dev/v1-idea-0001-trial-001-token-router branch and trial record after owner approval", stdout)
+        self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
+        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
+
+    def test_closeout_check_accepts_synced_module_trial_loop_without_writing(self) -> None:
+        idea = self._write_selected_idea_files()
+        trial_dir = "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router"
+        artifact_rel = "runs/v1/module_trial/TRIAL-001/attempt-001/logs/train.log"
+        artifact_uri = f"warehouse://gtpj/{artifact_rel}"
+        artifact_bytes = b"raw log\n"
+        artifact_sha = hashlib.sha256(artifact_bytes).hexdigest()
+        artifact_size = str(len(artifact_bytes))
+        warehouse_root = self.repo / "warehouse"
+        artifact_path = warehouse_root / artifact_rel
+        artifact_path.parent.mkdir(parents=True)
+        artifact_path.write_bytes(artifact_bytes)
+        self._write(".gtpj/local_paths.yaml", f"warehouse_root: {warehouse_root.as_posix()}\n")
+        idea["linked_trials"] = [trial_dir]
+        idea["evidence"] = [{"type": "trial", "ref": f"{trial_dir}/result.yaml", "note": "synced"}]
+        self._write_idea_tree([idea])
+        self._write(
+            "experiments/module_trials/INDEX.md",
+            "# Module Trials Index\n\n"
+            "| Idea | Source idea file | Trial evidence directory | Trial status | Summary |\n"
+            "|---|---|---|---|---|\n"
+            f"| `IDEA-0001` | `idea_tree/ideas/IDEA-0001_token_router/IDEA.md` | `{trial_dir}` | keep | synced |\n",
+        )
+        self._write(
+            f"{trial_dir}/README.md",
+            f"""# TRIAL-001_token_router
+
+```text
+trial_id: TRIAL-001
+idea_id: IDEA-0001
+base_version: v1
+base_code_tag: v1
+idea_source_file: idea_tree/ideas/IDEA-0001_token_router/IDEA.md
+trial_decision: keep
+log_artifact_id: log:v1:module_trial:TRIAL-001:attempt-001
+log_uri: {artifact_uri}
+log_sha256: {artifact_sha}
+log_size_bytes: {artifact_size}
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
+```
+
+## Trial Flow
+
+```mermaid
+flowchart TD
+  Idea --> Run
+```
+""",
+        )
+        self._write(
+            f"{trial_dir}/ATTEMPTS.md",
+            "# Attempts\n\n| Attempt | Decision | Log |\n|---|---|---|\n"
+            "| ATTEMPT-001 | keep | log:v1:module_trial:TRIAL-001:attempt-001 |\n",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-001/manifest.yaml",
+            f"""schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  kind: "module-trial"
+version:
+  base_version: "v1"
+  code_commit: "abc123"
+  git_dirty: "false"
+reproducibility:
+  config_file: "{trial_dir}/attempts/ATTEMPT-001/config.yaml"
+  config_sha256: "sha-config"
+  pre_run_freeze_commit: "abc123"
+  command: "python train_GTPJ_CUB.py --config config.yaml"
+  seed: "5"
+artifacts:
+  train_log:
+    artifact_id: "log:v1:module_trial:TRIAL-001:attempt-001"
+    role: "training_log"
+    uri: "{artifact_uri}"
+    sha256: "{artifact_sha}"
+    size_bytes: "{artifact_size}"
+    status: "available"
+""",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-001/result.yaml",
+            """schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+kind: "module-trial"
+version: "v1"
+attempt_id: "ATTEMPT-001"
+metrics:
+  U: "70.00"
+  S: "72.00"
+  H: "70.99"
+  ZS: "80.00"
+  best_epoch: "12"
+  seed: "5"
+decision:
+  status: "keep"
+evidence:
+  evidence_level: "valid_single_run"
+""",
+        )
+        self._write(
+            f"{trial_dir}/manifest.yaml",
+            f"""schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  attempt_id: "ATTEMPT-001"
+version:
+  base_version: "v1"
+artifacts:
+  train_log:
+    artifact_id: "log:v1:module_trial:TRIAL-001:attempt-001"
+    role: "training_log"
+    uri: "{artifact_uri}"
+    sha256: "{artifact_sha}"
+    size_bytes: "{artifact_size}"
+    status: "available"
+""",
+        )
+        self._write(
+            f"{trial_dir}/result.yaml",
+            """schema_version: gtpj-result/v1
+experiment_id: "TRIAL-001"
+kind: "module-trial"
+version: "v1"
+attempt_id: "ATTEMPT-001"
+evidence:
+  attempt_manifest: "attempts/ATTEMPT-001/manifest.yaml"
+  train_log_artifact_id: "log:v1:module_trial:TRIAL-001:attempt-001"
+""",
+        )
+        self._write(f"{trial_dir}/result.md", "# Result\n\nATTEMPT-001\n")
+        self._write(f"{trial_dir}/quality_check.md", "# Quality\n\nATTEMPT-001\n")
+        readme_before = (self.repo / trial_dir / "README.md").read_text(encoding="utf-8")
+        index_before = (self.repo / "experiments/module_trials/INDEX.md").read_text(encoding="utf-8")
+
+        code, stdout, stderr = self._run_main(
+            "closeout-check",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-001",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("closeout-check-ok", stdout)
+        self.assertIn("attempt: ok", stdout)
+        self.assertIn("trial_root: ok", stdout)
+        self.assertIn("module_index: ok", stdout)
+        self.assertIn("idea_tree: ok", stdout)
+        self.assertIn("warehouse_artifacts: ok", stdout)
+        self.assertEqual(readme_before, (self.repo / trial_dir / "README.md").read_text(encoding="utf-8"))
+        self.assertEqual(index_before, (self.repo / "experiments/module_trials/INDEX.md").read_text(encoding="utf-8"))
 
     def test_validate_idea_tree_data_rejects_missing_ideas_list(self) -> None:
         with self.assertRaisesRegex(self.module.WorkflowError, "ideas must be a list"):

@@ -5,9 +5,23 @@
 当前阶段已经强制执行核心 workflow。任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、
 agent 凭证和 promotion gate 都是正式规则，不是未来参考。
 
+owner 日常不需要直接阅读完整协议森林。默认先看：
+
+```text
+docs/workflow/QUICK_START.md
+docs/workflow/TASK_START_MINI.md
+```
+
+`QUICK_START.md` 是人话入口，支持 `查状态`、`复现`、`调参`、`消融`、`开新模块`、
+`试这个：...`、`继续上一个`、`升版本`、`切版本` 等短口令。`TASK_START_MINI.md` 是 owner
+可见的 8 字段启动卡。完整 `WORKFLOW_ROUTER.md` 和 `TASK_START_CARD.md` 保留为 Coordinator
+后台展开和审查依据。
+
 当前主规范是：
 
 ```text
+docs/workflow/QUICK_START.md
+docs/workflow/TASK_START_MINI.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/TASK_START_CARD.md
@@ -20,6 +34,8 @@ docs/PROJECT_STATUS.md
 当前强制 workflow 文档：
 
 ```text
+docs/workflow/QUICK_START.md
+docs/workflow/TASK_START_MINI.md
 docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/TASK_START_CARD.md
 docs/workflow/FIRST_CLOSED_LOOP.md
@@ -85,7 +101,13 @@ runtime 规则：
 - 结构性动作优先使用 `workflow/gtpj_workflow.py` 做 validate、audit-boundary、目录创建和结果记录；该工具不替代研究判断或实验解释。
 - GitHub 文档是 workflow 规范的权威来源；本地 `gtpj-workflow` skill 是执行副本，修改后必须同步。
 
-阅读顺序：
+日常阅读顺序：
+
+1. `QUICK_START.md`
+2. `TASK_START_MINI.md`
+3. `../../workflow/README.md`
+
+Coordinator / agent 完整展开顺序：
 
 1. `WORKFLOW_ROUTER.md`
 2. `TASK_START_CARD.md`

@@ -3,6 +3,10 @@
 GitHub 保存长期规则和 agent IO 契约。本地 `gtpj-workflow` skill 保存执行入口。
 两边规则必须同步。
 
+本文件不重复维护 owner 人话口令表。日常入口以 `docs/workflow/QUICK_START.md`
+和 `docs/workflow/TASK_START_MINI.md` 为准；本文件只规定 Router 展开之后 agents
+如何选择、并行、串行和留下证据。
+
 ## 核心结构
 
 长期 agent 管理采用三层结构：

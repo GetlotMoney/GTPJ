@@ -43,9 +43,10 @@ SOURCE_STATUSES = {"verified", "unverified", "unknown", "local_heuristic"}
 TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
 TRIAL_ALLOWED_APPLICABILITIES = {"direct", "needs_adaptation"}
-TRIAL_READY_STATUSES = {"selected"}
+TRIAL_READY_STATUSES = {"selected", "ready"}
 IDEA_STATUSES = {
     "candidate",
+    "ready",
     "selected",
     "developing",
     "testing",
@@ -56,6 +57,7 @@ IDEA_STATUSES = {
 }
 VERSION_STAGES = {
     "candidate",
+    "ready",
     "selected",
     "trialing",
     "validated",
@@ -756,8 +758,8 @@ def cmd_status(_: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_validate(_: argparse.Namespace) -> int:
-    required = [
+def required_repository_files() -> list[str]:
+    return [
         "README.md",
         "AGENTS.md",
         "NEXT_ACTIONS.md",
@@ -766,6 +768,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/PROJECT_STATUS.md",
         "docs/DATA_SETUP.md",
         "docs/workflow/README.md",
+        "docs/workflow/QUICK_START.md",
+        "docs/workflow/TASK_START_MINI.md",
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
         "docs/workflow/module_trial_protocol.md",
@@ -833,6 +837,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "schemas/result.schema.json",
         "schemas/artifact_ref.schema.json",
     ]
+
+
+def cmd_validate(_: argparse.Namespace) -> int:
+    required = required_repository_files()
     missing = [item for item in required if not (REPO_ROOT / item).exists()]
     if missing:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
@@ -3726,6 +3734,308 @@ def find_idea_record(data: dict, idea_id: str) -> dict:
     raise WorkflowError(f"Missing idea in idea_tree.json: {idea_id}")
 
 
+def current_active_version(data: dict) -> str:
+    version = str(data.get("current_version", "")).strip()
+    if re.fullmatch(r"v[0-9]+", version):
+        return version
+    if CANONICAL_BASELINES:
+        return sorted(CANONICAL_BASELINES)[-1]
+    return "v1"
+
+
+def is_ready_trial_idea(idea: dict, version: str) -> bool:
+    entry = idea_version_entry(idea, version)
+    blockers = entry.get("blockers")
+    if idea.get("status") not in TRIAL_READY_STATUSES:
+        return False
+    if idea_version_stage(idea, version) not in TRIAL_READY_STATUSES:
+        return False
+    if not isinstance(blockers, list) or blockers:
+        return False
+    if idea.get("source_type") not in SOURCE_TYPES:
+        return False
+    source_status = idea.get("source_status")
+    if source_status not in TRIAL_ALLOWED_SOURCE_STATUSES:
+        return False
+    if source_status == "local_heuristic" and not idea.get("evidence"):
+        return False
+    if not str(idea.get("source_ref", "")).strip():
+        return False
+    if entry.get("applicability") not in TRIAL_ALLOWED_APPLICABILITIES:
+        return False
+    for field in ["hypothesis", "implementation_scope", "risk"]:
+        if not str(idea.get(field, "")).strip():
+            return False
+    return True
+
+
+def next_ready_trial_idea(data: dict, version: str) -> dict | None:
+    ready = [
+        idea
+        for idea in data.get("ideas", [])
+        if isinstance(idea, dict) and version in idea.get("version_scores", {}) and is_ready_trial_idea(idea, version)
+    ]
+    if not ready:
+        return None
+    return sorted(
+        ready,
+        key=lambda idea: (
+            -idea_score_for_version(idea, version),
+            -SOURCE_STATUS_RANK.get(idea.get("source_status", "unknown"), 0),
+            -float(idea.get("global_score", 0) or 0),
+            idea.get("idea_id", ""),
+        ),
+    )[0]
+
+
+def mini_card_for_phrase(phrase: str) -> dict[str, str]:
+    data = load_idea_tree()
+    base_version = current_active_version(data)
+    normalized = phrase.strip().rstrip("。")
+    if normalized in {"开新模块", "开下一个新模块"}:
+        idea = next_ready_trial_idea(data, base_version)
+        if idea is None:
+            return {
+                "owner_phrase": normalized,
+                "task_type": "innovation / module trial",
+                "base_version": base_version,
+                "target": f"no selected ready idea in {base_version}",
+                "writes": "none until a ready idea exists and owner approves start",
+                "agent_mode": "real_multi_agent when code starts; role_only for this read-only check",
+                "gates": "source_status, interface_contract, innovation_code_review Review 0-3, artifact_boundary",
+                "next_action": "list 3 candidates or register an owner-supplied local heuristic idea",
+            }
+        idea_id = str(idea.get("idea_id", ""))
+        title = str(idea.get("title", "")).strip()
+        slug = idea_folder_name(idea).removeprefix(f"{idea_id}_")
+        branch = trial_branch_name(base_version, idea_id, "TRIAL-001", slug)
+        return {
+            "owner_phrase": normalized,
+            "task_type": "innovation / module trial",
+            "base_version": base_version,
+            "target": f"{idea_id} {title}".strip(),
+            "writes": "idea_tree + experiments/module_trials + Warehouse after run",
+            "agent_mode": "real_multi_agent, because new module code changes require Review 0-3",
+            "gates": "source_status, interface_contract, innovation_code_review Review 0-3, artifact_boundary",
+            "next_action": f"create {branch} branch and trial record after owner approval",
+        }
+
+    if normalized.startswith("试这个：") or normalized.startswith("试这个:"):
+        return {
+            "owner_phrase": normalized,
+            "task_type": "local heuristic idea or innovation / module trial",
+            "base_version": base_version,
+            "target": normalized.split(":", 1)[-1] if ":" in normalized else normalized.split("：", 1)[-1],
+            "writes": "Research/idea_tree only if owner asks to register; no code until ready",
+            "agent_mode": "role_only for triage; real_multi_agent if it becomes code",
+            "gates": "source_status, interface_contract",
+            "next_action": "judge whether this is inbox idea, ready idea, or blocked by missing source/scope",
+        }
+
+    defaults = {
+        "查状态": {
+            "task_type": "read-only status",
+            "target": "repository state, active baseline, queues, blockers",
+            "writes": "none",
+            "agent_mode": "role_only, because this is a read-only check",
+            "gates": "repo_state, current_version",
+            "next_action": "inspect branch, dirty tree, active version, and ready queues",
+        },
+        "复现": {
+            "task_type": "confirmation",
+            "target": "current baseline result",
+            "writes": "none until owner confirms run and evidence level",
+            "agent_mode": "role_only for preparation; Runner serial if a run starts",
+            "gates": "metric_semantics, evidence_level, artifact_boundary",
+            "next_action": "decide quick_local vs formal confirmation target",
+        },
+        "调参": {
+            "task_type": "tune",
+            "target": "up to 3 candidates for current active baseline",
+            "writes": "none until owner picks one candidate",
+            "agent_mode": "role_only for candidate suggestion",
+            "gates": "no code/eval semantic change, cost check",
+            "next_action": "list at most 3 tune candidates",
+        },
+        "消融": {
+            "task_type": "ablation",
+            "target": "version-level or trial-internal controlled factor",
+            "writes": "none until ablation target is confirmed",
+            "agent_mode": "role_only for classification; real_multi_agent if code or semantic changes",
+            "gates": "interface_contract, single_factor, metric_semantics",
+            "next_action": "classify version-level vs trial-internal ablation",
+        },
+        "继续上一个": {
+            "task_type": "trial-internal attempt or current task continuation",
+            "target": "current trial or attempt",
+            "writes": "current trial attempt ledger only after state is confirmed",
+            "agent_mode": "role_only unless code or result conclusion changes",
+            "gates": "attempt_state, artifact_boundary, sync_check",
+            "next_action": "inspect current trial state and identify the smallest next action",
+        },
+        "别问，给我三个候选": {
+            "task_type": "read-only idea selection",
+            "target": "three candidate ideas",
+            "writes": "none",
+            "agent_mode": "role_only, because this only ranks candidates",
+            "gates": "source_status, blockers",
+            "next_action": "read idea_tree and list the top 3 feasible candidates",
+        },
+        "升版本": {
+            "task_type": "promotion",
+            "target": "promotion gate",
+            "writes": "version ledgers/tags only after gate passes",
+            "agent_mode": "real_multi_agent for promotion evidence review",
+            "gates": "baseline_grade, confirmation_status, quality_gate, promotion",
+            "next_action": "check whether any completed result records promotion_decision: promote",
+        },
+        "切版本": {
+            "task_type": "set-current-version or activate-version",
+            "target": "idea_tree view or active code",
+            "writes": "idea_tree only for set-current-version; active code only with explicit owner authorization",
+            "agent_mode": "role_only for explanation and set-current-version",
+            "gates": "owner_authorization, git_policy",
+            "next_action": "ask whether owner means idea-tree view or active code switch",
+        },
+    }
+    if normalized not in defaults:
+        raise WorkflowError(f"Unknown owner phrase: {phrase}")
+    card = dict(defaults[normalized])
+    card["owner_phrase"] = normalized
+    card["base_version"] = base_version
+    return card
+
+
+def cmd_start(args: argparse.Namespace) -> int:
+    card = mini_card_for_phrase(args.phrase)
+    for key in [
+        "owner_phrase",
+        "task_type",
+        "base_version",
+        "target",
+        "writes",
+        "agent_mode",
+        "gates",
+        "next_action",
+    ]:
+        print(f"{key}: {card[key]}")
+    return 0
+
+
+def warehouse_path_from_uri(uri: str) -> Path:
+    prefix = "warehouse://gtpj/"
+    if not uri.startswith(prefix):
+        raise WorkflowError(f"Warehouse artifact URI must start with {prefix}: {uri}")
+    relative = uri[len(prefix):]
+    root = warehouse_root()
+    path = root / relative
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError as exc:
+        raise WorkflowError(f"Warehouse artifact must stay inside Warehouse root: {display_path(root)}") from exc
+    return path
+
+
+def check_closeout_artifacts(artifacts: dict[str, dict[str, str]]) -> None:
+    if not artifacts:
+        raise WorkflowError("Attempt manifest must include at least one artifact")
+    for key, artifact in artifacts.items():
+        artifact_id = artifact.get("artifact_id", "")
+        uri = artifact.get("uri", "")
+        if not artifact_id:
+            raise WorkflowError(f"Artifact {key} is missing artifact_id")
+        if not uri:
+            raise WorkflowError(f"Artifact {artifact_id} is missing uri")
+        if not uri.startswith("warehouse://"):
+            continue
+        path = warehouse_path_from_uri(uri)
+        if not path.exists():
+            raise WorkflowError(f"Warehouse artifact missing: {display_path(path)}")
+        expected_sha = artifact.get("sha256", "")
+        expected_size = artifact.get("size_bytes", "")
+        actual_sha, actual_size = artifact_file_info(path)
+        if expected_sha and expected_sha != actual_sha:
+            raise WorkflowError(f"Warehouse artifact sha256 mismatch for {artifact_id}")
+        if expected_size and expected_size != actual_size:
+            raise WorkflowError(f"Warehouse artifact size mismatch for {artifact_id}")
+
+
+def cmd_closeout_check(args: argparse.Namespace) -> int:
+    trial_dir = Path(args.trial_dir)
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    if not trial_dir.exists():
+        raise WorkflowError(f"Missing trial directory: {display_path(trial_dir)}")
+    require_path_inside(trial_dir, REPO_ROOT / "experiments" / "module_trials", "trial-dir")
+    _trial_id, _slug = parse_trial_folder_name(trial_dir)
+    attempt_upper, _attempt_lower = normalize_attempt_ids(args.attempt_id)
+    attempt_dir = trial_dir / "attempts" / attempt_upper
+    attempt_manifest_path = attempt_dir / "manifest.yaml"
+    attempt_result_path = attempt_dir / "result.yaml"
+    if not attempt_manifest_path.exists() or not attempt_result_path.exists():
+        raise WorkflowError(f"{attempt_upper} must have manifest.yaml and result.yaml")
+    attempt_result = read_shallow_yaml(attempt_result_path)
+    metrics_h = yaml_section_value(attempt_result, "metrics", "H")
+    if not metrics_h:
+        raise WorkflowError(f"{rel(attempt_result_path)} is missing metrics.H")
+    artifacts = read_yaml_artifacts(attempt_manifest_path)
+    check_closeout_artifacts(artifacts)
+
+    required_root_files = [
+        "README.md",
+        "ATTEMPTS.md",
+        "manifest.yaml",
+        "result.yaml",
+        "result.md",
+        "quality_check.md",
+    ]
+    for filename in required_root_files:
+        if not (trial_dir / filename).exists():
+            raise WorkflowError(f"Missing trial root file: {rel(trial_dir / filename)}")
+
+    trial_fields = read_key_value_block(trial_dir / "README.md")
+    idea_id = trial_fields.get("idea_id", "")
+    if not idea_id:
+        raise WorkflowError("Trial README is missing idea_id")
+    root_readme = read_text(trial_dir / "README.md")
+    root_manifest = read_text(trial_dir / "manifest.yaml")
+    root_result = read_text(trial_dir / "result.yaml")
+    attempts_text = read_text(trial_dir / "ATTEMPTS.md")
+    if attempt_upper not in attempts_text:
+        raise WorkflowError(f"{attempt_upper} missing from ATTEMPTS.md")
+    attempt_manifest_ref = f"attempts/{attempt_upper}/manifest.yaml"
+    if attempt_manifest_ref not in root_result:
+        raise WorkflowError(f"trial root result.yaml must reference {attempt_manifest_ref}")
+    for artifact in artifacts.values():
+        artifact_id = artifact.get("artifact_id", "")
+        uri = artifact.get("uri", "")
+        if artifact_id and artifact_id not in root_readme + root_result + root_manifest:
+            raise WorkflowError(f"trial root files do not reference artifact {artifact_id}")
+        if uri and uri not in root_readme + root_manifest:
+            raise WorkflowError(f"trial root files do not reference artifact URI {uri}")
+
+    trial_rel = rel(trial_dir)
+    module_index_path = REPO_ROOT / "experiments" / "module_trials" / "INDEX.md"
+    if not module_index_path.exists() or trial_rel not in read_text(module_index_path):
+        raise WorkflowError(f"Module trial index missing {trial_rel}")
+    data = load_idea_tree()
+    idea = find_idea_record(data, idea_id)
+    if trial_rel not in idea.get("linked_trials", []):
+        raise WorkflowError(f"{idea_id} missing linked trial {trial_rel}")
+    result_ref = f"{trial_rel}/result.yaml"
+    evidence = idea.get("evidence", [])
+    if not any(isinstance(item, dict) and item.get("ref") == result_ref for item in evidence):
+        raise WorkflowError(f"{idea_id} missing evidence ref {result_ref}")
+
+    print("closeout-check-ok")
+    print("attempt: ok")
+    print("trial_root: ok")
+    print("module_index: ok")
+    print("idea_tree: ok")
+    print("warehouse_artifacts: ok")
+    return 0
+
+
 def cmd_new_idea(args: argparse.Namespace) -> int:
     idea_id = require_clean_id(args.idea_id, r"IDEA-[0-9]{4}", "idea id")
     slug = require_slug(args.slug)
@@ -4270,6 +4580,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit_boundary = sub.add_parser("audit-boundary", help="检查 GitHub 轻量边界，禁止 raw artifacts 入仓库")
     audit_boundary.set_defaults(func=cmd_audit_boundary)
+
+    start = sub.add_parser("start", help="按 owner 人话口令只读输出 mini 启动卡")
+    start.add_argument("--phrase", required=True)
+    start.set_defaults(func=cmd_start)
+
+    closeout = sub.add_parser("closeout-check", help="只读检查 module trial attempt 到 root/index/idea/Warehouse 闭环")
+    closeout.add_argument("--trial-dir", required=True)
+    closeout.add_argument("--attempt-id", required=True)
+    closeout.set_defaults(func=cmd_closeout_check)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)

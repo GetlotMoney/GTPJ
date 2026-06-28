@@ -8,15 +8,48 @@
 
 默认范围：本 Router 只服务“跑实验、做创新、复现、消融、调参、debug 和实验结果记账”。
 
-Owner 不需要说“开启动卡”或自己判断任务类型。Owner 只需要说：
+Owner 不需要说“开启动卡”或自己判断任务类型。默认使用 `QUICK_START.md` 的人话入口。
+Owner 可以只说：
 
 ```text
-我想基于 <version> 跑/做 <experiment or idea>。
+查状态
+复现
+调参
+消融
+开新模块
+开下一个新模块
+试这个：<一句话想法>
+继续上一个
+别问，给我三个候选
+升版本
+切版本
 ```
 
 Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、缺什么、下一步最小动作是什么。
+不要要求 owner 口头说 `module trial`、`innovation workflow`、`real_multi_agent`、`Review 0-3`、
+`artifact boundary` 或 `pre-run freeze`。这些内部词由 Coordinator 展开到 mini 启动卡和完整启动卡。
 
 如果其它文档分散描述了某条规则，先用本文件判断任务归类，再进入对应协议细节。
+
+## Owner 人话入口
+
+| owner 口令 | Router 默认归类 | 默认行为 |
+|---|---|---|
+| `查状态` | read-only status | 只读检查仓库、active baseline、队列和阻塞项。 |
+| `复现` | confirmation | 默认当前 active baseline；未要求正式证据时优先 `quick_local` 或准备路径。 |
+| `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
+| `消融` | ablation | 判断 version-level 或 trial-internal，并先检查接口门。 |
+| `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
+| `开下一个新模块` | innovation / module trial | 明确继续当前版本 selected 队列的下一个 ready idea。 |
+| `试这个：...` | local heuristic idea 或 innovation / module trial | 先判断能否成为 idea / trial，不能直接跳过 source 和 interface gate。 |
+| `继续上一个` | trial-internal attempt 或当前任务续跑 | 不新开 idea，继续当前 trial/attempt 的下一步最小动作。 |
+| `别问，给我三个候选` | read-only idea selection | 只读列候选，不改代码、不建 trial。 |
+| `升版本` | promotion | 检查 promotion gate，不把单次 H 提升直接当 baseline。 |
+| `切版本` | set-current-version 或 activate-version | 默认只解释差异；activate-version 必须 owner 明确授权。 |
+
+`开新模块` 的 ready idea 必须满足：有 `idea_id`、当前版本 `version_scores`、`selected/ready`
+状态、空 blockers、明确 source/ref/status、hypothesis、implementation scope 和 risk。没有 ready idea
+时，只问一个最小问题。
 
 ## 0. 优先级
 

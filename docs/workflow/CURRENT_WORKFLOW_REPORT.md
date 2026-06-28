@@ -41,34 +41,26 @@ docs/workflow/promotion.md
 
 ## 2. Owner 怎么开工
 
-Owner 不需要说“开启动卡”，也不需要自己判断任务类型。
-
-最小输入是：
+Owner 不需要说“开启动卡”，也不需要自己判断任务类型。日常入口已经收敛到：
 
 ```text
-我想基于 <version> 跑/做 <experiment or idea>。
+docs/workflow/QUICK_START.md
+docs/workflow/TASK_START_MINI.md
 ```
 
-例如：
+Owner 可以直接说 `查状态`、`复现`、`调参`、`消融`、`开新模块`、
+`试这个：...`、`继续上一个`、`别问，给我三个候选`、`升版本` 或 `切版本`。
+Coordinator 负责把这些话展开成路由、agents、hard gates 和写入边界。
 
-```text
-我想基于 v1 跑一个 topo loss weight 的调参。
-我想基于 v1 做一个新的 token router 模块实验。
-我想基于 v1 复现一下当前 baseline。
-我读到一篇论文，想看看能不能转成 GTPJ 的创新点。
-```
-
-收到这种请求后，Coordinator 必须自动输出：
+收到请求后，Coordinator 必须先输出 mini 启动判断：
 
 ```text
 能不能开工：
 任务类型：
 基于版本：
-是否进入 idea_tree：
-GitHub 写入：
-本地写入：
-必读协议：
-启用 agents：
+目标：
+写入：
+agent 模式：
 硬门：
 当前阻塞：
 下一步最小动作：
@@ -473,6 +465,8 @@ base_version
 
 ```text
 docs/workflow/CURRENT_WORKFLOW_REPORT.md   # 本汇报
+docs/workflow/QUICK_START.md               # owner 人话入口
+docs/workflow/TASK_START_MINI.md           # owner 可见 mini 启动卡
 docs/workflow/WORKFLOW_ROUTER.md           # 总教官
 docs/workflow/TASK_START_CARD.md           # 启动卡
 docs/workflow/GTPJ_WORKFLOW_SPEC.md        # 总规范

@@ -98,8 +98,9 @@ validate-remote-ok
 `validate-remote` 允许 `main` 比历史 tag 多治理账本提交；它检查的是远端 `main` 对齐本地
 `main`、远端 baseline tags 对齐本地 baseline tags，并确认本地 `main` 包含这些 baseline 历史。
 
-Owner 只需要说明“想基于哪个版本跑/做什么”。检查通过后，Coordinator 自动按
-`docs/workflow/TASK_START_CARD.md` 输出启动卡。只有启动卡说明任务类型、写入边界、agents、
+Owner 日常只需要使用 `docs/workflow/QUICK_START.md` 中的人话口令。检查通过后，
+Coordinator 先按 `docs/workflow/TASK_START_MINI.md` 输出 mini 启动卡，再在后台展开
+`docs/workflow/TASK_START_CARD.md`。只有启动卡说明任务类型、写入边界、agents、
 hard gates 和当前阻断后，才进入具体实验命令。
 
 第一次开跑完整工作流时，先读 `docs/workflow/FIRST_CLOSED_LOOP.md`，用 readiness check
@@ -303,14 +304,23 @@ tune 不会产生新的 `vX`。只有模块组合或模块替换通过 promotion
 
 ## 启动新模块 Trial
 
-先登记创意来源。`IDEA-XXXX`、`short_name` 和 `<source>` 必须替换成真实值。
+日常入口优先用 owner 口令：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "开新模块"
+```
+
+这个命令只输出 mini 启动卡，不写文件、不建分支、不跑训练。`开新模块` 的默认展开、
+ready idea 条件和 owner 不需要说的内部词，以 `docs/workflow/QUICK_START.md` 为准。
+
+只有当当前版本没有可直接开工的 ready idea，或 owner 明确提供新想法时，才走手工登记 fallback：
 
 ```bash
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v2 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v2
 ```
 
-然后补全：
+登记后必须补全：
 
 ```text
 idea_tree/idea_tree.json
@@ -329,7 +339,7 @@ implementation_scope: 非空
 risk: 非空
 ```
 
-最后创建 trial 记录并开临时开发分支：
+只有 mini 启动卡判断可以开工、owner 授权实际操作、且分支/工作区符合规则后，才创建 trial：
 
 ```bash
 git switch main

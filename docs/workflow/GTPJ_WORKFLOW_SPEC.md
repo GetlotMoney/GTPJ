@@ -28,23 +28,28 @@
 docs/workflow/IMPLEMENTATION_STATUS.md
 ```
 
-任务类型不要靠临场推理。每次 GTPJ 任务开始前，先读取总教官/总路由文件：
+Owner 日常入口不要靠临场解释。每次 GTPJ 任务开始前，先读取 owner-facing 入口：
+
+```text
+docs/workflow/QUICK_START.md
+docs/workflow/TASK_START_MINI.md
+```
+
+任务类型不要靠临场推理。Owner 口令进入后台后，再读取总教官/总路由文件：
 
 ```text
 docs/workflow/WORKFLOW_ROUTER.md
 ```
 
-Router 判断后，用启动卡记录本次任务的执行边界：
+Router 判断后，用完整启动卡记录后台执行边界：
 
 ```text
 docs/workflow/TASK_START_CARD.md
 ```
 
-Owner 不需要主动要求启动卡；Coordinator 必须自动完成判断。Owner 的最小输入是：
-
-```text
-我想基于 <version> 跑/做 <experiment or idea>。
-```
+Owner 不需要主动要求启动卡，也不需要说 `module trial`、`real_multi_agent`、
+`Review 0-3` 或 artifact 边界。人话口令和 mini 启动卡字段以 `QUICK_START.md` /
+`TASK_START_MINI.md` 为准，本总规范不重复维护那张入口表。
 
 正式改文件、建目录或跑实验前，先在对话中说明能不能开工、任务类型、当前缺口和下一步最小动作。
 
@@ -935,71 +940,31 @@ label mapping、seen/unseen split、class order、logits shape 或 metric semant
 
 ## 10. 标准命令入口
 
-以下命令只作为结构辅助，不能替代 owner 判断。
+以下命令只作为结构辅助，不能替代 owner 判断。完整命令索引见 `workflow/README.md`；
+owner 人话入口见 `docs/workflow/QUICK_START.md`。
 
-### 10.1 查看状态
+日常开工前可先用只读 mini 卡确认路由：
+
+```powershell
+python workflow\gtpj_workflow.py start --phrase "开新模块"
+```
+
+常用结构检查：
 
 ```powershell
 python workflow\gtpj_workflow.py status
-```
-
-用途：查看当前版本、目录、基本状态。
-
-### 10.2 结构验证
-
-```powershell
 python workflow\gtpj_workflow.py validate
-```
-
-用途：检查关键目录、版本、配置和规范入口是否存在。
-
-### 10.3 GitHub 轻量边界检查
-
-```powershell
 python workflow\gtpj_workflow.py audit-boundary
-```
-
-用途：检查 raw logs、checkpoint、cache、generated figures 等是否误入仓库。
-
-### 10.4 远端核对
-
-```powershell
 python workflow\gtpj_workflow.py validate-remote
 ```
 
-用途：核对本地和远端 `main` / `v1` 对齐。只有需要确认远端时再跑。
-
-### 10.5 创建实验
+module trial attempt 收口优先用 helper 闭环：
 
 ```powershell
-python workflow\gtpj_workflow.py new-experiment --type tune --base-version v1 --name your_name
+python workflow\gtpj_workflow.py record-module-attempt --trial-dir <trial-dir> --attempt-id ATTEMPT-001 --log <external-log> --decision keep
+python workflow\gtpj_workflow.py sync-trial-summary --trial-dir <trial-dir> --attempt-id ATTEMPT-001 --decision keep
+python workflow\gtpj_workflow.py closeout-check --trial-dir <trial-dir> --attempt-id ATTEMPT-001
 ```
-
-用途：创建标准实验目录，并同步登记表。
-
-### 10.6 记录结果
-
-```powershell
-python workflow\gtpj_workflow.py record-result --experiment path --artifact path_to_external_log
-```
-
-用途：从外部日志抽指标，计算 artifact hash/size，把轻量结果写回 GitHub。
-
-### 10.7 创建 idea
-
-```powershell
-python workflow\gtpj_workflow.py new-idea --title "idea title" --base-version v1
-```
-
-用途：创建轻量 idea 记录。完整阅读材料仍在 Research。
-
-### 10.8 创建 trial
-
-```powershell
-python workflow\gtpj_workflow.py new-trial --idea IDEA-0001 --base-version v1 --name trial_name
-```
-
-用途：创建 module trial 目录，并把 trial 和 idea 关联起来。
 
 ## 11. 完整闭环
 

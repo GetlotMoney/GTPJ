@@ -3,37 +3,52 @@
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
 `WORKFLOW_ROUTER.md`，而是把 Router 的判断落成一张可检查的任务单，避免每次靠口述重新解释。
 
-Owner 不需要说“开启动卡”，也不需要自己填表。Owner 只需要用自然语言说想基于哪个版本做什么；
-Coordinator 负责判断任务类型、写入边界、agents、硬门和能不能开工。
+Owner 不需要说“开启动卡”，也不需要自己填表。Owner 日常只需要使用
+`QUICK_START.md` 里的短口令；Coordinator 先输出 `TASK_START_MINI.md` 的 8 字段 mini
+启动卡，再在后台展开完整启动卡字段。
 
 启动卡可以先写在当前对话里。纯规划阶段不要为了启动卡提前创建空 run 目录。只有当 owner 明确同意开工，
 或本轮请求已经明确包含“开始/你来操作/跑这个实验”时，才把启动卡转成正式文件、分支、实验目录或运行动作。
 
 ## 0. Owner 极简输入
 
-Owner 最简单只需要说：
+Owner 最简单只需要说这些口令：
 
 ```text
-我想基于 <version> 跑/做 <experiment or idea>。
+查状态
+复现
+调参
+消融
+开新模块
+开下一个新模块
+试这个：<一句话想法>
+继续上一个
+别问，给我三个候选
+升版本
+切版本
 ```
 
 常见说法：
 
 ```text
-我想基于 v1 跑一个调参实验，调 conditional_text_ratio。
-我想基于 v1 做一个新模块实验，把 CLIP-A-self 接进文本 adapter。
-我想基于 v1 做一个消融，把 topo loss 关掉看看。
-我想基于 v1 复现一下当前 baseline。
-我想查一下为什么 CUB 日志结果不对。
+复现。
+调参，先给三个候选。
+消融，把 topo loss 关掉看看。
+开新模块。
+开下一个新模块。
+试这个：把 CLIP-A-self 接进文本 adapter。
+继续上一个。
+别问，给我三个候选。
 ```
 
 如果 owner 只说：
 
 ```text
-我想基于 v1 跑 CLIP-A-self。
+开新模块
 ```
 
-Coordinator 也必须自动判断它更像 `innovation / module trial`，然后告诉 owner 是否能开工、缺什么。
+Coordinator 必须默认理解为：基于当前 active baseline，从该版本 selected ready idea 队列自动选一个
+new module trial；允许改代码；走 module trial 合规路径；不 push。若没有 ready idea，只问一个最小问题。
 
 Owner 不需要提前判断：
 
@@ -42,6 +57,7 @@ Owner 不需要提前判断：
 - 需要哪些 agents；
 - 需要哪些 hard gates；
 - 分支名、目录名、artifact id 怎么写。
+- 是否要说 `real_multi_agent`、`Review 0-3`、`artifact boundary` 或 `pre-run freeze`。
 
 这些都由 Coordinator 在启动卡里给出。
 
