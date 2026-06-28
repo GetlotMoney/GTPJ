@@ -3,8 +3,8 @@ experiment:
   id: "TRIAL-002"
   name: "TRIAL-002_strict_conditional_jepa"
   kind: "module-trial"
-  status: "completed_not_confirmed"
-  attempt_id: "ATTEMPT-003"
+  status: "completed"
+  attempt_id: "attempt-003"
   created_or_recorded_at: "2026-06-28T12:44:36+00:00"
 version:
   base_version: "v2"
