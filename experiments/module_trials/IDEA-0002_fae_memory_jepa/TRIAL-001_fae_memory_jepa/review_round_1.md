@@ -84,3 +84,37 @@ memory_used: yes
 memory_sources: docs/workflow/agents/shared_roles/interface_checker/memory.md; docs/workflow/agents/shared_roles/quality_checker/memory.md; docs/workflow/agents/shared_roles/reviewer/memory.md
 verified_against_current_repo: yes
 ```
+
+## ATTEMPT-002 Addendum: Code Diff Pre-Run
+
+```text
+review_round: Review 2 addendum
+scope: ATTEMPT-002 strict main-path memory + conditional text code diff
+decision: allow_after_clean_pre_run_freeze_commit
+runner_status: blocked_until_clean_commit_then_allowed
+```
+
+### Interface Checker
+
+Findings:
+
+- `jepa_context_mode: fae_main_memory` is distinct from ATTEMPT-001 `fae_memory`.
+- `fae_main_memory` consumes main-path `jepa_memory`, not keep-only recomputed FAE memory.
+- `jepa_text_mode: conditional` feeds sample-conditioned positive and negative text into AG-JEPA.
+- `target = mean(masked patch_z).detach()` is unchanged.
+- Negative JEPA still detaches visual context.
+- Logits shape, class order, split, label mapping, and metric semantics are unchanged.
+
+### Reviewer
+
+Findings:
+
+- The diff now matches the owner-corrected intent: constrain the main classification memory path and lengthen the AG-JEPA text condition through conditional text.
+- ATTEMPT-001 remains valid as keep-only evidence; ATTEMPT-002 should not be interpreted as a single-variable ablation because it combines strict main memory and conditional text.
+
+### Quality Checker
+
+Findings:
+
+- Unit tests cover main-path FAE gradient, conditional `meta_net` gradient, negative visual-context detach, invalid conditional config rejection, and train/eval logits shapes.
+- Runner remains blocked until this planned ATTEMPT-002 config and current code diff are frozen in a clean commit.

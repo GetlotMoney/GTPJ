@@ -60,3 +60,24 @@ memory_used: yes
 memory_sources: docs/workflow/agents/shared_roles/interface_checker/memory.md
 verified_against_current_repo: yes
 ```
+
+## ATTEMPT-002 Addendum
+
+```text
+review_round: Review 2 addendum
+role: Interface Checker
+decision: allow_after_clean_pre_run_freeze_commit
+runner_status: blocked_until_clean_pre_run_freeze_commit
+```
+
+| Check | Verdict | Evidence |
+|---|---|---|
+| `fae_main_memory` switch | allow | `jepa_context_mode` accepts `fae_main_memory`; it requires `use_fae=True`. |
+| Main-path memory handoff | allow | `GTPJ.forward` returns `cm_out["jepa_memory"]`; `compute_loss` passes it as `selected_memory`. |
+| Strict context path | allow | `_ag_jepa_loss` mean-pools kept positions from main-path `selected_memory` for `fae_main_memory`. |
+| Conditional text switch | allow | `jepa_text_mode` accepts `conditional`; invalid configs raise `ValueError`. |
+| Positive conditional text | allow | Positive AG-JEPA text uses `all_text_cond[batch, labels]`. |
+| Negative conditional text | allow | Negative AG-JEPA text uses `all_text_cond[batch, neg_labels]`; visual context remains detached. |
+| Logits/eval invariants | allow | Unit tests preserve train `[B,150]` and eval `[B,200]`; evaluator code is unchanged. |
+
+ATTEMPT-002 deliberately gives up ATTEMPT-001's keep-only leakage guard in order to test the owner's strict main-memory intent. This risk is recorded in `implementation.md` and `framework_diagram.md`; it must be considered when interpreting results.

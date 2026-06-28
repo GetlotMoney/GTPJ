@@ -78,7 +78,7 @@
       "idea_id": "IDEA-0002",
       "idea_dir": "idea_tree/ideas/IDEA-0002_fae_memory_jepa/",
       "title": "FAE-memory JEPA auxiliary loss",
-      "status": "weakened",
+      "status": "testing",
       "source_type": "user",
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
@@ -88,7 +88,7 @@
           "score": 72.0,
           "applicability": "needs_adaptation",
           "stage": "trialing",
-          "rationale": "Current v2 already includes CLIP-A-self and AG-JEPA. This idea keeps the text condition and evaluation path unchanged, but moves the JEPA visual context to FAE memory so the auxiliary loss can directly regularize the visual memory used by local_score.",
+          "rationale": "Current v2 already includes CLIP-A-self, conditional text, FAE, and AG-JEPA. ATTEMPT-001 tested a keep-only FAE-memory JEPA variant and underperformed v2; ATTEMPT-002 tests the owner-corrected strict main-path jepa_memory context plus conditional AG-JEPA text.",
           "blockers": []
         }
       },
@@ -107,9 +107,9 @@
         "S": "should remain comparable if seen-class text and CE label mapping are unchanged",
         "H": "target metric; any improvement remains trial evidence until clean confirmation"
       },
-      "implementation_scope": "Add a trial-local JEPA context mode that returns patch_z and FAE memory from CrossModalTransformer, uses memory keep-token pooling as context, keeps target as detached masked patch_z, and preserves the existing embed/pre-FAE mode as baseline-off behavior.",
-      "risk": "The target and context live at different representation depths; lastvit-selected patch alignment must be explicit; high JEPA weight may over-regularize FAE; negative loss should keep visual context detached in the first implementation.",
-      "compatibility": "Switch-off or jepa_context_mode=embed must preserve the current AG-JEPA path. The forward output can include extra auxiliary keys, but logits, class order, label mapping, seen/unseen split, and metric calculation must remain unchanged.",
+      "implementation_scope": "Add trial-local JEPA context/text modes. ATTEMPT-001 keeps fae_memory as a keep-only FAE recomputation path. ATTEMPT-002 adds fae_main_memory, which mean-pools kept positions from the main forward path jepa_memory, and jepa_text_mode=conditional, which feeds sample-conditioned text into positive and negative AG-JEPA predictor branches.",
+      "risk": "Strict main-path jepa_memory can leak masked-token information through FAE self-attention; conditional text lengthens the gradient path through meta_net; lastvit-selected patch alignment must remain explicit; negative loss should keep visual context detached.",
+      "compatibility": "Switch-off or jepa_context_mode=embed plus jepa_text_mode=adapted must preserve the current AG-JEPA path. The forward output can include extra auxiliary keys, but logits, class order, label mapping, seen/unseen split, and metric calculation must remain unchanged.",
       "transfer_notes": "Future versions must re-check whether CrossModalTransformer still exposes embed_cv, FAE memory, and the same selected-patch semantics before reusing this idea.",
       "priority": 0.72,
       "linked_trials": [
@@ -128,7 +128,7 @@
         {
           "type": "code",
           "ref": "model/MyModel.py",
-          "note": "Current _ag_jepa_loss recomputes embed_cv/embed_text and bypasses FAE; CrossModalTransformer.forward computes FAE memory but does not return it."
+          "note": "ATTEMPT-001 _ag_jepa_loss recomputes keep-only FAE context inside the loss branch. ATTEMPT-002 passes main-path jepa_memory and sample-conditioned text into AG-JEPA."
         },
         {
           "type": "research",
@@ -141,7 +141,7 @@
           "note": "ATTEMPT-001 ran cleanly from commit 5ca8245e and reached H=73.82, delta_H=-0.47 vs active v2 best_observed_H=74.29; trial decision is revise, not promote."
         }
       ],
-      "next_action": "TRIAL-001 ATTEMPT-001 completed as valid single-run evidence but underperformed v2 (H=73.82, delta_H=-0.47). Do not promote; continue only with a targeted ATTEMPT-002 param/ablation if the owner wants to keep exploring the mechanism."
+      "next_action": "TRIAL-001 ATTEMPT-001 completed as valid keep-only FAE-memory JEPA evidence but underperformed v2 (H=73.82, delta_H=-0.47). ATTEMPT-002 is planned to test strict main-path jepa_memory context plus conditional AG-JEPA text; do not promote without a clean successful run and confirmation."
     }
   ]
 }

@@ -428,13 +428,13 @@ class GTPJ(nn.Module):
         self.jepa_context_mode = str(
             getattr(config, "jepa_context_mode", "embed")
         ).lower()
-        if self.jepa_context_mode not in {"embed", "fae_memory"}:
+        if self.jepa_context_mode not in {"embed", "fae_memory", "fae_main_memory"}:
             raise ValueError(
-                "jepa_context_mode must be 'embed' or 'fae_memory', "
+                "jepa_context_mode must be 'embed', 'fae_memory', or 'fae_main_memory', "
                 f"got {self.jepa_context_mode!r}."
             )
-        if self.jepa_context_mode == "fae_memory" and not use_fae:
-            raise ValueError("jepa_context_mode='fae_memory' requires use_fae=True.")
+        if self.jepa_context_mode in {"fae_memory", "fae_main_memory"} and not use_fae:
+            raise ValueError(f"jepa_context_mode={self.jepa_context_mode!r} requires use_fae=True.")
         self.jepa_topk = int(getattr(config, "jepa_topk", 8))
         self.jepa_neg_margin = float(getattr(config, "jepa_neg_margin", 0.2))
         if self.use_ag_jepa:
@@ -478,6 +478,17 @@ class GTPJ(nn.Module):
             self.cond_text_ratio = float(getattr(config, "conditional_text_ratio", 0.05))
         else:
             self.cond_text_ratio = 0.0
+        self.jepa_text_mode = str(getattr(config, "jepa_text_mode", "adapted")).lower()
+        if self.jepa_text_mode not in {"adapted", "conditional"}:
+            raise ValueError(
+                "jepa_text_mode must be 'adapted' or 'conditional', "
+                f"got {self.jepa_text_mode!r}."
+            )
+        if self.jepa_text_mode == "conditional":
+            if not self.use_conditional_text:
+                raise ValueError("jepa_text_mode='conditional' requires use_conditional_text=True.")
+            if self.cond_text_ratio <= 0:
+                raise ValueError("jepa_text_mode='conditional' requires conditional_text_ratio > 0.")
 
     @staticmethod
     def _float_config(config, key, default=0.0):
@@ -618,13 +629,15 @@ class GTPJ(nn.Module):
         selected_patches=None,
         selected_indices=None,
         selected_patch_z=None,
+        selected_memory=None,
+        all_text_cond=None,
     ):
         device = patches.device
         if (not self.use_ag_jepa) or patches is None or all_text is None:
             zero = torch.tensor(0.0, device=device if patches is not None else labels.device)
             return zero, zero
 
-        if self.jepa_context_mode == "fae_memory":
+        if self.jepa_context_mode in {"fae_memory", "fae_main_memory"}:
             if selected_patches is None or selected_patch_z is None:
                 raise ValueError("fae_memory JEPA requires selected patches and patch_z.")
             jepa_patches = selected_patches
@@ -638,7 +651,13 @@ class GTPJ(nn.Module):
             return zero, zero
         k = max(1, min(int(self.jepa_topk), N - 1))
         labels = labels.to(device=device, dtype=torch.long)
-        class_text = all_text[labels].to(device=device, dtype=jepa_patches.dtype)
+        batch_idx = torch.arange(B, device=device)
+        if self.jepa_text_mode == "conditional":
+            if all_text_cond is None:
+                raise ValueError("jepa_text_mode='conditional' requires all_text_cond from GTPJ.forward.")
+            class_text = all_text_cond[batch_idx, labels].to(device=device, dtype=jepa_patches.dtype)
+        else:
+            class_text = all_text[labels].to(device=device, dtype=jepa_patches.dtype)
 
         with torch.no_grad():
             patch_n = F.normalize(jepa_patches.float(), dim=-1)
@@ -653,6 +672,12 @@ class GTPJ(nn.Module):
         if self.jepa_context_mode == "fae_memory":
             patch_z = selected_patch_z
             context = self._ag_jepa_fae_context(patch_z, keep, selected_indices)
+        elif self.jepa_context_mode == "fae_main_memory":
+            if selected_memory is None:
+                raise ValueError("fae_main_memory JEPA requires main-path jepa_memory.")
+            patch_z = selected_patch_z
+            keep_f = keep.unsqueeze(-1).to(selected_memory.dtype)
+            context = (selected_memory * keep_f).sum(dim=1) / keep_f.sum(dim=1).clamp_min(1.0)
         else:
             patch_z = self.cross_tf.embed_cv(jepa_patches)
             keep_f = keep.unsqueeze(-1).to(patch_z.dtype)
@@ -672,7 +697,11 @@ class GTPJ(nn.Module):
         if (local_labels < 0).any():
             raise ValueError("AG-JEPA expects global labels from seen classes.")
         neg_local = (local_labels + 1) % seen.numel()
-        neg_text = all_text[seen[neg_local]].to(device=device, dtype=patches.dtype)
+        neg_labels = seen[neg_local]
+        if self.jepa_text_mode == "conditional":
+            neg_text = all_text_cond[batch_idx, neg_labels].to(device=device, dtype=jepa_patches.dtype)
+        else:
+            neg_text = all_text[neg_labels].to(device=device, dtype=jepa_patches.dtype)
 
         neg_text_z = self.cross_tf.embed_text(neg_text)
         pred_neg = self.jepa_predictor(torch.cat([context.detach(), neg_text_z], dim=-1))
@@ -732,6 +761,7 @@ class GTPJ(nn.Module):
 
         logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
         all_text = self._make_all_text(patches.device, patches.dtype)
+        all_text_cond = None
 
         if cls_token is not None:
             vis_n = F.normalize(cls_token, dim=1)
@@ -782,7 +812,9 @@ class GTPJ(nn.Module):
             "jepa_selected_patches": cm_out["jepa_selected_patches"],
             "jepa_selected_indices": cm_out["jepa_selected_indices"],
             "jepa_patch_z": cm_out["jepa_patch_z"],
+            "jepa_memory": cm_out["jepa_memory"],
             "all_text": all_text,
+            "all_text_cond": all_text_cond,
         }
 
     def _global_to_seen_labels(self, labels):
@@ -852,6 +884,8 @@ class GTPJ(nn.Module):
                     selected_patches=in_package.get("jepa_selected_patches"),
                     selected_indices=in_package.get("jepa_selected_indices"),
                     selected_patch_z=in_package.get("jepa_patch_z"),
+                    selected_memory=in_package.get("jepa_memory"),
+                    all_text_cond=in_package.get("all_text_cond"),
                 )
                 loss = loss + lambda_jepa * loss_jepa
                 loss = loss + lambda_jepa_neg * loss_jepa_neg

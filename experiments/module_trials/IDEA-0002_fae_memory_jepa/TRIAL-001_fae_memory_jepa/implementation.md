@@ -33,8 +33,10 @@ FAE-memory JEPA auxiliary-loss mode.
 |---|---|---|---|---|---|
 | `selected_patches` | `[B (images), K_sel (selected patches), 768 (CLIP visual dim)]` | float | cuda/cpu | LaSt-ViT selected visual patch set | no upstream CLIP grad |
 | `patch_z` | `[B, K_sel, 512]` | float | cuda/cpu | pre-FAE visual projection | yes through context path |
-| `keep_fae_context` | `[B, 512]` | float | cuda/cpu | keep-only FAE visual memory pooled context | yes |
+| `keep_fae_context` | `[B, 512]` | float | cuda/cpu | ATTEMPT-001 keep-only FAE visual memory pooled context | yes |
+| `jepa_memory` | `[B, K_sel, 512]` | float | cuda/cpu | main forward path FAE memory used by local score | yes |
 | `class_text` | `[B, 768]` | float | cuda/cpu | CLIP-A-self adapted seen class text | yes for adapter path |
+| `all_text_cond[b, label]` | `[B, 768]` | float | cuda/cpu | sample-conditioned class text from `meta_net(cls_token)` | yes for `meta_net` and text projection |
 | `text_z` | `[B, 512]` | float | cuda/cpu | projected semantic condition | yes |
 
 ## Output Contract
@@ -59,15 +61,30 @@ FAE-memory JEPA auxiliary-loss mode.
 
 ```text
 switch: jepa_context_mode
-values: embed | fae_memory
+values: embed | fae_memory | fae_main_memory
 default: embed
 trial config path: attempts/ATTEMPT-001/config.yaml
+base config affected: no
+```
+
+```text
+switch: jepa_text_mode
+values: adapted | conditional
+default: adapted
+trial config path: attempts/ATTEMPT-002/config.yaml
 base config affected: no
 ```
 
 ## Baseline-Off Path
 
 `jepa_context_mode: embed` keeps the current AG-JEPA implementation: `context` and `target` are both computed from `cross_tf.embed_cv(patches)` before FAE. Existing configs that do not define `jepa_context_mode` default to `embed`.
+
+`jepa_context_mode: fae_memory` is the ATTEMPT-001 keep-only variant: `_ag_jepa_loss` recomputes FAE on keep tokens only, then mean pools the keep-only memory as context. It is valid evidence for that leakage-avoidant variant, but it is not strict main-path memory context.
+
+`jepa_context_mode: fae_main_memory` is the ATTEMPT-002 strict main-path variant: `GTPJ.forward` passes the main `CrossModalTransformer.forward` `jepa_memory` into `compute_loss`, and `_ag_jepa_loss` mean-pools the kept positions from that main-path memory as context.
+
+`jepa_text_mode: adapted` keeps the ATTEMPT-001 AG-JEPA text condition: `all_text[labels] -> embed_text`.
+`jepa_text_mode: conditional` is the ATTEMPT-002 text condition: `all_text_cond[batch, labels] -> embed_text`; the negative branch also uses `all_text_cond[batch, neg_labels]`.
 
 ## Loss Contract
 
@@ -99,9 +116,11 @@ missing/unexpected keys: none expected
 ## Risks
 
 - FAE context must be computed from keep tokens only to avoid target leakage through FAE self-attention.
+- ATTEMPT-002 intentionally tests strict main-path memory even though the kept memory may have interacted with masked tokens inside the main FAE self-attention.
 - Selected patch alignment must be shared by mask, target, context, and geometry.
 - Negative branch should detach visual context.
 - `fae_memory` mode must reject `use_fae: false`.
+- `jepa_text_mode: conditional` must reject configs without `use_conditional_text: true` and `conditional_text_ratio > 0`.
 
 ## Minimum Verification
 
@@ -112,6 +131,8 @@ missing/unexpected keys: none expected
 - [x] FAE gradient probe.
 - [x] Negative visual-context detach probe.
 - [x] Full-patch mode check.
+- [x] Main-path `jepa_memory` context probe for `fae_main_memory`.
+- [x] Conditional AG-JEPA text probe with `meta_net` gradient.
 - [x] Base config files unchanged.
 
 ## Verification Commands

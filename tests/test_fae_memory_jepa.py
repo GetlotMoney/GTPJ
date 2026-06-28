@@ -8,10 +8,13 @@ from model.MyModel import GTPJ
 
 def make_config(
     jepa_context_mode="fae_memory",
+    jepa_text_mode="adapted",
     lambda_jepa=0.05,
     lambda_jepa_neg=0.0,
     use_fae=True,
     lastvit_select_k=8,
+    use_conditional_text=False,
+    conditional_text_ratio=0.008,
 ):
     return SimpleNamespace(
         num_class=200,
@@ -32,6 +35,7 @@ def make_config(
         score_mode="add",
         use_ag_jepa=True,
         jepa_context_mode=jepa_context_mode,
+        jepa_text_mode=jepa_text_mode,
         jepa_topk=2,
         jepa_hidden=512,
         jepa_neg_margin=0.2,
@@ -39,7 +43,9 @@ def make_config(
         lastvit_select_sigma=0.0,
         lastvit_select_largest=True,
         lastvit_select_formula="v2_abs_mean",
-        use_conditional_text=False,
+        use_conditional_text=use_conditional_text,
+        conditional_text_ratio=conditional_text_ratio,
+        meta_net_hidden=48,
         lambda_consist=0.0,
         lambda_topo_pearson=0.0,
         lambda_msdn=0.0,
@@ -155,6 +161,69 @@ class FaeMemoryJepaTest(unittest.TestCase):
         loss_pack["loss_jepa_neg"].backward()
 
         self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+
+    def test_fae_main_memory_conditional_jepa_reaches_main_fae_and_meta_net(self):
+        model = make_model(
+            make_config(
+                "fae_main_memory",
+                jepa_text_mode="conditional",
+                lambda_jepa=0.05,
+                lambda_jepa_neg=0.0,
+                use_conditional_text=True,
+            )
+        )
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa"].backward()
+
+        self.assertEqual(tuple(out["logits"].shape), (2, 150))
+        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
+        self.assertEqual(tuple(out["jepa_memory"].shape), (2, 8, 512))
+        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
+        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
+
+    def test_conditional_jepa_requires_conditional_text(self):
+        with self.assertRaisesRegex(ValueError, "requires use_conditional_text=True"):
+            make_model(
+                make_config(
+                    "fae_main_memory",
+                    jepa_text_mode="conditional",
+                    use_conditional_text=False,
+                )
+            )
+
+    def test_conditional_negative_jepa_detaches_visual_context(self):
+        model = make_model(
+            make_config(
+                "fae_main_memory",
+                jepa_text_mode="conditional",
+                lambda_jepa=0.0,
+                lambda_jepa_neg=0.01,
+                use_conditional_text=True,
+            )
+        )
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss_jepa_neg"].backward()
+
+        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ review_round_1: review_round_1.md
 interface_check: interface_check.md
 review_round_2: review_round_2.md
 agent_summary: agent_summary.md
+framework_diagram: framework_diagram.md
 ```
 
 ## 改动文件
@@ -43,6 +44,7 @@ agent_summary: agent_summary.md
 |---|---|---|
 | `model/MyModel.py` | Add `jepa_context_mode` and FAE-memory JEPA auxiliary path | yes |
 | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-001/config.yaml` | Enable `jepa_context_mode: fae_memory` | no |
+| `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa/attempts/ATTEMPT-002/config.yaml` | Planned strict main-path memory + conditional AG-JEPA text run | no |
 | `tests/test_fae_memory_jepa.py` | Gradient and shape smoke tests | no |
 | `train_GTPJ_CUB.py` | Log `jepa_context_mode` in training header | yes |
 
@@ -51,6 +53,7 @@ agent_summary: agent_summary.md
 | 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
 | CUB | 5 | 70.32 | 77.68 | 73.82 | 81.39 | 34 | `log:v2:module_trial:TRIAL-001:attempt-001` |
+| CUB | 5 |  |  |  |  |  | ATTEMPT-002 planned |
 
 ## Trial Flow
 
@@ -66,6 +69,14 @@ flowchart TD
   Warehouse --> Attempt["attempt-local manifest/result/quality"]
   Attempt --> R3["Review 3: post-run evidence"]
   R3 --> Decision["trial_decision: revise"]
+```
+
+## Framework Diagram
+
+```text
+path: framework_diagram.md
+html_view: file:///D:/Backup/Documents/Myself/GTPJ_Warehouse/diagrams/IDEA-0002_fae_memory_jepa_code_vs_intent.html
+code_vs_intent: ATTEMPT-001 is keep-only FAE-memory JEPA; ATTEMPT-002 is planned as strict main-path jepa_memory + conditional text.
 ```
 
 ## Innovation Code Review
@@ -92,3 +103,8 @@ activation_mode: real_multi_agent
 ## 决策
 
 ATTEMPT-001 completed but underperformed active v2 by `-0.47` H. Decision: `revise`; no promotion.
+
+Implementation clarification: ATTEMPT-001 is a valid keep-only FAE-memory JEPA variant. In that run, `_ag_jepa_loss`
+recomputed FAE over keep tokens inside the loss branch, rather than consuming the main forward path's full `jepa_memory`.
+ATTEMPT-002 is planned to test the corrected owner intent: `context = mean(kept main-path jepa_memory)`,
+`target = mean(masked patch_z).detach()`, and AG-JEPA positive/negative text both use sample-conditioned text.

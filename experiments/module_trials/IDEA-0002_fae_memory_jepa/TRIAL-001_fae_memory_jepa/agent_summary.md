@@ -226,3 +226,25 @@ verified_against_current_repo: yes
 review_round: Review 2 and Review 3
 blocking_issues: none after closeout updates
 ```
+
+## ATTEMPT-002 Pre-Run Addendum
+
+```text
+attempt_id: ATTEMPT-002
+scope: strict main-path jepa_memory context + conditional AG-JEPA text
+activation_mode: real_multi_agent evidence update
+status: code_and_interface_prepared_not_run
+decision: allow_after_clean_pre_run_freeze_commit
+```
+
+Coordinator verified that ATTEMPT-001 should be described as keep-only FAE-memory JEPA. Implementer then added explicit `fae_main_memory` and `conditional` switches so ATTEMPT-002 can test the owner-corrected path without changing logits shape, class order, seen/unseen split, label mapping, or metric semantics.
+
+Evidence refs:
+
+- `model/MyModel.py`
+- `tests/test_fae_memory_jepa.py`
+- `train_GTPJ_CUB.py`
+- `framework_diagram.md`
+- `attempts/ATTEMPT-002/config.yaml`
+
+No training result has been recorded for ATTEMPT-002 yet.

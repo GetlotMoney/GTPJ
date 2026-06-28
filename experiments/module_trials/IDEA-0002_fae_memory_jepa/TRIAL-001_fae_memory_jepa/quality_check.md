@@ -49,3 +49,31 @@ Not triggered. ATTEMPT-001 underperforms v2 and is not a best/keep result. It mu
 ## Decision
 
 PASS_REVISE.
+
+## ATTEMPT-002 Pre-Run Quality Addendum
+
+```text
+runtime: pre_run
+attempt_id: ATTEMPT-002
+decision: PASS_PRE_RUN_CODE_CHECK
+runner_status: blocked_until_clean_pre_run_freeze_commit
+promotion_decision: not_applicable
+```
+
+ATTEMPT-002 is not a result yet. It is a planned follow-up that changes the auxiliary AG-JEPA loss path to:
+
+```text
+jepa_context_mode: fae_main_memory
+jepa_text_mode: conditional
+```
+
+Pre-run checks completed:
+
+- [x] ATTEMPT-001 is re-labeled as keep-only FAE-memory JEPA evidence.
+- [x] `fae_main_memory` consumes main-path `jepa_memory`.
+- [x] `conditional` AG-JEPA text consumes `all_text_cond` for positive and negative branches.
+- [x] `target = mean(masked patch_z).detach()` is unchanged.
+- [x] Negative JEPA visual context remains detached.
+- [x] Train/eval logits shape and evaluation semantics are unchanged in unit tests.
+
+Runner remains blocked until a clean pre-run freeze commit records the code diff, ATTEMPT-002 config, and attempts row.

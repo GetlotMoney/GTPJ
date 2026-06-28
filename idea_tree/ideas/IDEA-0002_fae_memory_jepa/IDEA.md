@@ -90,3 +90,17 @@ promotion_decision: not_applicable
 ```
 
 ATTEMPT-001 proves the intended gradient path can be implemented and run cleanly, but the current parameterization underperforms active v2. This weakens the idea for v2 in its current form; it does not prove that every FAE-memory JEPA variant is invalid. Any continuation should be a targeted ATTEMPT-002 param/ablation run, not a promotion path.
+
+## Follow-up: ATTEMPT-002 strict main-path memory + conditional text
+
+ATTEMPT-001 is now explicitly treated as a keep-only FAE-memory JEPA variant: the loss branch recomputes FAE over keep tokens only, rather than consuming the main forward path's `jepa_memory`.
+
+The owner-approved correction for ATTEMPT-002 is:
+
+```text
+context = mean(kept main-path jepa_memory)
+target  = mean(masked patch_z).detach()
+text_z  = embed_text(sample-conditioned text)
+```
+
+Positive and negative AG-JEPA text conditions both use sample-conditioned text. This run answers whether the longer, paper-diagram-friendly chain can constrain the main classification memory path without changing logits shape, class order, seen/unseen split, label mapping, or metric semantics.
