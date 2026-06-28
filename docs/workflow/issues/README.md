@@ -25,6 +25,7 @@ ISSUE-YYYYMMDD-001
 ## 当前最近文档
 
 - `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md`
+- `2026-06-28-trial002-reproducibility-diagnostics.md`
 - `2026-06-27-trial001-batch-runner-and-tag-boundary.md`
 - `2026-06-26-trial001-sweep-preflight-and-runner.md`
 
@@ -45,6 +46,7 @@ ISSUE-YYYYMMDD-001
 | ISSUE-20260628-011 | 2026-06-28 | Workflow diagram standard was missing | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | fixed |
 | ISSUE-20260628-012 | 2026-06-28 | Full innovation review is correct but too heavy for simple reruns | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | policy-clarified |
 | ISSUE-20260628-013 | 2026-06-28 | Agent summary and Review 3 drift after root sync | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | fixed |
+| ISSUE-20260628-014 | 2026-06-28 | Same-seed confirmation produced mixed results | `2026-06-28-trial002-reproducibility-diagnostics.md` | guarded |
 
 ## 快速处置原则
 

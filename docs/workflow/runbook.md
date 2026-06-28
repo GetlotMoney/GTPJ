@@ -100,6 +100,20 @@ repro-status 明确区分 best_observed_H 和 confirmed_H
 `validate-remote` 允许 `main` 比历史 tag 多治理账本提交；它检查的是远端 `main` 对齐本地
 `main`、远端 baseline tags 对齐本地 baseline tags，并确认本地 `main` 包含这些 baseline 历史。
 
+### Same-seed mixed confirmation
+
+如果同一 frozen config、同一 seed 的 confirmation 结果一过一不过，先写 `mixed_confirmation`，
+再启动 reproducibility diagnosis。不要继续调参、promotion 或 tag。
+
+诊断优先级：
+
+```text
+1. 确认 config_sha256、run_commit、log artifact、dataset split、class order 完全一致。
+2. 检查 training log 是否记录 strict_determinism、use_dedicated_batch_rng、batch_sampling_seed、torch/cuda/cuDNN 状态。
+3. 如果旧 log 缺这些字段，先补训练入口日志和可选开关，再用新 ATTEMPT 做 deterministic confirmation。
+4. deterministic confirmation 仍混合时，记录为算子/训练方差风险，不能把单次最高 H 当 confirmed_H。
+```
+
 Owner 日常只需要使用 `docs/workflow/QUICK_START.md` 中的人话口令。检查通过后，
 Coordinator 先按 `docs/workflow/TASK_START_MINI.md` 输出 mini 启动卡，再在后台展开
 `docs/workflow/TASK_START_CARD.md`。只有启动卡说明任务类型、写入边界、agents、

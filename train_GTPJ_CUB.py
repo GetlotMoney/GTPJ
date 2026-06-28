@@ -17,6 +17,12 @@ torch.backends.cudnn.benchmark = False
 from model.MyModel import GTPJ
 from tools.dataset import CUBDataLoader
 from tools.helper_func import eval_zs_gzsl, get_clip_spatial_features
+from tools.reproducibility import (
+    config_bool,
+    config_int,
+    configure_reproducibility,
+    make_batch_generator,
+)
 
 CACHE_DIR = './data/cache'
 CACHE_TRAIN_FEAT   = os.path.join(CACHE_DIR, 'CUB_train_features.pt')
@@ -78,6 +84,17 @@ config.config_path = config_path
 if not hasattr(config, 'device'):
     config.device = 'cuda:0'
 
+seed = config_int(config, 'random_seed', 5)
+strict_determinism = config_bool(config, 'strict_determinism', False)
+deterministic_warn_only = config_bool(config, 'deterministic_warn_only', True)
+use_dedicated_batch_rng = config_bool(config, 'use_dedicated_batch_rng', False)
+batch_sampling_seed = config_int(config, 'batch_sampling_seed', seed)
+repro_state = configure_reproducibility(
+    seed,
+    strict_determinism=strict_determinism,
+    deterministic_warn_only=deterministic_warn_only,
+)
+
 
 def _planned_total_epochs(cfg):
     lr_stages_cfg = getattr(cfg, 'lr_stages', None) or []
@@ -98,7 +115,10 @@ print_log(f"  Device    : {config.device}")
 print_log(f"  Config epochs        : {config.epochs}")
 print_log(f"  Planned train epochs : {planned_total_epochs} ({epoch_schedule})")
 print_log(f"  Batch size: {config.batch_size}")
-print_log(f"  Random seed: {getattr(config, 'random_seed', 5)}")
+print_log(f"  Random seed: {seed}")
+print_log(f"  Strict determinism: {strict_determinism}")
+print_log(f"  Dedicated batch RNG: {use_dedicated_batch_rng}")
+print_log(f"  Batch RNG seed: {batch_sampling_seed}")
 print_log("=" * 60)
 
 # ★ 模块配置摘要 (每次训练记录, 便于回看)
@@ -147,6 +167,16 @@ print_log(f"│  extra_epochs       : {getattr(config, 'extra_epochs', 0)}")
 print_log("├─ Speed Optimizations ───────────────────────────────────┤")
 print_log(f"│  use_amp       : {getattr(config, 'use_amp', False)}  (BF16 autocast)")
 print_log(f"│  pin_memory    : enabled if patch cache loaded  non_blocking H2D : True")
+print_log("├─ Reproducibility ───────────────────────────────────────┤")
+print_log(f"│  strict_determinism      : {strict_determinism}")
+print_log(f"│  deterministic_warn_only : {deterministic_warn_only}")
+print_log(f"│  use_dedicated_batch_rng : {use_dedicated_batch_rng}")
+print_log(f"│  batch_sampling_seed     : {batch_sampling_seed}")
+print_log(f"│  cudnn_benchmark         : {repro_state['cudnn_benchmark']}")
+print_log(f"│  cudnn_deterministic     : {repro_state['cudnn_deterministic']}")
+print_log(f"│  deterministic_algorithms: {repro_state['deterministic_algorithms']}")
+print_log(f"│  cublas_workspace_config : {repro_state['cublas_workspace_config'] or '(unset)'}")
+print_log(f"│  torch/cuda              : {repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
 print_log("└─────────────────────────────────────────────────────────┘")
 
 # ==========================================
@@ -171,11 +201,25 @@ print_log(f"      Unseen classes: {len(dataloader.unseenclasses)}  (zero-shot ta
 print_log(f"      Test seen    : {len(dataloader.test_seen_loader.dataset)} images")
 print_log(f"      Test unseen  : {len(dataloader.test_unseen_loader.dataset)} images")
 
-# 固定随机种子
-seed = config.random_seed
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
-np.random.seed(seed)
+# Reset RNG after CLIP/data setup so model init and training sampling start from the run seed.
+repro_state = configure_reproducibility(
+    seed,
+    strict_determinism=strict_determinism,
+    deterministic_warn_only=deterministic_warn_only,
+)
+batch_generator = make_batch_generator(use_dedicated_batch_rng, batch_sampling_seed)
+
+
+def _sample_randperm(length):
+    if batch_generator is None:
+        return torch.randperm(length)
+    return torch.randperm(length, generator=batch_generator)
+
+
+def _sample_randint(high, size):
+    if batch_generator is None:
+        return torch.randint(0, high, size)
+    return torch.randint(0, high, size, generator=batch_generator)
 
 # ==========================================
 #   加载/提取训练集图像特征缓存
@@ -708,15 +752,15 @@ for epoch in range(start_epoch, total_epochs + 1):
 
         if USE_CACHE == 'aug':
             # ── 多视角增强缓存: 每张图随机抽 1 个视角 ──
-            idx = torch.randperm(train_patches_aug.shape[1])[:config.batch_size]
-            view_idx = torch.randint(0, NUM_VIEWS_CACHE, (config.batch_size,))
+            idx = _sample_randperm(train_patches_aug.shape[1])[:config.batch_size]
+            view_idx = _sample_randint(NUM_VIEWS_CACHE, (config.batch_size,))
             batch_label = train_labels[idx]
             patch_batch = train_patches_aug[view_idx, idx].to(config.device).float()  # [B, 576, 768]
             cls_batch   = train_cls_aug[view_idx, idx].to(config.device).float().unsqueeze(1)  # [B, 1, 768]
             clip_features = torch.cat([cls_batch, patch_batch], dim=1)                # [B, 577, 768]
         elif USE_CACHE == 'patch':
             # ── 随机采样：每步随机取 batch ──
-            idx = torch.randperm(len(train_patches))[:config.batch_size]
+            idx = _sample_randperm(len(train_patches))[:config.batch_size]
             batch_label = train_labels[idx]
             # ★ 加速优化 (方案 A): pin_memory + non_blocking 异步 H2D
             # train_patches 已在 __init__ 时 pin_memory(), 这里 non_blocking=True
@@ -737,7 +781,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 cls_batch = patch_batch.mean(dim=1, keepdim=True)
                 clip_features = torch.cat([cls_batch, patch_batch], dim=1)
         elif USE_CACHE == 'cls':
-            idx = torch.randperm(len(train_features))[:config.batch_size]
+            idx = _sample_randperm(len(train_features))[:config.batch_size]
             batch_label = train_labels[idx]
             clip_features = train_features[idx].unsqueeze(1)  # [B, 1, 768]
         else:

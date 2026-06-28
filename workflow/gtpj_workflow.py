@@ -953,6 +953,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
         "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H"],
         "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status"],
+        "docs/workflow/experiment_protocol.md": ["mixed_confirmation", "strict_determinism"],
+        "docs/workflow/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng"],
+        "docs/workflow/runbook.md": ["mixed_confirmation", "batch_sampling_seed"],
+        "docs/workflow/issues/README.md": ["ISSUE-20260628-014"],
         "workflow/README.md": ["repro-status", "confirmed_H"],
     }
     for path_text, markers in marker_requirements.items():

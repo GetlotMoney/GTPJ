@@ -122,6 +122,10 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
   `quick_local` 或普通 debug 证据，不能进入 `confirmation_grade` 或 `baseline_grade`。
 - clean confirmation 失败不会删除原始实验记录；它会把该结果维持在 `valid_single_run` 或
   `needs_confirmation`，并阻断 promotion。
+- 如果同一 frozen config、同一 seed 的 clean confirmation 出现一过一不过，必须标记
+  `mixed_confirmation`，先做 reproducibility diagnosis，不能继续 tune、promotion 或 tag。
+  诊断 run 优先显式记录 `strict_determinism`、`use_dedicated_batch_rng`、`batch_sampling_seed`
+  和 training log 中的 torch/cuda/cuDNN 状态。
 - owner 可以显式把某个版本激活为当前主线代码，但如果缺 clean confirmation，状态必须写成
   `owner_activated_unconfirmed` 或 `provisional`，不能写成 `confirmed baseline`。
 - 后续比较必须同时区分 `best_observed_H` 和 `confirmed_H`；没有 confirmed 值时写
@@ -378,3 +382,5 @@ Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
 ```
 
 confirmation 不改模型结构。若复现失败，记录失败证据和下一步建议，不直接改 baseline。
+如果失败表现为 `mixed_confirmation`，Coordinator 先启动 reproducibility diagnosis：
+保留模型语义不变，只增加/启用可审计的 deterministic 运行开关或采样隔离开关。

@@ -201,6 +201,10 @@ Rules:
   `attempts/ATTEMPT-xxx/`, `run_commit`, `record_commit`, and Warehouse artifact ids.
 - Existing historical trials with only one root-level attempt may remain readable as legacy evidence, but any new attempt added after this rule should be recorded in `ATTEMPTS.md`.
 - If a real attempt run starts while the worktree is dirty, or before the attempt config and planned `ATTEMPTS.md` row are frozen into Git, the result cannot be treated as promotion-ready evidence; at most it may be recorded as debug or `revise`.
+- If same-config, same-seed confirmation attempts disagree across the decision boundary, record `mixed_confirmation`.
+  The next attempt must be a reproducibility diagnosis or deterministic confirmation before any 10-run tune sweep.
+  Keep model semantics frozen; only expose or enable controls such as `strict_determinism`,
+  `use_dedicated_batch_rng`, and `batch_sampling_seed`, and ensure the training log prints those runtime states.
 
 `trial_decision`：
 
@@ -219,6 +223,7 @@ not_applicable / promote / blocked / rejected
 `H` 提升但证据不完整时，必须写 `revise`、`blocked` 或 `rejected`，不能写 `promote`。
 单次最高 attempt 必须记录为 `best_observed_H`；只有 clean confirmation 或质量门要求的
 多 run 稳定性通过后，才能升级为 `confirmed_H` 或 `baseline_grade`。
+`mixed_confirmation` 状态下，`best_observed_H` 可以保留，但 `confirmed_H` 必须保持 `pending`。
 
 Promotion 必填证据：
 
