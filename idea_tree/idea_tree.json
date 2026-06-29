@@ -1,7 +1,7 @@
 {
   "project": "GTPJ",
   "version": "2026-06-20",
-  "current_version": "v3",
+  "current_version": "v4",
   "ideas": [
     {
       "idea_id": "IDEA-0001",
@@ -33,12 +33,20 @@
           "stage": "validated",
           "rationale": "IDEA-0001 is inherited by GTPJ-v3 from the accepted v2 code path; it remains part of the mainline stack but is not the new v3 delta.",
           "blockers": []
+        },
+        "v4": {
+          "score": 80,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "Inherited by GTPJ-v4 from the v3 code path; local-v3-054 changes only tuned config weights, not the PSE interface.",
+          "blockers": []
         }
       },
       "base_versions": [
         "v1",
         "v2",
-        "v3"
+        "v3",
+        "v4"
       ],
       "based_on_modules": [
         "v1_text_adapter",
@@ -61,7 +69,8 @@
       ],
       "linked_versions": [
         "v2",
-        "v3"
+        "v3",
+        "v4"
       ],
       "linked_experiments": [],
       "evidence": [
@@ -81,7 +90,7 @@
           "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
       ],
-      "next_action": "Use GTPJ-v3 as the current owner-accepted mainline; keep v2/v3 confirmation and U/S gap analysis as follow-up evidence work."
+      "next_action": "Use GTPJ-v4 as the confirmed formal version; future work can inspect PSE/BVSA weight sensitivity or U/S balance from this baseline."
     },
     {
       "idea_id": "IDEA-0002",
@@ -106,11 +115,19 @@
           "stage": "validated",
           "rationale": "Accepted as the GTPJ-v3 delta by owner decision on 2026-06-28. Best observed ATTEMPT-004 H=74.27; clean seed-42 reruns H=74.14 and H=74.01 show stochastic variance, so confirmed_H remains pending.",
           "blockers": []
+        },
+        "v4": {
+          "score": 74,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "Inherited by GTPJ-v4 from GTPJ-v3; v4 promotes a min3-confirmed tuned configuration and does not introduce a new IDEA-0002 code path.",
+          "blockers": []
         }
       },
       "base_versions": [
         "v2",
-        "v3"
+        "v3",
+        "v4"
       ],
       "based_on_modules": [
         "GTPJ-v2 AG-JEPA",
@@ -135,7 +152,8 @@
       ],
       "linked_versions": [
         "v2",
-        "v3"
+        "v3",
+        "v4"
       ],
       "linked_experiments": [],
       "evidence": [
@@ -170,7 +188,7 @@
           "note": "Owner accepted TRIAL-002 as GTPJ-v3 with stochastic variance explicitly preserved; confirmed_H remains pending."
         }
       ],
-      "next_action": "GTPJ-v3 is the owner-accepted stochastic mainline tag; next work should run v3 confirmation/multi-seed analysis before manuscript-grade confirmed claims."
+      "next_action": "Use GTPJ-v4 as the confirmed formal version; future work should treat IDEA-0002 as inherited and focus on new mechanisms or controlled ablations."
     }
   ]
 }

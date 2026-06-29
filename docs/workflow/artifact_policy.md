@@ -36,6 +36,17 @@ GTPJ_Warehouse
   Raw logs, checkpoints, experiment visualizations, experiment tables, failure cases, and run receipts.
 ```
 
+## Checkpoint Retention
+
+Training checkpoints are not permanent evidence by default. After an experiment
+campaign is parsed and its logs/receipts/configs are registered, Warehouse should
+retain only the Top-5 `model_best`/best-model checkpoints by H among the retained
+candidate set. All other training checkpoints (`*.pth`, `*.pt`, `*.ckpt`) may be
+deleted after a retention manifest records what was kept and removed.
+
+Do not delete logs, receipts, configs, summaries, manifests, or registry files
+when applying checkpoint retention. They are the audit trail.
+
 GitHub references external assets through logical URIs:
 
 ```text

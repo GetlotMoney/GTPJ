@@ -1,0 +1,52 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: GTPJ-v4
+  name: GTPJ-v4-baseline
+  kind: baseline
+  status: confirmed
+  source_experiment: CONFIRM-001_local_v3_054_min3
+  source_candidate: local-v3-054
+  created_or_recorded_at: "2026-06-29T12:00:00+00:00"
+version:
+  version: v4
+  parent_version: v3
+  parent_tag: v3
+  code_branch: promote/v3-to-v4-local-v3-054
+  code_tag: v4
+  source_run_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
+  ledger_source_commit: 39ff2e771d1fc78a5cb35a73faf07bc4a4d60661
+reproducibility:
+  config_file: experiments/v4/config.yaml
+  config_sha256: 7236376b1e2cd4d237accc8e161bfb109db5c1eb0763ba27c902f347ec4b020f
+  source_config: experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/config.yaml
+  source_config_sha256: 7236376b1e2cd4d237accc8e161bfb109db5c1eb0763ba27c902f347ec4b020f
+  command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <warehouse config>"
+  seed: "5"
+  dataset: CUB GZSL
+  split_id: standard_v1
+  class_order_id: standard_v1
+  label_mapping_id: standard_v1
+  metric_contract_id: gzsl_u_s_h_zs_v1
+artifacts:
+  source_confirmation_manifest:
+    artifact_id: manifest:v3:confirmation:CONFIRM-001:local-v3-054-min3
+    role: source_confirmation_manifest
+    uri: github://experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/manifest.yaml
+    sha256: a8eb90ba315387be0a837013d20f3877b39ca7d117bdc8501da91edb896bf1c1
+    size_bytes: 6646
+    required_for: audit
+    status: available
+  runtime_summary:
+    artifact_id: summary:v3:confirmation:CONFIRM-001:min3-runtime
+    role: runtime_summary
+    uri: warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/summary.csv
+    sha256: e5276e1cec8e8de6f2ec3a16b5161a347f1d1bd8e550d15dbe440c2f11f4005b
+    size_bytes: 9405
+    required_for: audit
+    status: available
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: true
+  evaluation_semantics_verified: true
+  min3_auto_promotion_rule: true

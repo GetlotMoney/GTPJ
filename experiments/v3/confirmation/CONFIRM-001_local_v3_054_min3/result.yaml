@@ -1,0 +1,84 @@
+schema_version: gtpj-result/v1
+experiment_id: "CONFIRM-001"
+experiment_name: "CONFIRM-001_local_v3_054_min3"
+kind: "confirmation"
+version: "v3"
+metrics:
+  U_values: ["71.56", "71.53", "71.53"]
+  S_values: ["77.60", "77.56", "77.66"]
+  H_values: ["74.46", "74.42", "74.47"]
+  ZS_values: ["81.41", "81.25", "81.25"]
+  U_mean: "71.54"
+  S_mean: "77.61"
+  H_mean: "74.45"
+  H_min: "74.42"
+  H_max: "74.47"
+  ZS_mean: "81.30"
+  best_epoch_values: ["34", "34", "34"]
+  best_epoch_mode: "34"
+  baseline_H: "74.27"
+  baseline_reference: "best_observed_H"
+  delta_H_vs_baseline_mean: "+0.18"
+  delta_H_vs_baseline_best: "+0.20"
+  seed: "5"
+  source: "warehouse receipts and training logs"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: "v3"
+  H: "74.27"
+  reference_field: "best_observed_H"
+  reference_status: "owner_accepted_stochastic_unconfirmed"
+  confirmed_H: "pending"
+  confirmation_status: "needs_confirmation"
+run:
+  run_id: "RUN-20260629-1722-server-gpu0-local-top2-min3"
+  source_job_id: "local-v3-054"
+  repeats_completed: 3
+  repeats_required: 3
+  seed: "5"
+  code_commit: "13529cb1d3ed8405e2f5cbb4832eff8d1c78db16"
+  server_worktree: "/data/lby/projects/cv_project/GTPJ_worktrees/v3_baseline_13529cb"
+config_delta:
+  pse_outer_ratio: "0.5"
+  clip_a_self_outer_ratio: "0.5"
+  local_weight: "0.1"
+decision:
+  status: "promote"
+  result_status: "confirmed"
+  promotion_decision: "promote"
+  promote_to: "v4"
+  reason: "Three clean server repeats reproduce H above the accepted v3 reference; owner standing rule promotes min3-confirmed strongest candidates to formal versions."
+evidence:
+  evidence_level: "baseline_grade"
+  best_observed_H: "74.47"
+  confirmed_H: "74.45"
+  confirmed_H_method: "mean_of_3_clean_server_repeats"
+  confirmation_status: "confirmed"
+  confirmation_target: "local-v3-054 source H=74.41"
+  confirmation_tolerance_H: "none; all three repeats exceeded 74.27"
+  manifest: "manifest.yaml"
+  agent_summary: "agent_summary.md"
+  label_mapping_id: "standard_v1"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  artifact_ids:
+    - "config:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+    - "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+    - "log:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+    - "config:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+    - "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+    - "log:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+    - "config:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+    - "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+    - "log:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+quality:
+  manifest_verified: "true"
+  boundary_audit_passed: "true"
+  interface_contract_checked: "true"
+  evaluation_semantics_verified: "true"
+  raw_artifacts_in_git: "false"
+warnings:
+  - "This promotes a tuned v3-derived configuration to GTPJ-v4; it does not mutate the canonical v3 baseline."
+  - "Promotion creates a formal version/tag, not an automatic activate-version code switch."
+  - "Related candidates local-v3-022 and trial003-tune-026 did not meet the same stable min3 bar."
+recorded_at: "2026-06-29T11:40:47+00:00"

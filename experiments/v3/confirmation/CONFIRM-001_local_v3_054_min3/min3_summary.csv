@@ -1,0 +1,4 @@
+job_id,U,S,H,ZS,best_epoch,started_at,finished_at,duration_sec,config_artifact,receipt_artifact,training_log_artifact
+local-v3-054-rep01,71.56,77.60,74.46,81.41,34,2026-06-29T09:58:18.740897+00:00,2026-06-29T10:08:41.470736+00:00,622.7,config:v3:confirmation:CONFIRM-001:local-v3-054-rep01,receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep01,log:v3:confirmation:CONFIRM-001:local-v3-054-rep01
+local-v3-054-rep02,71.53,77.56,74.42,81.25,34,,2026-06-29T10:17:24.320869+00:00,522.8,config:v3:confirmation:CONFIRM-001:local-v3-054-rep02,receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep02,log:v3:confirmation:CONFIRM-001:local-v3-054-rep02
+local-v3-054-rep03,71.53,77.66,74.47,81.25,34,,2026-06-29T10:25:53.596864+00:00,509.2,config:v3:confirmation:CONFIRM-001:local-v3-054-rep03,receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep03,log:v3:confirmation:CONFIRM-001:local-v3-054-rep03

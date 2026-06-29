@@ -1,54 +1,55 @@
-# 项目状态
+# Project Status
 
-日期：2026-06-28
+Date: 2026-06-29
 
-## 当前基线
+## Current Formal Version
 
 ```text
-name: GTPJ-v3
-code_tag: v3
-status: owner_accepted_stochastic_unconfirmed
+name: GTPJ-v4
+code_tag: v4
+status: confirmed
 dataset: CUB GZSL
-baseline_evidence: experiments/v3/baseline/
-best_observed_H: 74.27
-confirmed_H: pending
-confirmation_status: needs_confirmation
+baseline_evidence: experiments/v4/baseline/
+best_observed_H: 74.47
+confirmed_H: 74.45
+confirmation_status: confirmed
+active_main_update: not_activated
 ```
 
-## 当前启用模块
+`GTPJ-v4` is the current confirmed formal version. It promotes the min3-confirmed
+`local-v3-054` tuned v3 configuration: H values `74.46 / 74.42 / 74.47`,
+`confirmed_H=74.45`, and `best_observed_H=74.47`.
 
-- 冻结的 CLIP ViT-L/14@336px backbone
-- GPT 文本描述 prototype
-- CLIP-A-self sentence-level text prototype adapter
-- Patch bottleneck / patch selection
-- 几何感知局部视觉编码
-- 双向视觉-文本交互
-- 拓扑保持文本约束
-- 条件文本适配
-- 视觉-文本双分支互蒸馏
-- AG-JEPA 辅助训练
-- AG-JEPA negative text margin
+Promotion creates a formal version/tag. It does not automatically run
+`activate-version` or switch current active code aliases.
 
-## 正式结果状态
+## Enabled Modules
 
-`GTPJ-v3` 是当前 owner 按随机性判断接受的正式 tag。它由 `GTPJ-v2` 加上
-`IDEA-0002 / TRIAL-002 / ATTEMPT-004` 的 strict conditional FAE-memory JEPA 产生，使用 CUB GZSL、seed=5
-和三阶段训练契约。`H=74.27` 作为 `best_observed_H` 保留；clean confirmation 通过前，
-不得写成 `confirmed_H` 或稳定 baseline-grade 证据。
+- Frozen CLIP ViT-L/14@336px backbone
+- GPT text description prototypes
+- PSE / CLIP-A-self sentence-level text prototype adapter
+- FGVD geometry-aware visual memory
+- BVSA bidirectional visual-semantic alignment
+- ICSA conditional text adaptation
+- SGMP auxiliary training
 
-| 实验 | 数据集 | Seed | U | S | H | ZS | 状态 |
+## Formal Result Status
+
+| Experiment | Dataset | Seed | U | S | H | ZS | Status |
 |---|---|---:|---:|---:|---:|---:|---|
-| `GTPJ-v1` | CUB GZSL | 5 | 72.36 | 75.57 | 73.93 | 81.62 | 第一版正式 baseline |
+| `GTPJ-v1` | CUB GZSL | 5 | 72.36 | 75.57 | 73.93 | 81.62 | confirmed |
 | `GTPJ-v2` | CUB GZSL | 5 | 71.32 | 77.52 | 74.29 | 81.59 | owner activated, needs confirmation |
 | `GTPJ-v3` | CUB GZSL | 5 | 71.22 | 77.60 | 74.27 | 81.38 | owner accepted stochastic, needs confirmation |
+| `GTPJ-v4` | CUB GZSL | 5 | 71.54 | 77.61 | 74.45 | 81.30 | confirmed min3 formal version |
 
-## 已知风险
+## Known Risks
 
-- `GTPJ-v3` 必须补 clean confirmation / multi-seed 复核后，才能把 `best_observed_H=74.27` 升级为
-  `confirmed_H` 或 baseline-grade 证据。
-- `GTPJ-v2` 的 `S - U = 6.20`，后续需要 seen/unseen gap analysis。
+- `GTPJ-v4` is confirmed by min3 repeats, but `activate-version` has not been run.
+- `GTPJ-v3` remains preserved as an owner-accepted stochastic tag with `confirmed_H=pending`.
+- Future manuscript-grade claims should cite whether a number is `confirmed_H` or `best_observed_H`.
 
-## 下一步
+## Next Steps
 
-使用 `GTPJ-v3` 的 CUB seed=5 基准继续调参、消融和 confirmation。优先补
-`CONFIRM-001_v3_seed5`，再决定是否继续冲更高 H 或做论文级多 seed 复核。
+Use `GTPJ-v4` as the confirmed formal version for future version-level tune,
+ablation, and confirmation work. Run `activate-version v4` only if the owner
+explicitly wants current runtime aliases switched.

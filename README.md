@@ -1,11 +1,26 @@
 # GTPJ
 
+## Current Confirmed Version
+
+```text
+name: GTPJ-v4
+code_tag: v4
+status: confirmed
+confirmed_H: 74.45
+best_observed_H: 74.47
+source: local-v3-054 min3 server confirmation
+active_main_update: not_activated
+```
+
+`GTPJ-v4` is the current confirmed formal version. It is a promotion from the
+min3-confirmed `local-v3-054` tuned v3 configuration, not an automatic
+`activate-version` code switch.
+
 GTPJ 是面向广义零样本学习（generalized zero-shot learning）的
 GeoTopoPatch-JEPA 实验仓库。
 
-这个仓库用于维护当前 owner-accepted 正式 tag `GTPJ-v3`。它只保留当前认可的框架：
-冻结 CLIP、GPT 文本描述、CLIP-A-self 文本原型 adapter、patch bottleneck、几何感知局部编码、拓扑保持文本约束、
-条件文本适配、视觉-文本双分支互蒸馏，以及 AG-JEPA 辅助训练。
+这个仓库用于维护 GTPJ 的正式版本、配置快照、实验账本和 workflow 规范。GitHub 只保存轻量证据；
+原始日志、receipt、checkpoint 和生成物保留在 Warehouse，并通过 URI、hash 和 size 反查。
 
 ## 当前版本
 
@@ -14,10 +29,11 @@ GeoTopoPatch-JEPA 实验仓库。
 | `GTPJ-v1` | `v1` | 已确认 | CUB GZSL | 新仓库第一版正式 baseline，seed=5，H=73.93。 |
 | `GTPJ-v2` | `v2` | owner-activated / needs confirmation | CUB GZSL | CLIP-A-self text prototype adapter，seed=5，best_observed_H=74.29。 |
 | `GTPJ-v3` | `v3` | owner-accepted stochastic / needs confirmation | CUB GZSL | Strict conditional FAE-memory JEPA，seed=5，best_observed_H=74.27。 |
+| `GTPJ-v4` | `v4` | confirmed formal version | CUB GZSL | min3-confirmed `local-v3-054` tuned v3 configuration，confirmed_H=74.45，best_observed_H=74.47。 |
 
-当前 owner-accepted tag 是 `GTPJ-v3 / tag v3`；其单次最高观察值是
-`best_observed_H=74.27`，`confirmed_H` 仍待 clean confirmation。`GTPJ-v1 / tag v1 / H=73.93`
-仍是永久历史 confirmed baseline。`main` 是唯一长期分支；`v1`、`v2`、`v3` 都是代码快照 tag，不是分支。
+当前正式确定版本是 `GTPJ-v4 / tag v4`。这表示它已经通过 min3 复现实验证据进入
+baseline-grade confirmed 版本；不表示已经执行 `activate-version`，也不表示 active runtime alias
+已自动切换。`main` 是唯一长期分支；`v1`、`v2`、`v3`、`v4` 都是正式版本 tag，不是长期分支。
 
 ## 当前管理重点
 
@@ -35,7 +51,8 @@ GTPJ/
 |-- config/
 |   |-- versions/v1.yaml    # 固定的 GTPJ-v1 配置
 |   |-- versions/v2.yaml    # 固定的 GTPJ-v2 配置
-|   `-- versions/v3.yaml    # 固定的 GTPJ-v3 配置
+|   |-- versions/v3.yaml    # 固定的 GTPJ-v3 配置
+|   `-- versions/v4.yaml    # 固定的 GTPJ-v4 配置
 |-- docs/                   # GitHub 治理、项目状态和 workflow 规范
 |-- workflow/               # 结构辅助工具和 runtime 接入口
 |-- idea_tree/              # 总创意库和按版本生成的创意选择清单
@@ -43,7 +60,8 @@ GTPJ/
     |-- module_trials/      # 模块 trial 证据；trial 内部 attempts 可做调参、窄消融、确认
     |-- v1/                 # GTPJ-v1 baseline 和 version-level 调参、消融、确认记录
     |-- v2/                 # GTPJ-v2 baseline 和 version-level 调参、消融、确认记录
-    `-- v3/                 # GTPJ-v3 baseline 和 version-level 调参、消融、确认记录
+    |-- v3/                 # GTPJ-v3 baseline 和 version-level 调参、消融、确认记录
+    `-- v4/                 # GTPJ-v4 baseline 和 version-level 调参、消融、确认记录
 ```
 
 ## GitHub 管理规则
@@ -62,13 +80,14 @@ v1 = GTPJ-v1 = 一个代码快照 = 一个 Git tag = 一个版本实验目录 = 
 
 ```text
 v1
-|-- v2 = parent v1 + 模块A
-`-- v3 = parent v1 + 模块B
+`-- v2 = parent v1 + CLIP-A-self / PSE
+    `-- v3 = parent v2 + FAE-memory JEPA / SGMP
+        `-- v4 = parent v3 + local-v3-054 min3-confirmed tuned config
 ```
 
-`main` 保存当前主版本代码，同时保存所有历史版本账本。也就是说，
-`experiments/v2/` 留在最新 `main` 中，不表示当前 `v3` 继承了 `v2` 的代码；
-它只是 `v2` 的历史记录。
+`main` 保存当前 active code 和所有历史版本账本。也就是说，
+`experiments/v2/` 留在最新 `main` 中，不表示当前正式版本一定继承或激活了 `v2` 的 runtime alias；
+它只是 `v2` 的历史记录。promotion 只确定正式版本和 tag，不自动执行 `activate-version`。
 
 普通实验和模块 trial 的临时分支都从当前 `main` 开出，以继承最新账本。
 分支名中的 `v1`、`v2` 只表示 `base_code_tag`，不是长期分支名。
@@ -110,7 +129,7 @@ conda activate dvsr_gpu
 或者直接使用：
 
 ```bash
-conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v3.yaml
+conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v4.yaml
 ```
 
 优先阅读：
@@ -121,6 +140,7 @@ conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v3.yaml
 - `docs/PROJECT_STATUS.md`
 - `docs/workflow/README.md`（workflow 入口）
 - `workflow/README.md`（结构辅助工具）
+- `experiments/v4/VERSION.md`
 - `experiments/v3/VERSION.md`
 - `experiments/v2/VERSION.md`
 - `experiments/v1/VERSION.md`
@@ -136,8 +156,8 @@ python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-remote
 ```
 
-`validate-remote` 检查远端 `main` 是否等于本地 `main`、远端 `v1` tag 是否等于本地
-`v1` tag，并确认本地 `main` 包含 `v1` 历史；`main` 可以比 `v1` 多治理账本提交。
+`validate-remote` 检查远端 `main` 是否等于本地 `main`、正式版本 tag 是否同步，
+并确认本地 `main` 包含版本 tag 历史；`main` 可以比历史 tag 多治理账本提交。
 
 需要创建标准目录、登记结果或做边界检查时，优先使用 helper。它是结构辅助工具，
 不是研究判断黑盒。

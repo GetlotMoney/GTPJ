@@ -1,0 +1,125 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "CONFIRM-001"
+  name: "CONFIRM-001_local_v3_054_min3"
+  kind: "confirmation"
+  status: "promoted_to_v4"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-06-29T11:40:47+00:00"
+  completed_at: "2026-06-29T10:25:53.596864+00:00"
+version:
+  base_version: "v3"
+  base_code_tag: "v3"
+  code_branch: "exp/v3-confirm-001-local-v3-054-min3"
+  code_commit: "4b259379d99c1a791442ea9e2fac0bb22b2411a9"
+  run_commit: "13529cb1d3ed8405e2f5cbb4832eff8d1c78db16"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/config.yaml"
+  config_sha256: "7236376b1e2cd4d237accc8e161bfb109db5c1eb0763ba27c902f347ec4b020f"
+  config_size_bytes: 2741
+  command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <warehouse config>"
+  seed: "5"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+  python_env: "/data/lby/.conda/envs/dvsr_gpu"
+  torch_cuda: "torch 2.5.1 / CUDA available / NVIDIA GeForce RTX 4090"
+  server_worktree: "/data/lby/projects/cv_project/GTPJ_worktrees/v3_baseline_13529cb"
+  warehouse_base: "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3"
+  warehouse_registry: "/data/lby/projects/cv_project/GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml"
+  warehouse_registry_sha256: "61b35ba5774b963b4b61af90705c1504dcdc2dffdbf80b4bca2dd6be7ae2947d"
+  warehouse_registry_size_bytes: 7452
+idea:
+  idea_id: "local-v3-054"
+  uri: "runtime://RUN-20260629-local-v3-explore-001/local-v3-054"
+  title: "Increase PSE outer ratio and reduce BVSA local weight"
+  hypothesis: "A wider PSE outer mix plus lower local BVSA weight can improve harmonic GZSL balance without code changes."
+artifacts:
+  configs:
+    - artifact_id: "config:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+      role: "run_config"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/configs/local-v3-054-rep01.yaml"
+      sha256: "090b95e62030e7d0ec84f3bf109aa245c3f1da285efd252c0b85b05e06713fe8"
+      size_bytes: 1725
+      status: "available"
+    - artifact_id: "config:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+      role: "run_config"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/configs/local-v3-054-rep02.yaml"
+      sha256: "090b95e62030e7d0ec84f3bf109aa245c3f1da285efd252c0b85b05e06713fe8"
+      size_bytes: 1725
+      status: "available"
+    - artifact_id: "config:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+      role: "run_config"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/configs/local-v3-054-rep03.yaml"
+      sha256: "090b95e62030e7d0ec84f3bf109aa245c3f1da285efd252c0b85b05e06713fe8"
+      size_bytes: 1725
+      status: "available"
+  receipts:
+    - artifact_id: "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+      role: "stdout_receipt"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/receipts/local-v3-054-rep01.stdout.log"
+      sha256: "6628276bfa8d270d98b0486f670450d0901b578add935cb9c98165ceb234488f"
+      size_bytes: 98428
+      status: "available"
+    - artifact_id: "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+      role: "stdout_receipt"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/receipts/local-v3-054-rep02.stdout.log"
+      sha256: "08514bcb8fa9f71a9006b1113c7ba453d7bda5c0d173a7633991f4f12dd55516"
+      size_bytes: 98429
+      status: "available"
+    - artifact_id: "receipt:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+      role: "stdout_receipt"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/receipts/local-v3-054-rep03.stdout.log"
+      sha256: "b7e5a5e4256971d9caf1d2c61e6252bbe22985418304af2eb169992ee34c4ac2"
+      size_bytes: 98429
+      status: "available"
+  training_logs:
+    - artifact_id: "log:v3:confirmation:CONFIRM-001:local-v3-054-rep01"
+      role: "training_log"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/logs/local-v3-054-rep01_training_log.txt"
+      sha256: "b175aef20f3a7f7345f4bf3e863e279172279c35b2a134890af0a792522d976b"
+      size_bytes: 91580
+      status: "available"
+    - artifact_id: "log:v3:confirmation:CONFIRM-001:local-v3-054-rep02"
+      role: "training_log"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/logs/local-v3-054-rep02_training_log.txt"
+      sha256: "0e120aabc2fe7c6a72109cd59d8ae57ab1f066c54bb28421cd58e241d6c722ff"
+      size_bytes: 91580
+      status: "available"
+    - artifact_id: "log:v3:confirmation:CONFIRM-001:local-v3-054-rep03"
+      role: "training_log"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/logs/local-v3-054-rep03_training_log.txt"
+      sha256: "e1f700293e295d7b787bed66e788707c81e3ccbcc1cb05f48504d470f7d6014c"
+      size_bytes: 91580
+      status: "available"
+  diagnostics:
+    - artifact_id: "diagnostic:v3:confirmation:CONFIRM-001:source-evidence"
+      role: "candidate_source_evidence"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/diagnostics/source_candidate_evidence.csv"
+      sha256: "7573935825ea913ee1b5e43fd0d232a67380e5721576c700f3526c90bba212d2"
+      size_bytes: 2406
+      status: "available"
+    - artifact_id: "diagnostic:v3:confirmation:CONFIRM-001:server-receipt-corrections"
+      role: "server_main_summary_with_receipts"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/diagnostics/server_main_summary_completed_with_receipts.csv"
+      sha256: "0de2ef8ab114fd27ecb889bad26afbfe73e50fb742c93de77405b10695d5f927"
+      size_bytes: 22831
+      status: "available"
+    - artifact_id: "summary:v3:confirmation:CONFIRM-001:min3-runtime"
+      role: "runtime_summary"
+      uri: "warehouse://gtpj/runs/v3/confirmation/RUN-20260629-1722-server-gpu0-local-top2-min3/summary.csv"
+      sha256: "e5276e1cec8e8de6f2ec3a16b5161a347f1d1bd8e550d15dbe440c2f11f4005b"
+      size_bytes: 9405
+      status: "available"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "true"
+  artifact_hashes_recorded: "true"
+  warehouse_registry_recorded: "true"
+  promotion_decision: "promote"
+  promote_to: "v4"

@@ -1,0 +1,62 @@
+schema_version: gtpj-result/v1
+experiment_id: GTPJ-v4
+experiment_name: GTPJ-v4-baseline
+kind: baseline
+version: v4
+metrics:
+  U: "71.54"
+  S: "77.61"
+  H: "74.45"
+  H_values: ["74.46", "74.42", "74.47"]
+  H_min: "74.42"
+  H_max: "74.47"
+  ZS: "81.30"
+  best_epoch: "34"
+  baseline_H: "74.27"
+  baseline_reference: best_observed_H
+  delta_H: "+0.18"
+  seed: "5"
+  source: "min3 server confirmation"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: v3
+  H: "74.27"
+  reference_field: best_observed_H
+  reference_status: owner_accepted_stochastic_unconfirmed
+  confirmed_H: pending
+  confirmation_status: needs_confirmation
+delta:
+  H: "+0.18"
+run:
+  seed: "5"
+  source_run_id: RUN-20260629-1722-server-gpu0-local-top2-min3
+  source_job_id: local-v3-054
+  source_run_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
+  command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <warehouse config>"
+decision:
+  status: confirmed
+  result_status: confirmed
+  promotion_decision: promote
+  promote_to: v4
+  active_main_update: not_activated
+evidence:
+  evidence_level: baseline_grade
+  best_observed_H: "74.47"
+  confirmed_H: "74.45"
+  confirmed_H_method: "mean_of_3_clean_server_repeats"
+  confirmation_status: confirmed
+  confirmation_target: local-v3-054
+  confirmation_tolerance_H: "min3 successful repeats with H metrics"
+  log_artifact_id: summary:v3:confirmation:CONFIRM-001:min3-runtime
+  manifest: manifest.yaml
+  source_manifest: experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/manifest.yaml
+  label_mapping_id: standard_v1
+  split_id: standard_v1
+  class_order_id: standard_v1
+quality:
+  manifest_verified: true
+  boundary_audit_passed: true
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+  min3_auto_promotion_rule: true
+recorded_at: "2026-06-29T12:00:00+00:00"

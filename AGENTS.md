@@ -5,8 +5,8 @@
 - Owner 是研究生一年级、人工智能专业学生，目前研究 CV 方向的 GZSL 领域。
 - Owner 喜欢从第一性原理思考问题，希望 agent 在解释概念、判断路线和拆解实验时优先回到问题本质。
 - Owner 在本项目内要完成 GZSL / CV 方向的实验、总结和创新沉淀。
-- Owner 默认用中文协作，正在把 GTPJ 作为干净主线维护，用于 GZSL / CV 模型实验、版本治理和实验追溯。
-- `cv-work` / DVSR 旧项目是历史实验资产库和流程素材库；GTPJ 是当前主仓库和后续工作主线。
+- Owner 默认用中文协作，正在把 GTPJ 作为干净主仓库维护，用于 GZSL / CV 模型实验、版本治理和实验追溯。
+- `cv-work` / DVSR 旧项目是历史实验资产库和流程素材库；GTPJ 是当前主仓库和后续工作中心。
 - Owner 重视可复现、可回滚、证据完整和长期沉淀；不希望为了快而把旧实验、旧分支、旧 workflow 原样搬进 GTPJ。
 - Owner 的长期目标是搭建完整的“论文阅读 -> 创新想法 -> 实验验证 -> 结果总结 -> 反哺创新”的闭环工作流，用 AI 解放重复劳动，自动化完成可靠实验。
 - 当前优先级是先把 GitHub 治理、baseline、创意来源、trial 证据链做干净，再逐步接入 OpenClaw / Codex 工作流；最终服务于可复现实验和创新沉淀。
@@ -37,7 +37,9 @@
 ## 仓库规则
 
 - `main` 是唯一长期分支。
-- `v1`、`v2`、`v3` 是永久 baseline tags。
+- `v1`、`v2`、`v3`、`v4` 是永久 baseline tags；当前正式确定版本以 `README.md`、`docs/PROJECT_STATUS.md` 和 `experiments/VERSION_TREE.md` 为准。
+- min3 复现实验中，同一候选至少 3 次 clean completed/ok 且有 H 指标时，即可按 `docs/workflow/promotion.md` 自动 promotion；多个 min3-confirmed 候选同时存在时，按 `confirmed_H` 最高者确定为正式版本，`best_observed_H` 只作平局辅助。promotion 表示确定正式版本/tag，不等于自动执行 `activate-version` 或切换 active runtime alias。
+- 训练产生的 checkpoint 不进 GitHub。一次 campaign 收口后，只保留 H 排名前 5 的 `model_best`/best-model checkpoint；其余训练 checkpoint 可在写入 retention manifest 后删除。日志、receipt、summary、manifest、registry 和配置证据不能随 checkpoint 清理一起删除。
 - Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
 - 当前阶段已经强制执行 GTPJ 核心 workflow：任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、agent 凭证和 promotion gate 都必须遵守。
 - OpenClaw / Codex 只是不同 runtime 入口；它们必须共享同一套 GitHub 事实源和 workflow 规范。
