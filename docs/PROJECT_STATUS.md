@@ -48,6 +48,19 @@ Promotion creates a formal version/tag. It does not automatically run
 - `GTPJ-v3` remains preserved as an owner-accepted stochastic tag with `confirmed_H=pending`.
 - Future manuscript-grade claims should cite whether a number is `confirmed_H` or `best_observed_H`.
 
+## Warehouse Retention
+
+2026-06-29 checkpoint retention has been applied on `lab4090`:
+
+```text
+manifest: /data/lby/projects/cv_project/GTPJ_Warehouse/retention/model_best_retention_20260629_v4.json
+policy: keep Top-5 best model_best/best-model checkpoints by H
+kept: 5
+deleted: 199 training checkpoint files
+deleted_bytes: 31055128358
+excluded: logs, receipts, summaries, configs, manifests, registries, and data/cache feature tensors
+```
+
 ## Next Steps
 
 Use `GTPJ-v4` as the confirmed formal version for future version-level tune,
