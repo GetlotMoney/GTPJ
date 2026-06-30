@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections import Counter
 import hashlib
 import importlib.util
 import io
@@ -764,6 +765,34 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("用户选择 1 个候选后再运行", stdout)
         self.assertEqual(index_before, self._tune_index_text())
         self.assertEqual(registry_before, self._registry_text())
+
+    def test_dynamic_routing_batch_plan_has_balanced_aggressive_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5)
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(groups["sanity_control"], 4)
+        self.assertEqual(groups["local_gate"], 8)
+        self.assertEqual(groups["icsa_gate"], 8)
+        self.assertEqual(groups["direction_gate"], 6)
+        self.assertEqual(groups["pse_gate"], 6)
+        self.assertEqual(groups["combination"], 8)
+        self.assertEqual(groups["top2_frozen_repeat"], 10)
+        self.assertEqual(phases["explore"], 40)
+        self.assertEqual(phases["repeat"], 10)
+        self.assertEqual(jobs[0]["config_updates"]["use_dynamic_routing"], False)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs[:40]))
+        self.assertEqual({job["source_rank"] for job in jobs[40:]}, {1, 2})
+
+    def test_dynamic_routing_runner_records_failures_and_warehouse_artifacts(self) -> None:
+        script = self.module._dynamic_runner_script()
+
+        self.assertIn("except Exception as exc", script)
+        self.assertIn("status=\"failed\"", script)
+        self.assertIn("copy_artifacts_to_warehouse", script)
+        self.assertIn("warehouse_attempt_dir", script)
+        self.assertIn("artifact_manifest.json", script)
 
     def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
         code, stdout, stderr = self._run_main(

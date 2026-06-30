@@ -9,6 +9,7 @@ not run training, push to GitHub, or mutate Git history.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import re
@@ -5283,6 +5284,754 @@ missing/unexpected keys:
     return 0
 
 
+def _dynamic_updates(**overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "use_dynamic_routing": True,
+        "dynamic_local_mode": "fixed",
+        "dynamic_icsa_mode": "fixed",
+        "dynamic_direction_mode": "fixed",
+        "dynamic_pse_mode": "fixed",
+        "dynamic_gate_hidden": 32,
+        "dynamic_gate_anchor_lambda": 0.001,
+    }
+    base.update(overrides)
+    return base
+
+
+def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
+    if profile != "balanced-aggressive":
+        raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
+
+    specs: list[tuple[str, str, dict[str, object]]] = [
+        ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
+        ("sanity_control", "dynamic_fixed_all", _dynamic_updates()),
+        (
+            "sanity_control",
+            "sample_local_direction_class_icsa",
+            _dynamic_updates(
+                dynamic_local_mode="sample",
+                dynamic_icsa_mode="class",
+                dynamic_direction_mode="sample",
+                dynamic_pse_mode="class",
+                dynamic_gate_hidden=32,
+                dynamic_gate_anchor_lambda=0.001,
+            ),
+        ),
+        (
+            "sanity_control",
+            "class_local_direction_pse",
+            _dynamic_updates(
+                dynamic_local_mode="class",
+                dynamic_icsa_mode="fixed",
+                dynamic_direction_mode="class",
+                dynamic_pse_mode="class",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.003,
+            ),
+        ),
+    ]
+
+    for hidden in [16, 24, 32, 48]:
+        for mode in ["sample", "class"]:
+            specs.append(
+                (
+                    "local_gate",
+                    f"local_{mode}_h{hidden}",
+                    _dynamic_updates(
+                        dynamic_local_mode=mode,
+                        dynamic_gate_hidden=hidden,
+                        dynamic_gate_anchor_lambda=0.001,
+                    ),
+                )
+            )
+
+    for hidden in [16, 24, 32, 48]:
+        for mode in ["sample", "class"]:
+            specs.append(
+                (
+                    "icsa_gate",
+                    f"icsa_{mode}_h{hidden}",
+                    _dynamic_updates(
+                        dynamic_icsa_mode=mode,
+                        dynamic_gate_hidden=hidden,
+                        dynamic_gate_anchor_lambda=0.001,
+                    ),
+                )
+            )
+
+    for mode, hidden, anchor in [
+        ("sample", 16, 0.0),
+        ("sample", 32, 0.001),
+        ("sample", 48, 0.003),
+        ("class", 16, 0.0),
+        ("class", 32, 0.001),
+        ("class", 48, 0.003),
+    ]:
+        specs.append(
+            (
+                "direction_gate",
+                f"direction_{mode}_h{hidden}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                ),
+            )
+        )
+
+    for hidden, anchor in [(16, 0.0), (24, 0.001), (32, 0.001), (48, 0.003), (64, 0.003), (96, 0.005)]:
+        specs.append(
+            (
+                "pse_gate",
+                f"pse_class_h{hidden}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                ),
+            )
+        )
+
+    combos = [
+        ("combo_sample_local_icsa", "sample", "sample", "fixed", "fixed", 32, 0.001),
+        ("combo_sample_local_direction", "sample", "fixed", "sample", "fixed", 32, 0.001),
+        ("combo_class_icsa_pse", "fixed", "class", "fixed", "class", 32, 0.001),
+        ("combo_sample_all_class_pse", "sample", "sample", "sample", "class", 48, 0.003),
+        ("combo_class_local_direction", "class", "fixed", "class", "fixed", 48, 0.003),
+        ("combo_class_local_icsa_pse", "class", "class", "fixed", "class", 48, 0.003),
+        ("combo_class_all", "class", "class", "class", "class", 64, 0.005),
+        ("combo_aggressive_mixed", "sample", "class", "class", "class", 96, 0.005),
+    ]
+    for name, local_mode, icsa_mode, direction_mode, pse_mode, hidden, anchor in combos:
+        specs.append(
+            (
+                "combination",
+                name,
+                _dynamic_updates(
+                    dynamic_local_mode=local_mode,
+                    dynamic_icsa_mode=icsa_mode,
+                    dynamic_direction_mode=direction_mode,
+                    dynamic_pse_mode=pse_mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                ),
+            )
+        )
+
+    if len(specs) != 40:
+        raise WorkflowError(f"Dynamic routing explore plan must contain 40 jobs, got {len(specs)}")
+
+    jobs: list[dict[str, object]] = []
+    for index, (group, name, updates) in enumerate(specs, start=1):
+        updates = dict(updates)
+        updates["random_seed"] = seed
+        jobs.append(
+            {
+                "job_id": f"DR-{index:03d}",
+                "attempt_id": f"ATTEMPT-{index:03d}",
+                "phase": "explore",
+                "group": group,
+                "name": name,
+                "seed": seed,
+                "source_rank": 0,
+                "gpu_slot": (index - 1) % 2,
+                "config_updates": updates,
+            }
+        )
+
+    for repeat_index in range(10):
+        index = 41 + repeat_index
+        source_rank = 1 if repeat_index < 5 else 2
+        jobs.append(
+            {
+                "job_id": f"DR-{index:03d}",
+                "attempt_id": f"ATTEMPT-{index:03d}",
+                "phase": "repeat",
+                "group": "top2_frozen_repeat",
+                "name": f"top{source_rank}_repeat_{repeat_index % 5 + 1}",
+                "seed": seed,
+                "source_rank": source_rank,
+                "gpu_slot": (index - 1) % 2,
+                "config_updates": {
+                    "copy_from_top_rank": source_rank,
+                    "random_seed": seed,
+                },
+            }
+        )
+    return jobs
+
+
+def _format_config_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return '""'
+    return str(value)
+
+
+def render_config_with_updates(base_text: str, updates: dict[str, object]) -> str:
+    text = base_text.rstrip() + "\n"
+    for key, value in updates.items():
+        if key == "copy_from_top_rank":
+            continue
+        rendered = _format_config_value(value)
+        pattern = rf"(?ms)^({re.escape(key)}:\n\s+value:\s*).+?(\n(?=[A-Za-z_][A-Za-z0-9_]*:|\Z))"
+        replacement = rf"\g<1>{rendered}\2"
+        if re.search(pattern, text):
+            text = re.sub(pattern, replacement, text, count=1)
+        else:
+            text = text.rstrip() + f"\n{key}:\n  value: {rendered}\n"
+    return text.rstrip() + "\n"
+
+
+def _dynamic_runner_script() -> str:
+    return r'''#!/usr/bin/env python
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import os
+import re
+import shutil
+import subprocess
+import time
+import traceback
+from datetime import datetime, timezone
+from pathlib import Path
+
+import fcntl
+
+
+def utc_now():
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def load_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def run(cmd, cwd=None, env=None, log_path=None):
+    if log_path is None:
+        return subprocess.run(cmd, cwd=cwd, env=env, text=True, check=True)
+    with log_path.open("w", encoding="utf-8", errors="replace") as handle:
+        return subprocess.run(cmd, cwd=cwd, env=env, text=True, stdout=handle, stderr=subprocess.STDOUT)
+
+
+def parse_metrics(log_path):
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    best_start = text.rfind("Best Results")
+    metric_text = text[best_start:] if best_start != -1 else text
+    result = {}
+    best_epoch = re.search(r"Best Results\s*@\s*Epoch\s+([0-9]+)", metric_text)
+    result["best_epoch"] = best_epoch.group(1) if best_epoch else ""
+    patterns = {
+        "U": r"GZSL-U[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "S": r"GZSL-S[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "H": r"GZSL-H[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+        "ZS": r"ZSL[^:\n]*:\s*([0-9]+(?:\.[0-9]+)?)%",
+    }
+    for name, pattern in patterns.items():
+        matches = re.findall(pattern, metric_text)
+        result[name] = matches[-1] if matches else ""
+    return result
+
+
+def config_set_scalar(text, key, value):
+    rendered = "true" if value is True else "false" if value is False else str(value)
+    pattern = rf"(?ms)^({re.escape(key)}:\n\s+value:\s*).+?(\n(?=[A-Za-z_][A-Za-z0-9_]*:|\Z))"
+    replacement = rf"\g<1>{rendered}\2"
+    if re.search(pattern, text):
+        return re.sub(pattern, replacement, text, count=1)
+    return text.rstrip() + f"\n{key}:\n  value: {rendered}\n"
+
+
+def locked(run_dir, func):
+    lock_path = run_dir / "batch_status.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("w", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            return func()
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+def update_job(run_dir, job_id, **fields):
+    def inner():
+        status_path = run_dir / "batch_status.json"
+        data = load_json(status_path)
+        job_status = data.setdefault("jobs", {}).setdefault(job_id, {})
+        job_status.update(fields)
+        job_status["updated_at"] = utc_now()
+        write_json(status_path, data)
+    locked(run_dir, inner)
+
+
+def append_jsonl(path, obj):
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+
+def append_summary(run_dir, row):
+    def inner():
+        summary = run_dir / "summary.csv"
+        exists = summary.exists()
+        fields = [
+            "job_id", "attempt_id", "phase", "group", "name", "seed", "source_rank",
+            "resolved_from_job_id", "status", "U", "S", "H", "ZS", "best_epoch", "gpu",
+            "log_path", "warehouse_dir",
+        ]
+        with summary.open("a", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            if not exists:
+                writer.writeheader()
+            writer.writerow({key: row.get(key, "") for key in fields})
+        append_jsonl(run_dir / "summary.jsonl", row)
+    locked(run_dir, inner)
+
+
+def completed_explore_rows(run_dir):
+    summary = run_dir / "summary.csv"
+    if not summary.exists():
+        return []
+    with summary.open("r", newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    return [row for row in rows if row.get("phase") == "explore" and row.get("status") == "completed" and row.get("H")]
+
+
+def all_explore_finished(run_dir, plan):
+    status = load_json(run_dir / "batch_status.json")
+    jobs = status.get("jobs", {})
+    explore = [job for job in plan["jobs"] if job["phase"] == "explore"]
+    return all(jobs.get(job["job_id"], {}).get("status") in {"completed", "failed", "skipped"} for job in explore)
+
+
+def top_job_for_rank(run_dir, rank):
+    rows = completed_explore_rows(run_dir)
+    rows.sort(key=lambda row: float(row.get("H") or "-inf"), reverse=True)
+    if len(rows) < rank:
+        return None
+    return rows[rank - 1]
+
+
+def ensure_worktree(plan, gpu):
+    server_repo = Path(plan["server_repo"])
+    worktree_root = Path(plan["worktree_root"])
+    commit = plan["commit"]
+    branch = plan["branch"]
+    sha7 = commit[:7]
+    worktree = worktree_root / f"dynroute_{sha7}_gpu{gpu}"
+    worktree_root.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "-C", str(server_repo), "fetch", "origin", branch], check=False)
+    if not worktree.exists():
+        subprocess.run(["git", "-C", str(server_repo), "worktree", "add", str(worktree), commit], check=True)
+    return worktree
+
+
+def warehouse_attempt_dir(plan, job):
+    attempt_lower = str(job["attempt_id"]).lower()
+    return (
+        Path(plan["warehouse_root"])
+        / "runs"
+        / str(plan.get("base_version", "v5"))
+        / "module_trial"
+        / str(plan.get("trial_id", "TRIAL-001"))
+        / attempt_lower
+    )
+
+
+def copy_if_newer(src, dst_dir, start_ts):
+    copied = []
+    if not src.exists():
+        return copied
+    for path in src.iterdir():
+        if not path.is_file():
+            continue
+        if path.stat().st_mtime + 2 < start_ts:
+            continue
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        dst = dst_dir / path.name
+        shutil.copy2(path, dst)
+        copied.append(str(dst))
+    return copied
+
+
+def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts):
+    attempt_dir = warehouse_attempt_dir(plan, job)
+    attempt_dir.mkdir(parents=True, exist_ok=True)
+    copied = []
+    copied += copy_if_newer(worktree / "train_log" / "CUB", attempt_dir / "logs", start_ts)
+    copied += copy_if_newer(worktree / "checkpoints" / "CUB", attempt_dir / "checkpoints", start_ts)
+    if log_path.exists():
+        (attempt_dir / "receipts").mkdir(parents=True, exist_ok=True)
+        dst = attempt_dir / "receipts" / log_path.name
+        shutil.copy2(log_path, dst)
+        copied.append(str(dst))
+    if runtime_config.exists():
+        (attempt_dir / "configs").mkdir(parents=True, exist_ok=True)
+        dst = attempt_dir / "configs" / runtime_config.name
+        shutil.copy2(runtime_config, dst)
+        copied.append(str(dst))
+    manifest = {
+        "job_id": job["job_id"],
+        "attempt_id": job["attempt_id"],
+        "warehouse_dir": str(attempt_dir),
+        "copied_files": copied,
+        "recorded_at": utc_now(),
+    }
+    (attempt_dir / "artifact_manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return str(attempt_dir)
+
+
+def run_job(run_dir, plan, job, gpu):
+    job_id = job["job_id"]
+    update_job(run_dir, job_id, status="running", gpu=str(gpu), started_at=utc_now())
+    append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": "job_started", "job_id": job_id, "gpu": gpu})
+
+    resolved_from = ""
+    log_dir = run_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{job_id}_gpu{gpu}.log"
+    runtime_config = run_dir / "runtime_configs" / f"{job_id}_gpu{gpu}.yaml"
+    worktree = None
+    start_ts = time.time()
+    warehouse_dir = ""
+    try:
+        worktree = ensure_worktree(plan, gpu)
+        config_dir = run_dir / "configs"
+        runtime_config_dir = run_dir / "runtime_configs"
+        runtime_config_dir.mkdir(parents=True, exist_ok=True)
+        source_config = config_dir / f"{job_id}.yaml"
+        if job["phase"] == "repeat":
+            rank = int(job["source_rank"])
+            top_row = top_job_for_rank(run_dir, rank)
+            if top_row is None:
+                update_job(run_dir, job_id, status="skipped", error=f"missing top{rank} completed source")
+                append_summary(run_dir, {**job, "status": "skipped", "gpu": gpu, "resolved_from_job_id": "", "log_path": ""})
+                return
+            resolved_from = top_row["job_id"]
+            source_config = config_dir / f"{resolved_from}.yaml"
+
+        config_text = source_config.read_text(encoding="utf-8")
+        config_text = config_set_scalar(config_text, "device", "cuda:0")
+        config_text = config_set_scalar(config_text, "random_seed", job["seed"])
+        runtime_config.write_text(config_text, encoding="utf-8")
+
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+        cmd = [
+            "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
+            plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
+        ]
+        code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
+        warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
+        if code != 0:
+            row = {
+                **job,
+                "status": "failed",
+                "gpu": gpu,
+                "resolved_from_job_id": resolved_from,
+                "log_path": str(log_path),
+                "warehouse_dir": warehouse_dir,
+            }
+            update_job(run_dir, job_id, status="failed", returncode=code, log_path=str(log_path), resolved_from_job_id=resolved_from, warehouse_dir=warehouse_dir)
+            append_summary(run_dir, row)
+            append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": "job_failed", "job_id": job_id, "gpu": gpu, "returncode": code})
+            return
+
+        metrics = parse_metrics(log_path)
+        status = "completed" if metrics.get("H") else "failed"
+        row = {**job, **metrics, "status": status, "gpu": gpu, "resolved_from_job_id": resolved_from, "log_path": str(log_path), "warehouse_dir": warehouse_dir}
+        update_job(run_dir, job_id, status=status, returncode=code, log_path=str(log_path), resolved_from_job_id=resolved_from, metrics=metrics, warehouse_dir=warehouse_dir)
+        append_summary(run_dir, row)
+        append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": f"job_{status}", "job_id": job_id, "gpu": gpu, "metrics": metrics, "warehouse_dir": warehouse_dir})
+    except Exception as exc:
+        error_path = log_dir / f"{job_id}_gpu{gpu}.error.txt"
+        error_path.write_text(traceback.format_exc(), encoding="utf-8")
+        if worktree is not None:
+            try:
+                warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
+            except Exception:
+                warehouse_dir = ""
+        if not warehouse_dir:
+            attempt_dir = warehouse_attempt_dir(plan, job)
+            (attempt_dir / "receipts").mkdir(parents=True, exist_ok=True)
+            dst = attempt_dir / "receipts" / error_path.name
+            shutil.copy2(error_path, dst)
+            (attempt_dir / "artifact_manifest.json").write_text(
+                json.dumps(
+                    {
+                        "job_id": job["job_id"],
+                        "attempt_id": job["attempt_id"],
+                        "warehouse_dir": str(attempt_dir),
+                        "copied_files": [str(dst)],
+                        "error": str(exc),
+                        "recorded_at": utc_now(),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            warehouse_dir = str(attempt_dir)
+        row = {
+            **job,
+            "status": "failed",
+            "gpu": gpu,
+            "resolved_from_job_id": resolved_from,
+            "log_path": str(log_path if log_path.exists() else error_path),
+            "warehouse_dir": warehouse_dir,
+        }
+        update_job(run_dir, job_id, status="failed", error=str(exc), log_path=str(row["log_path"]), resolved_from_job_id=resolved_from, warehouse_dir=warehouse_dir)
+        append_summary(run_dir, row)
+        append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": "job_failed", "job_id": job_id, "gpu": gpu, "error": str(exc), "error_log": str(error_path)})
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gpu", required=True, type=int)
+    args = parser.parse_args()
+    run_dir = Path(__file__).resolve().parent
+    plan = load_json(run_dir / "plan.json")
+    gpu_slots = {int(value): idx for idx, value in enumerate(plan["gpus"])}
+    gpu_slot = gpu_slots[args.gpu]
+    assigned = [job for job in plan["jobs"] if int(job["gpu_slot"]) == gpu_slot]
+
+    for job in assigned:
+        if job["phase"] != "explore":
+            continue
+        status = load_json(run_dir / "batch_status.json").get("jobs", {}).get(job["job_id"], {}).get("status")
+        if status in {"completed", "failed", "skipped", "running"}:
+            continue
+        run_job(run_dir, plan, job, args.gpu)
+
+    while not all_explore_finished(run_dir, plan):
+        time.sleep(30)
+
+    for job in assigned:
+        if job["phase"] != "repeat":
+            continue
+        status = load_json(run_dir / "batch_status.json").get("jobs", {}).get(job["job_id"], {}).get("status")
+        if status in {"completed", "failed", "skipped", "running"}:
+            continue
+        run_job(run_dir, plan, job, args.gpu)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
+    if int(args.jobs) != 50:
+        raise WorkflowError("Dynamic routing batch currently supports exactly 50 jobs.")
+    trial_dir = (REPO_ROOT / args.trial_dir).resolve() if not Path(args.trial_dir).is_absolute() else Path(args.trial_dir)
+    if not trial_dir.exists():
+        raise WorkflowError(f"Missing trial dir: {display_path(trial_dir)}")
+    base_config = Path(args.base_config) if args.base_config else trial_dir / "config.yaml"
+    if not base_config.is_absolute():
+        base_config = REPO_ROOT / base_config
+    if not base_config.exists():
+        raise WorkflowError(f"Missing base config: {display_path(base_config)}")
+
+    run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
+    run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
+    run_dir = run_root / run_id
+    if run_dir.exists():
+        raise WorkflowError(f"Refusing to overwrite existing run dir: {display_path(run_dir)}")
+    ensure_dir(run_dir)
+    ensure_dir(run_dir / "configs")
+    ensure_dir(run_dir / "logs")
+    ensure_dir(run_dir / "pids")
+    ensure_dir(run_dir / "runtime_configs")
+
+    gpus = [int(part.strip()) for part in args.gpus.split(",") if part.strip()]
+    if not gpus:
+        raise WorkflowError("At least one GPU id is required.")
+    jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
+    for index, job in enumerate(jobs):
+        job["gpu_slot"] = index % len(gpus)
+
+    branch = args.branch or current_branch()
+    commit = args.commit or git(["rev-parse", "HEAD"], check=False)
+    trial_id, _trial_slug = parse_trial_folder_name(trial_dir)
+    base_version = args.base_version
+    plan = {
+        "run_id": run_id,
+        "profile": args.profile,
+        "created_at": utc_now(),
+        "trial_dir": display_path(trial_dir),
+        "base_config": display_path(base_config),
+        "base_version": base_version,
+        "trial_id": trial_id,
+        "branch": branch,
+        "commit": commit,
+        "gpus": gpus,
+        "server_repo": args.server_repo,
+        "worktree_root": args.worktree_root,
+        "warehouse_root": args.warehouse_root,
+        "conda_env": args.conda_env,
+        "python": args.python,
+        "jobs": jobs,
+    }
+    write_new(run_dir / "plan.json", json.dumps(plan, ensure_ascii=False, indent=2))
+
+    base_text = read_text(base_config)
+    for job in jobs:
+        config_text = render_config_with_updates(base_text, job["config_updates"])
+        write_new(run_dir / "configs" / f"{job['job_id']}.yaml", config_text)
+
+    status = {
+        "run_id": run_id,
+        "status": "planned",
+        "created_at": utc_now(),
+        "jobs": {
+            str(job["job_id"]): {
+                "status": "pending",
+                "phase": job["phase"],
+                "group": job["group"],
+                "name": job["name"],
+                "gpu_slot": job["gpu_slot"],
+            }
+            for job in jobs
+        },
+    }
+    write_new(run_dir / "batch_status.json", json.dumps(status, ensure_ascii=False, indent=2))
+    write_new(run_dir / "events.jsonl", "")
+    write_new(
+        run_dir / "run_dynamic_routing_batch.py",
+        _dynamic_runner_script(),
+    )
+    gpu_lines = []
+    for gpu in gpus:
+        gpu_lines.extend(
+            [
+                f"nohup python run_dynamic_routing_batch.py --gpu {gpu} > logs/gpu{gpu}.controller.out 2>&1 &",
+                f"echo $! > pids/gpu{gpu}.pid",
+            ]
+        )
+    write_new(
+        run_dir / "start_batch.sh",
+        "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\nmkdir -p logs pids runtime_configs\n"
+        + "\n".join(gpu_lines),
+    )
+    write_new(
+        run_dir / "README.md",
+        f"""# {run_id}
+
+profile: {args.profile}
+trial_dir: {display_path(trial_dir)}
+branch: {branch}
+commit: {commit}
+gpus: {','.join(str(gpu) for gpu in gpus)}
+
+Start on server:
+
+```bash
+cd {run_dir.as_posix()}
+bash start_batch.sh
+```
+
+Outputs:
+
+- `batch_status.json`
+- `summary.csv`
+- `summary.jsonl`
+- `events.jsonl`
+- `logs/`
+- `runtime_configs/`
+""",
+    )
+    print(f"dynamic-routing-plan-created: {display_path(run_dir)}")
+    print(f"jobs: {len(jobs)}")
+    print(f"branch: {branch}")
+    print(f"commit: {commit}")
+    return 0
+
+
+def _read_summary_rows(run_dir: Path) -> list[dict[str, str]]:
+    summary = run_dir / "summary.csv"
+    if not summary.exists():
+        return []
+    with summary.open("r", newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def cmd_dynamic_routing_status(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir)
+    if not run_dir.is_absolute():
+        run_dir = REPO_ROOT / run_dir
+    status_path = run_dir / "batch_status.json"
+    if not status_path.exists():
+        raise WorkflowError(f"Missing batch_status.json: {display_path(status_path)}")
+    status = json.loads(read_text(status_path))
+    rows = _read_summary_rows(run_dir)
+    counts: dict[str, int] = {}
+    for job in status.get("jobs", {}).values():
+        state = str(job.get("status", "unknown"))
+        counts[state] = counts.get(state, 0) + 1
+    completed = [row for row in rows if row.get("status") == "completed" and row.get("H")]
+    best = max(completed, key=lambda row: float(row["H"])) if completed else None
+    print(f"run_id: {status.get('run_id', run_dir.name)}")
+    print("counts: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items())))
+    print(f"summary_rows: {len(rows)}")
+    if best:
+        print(
+            "best_completed: "
+            f"{best.get('job_id')} {best.get('name')} H={best.get('H')} "
+            f"U={best.get('U')} S={best.get('S')}"
+        )
+    return 0
+
+
+def cmd_analyze_dynamic_routing_batch(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir)
+    if not run_dir.is_absolute():
+        run_dir = REPO_ROOT / run_dir
+    rows = _read_summary_rows(run_dir)
+    if not rows:
+        raise WorkflowError(f"No summary rows found in {display_path(run_dir)}")
+    completed = [row for row in rows if row.get("status") == "completed" and row.get("H")]
+    completed.sort(key=lambda row: float(row["H"]), reverse=True)
+    print(f"completed: {len(completed)} / {len(rows)}")
+    print(f"reference: v4 confirmed_H=74.45; v5 repeat mean H=74.44")
+    for row in completed[: int(args.top_k)]:
+        print(
+            f"rank: {row.get('job_id')} group={row.get('group')} name={row.get('name')} "
+            f"H={row.get('H')} U={row.get('U')} S={row.get('S')} ZS={row.get('ZS')} "
+            f"epoch={row.get('best_epoch')}"
+        )
+    repeat_rows = [row for row in completed if row.get("phase") == "repeat"]
+    by_source: dict[str, list[dict[str, str]]] = {}
+    for row in repeat_rows:
+        by_source.setdefault(row.get("resolved_from_job_id", ""), []).append(row)
+    for source, source_rows in sorted(by_source.items()):
+        h_values = [float(row["H"]) for row in source_rows if row.get("H")]
+        u_values = [float(row["U"]) for row in source_rows if row.get("U")]
+        s_values = [float(row["S"]) for row in source_rows if row.get("S")]
+        if not h_values:
+            continue
+        print(
+            f"repeat_mean: source={source} n={len(h_values)} "
+            f"H={sum(h_values)/len(h_values):.2f} "
+            f"U={sum(u_values)/len(u_values):.2f} "
+            f"S={sum(s_values)/len(s_values):.2f}"
+        )
+    failures = [row for row in rows if row.get("status") == "failed"]
+    if failures:
+        print("failures: " + ", ".join(row.get("job_id", "") for row in failures))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -5460,6 +6209,33 @@ def build_parser() -> argparse.ArgumentParser:
     new_trial.add_argument("--slug", required=True)
     new_trial.add_argument("--base-version", default="")
     new_trial.set_defaults(func=cmd_new_trial)
+
+    dyn_plan = sub.add_parser("plan-dynamic-routing-batch", help="生成 IDEA-0003/TRIAL-001 dynamic routing 50 组两卡 batch")
+    dyn_plan.add_argument("--trial-dir", required=True)
+    dyn_plan.add_argument("--base-config", default="")
+    dyn_plan.add_argument("--run-id", default="")
+    dyn_plan.add_argument("--jobs", type=int, default=50)
+    dyn_plan.add_argument("--profile", default="balanced-aggressive")
+    dyn_plan.add_argument("--base-version", default="v5")
+    dyn_plan.add_argument("--seed", type=int, default=5)
+    dyn_plan.add_argument("--gpus", default="0,1")
+    dyn_plan.add_argument("--branch", default="")
+    dyn_plan.add_argument("--commit", default="")
+    dyn_plan.add_argument("--server-repo", default="/data/lby/projects/cv_project/GTPJ")
+    dyn_plan.add_argument("--worktree-root", default="/data/lby/projects/cv_project/GTPJ_worktrees")
+    dyn_plan.add_argument("--warehouse-root", default="/data/lby/projects/cv_project/GTPJ_Warehouse")
+    dyn_plan.add_argument("--conda-env", default="dvsr_gpu")
+    dyn_plan.add_argument("--python", default="python")
+    dyn_plan.set_defaults(func=cmd_plan_dynamic_routing_batch)
+
+    dyn_status = sub.add_parser("dynamic-routing-status", help="读取 dynamic routing batch 状态")
+    dyn_status.add_argument("--run-dir", required=True)
+    dyn_status.set_defaults(func=cmd_dynamic_routing_status)
+
+    dyn_analyze = sub.add_parser("analyze-dynamic-routing-batch", help="分析 dynamic routing batch summary")
+    dyn_analyze.add_argument("--run-dir", required=True)
+    dyn_analyze.add_argument("--top-k", type=int, default=5)
+    dyn_analyze.set_defaults(func=cmd_analyze_dynamic_routing_batch)
 
     return parser
 

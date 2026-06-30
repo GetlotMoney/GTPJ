@@ -232,7 +232,7 @@
         "v5": {
           "score": 82.0,
           "applicability": "direct",
-          "stage": "selected",
+          "stage": "trialing",
           "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. Dynamic routing tests whether sample/class-conditioned gates can improve U/S/H balance and repeat stability without changing class order, seen/unseen split, logits shape, or metric semantics.",
           "blockers": []
         }
@@ -260,7 +260,9 @@
       "compatibility": "use_dynamic_routing=false keeps the v5 fixed path. Fixed gate modes initialize to v5 values and provide an auditable bridge between static coefficients and learned gates.",
       "transfer_notes": "Treat as a routing mechanism tied to BVSA/PSE/ICSA. Reuse in later versions only after verifying class order, conditional text path, and score scale invariants.",
       "priority": 0.82,
-      "linked_trials": [],
+      "linked_trials": [
+        "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+      ],
       "linked_versions": [
         "v5"
       ],

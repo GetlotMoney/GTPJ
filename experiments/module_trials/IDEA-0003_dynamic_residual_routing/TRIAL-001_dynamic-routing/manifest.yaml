@@ -1,0 +1,43 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_dynamic-routing"
+  kind: "module-trial"
+  status: "pre_run_allowed"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-06-30T07:26:31+00:00"
+version:
+  base_version: "v5"
+  base_code_tag: "v5"
+  code_branch: "dev/v5-idea-0003-trial-001-dynamic-routing"
+  code_commit: "pending final freeze commit"
+  git_dirty: "pending final freeze commit"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/config.yaml"
+  config_sha256: "2186ae4a8cb442ee3171bfca712f22ea17ec56878a923fe69a5c113fb0b9ebaf"
+  command: "python workflow/gtpj_workflow.py plan-dynamic-routing-batch --trial-dir experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing --jobs 50 --gpus 0,1"
+  seed: "5"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: "IDEA-0003"
+  uri: "research://ideas/IDEA-0003.md"
+  title: "Dynamic Residual Routing"
+  hypothesis: "Replacing v5 fixed coefficients with gates initialized near the fixed values can adapt local score strength, ICSA injection strength, BVSA direction mix, and PSE outer residual per sample or class. If the gates avoid collapse, they may preserve seen-class strength while improving unseen transfer and H stability."
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "true"

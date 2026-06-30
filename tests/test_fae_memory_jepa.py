@@ -26,21 +26,21 @@ def make_config(
         pse_heads=4,
         pse_dropout=0.0,
         pse_inner_ratio=0.35,
-        pse_outer_ratio=0.15,
+        pse_outer_ratio=0.65,
         adapter_ratio=0.2,
         use_clip_a_self=True,
         clip_a_self_apply_unseen=False,
         clip_a_self_heads=4,
         clip_a_self_dropout=0.0,
         clip_a_self_inner_ratio=0.35,
-        clip_a_self_outer_ratio=0.15,
+        clip_a_self_outer_ratio=0.65,
         tf_common_dim=512,
         tf_heads=4,
         tf_dropout=0.0,
         weight_s2v=0.5,
         use_fae=use_fae,
         use_fgvd_geometry=use_fae,
-        local_weight=0.3,
+        local_weight=0.2,
         score_mode="add",
         use_ag_jepa=True,
         use_sgmp=True,
@@ -77,6 +77,13 @@ def make_config(
         lambda_mpp=lambda_jepa,
         lambda_jepa_neg=lambda_jepa_neg,
         lambda_neg=lambda_jepa_neg,
+        use_dynamic_routing=False,
+        dynamic_local_mode="fixed",
+        dynamic_icsa_mode="fixed",
+        dynamic_direction_mode="fixed",
+        dynamic_pse_mode="fixed",
+        dynamic_gate_hidden=16,
+        dynamic_gate_anchor_lambda=0.0,
     )
 
 
@@ -372,7 +379,7 @@ class FaeMemoryJepaTest(unittest.TestCase):
         out = model(clip_features, is_train=True)
 
         model.zero_grad(set_to_none=True)
-        out["local_score"].sum().backward()
+        (out["local_score"] ** 2).sum().backward()
 
         self.assertEqual(tuple(out["local_score"].shape), (2, 200))
         self.assertEqual(grad_norm(model.meta_net.parameters()), 0.0)
@@ -393,13 +400,122 @@ class FaeMemoryJepaTest(unittest.TestCase):
         out = model(clip_features, is_train=True)
 
         model.zero_grad(set_to_none=True)
-        out["local_score"].sum().backward()
+        (out["local_score"] ** 2).sum().backward()
 
         self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
         self.assertEqual(tuple(out["score_v2s"].shape), (2, 200))
         self.assertEqual(tuple(out["score_s2v"].shape), (2, 200))
         self.assertEqual(tuple(out["local_score"].shape), (2, 200))
         self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
+
+    def test_dynamic_fixed_routing_matches_static_path_and_reports_stats(self):
+        base_config = make_config(
+            "fae_main_memory",
+            jepa_text_mode="conditional",
+            use_conditional_text=True,
+            bvsa_text_mode="conditional",
+        )
+        dynamic_config = make_config(
+            "fae_main_memory",
+            jepa_text_mode="conditional",
+            use_conditional_text=True,
+            bvsa_text_mode="conditional",
+        )
+        dynamic_config.use_dynamic_routing = True
+        dynamic_config.dynamic_local_mode = "fixed"
+        dynamic_config.dynamic_icsa_mode = "fixed"
+        dynamic_config.dynamic_direction_mode = "fixed"
+        dynamic_config.dynamic_pse_mode = "fixed"
+
+        base_model = make_model(base_config)
+        dynamic_model = make_model(dynamic_config)
+        clip_features = torch.randn(2, 577, 768)
+
+        base_out = base_model(clip_features, is_train=True)
+        dynamic_out = dynamic_model(clip_features, is_train=True)
+
+        torch.testing.assert_close(dynamic_out["s_final"], base_out["s_final"], rtol=1e-5, atol=1e-5)
+        self.assertIn("dynamic_route_stats", dynamic_out)
+        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["local_gate"]["mean"], 0.2)
+        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["icsa_gate"]["mean"], 0.008)
+        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["direction_gate"]["mean"], 0.5)
+        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["pse_gate"]["mean"], 0.65)
+
+    def test_dynamic_sample_local_and_direction_gates_receive_gradients(self):
+        config = make_config(
+            "fae_main_memory",
+            jepa_text_mode="conditional",
+            use_conditional_text=True,
+            bvsa_text_mode="conditional",
+        )
+        config.use_dynamic_routing = True
+        config.dynamic_local_mode = "sample"
+        config.dynamic_direction_mode = "sample"
+        model = make_model(config)
+        clip_features = torch.randn(2, 577, 768)
+
+        out = model(clip_features, is_train=True)
+
+        model.zero_grad(set_to_none=True)
+        out["s_final"].sum().backward()
+
+        self.assertEqual(tuple(out["dynamic_gates"]["local"].shape), (2, 1))
+        self.assertEqual(tuple(out["dynamic_gates"]["direction"].shape), (2, 1))
+        self.assertGreater(grad_norm(model.dynamic_local_gate.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.dynamic_direction_gate.parameters()), 0.0)
+
+    def test_dynamic_class_icsa_gate_reaches_conditional_bvsa_text(self):
+        config = make_config(
+            "fae_main_memory",
+            jepa_text_mode="conditional",
+            use_conditional_text=True,
+            bvsa_text_mode="conditional",
+        )
+        config.use_dynamic_routing = True
+        config.dynamic_icsa_mode = "class"
+        model = make_model(config)
+        with torch.no_grad():
+            model.meta_net[-1].bias.fill_(0.01)
+        clip_features = torch.randn(2, 577, 768)
+
+        out = model(clip_features, is_train=True)
+
+        model.zero_grad(set_to_none=True)
+        (out["local_score"] ** 2).sum().backward()
+
+        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
+        self.assertEqual(tuple(out["dynamic_gates"]["icsa"].shape), (2, 150))
+        self.assertGreater(grad_norm(model.dynamic_icsa_gate.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
+
+    def test_dynamic_pse_class_gate_reaches_loss_and_reports_anchor(self):
+        config = make_config("fae_main_memory")
+        config.use_dynamic_routing = True
+        config.dynamic_pse_mode = "class"
+        config.dynamic_gate_anchor_lambda = 0.01
+        model = make_model(config)
+        clip_features = torch.randn(2, 577, 768)
+        labels = torch.tensor([0, 1])
+
+        out = model(clip_features, is_train=True)
+        pack = out.copy()
+        pack["batch_label"] = labels
+        loss_pack = model.compute_loss(pack)
+
+        model.zero_grad(set_to_none=True)
+        loss_pack["loss"].backward()
+
+        self.assertEqual(tuple(out["dynamic_gates"]["pse"].shape), (150, 1))
+        self.assertIn("loss_dynamic_gate_anchor", loss_pack)
+        self.assertGreater(grad_norm(model.dynamic_pse_gate.parameters()), 0.0)
+
+    def test_dynamic_pse_sample_mode_is_rejected_early(self):
+        config = make_config("fae_main_memory")
+        config.use_dynamic_routing = True
+        config.dynamic_pse_mode = "sample"
+
+        with self.assertRaisesRegex(ValueError, "dynamic_pse_mode"):
+            make_model(config)
 
     def test_conditional_jepa_requires_conditional_text(self):
         with self.assertRaisesRegex(ValueError, "requires use_icsa=True"):

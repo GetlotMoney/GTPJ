@@ -852,6 +852,16 @@ for epoch in range(start_epoch, total_epochs + 1):
     print_log(f"\n  >> Epoch [{epoch}/{total_epochs}] Train Summary")
     print_log(f"     Avg Loss : {avg_epoch_loss:.4f}")
     print_log(f"     LR       : {current_lr:.6f}")
+    route_stats = in_package.get('dynamic_route_stats') if isinstance(in_package, dict) else None
+    if route_stats:
+        for gate_name, stats in sorted(route_stats.items()):
+            print_log(
+                f"     DynamicRoute {gate_name}: "
+                f"mean={stats.get('mean', 0.0):.6f} "
+                f"std={stats.get('std', 0.0):.6f} "
+                f"min={stats.get('min', 0.0):.6f} "
+                f"max={stats.get('max', 0.0):.6f}"
+            )
 
     # ★ 2026-05-25: 多段训练 - 段边界自动切到下一段
     # 当前 epoch 等于某段终点 → 切换到下一段 lr + 重置 cosine T_max
