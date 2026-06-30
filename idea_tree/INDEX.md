@@ -8,6 +8,7 @@
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
 | `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2`, `v3`, `v4`, `v5` | validated | Use GTPJ-v5 as the active mainline; future tuning can inspect PSE/BVSA weight sensitivity while comparing repeat mean against v4 confirmed_H=74.45. |
+| `IDEA-0003` | Dynamic Residual Routing | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | local_heuristic | 78.0 | `v5` | selected | Create TRIAL-001_dynamic-routing, implement dynamic gates and workflow automation, then run a 50-job balanced-aggressive two-GPU batch from the freeze commit. |
 | `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2`, `v3`, `v4`, `v5` | validated | Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45. |
 
 ## 使用规则

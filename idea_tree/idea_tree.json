@@ -218,6 +218,71 @@
         }
       ],
       "next_action": "Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45."
+    },
+    {
+      "idea_id": "IDEA-0003",
+      "idea_dir": "idea_tree/ideas/IDEA-0003_dynamic_residual_routing/",
+      "title": "Dynamic Residual Routing",
+      "status": "selected",
+      "source_type": "user",
+      "source_ref": "owner:2026-06-30:make residual and mixture coefficients dynamic routes",
+      "source_status": "local_heuristic",
+      "global_score": 78.0,
+      "version_scores": {
+        "v5": {
+          "score": 82.0,
+          "applicability": "direct",
+          "stage": "selected",
+          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. Dynamic routing tests whether sample/class-conditioned gates can improve U/S/H balance and repeat stability without changing class order, seen/unseen split, logits shape, or metric semantics.",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE",
+        "ICSA",
+        "BVSA local_score",
+        "BVSA direction mix",
+        "FGVD",
+        "SGMP"
+      ],
+      "target_component": "model/MyModel.py dynamic residual and score routing",
+      "hypothesis": "Replacing v5 fixed coefficients with gates initialized near the fixed values can adapt local score strength, ICSA injection strength, BVSA direction mix, and PSE outer residual per sample or class. If the gates avoid collapse, they may preserve seen-class strength while improving unseen transfer and H stability.",
+      "expected_effect": {
+        "U": "Main target. Dynamic local/ICSA/PSE balance may improve unseen transfer by avoiding a single fixed seen-biased coefficient.",
+        "S": "Should stay near v5 if gates initialize around v5 fixed values and anchor regularization is enabled.",
+        "H": "Target improvement is repeat mean above v5 repeat mean H=74.44 and preferably above v4 confirmed_H=74.45."
+      },
+      "implementation_scope": "TRIAL-001 only adds dynamic routing gates, config switches, gate statistics, tests, and two-GPU batch automation. The switch-off path must preserve v5 behavior. The trial does not change dataset split, class index order, evaluation metrics, optimizer, or promotion status.",
+      "risk": "Gate collapse to 0/1, hidden seen-class overfit, sample/class broadcasting mistakes, silent switch-off drift, extra compute, and config alias drift are the main risks.",
+      "compatibility": "use_dynamic_routing=false keeps the v5 fixed path. Fixed gate modes initialize to v5 values and provide an auditable bridge between static coefficients and learned gates.",
+      "transfer_notes": "Treat as a routing mechanism tied to BVSA/PSE/ICSA. Reuse in later versions only after verifying class order, conditional text path, and score scale invariants.",
+      "priority": 0.82,
+      "linked_trials": [],
+      "linked_versions": [
+        "v5"
+      ],
+      "linked_experiments": [],
+      "evidence": [
+        {
+          "type": "owner_hypothesis",
+          "ref": "owner:2026-06-30",
+          "note": "Owner proposed replacing residual-like coefficients a*x+(1-a)*x with dynamic routing gates."
+        },
+        {
+          "type": "code_anchor",
+          "ref": "model/MyModel.py",
+          "note": "Existing fixed coefficients appear in PSE outer residual, ICSA text injection, BVSA direction mix, and final local_score blend."
+        },
+        {
+          "type": "baseline_anchor",
+          "ref": "experiments/v5/VERSION.md",
+          "note": "v5 is the active mainline; v4 confirmed_H=74.45 remains the confirmed reference."
+        }
+      ],
+      "next_action": "Create TRIAL-001_dynamic-routing, implement dynamic gates and workflow automation, then run a 50-job balanced-aggressive two-GPU batch from the freeze commit."
     }
   ]
 }
