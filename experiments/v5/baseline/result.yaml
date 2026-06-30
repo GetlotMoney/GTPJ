@@ -1,0 +1,73 @@
+schema_version: gtpj-result/v1
+experiment_id: GTPJ-v5
+experiment_name: GTPJ-v5-owner-activated-mainline
+kind: baseline
+version: v5
+metrics:
+  U_best_observed: "72.13"
+  S_best_observed: "77.11"
+  H_best_observed: "74.54"
+  ZS_best_observed: "81.65"
+  best_epoch_best_observed: "34"
+  U_repeat_mean: "72.00"
+  S_repeat_mean: "77.07"
+  H_repeat_mean: "74.44"
+  ZS_repeat_mean: "81.56"
+  H_values: ["74.49", "74.43", "74.35", "74.41", "74.54"]
+  H_min: "74.35"
+  H_max: "74.54"
+  baseline_H: "74.45"
+  baseline_reference: v4_confirmed_H
+  delta_H_repeat_mean: "-0.01"
+  delta_H_best_observed: "+0.09"
+  seed: "5"
+  source: "TRIAL-003 main100 source config plus frozen repeats"
+  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: v4
+  H: "74.45"
+  reference_field: confirmed_H
+  reference_status: confirmed
+  confirmed_H: "74.45"
+  confirmation_status: confirmed
+delta:
+  repeat_mean_vs_v4_confirmed_H: "-0.01"
+  best_observed_vs_v4_confirmed_H: "+0.09"
+run:
+  seed: "5"
+  source_run_id: RUN-20260630-0002-trial003-main100-2gpu
+  source_job_id: trial003-main100-069
+  best_observed_job_id: trial003-main100-095
+  confirmation_job_ids: ["trial003-main100-091", "trial003-main100-092", "trial003-main100-093", "trial003-main100-094", "trial003-main100-095"]
+  source_run_commit: 4b259379d99c1a791442ea9e2fac0bb22b2411a9
+  command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <batch config>"
+decision:
+  status: owner_activated_provisional
+  result_status: owner_activated_provisional
+  promotion_decision: blocked
+  owner_activation_decision: owner_activate
+  promote_to: v5
+  active_main_update: activated
+  future_tuning_base: config/versions/v5.yaml
+evidence:
+  evidence_level: confirmation_grade
+  best_observed_H: "74.54"
+  confirmed_H: "74.44"
+  confirmed_H_method: "mean_of_5_frozen_repeats_091_to_095"
+  confirmation_status: owner_activated_provisional
+  confirmation_target: trial003-main100-069
+  reference_v4_confirmed_H: "74.45"
+  log_artifact_id: summary:v3:module_trial:TRIAL-003:main100
+  manifest: manifest.yaml
+  source_summary: warehouse://gtpj/runs/v3/module_trial/TRIAL-003_conditional_bvsa_text/main100/summary.csv
+  label_mapping_id: standard_v1
+  split_id: standard_v1
+  class_order_id: standard_v1
+quality:
+  manifest_verified: true
+  boundary_audit_passed: true
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+  owner_activation_rule: true
+  stronger_than_v4_confirmed_mean: false
+recorded_at: "2026-06-30T00:30:00+00:00"

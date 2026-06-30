@@ -27,7 +27,7 @@ pse_dropout:
 pse_inner_ratio:
   value: 0.35
 pse_outer_ratio:
-  value: 0.65
+  value: 0.15
 # Legacy PSE aliases retained for old configs and checkpoints.
 adapter_ratio:
   value: 0.2
@@ -42,7 +42,7 @@ clip_a_self_dropout:
 clip_a_self_inner_ratio:
   value: 0.35
 clip_a_self_outer_ratio:
-  value: 0.65
+  value: 0.15
 tf_common_dim:
   value: 512
 tf_heads:
@@ -56,7 +56,7 @@ text_residual:
 visual_residual:
   value: 0.5
 local_weight:
-  value: 0.2
+  value: 0.3
 pool_method:
   value: mean
 fgvd_select_k:

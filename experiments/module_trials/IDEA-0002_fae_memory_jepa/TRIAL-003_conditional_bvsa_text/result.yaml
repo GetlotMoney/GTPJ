@@ -1,0 +1,46 @@
+schema_version: gtpj-result/v1
+trial_id: TRIAL-003
+idea_id: IDEA-0002
+trial_name: TRIAL-003_conditional_bvsa_text
+decision:
+  status: owner_activated_to_v5
+  promote_to: v5
+  promotion_decision: blocked
+  owner_activation_decision: owner_activate
+  active_main_update: activated
+evidence:
+  evidence_level: confirmation_grade
+  best_observed_H: "74.54"
+  confirmed_H: "74.44"
+  confirmation_status: owner_activated_provisional
+  source_run: RUN-20260630-0002-trial003-main100-2gpu
+  source_candidate: trial003-main100-069
+  best_observed_job: trial003-main100-095
+  summary_artifact_id: summary:v3:module_trial:TRIAL-003:main100
+metrics:
+  source_069:
+    U: "71.90"
+    S: "77.16"
+    H: "74.43"
+    ZS: "81.62"
+    best_epoch: "34"
+  frozen_repeats_091_to_095:
+    U_mean: "72.00"
+    S_mean: "77.07"
+    H_mean: "74.44"
+    ZS_mean: "81.56"
+    H_values: ["74.49", "74.43", "74.35", "74.41", "74.54"]
+comparison:
+  reference_version: v4
+  reference_confirmed_H: "74.45"
+  repeat_mean_delta_H: "-0.01"
+  best_observed_delta_H: "+0.09"
+interface:
+  bvsa_text_mode: conditional
+  bvsa_text_input: all_text_cond
+  local_score_shape: "[B, C]"
+  class_order_changed: false
+  seen_unseen_split_changed: false
+  label_mapping_changed: false
+  logits_shape_changed: false
+recorded_at: "2026-06-30T00:30:00+00:00"

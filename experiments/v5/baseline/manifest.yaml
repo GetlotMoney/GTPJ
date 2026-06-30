@@ -1,0 +1,56 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: GTPJ-v5
+  name: GTPJ-v5-owner-activated-mainline
+  kind: baseline
+  status: owner_activated_provisional
+  source_experiment: RUN-20260630-0002-trial003-main100-2gpu
+  source_candidate: trial003-main100-069
+  created_or_recorded_at: "2026-06-30T00:30:00+00:00"
+version:
+  version: v5
+  parent_version: v4
+  parent_tag: v4
+  code_branch: main
+  code_tag: v5
+  source_run_commit: 4b259379d99c1a791442ea9e2fac0bb22b2411a9
+  implementation_source: dev/v3-idea-0002-trial-003-conditional-bvsa-text@4b259379d99c1a791442ea9e2fac0bb22b2411a9
+reproducibility:
+  config_file: experiments/v5/config.yaml
+  config_sha256: 5ab13e652c81637ef88956e250a89ca671bf49432918c86ee46727612edd837a
+  source_config: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260630-0002-trial003-main100-2gpu/configs/trial003-main100-069.yaml
+  source_config_sha256: a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca
+  source_config_size_bytes: 2377
+  command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <batch config>"
+  seed: "5"
+  dataset: CUB GZSL
+  split_id: standard_v1
+  class_order_id: standard_v1
+  label_mapping_id: standard_v1
+  metric_contract_id: gzsl_u_s_h_zs_v1
+artifacts:
+  runtime_summary:
+    artifact_id: summary:v3:module_trial:TRIAL-003:main100
+    role: runtime_summary
+    uri: warehouse://gtpj/runs/v3/module_trial/TRIAL-003_conditional_bvsa_text/main100/summary.csv
+    server_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260630-0002-trial003-main100-2gpu/summary.csv
+    sha256: 3d4c6d6fb413b278527fcc483063051030d4f214761c13214e9f76264c0bc8c8
+    size_bytes: 48505
+    required_for: audit
+    status: available
+  source_config:
+    artifact_id: config:v3:module_trial:TRIAL-003:main100:trial003-main100-069
+    role: source_config
+    uri: warehouse://gtpj/runs/v3/module_trial/TRIAL-003_conditional_bvsa_text/main100/configs/trial003-main100-069.yaml
+    server_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260630-0002-trial003-main100-2gpu/configs/trial003-main100-069.yaml
+    sha256: a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca
+    size_bytes: 2377
+    required_for: reproduce
+    status: available
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: true
+  evaluation_semantics_verified: true
+  owner_activation_rule: true
+  stronger_than_v4_confirmed_mean: false

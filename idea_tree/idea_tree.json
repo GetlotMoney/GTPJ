@@ -1,7 +1,7 @@
 {
   "project": "GTPJ",
   "version": "2026-06-20",
-  "current_version": "v4",
+  "current_version": "v5",
   "ideas": [
     {
       "idea_id": "IDEA-0001",
@@ -40,13 +40,21 @@
           "stage": "validated",
           "rationale": "Inherited by GTPJ-v4 from the v3 code path; local-v3-054 changes only tuned config weights, not the PSE interface.",
           "blockers": []
+        },
+        "v5": {
+          "score": 80,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "Inherited by GTPJ-v5; v5 activates conditional BVSA text and tuned PSE/local weights but keeps the PSE interface and legacy aliases intact.",
+          "blockers": []
         }
       },
       "base_versions": [
         "v1",
         "v2",
         "v3",
-        "v4"
+        "v4",
+        "v5"
       ],
       "based_on_modules": [
         "v1_text_adapter",
@@ -70,7 +78,8 @@
       "linked_versions": [
         "v2",
         "v3",
-        "v4"
+        "v4",
+        "v5"
       ],
       "linked_experiments": [],
       "evidence": [
@@ -90,7 +99,7 @@
           "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
       ],
-      "next_action": "Use GTPJ-v4 as the confirmed formal version; future work can inspect PSE/BVSA weight sensitivity or U/S balance from this baseline."
+      "next_action": "Use GTPJ-v5 as the active mainline; future tuning can inspect PSE/BVSA weight sensitivity while comparing repeat mean against v4 confirmed_H=74.45."
     },
     {
       "idea_id": "IDEA-0002",
@@ -122,12 +131,20 @@
           "stage": "validated",
           "rationale": "Inherited by GTPJ-v4 from GTPJ-v3; v4 promotes a min3-confirmed tuned configuration and does not introduce a new IDEA-0002 code path.",
           "blockers": []
+        },
+        "v5": {
+          "score": 76,
+          "applicability": "direct",
+          "stage": "validated",
+          "rationale": "TRIAL-003 extends IDEA-0002 by routing all_text_cond into BVSA cross/local_score. Owner activated the best main100 candidate as GTPJ-v5; v4 remains the stronger confirmed reference by repeat mean.",
+          "blockers": []
         }
       },
       "base_versions": [
         "v2",
         "v3",
-        "v4"
+        "v4",
+        "v5"
       ],
       "based_on_modules": [
         "GTPJ-v2 AG-JEPA",
@@ -148,12 +165,14 @@
       "priority": 0.72,
       "linked_trials": [
         "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa",
-        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa"
+        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa",
+        "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text"
       ],
       "linked_versions": [
         "v2",
         "v3",
-        "v4"
+        "v4",
+        "v5"
       ],
       "linked_experiments": [],
       "evidence": [
@@ -186,9 +205,19 @@
           "type": "version",
           "ref": "experiments/v3/VERSION.md",
           "note": "Owner accepted TRIAL-002 as GTPJ-v3 with stochastic variance explicitly preserved; confirmed_H remains pending."
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text/result.yaml",
+          "note": "TRIAL-003 routes all_text_cond into BVSA; main100 best_observed_H=74.54, repeat mean H=74.44, owner activated as GTPJ-v5."
+        },
+        {
+          "type": "version",
+          "ref": "experiments/v5/VERSION.md",
+          "note": "GTPJ-v5 is the active mainline for future tuning; v4 confirmed_H=74.45 remains the confirmed reference."
         }
       ],
-      "next_action": "Use GTPJ-v4 as the confirmed formal version; future work should treat IDEA-0002 as inherited and focus on new mechanisms or controlled ablations."
+      "next_action": "Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45."
     }
   ]
 }

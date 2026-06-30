@@ -106,8 +106,17 @@ def _planned_total_epochs(cfg):
 planned_total_epochs = _planned_total_epochs(config)
 epoch_schedule = "lr_stages" if (getattr(config, 'lr_stages', None) or []) else "epochs + extra_epochs"
 
+
+def cfg_value(key, legacy_key=None, default=None):
+    if hasattr(config, key):
+        return getattr(config, key)
+    if legacy_key is not None and hasattr(config, legacy_key):
+        return getattr(config, legacy_key)
+    return default
+
+
 print_log("=" * 60)
-print_log("  CLIP + Adapter + GPT  |  CUB GZSL Training")
+print_log("  CLIP + PSE + FGVD + BVSA + SGMP  |  CUB GZSL Training")
 print_log("=" * 60)
 print_log(f"  Log file  : {LOG_FILE}")
 print_log(f"  Config    : {config_path}")
@@ -128,15 +137,16 @@ print_log(f"│  model_mode    : {getattr(config, 'model_mode', 'gtpj')}")
 print_log(f"│  text_source   : {getattr(config, 'text_source', 'gpt4')}")
 print_log(f"│  use_aug_cache : {getattr(config, 'use_aug_cache', False)}")
 print_log("├─ Architecture ──────────────────────────────────────────┤")
-print_log(f"│  use_fae       : {getattr(config, 'use_fae', True)}")
-print_log(f"│  adapter_ratio : {getattr(config, 'adapter_ratio', 0.2)}")
-print_log(f"│  use_clip_a_self: {getattr(config, 'use_clip_a_self', False)}")
-if getattr(config, 'use_clip_a_self', False):
-    print_log(f"│  clip_a_self_apply_unseen: {getattr(config, 'clip_a_self_apply_unseen', False)}")
-    print_log(f"│  clip_a_self_heads       : {getattr(config, 'clip_a_self_heads', 1)}")
-    print_log(f"│  clip_a_self_dropout     : {getattr(config, 'clip_a_self_dropout', 0.5)}")
-    print_log(f"│  clip_a_self_outer_ratio : {getattr(config, 'clip_a_self_outer_ratio', getattr(config, 'adapter_ratio', 0.2))}")
-    print_log(f"│  clip_a_self_inner_ratio : {getattr(config, 'clip_a_self_inner_ratio', 0.5)}")
+print_log(f"│  use_fgvd_geometry: {cfg_value('use_fgvd_geometry', 'use_fae', True)}")
+print_log(f"│  pse_adapter_ratio: {cfg_value('pse_adapter_ratio', 'adapter_ratio', 0.2)}")
+use_pse_self_attention = cfg_value('use_pse_self_attention', 'use_clip_a_self', False)
+print_log(f"│  use_pse_self_attention: {use_pse_self_attention}")
+if use_pse_self_attention:
+    print_log(f"│  pse_apply_unseen: {cfg_value('pse_apply_unseen', 'clip_a_self_apply_unseen', False)}")
+    print_log(f"│  pse_heads       : {cfg_value('pse_heads', 'clip_a_self_heads', 1)}")
+    print_log(f"│  pse_dropout     : {cfg_value('pse_dropout', 'clip_a_self_dropout', 0.5)}")
+    print_log(f"│  pse_outer_ratio : {cfg_value('pse_outer_ratio', 'clip_a_self_outer_ratio', cfg_value('pse_adapter_ratio', 'adapter_ratio', 0.2))}")
+    print_log(f"│  pse_inner_ratio : {cfg_value('pse_inner_ratio', 'clip_a_self_inner_ratio', 0.5)}")
 print_log(f"│  tf_common_dim : {getattr(config, 'tf_common_dim', 512)}")
 print_log(f"│  tf_heads      : {getattr(config, 'tf_heads', 4)}")
 print_log(f"│  tf_dropout    : {getattr(config, 'tf_dropout', 0.1)}")
@@ -152,14 +162,17 @@ print_log(f"│  local_weight  : {getattr(config, 'local_weight', 0.3)}")
 print_log(f"│  weight_s2v    : {getattr(config, 'weight_s2v', 0.5)}")
 print_log(f"│  text_residual : {getattr(config, 'text_residual', 0.5)}")
 print_log(f"│  visual_residual: {getattr(config, 'visual_residual', 0.5)}")
+print_log(f"│  use_icsa      : {cfg_value('use_icsa', 'use_conditional_text', False)}")
+print_log(f"│  icsa_ratio    : {cfg_value('icsa_ratio', 'conditional_text_ratio', 0.05)}")
 print_log("├─ Loss Weights ──────────────────────────────────────────┤")
 print_log(f"│  lambda_consist: {getattr(config, 'lambda_consist', 0.0)}")
 print_log(f"│  lambda_topo   : {getattr(config, 'lambda_topo_pearson', 0.0)}")
-print_log(f"│  lambda_msdn   : {getattr(config, 'lambda_msdn', 0.0)}")
-print_log(f"│  lambda_jepa   : {getattr(config, 'lambda_jepa', 0.0)}")
-print_log(f"│  lambda_jepa_neg: {getattr(config, 'lambda_jepa_neg', 0.0)}")
-print_log(f"│  jepa_context  : {getattr(config, 'jepa_context_mode', 'embed')}")
-print_log(f"│  jepa_text     : {getattr(config, 'jepa_text_mode', 'adapted')}")
+print_log(f"│  lambda_bmdd   : {cfg_value('lambda_bmdd', 'lambda_msdn', 0.0)}")
+print_log(f"│  lambda_mpp    : {cfg_value('lambda_mpp', 'lambda_jepa', 0.0)}")
+print_log(f"│  lambda_neg    : {cfg_value('lambda_neg', 'lambda_jepa_neg', 0.0)}")
+print_log(f"│  sgmp_context  : {cfg_value('sgmp_context_mode', 'jepa_context_mode', 'embed')}")
+print_log(f"│  sgmp_text     : {cfg_value('sgmp_text_mode', 'jepa_text_mode', 'adapted')}")
+print_log(f"│  bvsa_text     : {getattr(config, 'bvsa_text_mode', 'adapted')}")
 print_log("├─ Resume ────────────────────────────────────────────────┤")
 print_log(f"│  resume_from        : {getattr(config, 'resume_from', '')!r}")
 print_log(f"│  resume_lr_schedule : {getattr(config, 'resume_lr_schedule', 'continue')}")
@@ -378,8 +391,8 @@ def _encode_description_sentences(file_path, dataloader, clip_model, device, cla
 
 
 if text_source == 'weighted':
-    if bool(getattr(config, 'use_clip_a_self', False)):
-        raise ValueError("use_clip_a_self=True does not support text_source='weighted' in TRIAL-001.")
+    if bool(cfg_value('use_pse_self_attention', 'use_clip_a_self', False)):
+        raise ValueError("use_pse_self_attention=True does not support text_source='weighted'.")
     text_alpha = getattr(config, 'text_alpha', 1.0)
     gpt_path    = os.path.join('.', 'data', 'gpt4_data', 'cub.pt')
     claude_path = os.path.join('.', 'data', 'gpt4_data', 'cub_claude.pt')
@@ -425,20 +438,20 @@ else:
     # 启动省 ~10 秒 (CLIP ViT-L/14 文本编码慢, 7 次 encode_text)
     embed_cache = _gpt_embed_cache_path(text_source)
     sentence_cache = _gpt_sentence_cache_path(text_source)
-    use_clip_a_self = bool(getattr(config, 'use_clip_a_self', False))
-    if use_clip_a_self and os.path.exists(sentence_cache):
+    use_pse_sentence_text = bool(cfg_value('use_pse_self_attention', 'use_clip_a_self', False))
+    if use_pse_sentence_text and os.path.exists(sentence_cache):
         gpt_sentence_embeds = torch.load(sentence_cache, map_location=config.device,
                                         weights_only=True)
         gpt_text_embeds = gpt_sentence_embeds.mean(dim=1)
         print_log(f"      ★ gpt_sentence_embeds loaded from cache: {gpt_sentence_embeds.shape}")
         print_log(f"      gpt_text_embeds derived by mean: {gpt_text_embeds.shape}")
-    elif (not use_clip_a_self) and os.path.exists(embed_cache):
+    elif (not use_pse_sentence_text) and os.path.exists(embed_cache):
         gpt_text_embeds = torch.load(embed_cache, map_location=config.device,
                                       weights_only=True)
         print_log(f"      ★ gpt_text_embeds loaded from cache: {gpt_text_embeds.shape}")
     elif os.path.exists(gpt4_data_path):
         print_log(f"      Loading text descriptions from {gpt4_data_path}...")
-        if use_clip_a_self:
+        if use_pse_sentence_text:
             gpt_sentence_embeds, hit, n_cls = _encode_description_sentences(
                 gpt4_data_path, dataloader, clip_model, config.device, class_text_embeds)
             gpt_text_embeds = gpt_sentence_embeds.mean(dim=1)
@@ -451,10 +464,10 @@ else:
         print_log(f"      GPT hit: {hit} classes | fallback: {n_cls - hit} classes")
         try:
             torch.save(gpt_text_embeds.cpu(), embed_cache)
-            if use_clip_a_self and gpt_sentence_embeds is not None:
+            if use_pse_sentence_text and gpt_sentence_embeds is not None:
                 torch.save(gpt_sentence_embeds.cpu(), sentence_cache)
             print_log(f"      gpt_text_embeds: {gpt_text_embeds.shape}  (cached for next run)")
-            if use_clip_a_self:
+            if use_pse_sentence_text:
                 print_log(f"      gpt_sentence_embeds: {gpt_sentence_embeds.shape}  (cached for next run)")
             gpt_text_embeds = gpt_text_embeds.to(config.device)
             if gpt_sentence_embeds is not None:
@@ -718,7 +731,7 @@ print_log(f"\n  ★ Model mode: {model_mode}")
 
 if model_mode == 'clip_only':
     print_log("\n[CLIP-Only Baseline] Skipping training, evaluating zero-shot CLIP...")
-    print_log("  (Adapter / FAE / CrossModalTransformer all bypassed)")
+    print_log("  (PSE / FGVD / BVSA all bypassed)")
     gzsl_bias = getattr(config, 'gzsl_bias', 0.0)
     acc_seen, acc_novel, H, acc_zs = eval_zs_gzsl(
         dataloader, clip_model, model, config.device,
@@ -822,14 +835,14 @@ for epoch in range(start_epoch, total_epochs + 1):
             ce_v   = loss_pack.get('loss_CE',      torch.tensor(0.)).item()
             cons_v = loss_pack.get('loss_consist', torch.tensor(0.)).item()
             topo_v = loss_pack.get('loss_topo',    torch.tensor(0.)).item()
-            ms_v   = loss_pack.get('loss_msdn',            torch.tensor(0.)).item()
-            jp_v   = loss_pack.get('loss_jepa',            torch.tensor(0.)).item()
-            jn_v   = loss_pack.get('loss_jepa_neg',        torch.tensor(0.)).item()
+            bmdd_v = loss_pack.get('loss_bmdd', loss_pack.get('loss_msdn', torch.tensor(0.))).item()
+            mpp_v  = loss_pack.get('loss_mpp', loss_pack.get('loss_jepa', torch.tensor(0.))).item()
+            neg_v  = loss_pack.get('loss_neg', loss_pack.get('loss_jepa_neg', torch.tensor(0.))).item()
             print_log(f"  Step [{step+1:3d}/{iters_per_epoch}] | "
                       f"Loss: {loss.item():.4f} | Avg: {avg_loss:.4f} | "
                       f"CE: {ce_v:.3f}  Cons: {cons_v:.3f}  "
-                      f"Topo: {topo_v:.4f}  MSDN: {ms_v:.4f}  "
-                      f"JEPA: {jp_v:.4f}  JNeg: {jn_v:.4f}")
+                      f"Topo: {topo_v:.4f}  BMDD: {bmdd_v:.4f}  "
+                      f"MPP: {mpp_v:.4f}  Neg: {neg_v:.4f}")
 
     # 更新学习率
     scheduler.step()

@@ -1,14 +1,14 @@
 # 总创意清单
 
-当前正式版本视图：`idea_tree/versions/v4.md`
+当前实验版本视图：`idea_tree/versions/v5.md`
 
 这是给人读的全局创意总表，只回答“有哪些创意”。
 具体某个版本下一步试什么，请读取 `idea_tree/versions/vX.md`。
 
 | Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |
 |---|---|---|---|---:|---|---|---|
-| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2`, `v3`, `v4` | validated | Use GTPJ-v4 as the current confirmed formal version; future work can inspect PSE/BVSA weight sensitivity or U/S balance from this baseline. |
-| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2`, `v3`, `v4` | validated | Use GTPJ-v4 as the current confirmed formal version; future work should treat IDEA-0002 as inherited and focus on new mechanisms or controlled ablations. |
+| `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | verified | 82.0 | `v1`, `v2`, `v3`, `v4`, `v5` | validated | Use GTPJ-v5 as the active mainline; future tuning can inspect PSE/BVSA weight sensitivity while comparing repeat mean against v4 confirmed_H=74.45. |
+| `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2`, `v3`, `v4`, `v5` | validated | Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45. |
 
 ## 使用规则
 

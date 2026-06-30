@@ -54,20 +54,19 @@ idea_tree/                 # 创意来源、评分、排序
 一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
 ```
 
-当前 owner-accepted baseline tag 是 `GTPJ-v3 / tag v3`；`H=74.27` 是
-`best_observed_H`，`confirmed_H` 仍待 clean confirmation / multi-seed 复核。历史基线
-`GTPJ-v1 / tag v1 / H=73.93` 作为 confirmed baseline 永久保留。`main` 是唯一长期分支；
-`v1`、`v2`、`v3` 是 tag，不是分支。
+当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
+当前更强的 confirmed reference 是 `GTPJ-v4 / tag v4 / confirmed_H=74.45`。`main` 是唯一长期分支；
+`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支。
 
 代码层和实验层不要混淆：
 
 ```text
-代码层跟随 owner 明确选择的 active version，例如 v3。
-实验层是全局账本，必须同时保留 experiments/v1/、experiments/v2/、experiments/v3/。
+代码层跟随 owner 明确选择的 active version，现在是 v5。
+实验层是全局账本，必须同时保留 experiments/v1/ 到 experiments/v5/。
 ```
 
-`experiments/v2/` 出现在最新 `main` 中，只表示 v2 历史记录仍被保存，
-不表示 active version v3 继承了 v2 的代码。
+旧版本目录出现在最新 `main` 中，只表示历史记录仍被保存，
+不表示 active version 必然继承旧版本代码。
 
 ## 顶层文件
 
@@ -92,7 +91,9 @@ idea_tree/                 # 创意来源、评分、排序
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
 | `config/versions/v2.yaml` | `GTPJ-v2` 的固定配置，是历史 owner-activated mainline code 的权威配置源。 |
 | `config/versions/v3.yaml` | `GTPJ-v3` 的固定配置，是当前 owner-accepted stochastic tag 的权威配置源。 |
-| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v3`。 |
+| `config/versions/v4.yaml` | `GTPJ-v4` 的 confirmed reference 配置，`confirmed_H=74.45`。 |
+| `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置，后续调参从这里开始。 |
+| `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v5`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
 
