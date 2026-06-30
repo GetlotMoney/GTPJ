@@ -198,6 +198,16 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("docs/workflow/QUICK_START.md", required)
         self.assertIn("docs/workflow/TASK_START_MINI.md", required)
 
+    def test_scan_ignores_runtime_state(self) -> None:
+        legacy_marker = "TUNE" + "-024"
+        self._write(".gtpj_runtime/batches/old/summary.csv", f"legacy {legacy_marker} runtime evidence\n")
+        self._write("docs/visible.md", "visible governance text\n")
+
+        scanned = {path.relative_to(self.repo).as_posix() for path in self.module.list_files_for_scan()}
+
+        self.assertIn("docs/visible.md", scanned)
+        self.assertNotIn(".gtpj_runtime/batches/old/summary.csv", scanned)
+
     def test_repro_status_marks_best_observed_as_unconfirmed(self) -> None:
         self.module.CANONICAL_BASELINES["v2"] = {
             "name": "GTPJ-v2",

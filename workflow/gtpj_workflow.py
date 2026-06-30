@@ -766,7 +766,7 @@ def require_path_inside(path: Path, root: Path, label: str) -> None:
 
 
 def list_files_for_scan() -> Iterable[Path]:
-    ignored_roots = {".git", "__pycache__"}
+    ignored_roots = {".git", ".gtpj_runtime", "__pycache__"}
     ignored_suffixes = {".pyc", ".pth", ".pt", ".ckpt"}
     for path in REPO_ROOT.rglob("*"):
         if path.is_dir():
