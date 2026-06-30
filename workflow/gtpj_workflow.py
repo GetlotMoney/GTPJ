@@ -5619,6 +5619,20 @@ def top_job_for_rank(run_dir, rank):
     return rows[rank - 1]
 
 
+def link_runtime_resources(plan, worktree):
+    server_repo = Path(plan["server_repo"])
+    for name in plan.get("runtime_resource_links", ["data"]):
+        source = server_repo / name
+        target = worktree / name
+        if target.exists():
+            continue
+        if target.is_symlink():
+            target.unlink()
+        if not source.exists():
+            raise FileNotFoundError(f"Missing runtime resource: {source}")
+        os.symlink(source, target, target_is_directory=source.is_dir())
+
+
 def ensure_worktree(plan, gpu):
     server_repo = Path(plan["server_repo"])
     worktree_root = Path(plan["worktree_root"])
@@ -5631,6 +5645,7 @@ def ensure_worktree(plan, gpu):
     subprocess.run(["git", "-C", str(server_repo), "fetch", str(git_remote), branch], check=False)
     if not worktree.exists():
         subprocess.run(["git", "-C", str(server_repo), "worktree", "add", str(worktree), commit], check=True)
+    link_runtime_resources(plan, worktree)
     return worktree
 
 
@@ -5884,6 +5899,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "server_repo": args.server_repo,
         "worktree_root": args.worktree_root,
         "warehouse_root": args.warehouse_root,
+        "runtime_resource_links": ["data"],
         "conda_env": args.conda_env,
         "python": args.python,
         "jobs": jobs,

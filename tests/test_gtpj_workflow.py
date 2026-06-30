@@ -793,6 +793,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("copy_artifacts_to_warehouse", script)
         self.assertIn("warehouse_attempt_dir", script)
         self.assertIn("artifact_manifest.json", script)
+        self.assertIn("link_runtime_resources", script)
+        self.assertIn('plan.get("runtime_resource_links", ["data"])', script)
 
     def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
         code, stdout, stderr = self._run_main(

@@ -1882,7 +1882,7 @@ index 3377646..32b9f3b 100644
          with self.assertRaisesRegex(ValueError, "requires use_icsa=True"):
              make_model(
 diff --git a/tests/test_gtpj_workflow.py b/tests/test_gtpj_workflow.py
-index 6ad3405..ac32afc 100644
+index 6ad3405..dd074d0 100644
 --- a/tests/test_gtpj_workflow.py
 +++ b/tests/test_gtpj_workflow.py
 @@ -1,6 +1,7 @@
@@ -1893,7 +1893,7 @@ index 6ad3405..ac32afc 100644
  import hashlib
  import importlib.util
  import io
-@@ -765,6 +766,34 @@ log:v1:module_trial:TRIAL-001:attempt-001
+@@ -765,6 +766,36 @@ log:v1:module_trial:TRIAL-001:attempt-001
          self.assertEqual(index_before, self._tune_index_text())
          self.assertEqual(registry_before, self._registry_text())
 
@@ -1924,6 +1924,8 @@ index 6ad3405..ac32afc 100644
 +        self.assertIn("copy_artifacts_to_warehouse", script)
 +        self.assertIn("warehouse_attempt_dir", script)
 +        self.assertIn("artifact_manifest.json", script)
++        self.assertIn("link_runtime_resources", script)
++        self.assertIn('plan.get("runtime_resource_links", ["data"])', script)
 +
      def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
          code, stdout, stderr = self._run_main(
@@ -1950,7 +1952,7 @@ index 3ded092..37481d5 100644
      # ★ 2026-05-25: 多段训练 - 段边界自动切到下一段
      # 当前 epoch 等于某段终点 → 切换到下一段 lr + 重置 cosine T_max
 diff --git a/workflow/gtpj_workflow.py b/workflow/gtpj_workflow.py
-index 9477deb..199edd8 100644
+index 9477deb..4e7a273 100644
 --- a/workflow/gtpj_workflow.py
 +++ b/workflow/gtpj_workflow.py
 @@ -9,6 +9,7 @@ not run training, push to GitHub, or mutate Git history.
@@ -1961,7 +1963,7 @@ index 9477deb..199edd8 100644
  import hashlib
  import json
  import re
-@@ -5283,6 +5284,759 @@ missing/unexpected keys:
+@@ -5283,6 +5284,775 @@ missing/unexpected keys:
      return 0
 
 
@@ -2300,6 +2302,20 @@ index 9477deb..199edd8 100644
 +    return rows[rank - 1]
 +
 +
++def link_runtime_resources(plan, worktree):
++    server_repo = Path(plan["server_repo"])
++    for name in plan.get("runtime_resource_links", ["data"]):
++        source = server_repo / name
++        target = worktree / name
++        if target.exists():
++            continue
++        if target.is_symlink():
++            target.unlink()
++        if not source.exists():
++            raise FileNotFoundError(f"Missing runtime resource: {source}")
++        os.symlink(source, target, target_is_directory=source.is_dir())
++
++
 +def ensure_worktree(plan, gpu):
 +    server_repo = Path(plan["server_repo"])
 +    worktree_root = Path(plan["worktree_root"])
@@ -2312,6 +2328,7 @@ index 9477deb..199edd8 100644
 +    subprocess.run(["git", "-C", str(server_repo), "fetch", str(git_remote), branch], check=False)
 +    if not worktree.exists():
 +        subprocess.run(["git", "-C", str(server_repo), "worktree", "add", str(worktree), commit], check=True)
++    link_runtime_resources(plan, worktree)
 +    return worktree
 +
 +
@@ -2565,6 +2582,7 @@ index 9477deb..199edd8 100644
 +        "server_repo": args.server_repo,
 +        "worktree_root": args.worktree_root,
 +        "warehouse_root": args.warehouse_root,
++        "runtime_resource_links": ["data"],
 +        "conda_env": args.conda_env,
 +        "python": args.python,
 +        "jobs": jobs,
@@ -2721,7 +2739,7 @@ index 9477deb..199edd8 100644
  def build_parser() -> argparse.ArgumentParser:
      parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
      sub = parser.add_subparsers(dest="command", required=True)
-@@ -5461,6 +6215,35 @@ def build_parser() -> argparse.ArgumentParser:
+@@ -5461,6 +6231,35 @@ def build_parser() -> argparse.ArgumentParser:
      new_trial.add_argument("--base-version", default="")
      new_trial.set_defaults(func=cmd_new_trial)
 
