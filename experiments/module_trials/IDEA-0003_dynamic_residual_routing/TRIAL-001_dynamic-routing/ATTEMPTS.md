@@ -3,7 +3,7 @@
 | Attempt | Server run | Status | Best single | Best dynamic | Repeat evidence | Decision |
 |---|---|---|---|---|---|---|
 | `ATTEMPT-001` | `RUN-20260630-0005-dynroute50-2gpu` | 50 completed / 0 failed | DR-001 static control H=74.40 | DR-008 local_class_h24 H=74.39 | DR-008 repeat mean H=74.23 | revise, no promotion |
-| `ATTEMPT-002` | `RUN-20260630-0007-dynroute-dr009-repeat-2gpu` | planned | pending | pending | planned 20x DR-009 + neighbors | pending |
+| `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | planned 100 jobs, bs=128 | pending | pending | 50 exploit + 50 bold follow-up | pending |
 
 ## ATTEMPT-001 Notes
 
@@ -28,12 +28,15 @@ Attempt-local records:
 
 ## ATTEMPT-002 Pre-Run Notes
 
-This attempt is a clean workflow-run confirmation batch for the strongest partial signal from
-`RUN-20260630-0006-dynroute-principled-2gpu`: `DR-009 direction_sample_h48_w0.45_a0.005`
-with H=74.69, U=72.68, S=76.81, best_epoch=49.
+This attempt supersedes the early bs=64 follow-up sequence with a clean bs=128 workflow run.
+It uses two 50-job workflow batches so the existing dynamic routing runner remains unchanged:
 
-The paused RUN-0006 result is treated as an observation only. ATTEMPT-002 is the formal evidence
-run and must be analyzed only after all 50 jobs finish or fail under the workflow runner.
+- `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu`: direction/local/PSE exploit follow-up.
+- `RUN-20260701-0008-dynroute-bs128-bold50-2gpu`: bolder direction/PSE/local/ICSA-safe/combination follow-up.
+
+The stopped bs=64 `RUN-20260701-0005` / `RUN-20260701-0006` sequence is treated as superseded
+runtime only and must not be used as valid evidence. ATTEMPT-002 becomes formal evidence only
+after both bs=128 batches finish or fail under the workflow runner.
 
 Attempt-local records:
 
