@@ -859,6 +859,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("artifact_manifest.json", script)
         self.assertIn("link_runtime_resources", script)
         self.assertIn('plan.get("runtime_resource_links", ["data"])', script)
+        self.assertIn("prune_model_artifacts", script)
+        self.assertIn("keep top 3 best_model_*.pth by H", script)
 
     def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
         code, stdout, stderr = self._run_main(

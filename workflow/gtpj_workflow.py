@@ -5959,6 +5959,35 @@ def copy_if_newer(src, dst_dir, start_ts):
     return copied
 
 
+def model_score(path):
+    match = re.search(r"_H([0-9]+(?:\.[0-9]+)?)\.pth$", path.name)
+    if not match:
+        return float("-inf")
+    raw = match.group(1)
+    if "." in raw:
+        return float(raw)
+    return float(raw) / 100.0
+
+
+def prune_model_artifacts(attempt_dir, keep=3):
+    logs_dir = attempt_dir / "logs"
+    checkpoints_dir = attempt_dir / "checkpoints"
+    candidates = []
+    for folder in (logs_dir, checkpoints_dir):
+        if folder.exists():
+            candidates.extend(path for path in folder.glob("*.pth") if path.is_file())
+
+    best_models = [path for path in candidates if path.name.startswith("best_model_")]
+    keep_set = set(sorted(best_models, key=lambda path: (model_score(path), path.stat().st_mtime), reverse=True)[:keep])
+    removed = []
+    for path in candidates:
+        if path in keep_set:
+            continue
+        path.unlink()
+        removed.append(str(path))
+    return sorted(str(path) for path in keep_set), sorted(removed)
+
+
 def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts):
     attempt_dir = warehouse_attempt_dir(plan, job)
     attempt_dir.mkdir(parents=True, exist_ok=True)
@@ -5975,11 +6004,17 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
         dst = attempt_dir / "configs" / runtime_config.name
         shutil.copy2(runtime_config, dst)
         copied.append(str(dst))
+    kept_models, removed_models = prune_model_artifacts(attempt_dir, keep=3)
+    removed_set = set(removed_models)
+    copied = [path for path in copied if path not in removed_set]
     manifest = {
         "job_id": job["job_id"],
         "attempt_id": job["attempt_id"],
         "warehouse_dir": str(attempt_dir),
         "copied_files": copied,
+        "kept_model_files": kept_models,
+        "removed_model_files": removed_models,
+        "model_retention_policy": "keep top 3 best_model_*.pth by H; remove other .pth files",
         "recorded_at": utc_now(),
     }
     (attempt_dir / "artifact_manifest.json").write_text(
