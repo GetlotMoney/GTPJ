@@ -5687,6 +5687,284 @@ def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, obj
     return specs
 
 
+def _direction_exploit_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def add_repeats(count: int, group: str, name: str, updates: dict[str, object]) -> None:
+        for repeat_index in range(1, count + 1):
+            specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
+
+    add_repeats(
+        6,
+        "must_reproduce",
+        "dr009_direction_sample_h48_w0.45_a0.005",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.005,
+            weight_s2v=0.45,
+        ),
+    )
+    add_repeats(
+        3,
+        "must_reproduce",
+        "dr008_direction_sample_h48_w0.5_a0.005",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.005,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(
+        3,
+        "must_reproduce",
+        "dr010_direction_sample_h64_w0.5_a0.01",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=64,
+            dynamic_gate_anchor_lambda=0.010,
+            weight_s2v=0.50,
+        ),
+    )
+    specs.extend(
+        [
+            ("sanity_control", "static_v5_control_r01", {"use_dynamic_routing": False}),
+            ("sanity_control", "dynamic_fixed_all_r01", _dynamic_updates()),
+        ]
+    )
+
+    for hidden, weight_s2v, anchor in [
+        (40, 0.42, 0.003),
+        (40, 0.45, 0.005),
+        (40, 0.48, 0.007),
+        (40, 0.50, 0.005),
+        (48, 0.42, 0.003),
+        (48, 0.45, 0.003),
+        (48, 0.45, 0.007),
+        (48, 0.48, 0.005),
+        (48, 0.50, 0.007),
+        (48, 0.52, 0.005),
+        (56, 0.42, 0.005),
+        (56, 0.45, 0.005),
+        (56, 0.48, 0.007),
+        (56, 0.50, 0.005),
+        (56, 0.52, 0.010),
+        (64, 0.42, 0.005),
+        (64, 0.45, 0.007),
+        (64, 0.48, 0.010),
+        (64, 0.50, 0.007),
+        (64, 0.52, 0.010),
+        (32, 0.45, 0.003),
+        (32, 0.48, 0.005),
+        (72, 0.45, 0.010),
+        (72, 0.50, 0.010),
+    ]:
+        specs.append(
+            (
+                "direction_microgrid",
+                f"direction_sample_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for name, local_mode, hidden, local_weight, weight_s2v, anchor in [
+        ("ld_sample_h48_l0.08_w0.45_a0.005", "sample", 48, 0.08, 0.45, 0.005),
+        ("ld_sample_h48_l0.10_w0.45_a0.005", "sample", 48, 0.10, 0.45, 0.005),
+        ("ld_sample_h56_l0.08_w0.48_a0.007", "sample", 56, 0.08, 0.48, 0.007),
+        ("ld_class_h56_l0.06_w0.48_a0.007", "class", 56, 0.06, 0.48, 0.007),
+        ("ld_sample_h64_l0.08_w0.5_a0.01", "sample", 64, 0.08, 0.50, 0.010),
+        ("ld_class_h48_l0.06_w0.45_a0.005", "class", 48, 0.06, 0.45, 0.005),
+    ]:
+        specs.append(
+            (
+                "local_direction_micro",
+                name,
+                _dynamic_updates(
+                    dynamic_local_mode=local_mode,
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=local_weight,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for name, hidden, weight_s2v, pse_outer_ratio, anchor in [
+        ("dp_h48_w0.45_p0.50_a0.005", 48, 0.45, 0.50, 0.005),
+        ("dp_h48_w0.48_p0.55_a0.005", 48, 0.48, 0.55, 0.005),
+        ("dp_h48_w0.50_p0.60_a0.007", 48, 0.50, 0.60, 0.007),
+        ("dp_h56_w0.45_p0.50_a0.007", 56, 0.45, 0.50, 0.007),
+        ("dp_h56_w0.48_p0.55_a0.007", 56, 0.48, 0.55, 0.007),
+        ("dp_h64_w0.50_p0.55_a0.01", 64, 0.50, 0.55, 0.010),
+    ]:
+        specs.append(
+            (
+                "direction_pse_micro",
+                name,
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    if len(specs) != 50:
+        raise WorkflowError(f"Direction exploit follow-up plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
+def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = [
+        ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
+        ("sanity_control", "dynamic_fixed_all", _dynamic_updates()),
+        ("sanity_control", "fixed_direction_w0.40", _dynamic_updates(weight_s2v=0.40)),
+        ("sanity_control", "fixed_direction_w0.60", _dynamic_updates(weight_s2v=0.60)),
+    ]
+
+    for mode, hidden, weight_s2v, anchor in [
+        ("sample", 32, 0.35, 0.000),
+        ("sample", 32, 0.60, 0.015),
+        ("sample", 48, 0.35, 0.005),
+        ("sample", 48, 0.60, 0.015),
+        ("sample", 64, 0.40, 0.015),
+        ("sample", 64, 0.60, 0.020),
+        ("sample", 80, 0.50, 0.015),
+        ("sample", 96, 0.45, 0.015),
+        ("sample", 96, 0.55, 0.020),
+        ("sample", 112, 0.50, 0.020),
+        ("class", 48, 0.45, 0.010),
+        ("class", 64, 0.55, 0.015),
+    ]:
+        specs.append(
+            (
+                "direction_bold",
+                f"direction_{mode}_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for mode, hidden, pse_outer_ratio, anchor in [
+        ("sample", 32, 0.35, 0.005),
+        ("sample", 48, 0.45, 0.010),
+        ("sample", 64, 0.55, 0.015),
+        ("sample", 96, 0.75, 0.020),
+        ("class", 24, 0.35, 0.005),
+        ("class", 32, 0.45, 0.010),
+        ("class", 48, 0.55, 0.010),
+        ("class", 64, 0.75, 0.015),
+        ("class", 96, 0.85, 0.020),
+        ("class", 112, 0.55, 0.020),
+    ]:
+        specs.append(
+            (
+                "pse_bold",
+                f"pse_{mode}_h{hidden}_p{pse_outer_ratio:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_pse_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    for mode, hidden, local_weight, anchor in [
+        ("sample", 16, 0.04, 0.005),
+        ("sample", 32, 0.06, 0.010),
+        ("sample", 48, 0.08, 0.015),
+        ("sample", 64, 0.15, 0.020),
+        ("class", 16, 0.04, 0.005),
+        ("class", 32, 0.06, 0.010),
+        ("class", 48, 0.08, 0.015),
+        ("class", 64, 0.15, 0.020),
+    ]:
+        specs.append(
+            (
+                "local_bold",
+                f"local_{mode}_h{hidden}_l{local_weight:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_local_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=local_weight,
+                ),
+            )
+        )
+
+    for mode, hidden, icsa_ratio, anchor in [
+        ("sample", 16, 0.002, 0.005),
+        ("sample", 24, 0.004, 0.010),
+        ("sample", 32, 0.006, 0.015),
+        ("class", 16, 0.002, 0.005),
+        ("class", 32, 0.004, 0.010),
+        ("class", 48, 0.006, 0.015),
+    ]:
+        specs.append(
+            (
+                "icsa_safe_bold",
+                f"icsa_{mode}_h{hidden}_r{icsa_ratio:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_icsa_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    icsa_ratio=icsa_ratio,
+                    conditional_text_ratio=icsa_ratio,
+                ),
+            )
+        )
+
+    for name, local_mode, icsa_mode, direction_mode, pse_mode, hidden, anchor, local_weight, weight_s2v, pse_outer_ratio, icsa_ratio in [
+        ("combo_dp_sample_h48_w0.45_p0.45", "fixed", "fixed", "sample", "sample", 48, 0.010, None, 0.45, 0.45, None),
+        ("combo_dp_sample_h64_w0.55_p0.75", "fixed", "fixed", "sample", "class", 64, 0.015, None, 0.55, 0.75, None),
+        ("combo_ld_sample_h48_l0.06_w0.45", "sample", "fixed", "sample", "fixed", 48, 0.010, 0.06, 0.45, None, None),
+        ("combo_ld_class_h64_l0.08_w0.55", "class", "fixed", "sample", "fixed", 64, 0.015, 0.08, 0.55, None, None),
+        ("combo_lpd_sample_h48_l0.06_w0.45_p0.45", "sample", "fixed", "sample", "sample", 48, 0.010, 0.06, 0.45, 0.45, None),
+        ("combo_lpd_class_h64_l0.08_w0.55_p0.55", "class", "fixed", "sample", "class", 64, 0.015, 0.08, 0.55, 0.55, None),
+        ("combo_id_sample_h32_r0.002_w0.45", "fixed", "sample", "sample", "fixed", 32, 0.010, None, 0.45, None, 0.002),
+        ("combo_id_class_h48_r0.004_w0.45", "fixed", "class", "sample", "fixed", 48, 0.010, None, 0.45, None, 0.004),
+        ("combo_lid_sample_h32_l0.04_r0.002_w0.45", "sample", "sample", "sample", "fixed", 32, 0.010, 0.04, 0.45, None, 0.002),
+        ("combo_all_safe_h48_l0.04_r0.002_w0.45_p0.45", "sample", "sample", "sample", "class", 48, 0.015, 0.04, 0.45, 0.45, 0.002),
+    ]:
+        updates = _dynamic_updates(
+            dynamic_local_mode=local_mode,
+            dynamic_icsa_mode=icsa_mode,
+            dynamic_direction_mode=direction_mode,
+            dynamic_pse_mode=pse_mode,
+            dynamic_gate_hidden=hidden,
+            dynamic_gate_anchor_lambda=anchor,
+        )
+        if local_weight is not None:
+            updates["local_weight"] = local_weight
+        if weight_s2v is not None:
+            updates["weight_s2v"] = weight_s2v
+        if pse_outer_ratio is not None:
+            updates["pse_outer_ratio"] = pse_outer_ratio
+        if icsa_ratio is not None:
+            updates["icsa_ratio"] = icsa_ratio
+            updates["conditional_text_ratio"] = icsa_ratio
+        specs.append(("combination_bold", name, updates))
+
+    if len(specs) != 50:
+        raise WorkflowError(f"Dynamic bold follow-up plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
 def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
     if profile == "balanced-aggressive":
         specs = _balanced_aggressive_dynamic_routing_specs()
@@ -5696,6 +5974,12 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         repeat_source_ranks = [1] * 4 + [2] * 3 + [3] * 3
     elif profile == "direction-repeat-confirmation":
         specs = _direction_repeat_confirmation_specs()
+        repeat_source_ranks = []
+    elif profile == "direction-exploit-followup":
+        specs = _direction_exploit_followup_specs()
+        repeat_source_ranks = []
+    elif profile == "dynamic-bold-followup":
+        specs = _dynamic_bold_followup_specs()
         repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")

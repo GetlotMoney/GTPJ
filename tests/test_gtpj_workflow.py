@@ -849,6 +849,43 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(target_updates["weight_s2v"], 0.45)
         self.assertEqual(target_updates.get("dynamic_icsa_mode"), "fixed")
 
+    def test_dynamic_routing_batch_plan_has_direction_exploit_followup_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="direction-exploit-followup")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        names = Counter(job["name"].rsplit("_r", 1)[0] for job in jobs)
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(phases["explore"], 50)
+        self.assertEqual(groups["must_reproduce"], 12)
+        self.assertEqual(groups["direction_microgrid"], 24)
+        self.assertEqual(groups["local_direction_micro"], 6)
+        self.assertEqual(groups["direction_pse_micro"], 6)
+        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 6)
+        self.assertEqual(names["dr008_direction_sample_h48_w0.5_a0.005"], 3)
+        self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 3)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+
+    def test_dynamic_routing_batch_plan_has_dynamic_bold_followup_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="dynamic-bold-followup")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(phases["explore"], 50)
+        self.assertEqual(groups["sanity_control"], 4)
+        self.assertEqual(groups["direction_bold"], 12)
+        self.assertEqual(groups["pse_bold"], 10)
+        self.assertEqual(groups["local_bold"], 8)
+        self.assertEqual(groups["icsa_safe_bold"], 6)
+        self.assertEqual(groups["combination_bold"], 10)
+        self.assertTrue(any(update.get("dynamic_icsa_mode") == "sample" for update in updates))
+        self.assertTrue(any(update.get("pse_outer_ratio") == 0.85 for update in updates))
+        self.assertTrue(
+            all(float(update.get("icsa_ratio", 0.0)) <= 0.006 for update in updates if "icsa_ratio" in update)
+        )
+
     def test_dynamic_routing_runner_records_failures_and_warehouse_artifacts(self) -> None:
         script = self.module._dynamic_runner_script()
 
