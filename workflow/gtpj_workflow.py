@@ -5639,6 +5639,54 @@ def _principled_followup_dynamic_routing_specs() -> list[tuple[str, str, dict[st
     return specs
 
 
+def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def add_repeats(count: int, group: str, name: str, updates: dict[str, object]) -> None:
+        for repeat_index in range(1, count + 1):
+            specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
+
+    add_repeats(
+        20,
+        "direction_confirmation",
+        "dr009_direction_sample_h48_w0.45_a0.005",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.005,
+            weight_s2v=0.45,
+        ),
+    )
+    add_repeats(
+        10,
+        "direction_neighbor",
+        "dr008_direction_sample_h48_w0.5_a0.005",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.005,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(
+        10,
+        "direction_neighbor",
+        "dr010_direction_sample_h64_w0.5_a0.01",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=64,
+            dynamic_gate_anchor_lambda=0.010,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(5, "sanity_control", "static_v5_control", {"use_dynamic_routing": False})
+    add_repeats(5, "sanity_control", "dynamic_fixed_all", _dynamic_updates())
+
+    if len(specs) != 50:
+        raise WorkflowError(f"Direction repeat confirmation plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
 def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
     if profile == "balanced-aggressive":
         specs = _balanced_aggressive_dynamic_routing_specs()
@@ -5646,9 +5694,14 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     elif profile == "principled-followup":
         specs = _principled_followup_dynamic_routing_specs()
         repeat_source_ranks = [1] * 4 + [2] * 3 + [3] * 3
+    elif profile == "direction-repeat-confirmation":
+        specs = _direction_repeat_confirmation_specs()
+        repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
-    repeat_group = "top3_frozen_repeat" if max(repeat_source_ranks) > 2 else "top2_frozen_repeat"
+    repeat_group = "top3_frozen_repeat"
+    if repeat_source_ranks and max(repeat_source_ranks) <= 2:
+        repeat_group = "top2_frozen_repeat"
 
     jobs: list[dict[str, object]] = []
     for index, (group, name, updates) in enumerate(specs, start=1):

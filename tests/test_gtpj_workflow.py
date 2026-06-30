@@ -816,6 +816,29 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any(update.get("local_weight") == 0.08 for update in explore_updates))
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in explore_updates))
 
+    def test_dynamic_routing_batch_plan_has_direction_repeat_confirmation_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="direction-repeat-confirmation")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        names = Counter(job["name"].rsplit("_r", 1)[0] for job in jobs)
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(groups["direction_confirmation"], 20)
+        self.assertEqual(groups["direction_neighbor"], 20)
+        self.assertEqual(groups["sanity_control"], 10)
+        self.assertEqual(phases["explore"], 50)
+        self.assertNotIn("repeat", phases)
+        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 20)
+        self.assertEqual(names["dr008_direction_sample_h48_w0.5_a0.005"], 10)
+        self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 10)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+        target_updates = jobs[0]["config_updates"]
+        self.assertEqual(target_updates["dynamic_direction_mode"], "sample")
+        self.assertEqual(target_updates["dynamic_gate_hidden"], 48)
+        self.assertEqual(target_updates["dynamic_gate_anchor_lambda"], 0.005)
+        self.assertEqual(target_updates["weight_s2v"], 0.45)
+        self.assertEqual(target_updates.get("dynamic_icsa_mode"), "fixed")
+
     def test_dynamic_routing_runner_records_failures_and_warehouse_artifacts(self) -> None:
         script = self.module._dynamic_runner_script()
 
