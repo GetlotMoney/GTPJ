@@ -218,7 +218,7 @@ source_ref: paper:<paper_id> + observation:<experiment_id>
 | 版本级普通实验配置、manifest、result、quality_check | `experiments/vX/...` |
 | 模块 trial 根证据 | `experiments/module_trials/.../TRIAL-xxx/` |
 | 模块 trial 内部调参、窄消融、confirmation/rerun | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` |
-| raw logs、checkpoint、generated figures、failure cases | `GTPJ_Warehouse` |
+| raw logs、checkpoint、generated figures、failure cases | `GTPJ_Warehouse`；模型 checkpoint 按 retention 规则最多保留 3 个 |
 | 运行中状态 | `.gtpj_runtime/`，不进 Git |
 | 本机真实路径 | `.gtpj/local_paths.yaml`，不提交 |
 

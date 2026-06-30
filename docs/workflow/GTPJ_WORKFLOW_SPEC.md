@@ -422,7 +422,7 @@ D:\backup\Documents\Myself\GTPJ_Warehouse
 | `ARTIFACT_REGISTRY.yaml` | 外部 artifact 总登记表，记录 artifact id、URI、hash、size、来源实验。 |
 | `runs/` | 每次运行的本地运行目录，可包含 stdout、环境快照和中间文件。 |
 | `logs/` | raw logs。GitHub 只保存日志 artifact 引用。 |
-| `checkpoints/` | checkpoint、best model、临时权重。 |
+| `checkpoints/` | checkpoint、best model、临时权重；每个 run、batch 或 attempt 最多保留 3 个模型 checkpoint。 |
 | `figures/` | 实验可视化输出、训练曲线、失败案例图。 |
 | `tables/` | 实验统计导出、CSV、Excel、指标汇总。GitHub 只放摘要结论。 |
 | `failure_cases/` | 失败样本、错误可视化、诊断材料。 |
@@ -432,6 +432,8 @@ Warehouse 的职责：
 - 保存“实验实际产生了什么”的大文件证据。
 - 给 Log Analyst 和 Quality Checker 提供可核对材料。
 - 给 GitHub 的 `manifest.yaml` / `result.yaml` 提供 artifact id、URI、hash、size。
+- 执行 checkpoint retention：实验完成并登记证据后，只保留主指标最高的 3 个模型 checkpoint，
+  不删除日志、配置、manifest、result、receipt 或 registry。
 
 ## 4. Git 分支、tag 和版本规范
 

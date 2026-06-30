@@ -11,47 +11,120 @@ idea_title: Dynamic Residual Routing
 version_score: 82.0
 applicability: direct
 code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
-code_tag: trial/v5/idea-0003/trial-001
-code_commit: pending final freeze commit
-trial_decision: pre_run_allowed
-promotion_decision: not_applicable
+run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
+trial_decision: revise
+promotion_decision: rejected
 promote_to:
-evidence_level: pre_run
-best_observed_H:
+evidence_level: valid_single_batch
+best_observed_H: 74.40
+best_dynamic_single_H: 74.39
+best_dynamic_repeat_mean_H: 74.23
 confirmed_H:
-confirmation_status: pending
+confirmation_status: not_promoted
 changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
 run_config: config.yaml
-log_artifact_id:
-log_uri:
-log_sha256:
-log_size_bytes:
+attempts: ATTEMPTS.md
 manifest: manifest.yaml
 result_yaml: result.yaml
 result_md: result.md
-idea_intent_check: idea_intent_check.md
-interface_precheck: interface_precheck.md
-review_round_1: review_round_1.md
-review_round_2: review_round_2.md
+quality_check: quality_check.md
 agent_summary: agent_summary.md
-framework_diagram: framework_diagram.md
+implementation: implementation.md
 ```
 
-## 改动文件
+## Run Summary
 
-| 文件 | 改动 | 是否属于代码层 |
-|---|---|---|
-| `model/MyModel.py` | Add DynamicRoutingGate, dynamic local/ICSA/direction/PSE routes, gate stats, anchor loss. | yes |
-| `train_GTPJ_CUB.py` | Log dynamic route mean/std/min/max in epoch train summaries. | yes |
-| `workflow/gtpj_workflow.py` | Add 50-job batch planner, status/analyze commands, two-GPU runner with Warehouse copy and failure isolation. | yes |
-| `tests/test_fae_memory_jepa.py` | Add dynamic routing fixed/sample/class/backward tests. | yes |
-| `tests/test_gtpj_workflow.py` | Add balanced-aggressive plan and runner-guard tests. | yes |
-| `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/*` | Trial ledger, config, Review 0-2 evidence, and code diff. | no |
+| Field | Value |
+|---|---|
+| Server run | `RUN-20260630-0005-dynroute50-2gpu` |
+| Runtime path | `/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260630-0005-dynroute50-2gpu` |
+| Warehouse summary path | `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/batch-RUN-20260630-0005-dynroute50-2gpu` |
+| Jobs | 50 completed / 0 failed |
+| GPU plan | two controllers on GPU0/GPU1 |
+| Batch profile | `balanced-aggressive` |
+| Analysis command | `python workflow/gtpj_workflow.py analyze-dynamic-routing-batch --run-dir %TEMP%/gtpj-RUN-20260630-0005-dynroute50-2gpu --top-k 12` |
 
-## 结果
+## Dynamic Routes Tested
 
-| 数据集 | Seed | U | S | H | ZS | Best epoch | Log |
-|---|---:|---:|---:|---:|---:|---:|---|
+TRIAL-001 implemented and tested dynamic gates at these v5 routing sites:
+
+| Gate | v5 anchor | Tested modes | Route responsibility |
+|---|---:|---|---|
+| `local_gate` | 0.2 | fixed, sample, class | final blend between global score and BVSA local score |
+| `icsa_gate` | 0.008 | fixed, sample, class | image-conditioned text injection strength |
+| `direction_gate` | 0.5 | fixed, sample, class | S2V/V2S BVSA direction mixture |
+| `pse_gate` | 0.65 | fixed, class | PSE outer residual strength for seen text prototypes |
+
+## Results
+
+Reference baselines:
+
+| Reference | H | Note |
+|---|---:|---|
+| v4 confirmed | 74.45 | stronger confirmed reference |
+| v5 repeat mean | 74.44 | active mainline repeat mean |
+
+Top results from this batch:
+
+| Rank | Job | Group | Name | H | U | S | ZS | Best epoch |
+|---:|---|---|---|---:|---:|---:|---:|---:|
+| 1 | DR-001 | sanity_control | static_v5_control | 74.40 | 71.70 | 77.31 | 81.38 | 45 |
+| 2 | DR-008 | local_gate | local_class_h24 | 74.39 | 67.94 | 82.20 | 81.27 | 26 |
+| 3 | DR-023 | direction_gate | direction_sample_h48_a0.003 | 74.38 | 72.26 | 76.63 | 81.61 | 48 |
+| 4 | DR-041 | top2_frozen_repeat | top1_repeat_1 | 74.37 | 71.76 | 77.17 | 81.62 | 34 |
+| 5 | DR-042 | top2_frozen_repeat | top1_repeat_2 | 74.36 | 72.27 | 76.57 | 81.22 | 33 |
+
+Repeat means:
+
+| Source | Repeats | H mean | U mean | S mean | Decision |
+|---|---:|---:|---:|---:|---|
+| DR-001 static control | 5 | 74.34 | 71.83 | 77.02 | below v4/v5 references |
+| DR-008 local_class_h24 | 5 | 74.23 | 68.54 | 80.97 | below v4/v5 references; U weak |
+
+Group summary:
+
+| Group | n | Mean H | Best H | Interpretation |
+|---|---:|---:|---:|---|
+| `direction_gate` | 6 | 74.10 | 74.38 | best follow-up direction; strong U balance |
+| `local_gate` | 8 | 73.60 | 74.39 | close single-run result but repeat mean did not hold |
+| `pse_gate` | 6 | 73.61 | 73.86 | stable but not competitive |
+| `icsa_gate` | 8 | 53.64 | 62.88 | collapsed or over-injected; avoid dynamic ICSA for now |
+| `combination` | 8 | 57.32 | 73.38 | combinations are too unstable in this profile |
+
+## Decision
+
+`promotion_decision: rejected`.
+
+The best dynamic single result, DR-008 at H=74.39, did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. The repeated dynamic candidate averaged H=74.23 and had a low U mean. The static control also did not exceed references.
+
+`trial_decision: revise`.
+
+Follow-up work should keep ICSA fixed, prioritize direction/local/PSE gates, and use the `principled-followup` batch profile that was added after this run.
+
+## Checkpoint Retention
+
+The server Warehouse was pruned according to the workflow rule "keep only the best 3 model checkpoints after each experiment batch." The retained checkpoints are:
+
+| Job | H | Path |
+|---|---:|---|
+| DR-001 | 74.40 | `attempt-001/logs/best_model_CUB_2026-06-30_16-11-11_H7440.pth` |
+| DR-008 | 74.39 | `attempt-008/logs/best_model_CUB_2026-06-30_16-38-54_H7439.pth` |
+| DR-023 | 74.38 | `attempt-023/logs/best_model_CUB_2026-06-30_18-01-09_H7438.pth` |
+
+97 lower-ranked model checkpoint files were deleted from the Warehouse attempt logs. Metrics, logs, configs, summaries, and manifests were retained.
+
+## Evidence Files
+
+- `ATTEMPTS.md`
+- `attempts/ATTEMPT-001/manifest.yaml`
+- `attempts/ATTEMPT-001/result.yaml`
+- `attempts/ATTEMPT-001/result.md`
+- `attempts/ATTEMPT-001/quality_check.md`
+- `manifest.yaml`
+- `result.yaml`
+- `result.md`
+- `quality_check.md`
+- `agent_summary.md`
 
 ## Trial Flow
 
@@ -61,52 +134,9 @@ flowchart TD
   R0 --> R1["Review 1: design/interface"]
   R1 --> Impl["implementation + code.diff"]
   Impl --> R2["Review 2: code diff pre-run"]
-  R2 --> Freeze["pre-run freeze commit"]
-  Freeze --> Run["Runner with GPU lock"]
-  Run --> Artifacts["Warehouse artifacts"]
-  Artifacts --> Attempt["attempt-local manifest/result/quality"]
-  Attempt --> Root["trial root summary"]
-  Root --> R3["Review 3: post-run evidence"]
-  R3 --> Decision["trial_decision / promotion_decision"]
+  R2 --> Freeze["freeze commit d49f608"]
+  Freeze --> Run["RUN-20260630-0005 two-GPU batch"]
+  Run --> Analyze["analyze-dynamic-routing-batch"]
+  Analyze --> Retain["keep top 3 checkpoints"]
+  Retain --> Decision["revise / no promotion"]
 ```
-
-## Framework Diagram
-
-```text
-path: framework_diagram.md
-html_view:
-warehouse_artifact:
-code_vs_intent: pending
-```
-
-`framework_diagram.md` must explain every diagram variable and method:
-
-- variable glossary: source, shape, meaning, gradient/detach status, and train/eval difference.
-- method glossary: code location, inputs, outputs, responsibility, config switch, and baseline-off behavior.
-- embedded loss flow: each loss is attached to the tensors it reads.
-- code vs intent: whether inspected code matches the idea/design.
-
-## Innovation Code Review
-
-```text
-Review 0: idea_intent_check.md
-Review 1: interface_precheck.md
-Review 2: review_round_1.md + interface_check.md + quality_check.md
-Review 3: review_round_2.md + agent_summary.md
-activation_mode: real_multi_agent
-```
-
-## Promotion Gate
-
-- [ ] baseline H、trial H、delta H 已记录。
-- [ ] `evidence_level: baseline_grade`；单次最高 H 只能写 `best_observed_H`。
-- [ ] clean confirmation 或多 run 稳定性证据明确，`confirmed_H` 和 `confirmation_status` 已记录。
-- [ ] U/S/ZS 没有不可接受退化。
-- [ ] class order、split、logits shape、metric calculation 未改变。
-- [ ] switch off 能回到 `v5` 行为。
-- [ ] 证据目录、外部 artifact 指针和 code.diff 完整。
-- [ ] `promotion_decision` 为 `promote` 后才允许进入自动 promotion gate。
-
-## 决策
-
-Pre-run implementation is allowed after Review 2. Server batch and Review 3 remain pending; no promotion or v6 creation in this branch.

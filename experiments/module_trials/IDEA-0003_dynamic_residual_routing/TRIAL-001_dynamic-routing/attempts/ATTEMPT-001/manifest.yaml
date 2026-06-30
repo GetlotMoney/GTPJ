@@ -1,0 +1,49 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: "ATTEMPT-001"
+  trial_id: "TRIAL-001"
+  idea_id: "IDEA-0003"
+  name: "balanced-aggressive dynamic routing batch"
+  status: "completed"
+  recorded_at: "2026-06-30T20:41:26+08:00"
+version:
+  base_version: "v5"
+  code_branch: "dev/v5-idea-0003-trial-001-dynamic-routing"
+  run_code_commit: "d49f60849b498a0aa6539bb245a2389ffabf2941"
+run:
+  run_id: "RUN-20260630-0005-dynroute50-2gpu"
+  runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260630-0005-dynroute50-2gpu"
+  warehouse_summary_path: "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/batch-RUN-20260630-0005-dynroute50-2gpu"
+  jobs_total: 50
+  jobs_completed: 50
+  jobs_failed: 0
+  gpus: "0,1"
+analysis:
+  local_copy: "%TEMP%/gtpj-RUN-20260630-0005-dynroute50-2gpu"
+  command: "python workflow/gtpj_workflow.py analyze-dynamic-routing-batch --run-dir %TEMP%/gtpj-RUN-20260630-0005-dynroute50-2gpu --top-k 12"
+artifacts:
+  summary_csv_sha256: "a32a748e55f810b9d1a6fa7d9f0d2cd0c7d2ab85adc41241266a6dcd4049cf20"
+  summary_jsonl_sha256: "05f4e8804c9d60917acd6d20ac475b19218c2fc2974f08541beeb2c18c078905"
+  batch_status_json_sha256: "5f32239fd3c94cade94b84a934b2f825f49261ee0a35bf089fbef113a5e02b44"
+  plan_json_sha256: "6a10b493342024e23f60695cec23a9f98671521f5f9fff4319ee773b665cf0ca"
+  events_jsonl_sha256: "b0e13f26dbf4e3c17406c6c19f0f6cc717ef19c717997df4bade2840b5defec5"
+checkpoint_retention:
+  applied: true
+  kept_count: 3
+  deleted_model_checkpoint_files: 97
+  retained:
+    - job_id: "DR-001"
+      H: 74.40
+      relative_path: "attempt-001/logs/best_model_CUB_2026-06-30_16-11-11_H7440.pth"
+      sha256: "56a3907af2bad5c7c33d930540de0e1e858348992c9c8d8c8c74ad1652b88729"
+      size_bytes: 102639770
+    - job_id: "DR-008"
+      H: 74.39
+      relative_path: "attempt-008/logs/best_model_CUB_2026-06-30_16-38-54_H7439.pth"
+      sha256: "c6d3c89c6d66a918125bdbb064a752db2f0f88f18413c3721499a1e8c31a716c"
+      size_bytes: 102790288
+    - job_id: "DR-023"
+      H: 74.38
+      relative_path: "attempt-023/logs/best_model_CUB_2026-06-30_18-01-09_H7438.pth"
+      sha256: "2799423888b755bf3db7d20045ab1f8f9f104adde55af152de69b35f8ae1c7e6"
+      size_bytes: 102790544

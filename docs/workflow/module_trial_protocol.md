@@ -189,6 +189,16 @@ After the attempt finishes, write the attempt-local:
 
 and then update the trial root summary and indexes in a separate result-bookkeeping step.
 
+After the attempt finishes and before result bookkeeping is considered complete, apply checkpoint retention:
+
+- keep at most 3 model checkpoints for the attempt, batch, or run;
+- keep the top 3 by the attempt's primary validation metric, defaulting to GZSL-H;
+- delete only model weight files such as `.pth`, `.pt`, `.ckpt`, or `.safetensors`;
+- never delete raw logs, configs, manifests, results, quality checks, runner receipts, events, summaries, or
+  Warehouse registry entries;
+- if more than 3 checkpoints must be kept for promotion, reproducibility diagnosis, or owner-requested audit,
+  record the exception in the attempt `quality_check.md`.
+
 Rules:
 - `TRIAL-001` is one implementation line for one idea, not one training run.
 - `ATTEMPT-001`, `ATTEMPT-002`, and later rows are repeated runs or small controlled variations inside that same trial.

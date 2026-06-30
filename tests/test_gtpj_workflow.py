@@ -785,6 +785,37 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(all(job["seed"] == 5 for job in jobs[:40]))
         self.assertEqual({job["source_rank"] for job in jobs[40:]}, {1, 2})
 
+    def test_dynamic_routing_batch_plan_has_principled_followup_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=7, profile="principled-followup")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        repeat_ranks = Counter(job["source_rank"] for job in jobs if job["phase"] == "repeat")
+        explore_updates = [job["config_updates"] for job in jobs if job["phase"] == "explore"]
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(groups["sanity_control"], 4)
+        self.assertEqual(groups["direction_gate"], 12)
+        self.assertEqual(groups["local_gate"], 8)
+        self.assertEqual(groups["pse_gate"], 8)
+        self.assertEqual(groups["combination"], 8)
+        self.assertEqual(groups["top3_frozen_repeat"], 10)
+        self.assertEqual(phases["explore"], 40)
+        self.assertEqual(phases["repeat"], 10)
+        self.assertEqual(repeat_ranks, Counter({1: 4, 2: 3, 3: 3}))
+        self.assertTrue(all(job["seed"] == 7 for job in jobs))
+        self.assertTrue(
+            all(update.get("dynamic_icsa_mode", "fixed") == "fixed" for update in explore_updates)
+        )
+        self.assertTrue(
+            any(
+                update.get("dynamic_direction_mode") == "sample"
+                and update.get("dynamic_gate_anchor_lambda") == 0.005
+                for update in explore_updates
+            )
+        )
+        self.assertTrue(any(update.get("local_weight") == 0.08 for update in explore_updates))
+        self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in explore_updates))
+
     def test_dynamic_routing_runner_records_failures_and_warehouse_artifacts(self) -> None:
         script = self.module._dynamic_runner_script()
 

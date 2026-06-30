@@ -86,6 +86,20 @@ This idea can only move beyond trial evidence if:
 - Repeat mean clearly beats v5 repeat mean H=74.44 and is compared against v4 confirmed_H=74.45.
 - Interface and quality checks confirm class order, seen/unseen split, logits shape, and metric semantics are unchanged.
 
+## ATTEMPT-001 Result
+
+`TRIAL-001_dynamic-routing` ran `RUN-20260630-0005-dynroute50-2gpu` with 50 completed jobs and 0 failures.
+
+Key evidence:
+
+- best overall: DR-001 static control, H=74.40;
+- best dynamic single: DR-008 `local_class_h24`, H=74.39;
+- best direction single: DR-023 `direction_sample_h48_a0.003`, H=74.38;
+- best dynamic repeat mean: DR-008, H=74.23;
+- references: v4 confirmed H=74.45, v5 repeat mean H=74.44.
+
+Decision: no promotion. The idea remains selected for a revise/follow-up trial.
+
 ## Next Action
 
-Create `TRIAL-001_dynamic-routing`, implement the trial-local dynamic routing code path, freeze the experiment branch, and run the balanced-aggressive 50-job server batch.
+Run the `principled-followup` profile from `workflow/gtpj_workflow.py`: keep dynamic ICSA fixed, focus on direction/local/PSE gates, and repeat the top 3 candidates.

@@ -1,0 +1,79 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: "ATTEMPT-001"
+trial_id: "TRIAL-001"
+run_id: "RUN-20260630-0005-dynroute50-2gpu"
+status: "completed"
+jobs:
+  total: 50
+  completed: 50
+  failed: 0
+references:
+  v4_confirmed_H: 74.45
+  v5_repeat_mean_H: 74.44
+top_results:
+  - rank: 1
+    job_id: "DR-001"
+    group: "sanity_control"
+    name: "static_v5_control"
+    H: 74.40
+    U: 71.70
+    S: 77.31
+    ZS: 81.38
+    best_epoch: 45
+  - rank: 2
+    job_id: "DR-008"
+    group: "local_gate"
+    name: "local_class_h24"
+    H: 74.39
+    U: 67.94
+    S: 82.20
+    ZS: 81.27
+    best_epoch: 26
+  - rank: 3
+    job_id: "DR-023"
+    group: "direction_gate"
+    name: "direction_sample_h48_a0.003"
+    H: 74.38
+    U: 72.26
+    S: 76.63
+    ZS: 81.61
+    best_epoch: 48
+repeat_means:
+  - source_job_id: "DR-001"
+    n: 5
+    H: 74.34
+    U: 71.83
+    S: 77.02
+  - source_job_id: "DR-008"
+    n: 5
+    H: 74.23
+    U: 68.54
+    S: 80.97
+group_stats:
+  direction_gate:
+    n: 6
+    mean_H: 74.10
+    best_H: 74.38
+  local_gate:
+    n: 8
+    mean_H: 73.60
+    best_H: 74.39
+  pse_gate:
+    n: 6
+    mean_H: 73.61
+    best_H: 73.86
+  icsa_gate:
+    n: 8
+    mean_H: 53.64
+    best_H: 62.88
+  combination:
+    n: 8
+    mean_H: 57.32
+    best_H: 73.38
+decision:
+  trial_decision: "revise"
+  promotion_decision: "rejected"
+  reason: "Dynamic repeat mean does not exceed v4 confirmed H=74.45 or v5 repeat mean H=74.44."
+follow_up:
+  profile: "principled-followup"
+  priority: "direction/local/PSE, keep ICSA fixed"

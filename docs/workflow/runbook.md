@@ -192,11 +192,13 @@ module trial 目录下的 framework_diagram.md
 1. 解析日志，记录 U/S/H/ZS、best_epoch、log path、checkpoint path。
 2. 复制 raw log/checkpoint/receipt 到 GTPJ_Warehouse。
 3. 计算 sha256 和 size。
-4. 更新 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
-5. 更新 trial 或 version 的总账：ATTEMPTS.md、README.md、result.yaml/result.md、quality_check.md、INDEX、EXPERIMENT_REGISTRY。
-6. 如果涉及 idea/module trial 状态，更新 idea_tree/idea_tree.json。
-7. 跑 yaml/hash 校验、validate、audit-boundary、validate-remote、git diff --check。
-8. 只提交轻量账本文件，不提交 train_log、.pth、.pt。
+4. 执行 checkpoint retention：模型 checkpoint 只保留主指标最高的 3 个，其余权重文件删除；
+   日志、配置、manifest、result、receipt、events、summary 和 registry 不删。
+5. 更新 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
+6. 更新 trial 或 version 的总账：ATTEMPTS.md、README.md、result.yaml/result.md、quality_check.md、INDEX、EXPERIMENT_REGISTRY。
+7. 如果涉及 idea/module trial 状态，更新 idea_tree/idea_tree.json。
+8. 跑 yaml/hash 校验、validate、audit-boundary、validate-remote、git diff --check。
+9. 只提交轻量账本文件，不提交 train_log、.pth、.pt。
 ```
 
 如果 4 到 6 步出现大量重复手工编辑，下一步不是继续试错，而是把该路径升级成 helper 命令。
@@ -227,9 +229,10 @@ python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 1. 从训练日志解析 U/S/H/ZS 和 best_epoch。
 2. 把 raw log、checkpoint、runner receipt 复制或生成到 GTPJ_Warehouse。
 3. 计算 artifact sha256 和 size。
-4. 写 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
-5. 更新 ATTEMPTS.md 中对应 attempt 行。
-6. 更新 GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml。
+4. 执行 checkpoint retention，只保留最多 3 个模型 checkpoint。
+5. 写 attempt-local manifest.yaml、result.yaml、result.md、quality_check.md。
+6. 更新 ATTEMPTS.md 中对应 attempt 行。
+7. 更新 GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml。
 ```
 
 随后必须运行：

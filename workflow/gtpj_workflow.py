@@ -5298,10 +5298,7 @@ def _dynamic_updates(**overrides: object) -> dict[str, object]:
     return base
 
 
-def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
-    if profile != "balanced-aggressive":
-        raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
-
+def _balanced_aggressive_dynamic_routing_specs() -> list[tuple[str, str, dict[str, object]]]:
     specs: list[tuple[str, str, dict[str, object]]] = [
         ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
         ("sanity_control", "dynamic_fixed_all", _dynamic_updates()),
@@ -5420,6 +5417,238 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
 
     if len(specs) != 40:
         raise WorkflowError(f"Dynamic routing explore plan must contain 40 jobs, got {len(specs)}")
+    return specs
+
+
+def _principled_followup_dynamic_routing_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = [
+        ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
+        ("sanity_control", "dynamic_fixed_all", _dynamic_updates()),
+        (
+            "sanity_control",
+            "fixed_direction_w0.45",
+            _dynamic_updates(weight_s2v=0.45),
+        ),
+        (
+            "sanity_control",
+            "fixed_direction_w0.55",
+            _dynamic_updates(weight_s2v=0.55),
+        ),
+    ]
+
+    for mode, hidden, weight_s2v, anchor in [
+        ("sample", 24, 0.50, 0.003),
+        ("sample", 32, 0.45, 0.003),
+        ("sample", 32, 0.55, 0.003),
+        ("sample", 48, 0.50, 0.005),
+        ("sample", 48, 0.45, 0.005),
+        ("sample", 64, 0.50, 0.010),
+        ("class", 24, 0.50, 0.003),
+        ("class", 32, 0.45, 0.003),
+        ("class", 32, 0.55, 0.003),
+        ("class", 48, 0.50, 0.005),
+        ("class", 48, 0.55, 0.005),
+        ("class", 64, 0.50, 0.010),
+    ]:
+        specs.append(
+            (
+                "direction_gate",
+                f"direction_{mode}_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for mode, hidden, local_weight, anchor in [
+        ("sample", 24, 0.10, 0.003),
+        ("sample", 24, 0.15, 0.003),
+        ("sample", 32, 0.10, 0.005),
+        ("sample", 48, 0.12, 0.005),
+        ("class", 16, 0.08, 0.005),
+        ("class", 24, 0.10, 0.005),
+        ("class", 24, 0.15, 0.005),
+        ("class", 32, 0.12, 0.010),
+    ]:
+        specs.append(
+            (
+                "local_gate",
+                f"local_{mode}_h{hidden}_l{local_weight:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_local_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=local_weight,
+                ),
+            )
+        )
+
+    for hidden, pse_outer_ratio, anchor in [
+        (24, 0.45, 0.003),
+        (32, 0.45, 0.005),
+        (32, 0.55, 0.003),
+        (48, 0.55, 0.005),
+        (48, 0.65, 0.005),
+        (64, 0.55, 0.005),
+        (64, 0.75, 0.010),
+        (96, 0.55, 0.010),
+    ]:
+        specs.append(
+            (
+                "pse_gate",
+                f"pse_class_h{hidden}_p{pse_outer_ratio:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    combos = [
+        (
+            "combo_ld_sample_h32_l0.10_w0.50",
+            "sample",
+            "fixed",
+            "sample",
+            "fixed",
+            32,
+            0.005,
+            0.10,
+            0.50,
+            None,
+        ),
+        (
+            "combo_ld_sample_h48_l0.12_w0.50",
+            "sample",
+            "fixed",
+            "sample",
+            "fixed",
+            48,
+            0.005,
+            0.12,
+            0.50,
+            None,
+        ),
+        (
+            "combo_ld_direction_class_h32_l0.10_w0.45",
+            "sample",
+            "fixed",
+            "class",
+            "fixed",
+            32,
+            0.005,
+            0.10,
+            0.45,
+            None,
+        ),
+        (
+            "combo_ld_classlocal_h24_l0.08_w0.55",
+            "class",
+            "fixed",
+            "sample",
+            "fixed",
+            24,
+            0.010,
+            0.08,
+            0.55,
+            None,
+        ),
+        (
+            "combo_dp_sample_h48_w0.50_p0.55",
+            "fixed",
+            "fixed",
+            "sample",
+            "class",
+            48,
+            0.005,
+            None,
+            0.50,
+            0.55,
+        ),
+        (
+            "combo_dp_class_h48_w0.55_p0.55",
+            "fixed",
+            "fixed",
+            "class",
+            "class",
+            48,
+            0.005,
+            None,
+            0.55,
+            0.55,
+        ),
+        (
+            "combo_ldp_sample_h32_l0.10_w0.50_p0.55",
+            "sample",
+            "fixed",
+            "sample",
+            "class",
+            32,
+            0.005,
+            0.10,
+            0.50,
+            0.55,
+        ),
+        (
+            "combo_ldp_classsafe_h48_l0.08_w0.55_p0.55",
+            "class",
+            "fixed",
+            "class",
+            "class",
+            48,
+            0.010,
+            0.08,
+            0.55,
+            0.55,
+        ),
+    ]
+    for (
+        name,
+        local_mode,
+        icsa_mode,
+        direction_mode,
+        pse_mode,
+        hidden,
+        anchor,
+        local_weight,
+        weight_s2v,
+        pse_outer_ratio,
+    ) in combos:
+        updates = _dynamic_updates(
+            dynamic_local_mode=local_mode,
+            dynamic_icsa_mode=icsa_mode,
+            dynamic_direction_mode=direction_mode,
+            dynamic_pse_mode=pse_mode,
+            dynamic_gate_hidden=hidden,
+            dynamic_gate_anchor_lambda=anchor,
+            weight_s2v=weight_s2v,
+        )
+        if local_weight is not None:
+            updates["local_weight"] = local_weight
+        if pse_outer_ratio is not None:
+            updates["pse_outer_ratio"] = pse_outer_ratio
+        specs.append(("combination", name, updates))
+
+    if len(specs) != 40:
+        raise WorkflowError(f"Principled dynamic routing explore plan must contain 40 jobs, got {len(specs)}")
+    return specs
+
+
+def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
+    if profile == "balanced-aggressive":
+        specs = _balanced_aggressive_dynamic_routing_specs()
+        repeat_source_ranks = [1] * 5 + [2] * 5
+    elif profile == "principled-followup":
+        specs = _principled_followup_dynamic_routing_specs()
+        repeat_source_ranks = [1] * 4 + [2] * 3 + [3] * 3
+    else:
+        raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
+    repeat_group = "top3_frozen_repeat" if max(repeat_source_ranks) > 2 else "top2_frozen_repeat"
 
     jobs: list[dict[str, object]] = []
     for index, (group, name, updates) in enumerate(specs, start=1):
@@ -5439,16 +5668,16 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
             }
         )
 
-    for repeat_index in range(10):
+    for repeat_index, source_rank in enumerate(repeat_source_ranks):
         index = 41 + repeat_index
-        source_rank = 1 if repeat_index < 5 else 2
+        source_repeat_index = sum(1 for rank in repeat_source_ranks[: repeat_index + 1] if rank == source_rank)
         jobs.append(
             {
                 "job_id": f"DR-{index:03d}",
                 "attempt_id": f"ATTEMPT-{index:03d}",
                 "phase": "repeat",
-                "group": "top2_frozen_repeat",
-                "name": f"top{source_rank}_repeat_{repeat_index % 5 + 1}",
+                "group": repeat_group,
+                "name": f"top{source_rank}_repeat_{source_repeat_index}",
                 "seed": seed,
                 "source_rank": source_rank,
                 "gpu_slot": (index - 1) % 2,

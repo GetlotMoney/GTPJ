@@ -41,6 +41,12 @@ agent_summary.md
 这些资产必须写入外部 `GTPJ_Warehouse`，GitHub 只通过 `manifest.yaml` 和
 `result.yaml` 保存 artifact identity、URI、hash 和结果摘要。
 
+实验结束后执行 checkpoint retention：完成日志解析、指标确认、hash/size 和
+manifest/result 登记后，每个普通实验最多保留 3 个模型 checkpoint。默认保留按主指标
+GZSL-H 排名最高的 3 个；其余 `.pth`、`.pt`、`.ckpt`、`.safetensors` 权重文件必须从运行目录
+或 Warehouse checkpoint 目录清理。不得删除日志、配置、manifest、result、quality_check、
+runner receipt 或 registry。需要超过 3 个时，必须在 `quality_check.md` 写明例外理由。
+
 如果实验改代码，必须额外包含：
 
 ```text
@@ -166,6 +172,8 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 - `post-run result commit` 只能记录已经完成的 run 结果；
 - 不要在结果记账提交里再改会影响该 run 语义的配置、开关或参数；
 - 如果 run 启动前工作树不干净，或 `run_commit` 不明确，这次结果最多记为 debug 证据，不能直接记为正式 keep / best / confirmation evidence。
+- post-run 记账前必须执行 checkpoint retention：模型 checkpoint 最多保留 3 个，或在
+  `quality_check.md` 记录超过 3 个的明确理由。
 
 ## Promotion 字段映射
 

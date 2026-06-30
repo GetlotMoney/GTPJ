@@ -40,6 +40,8 @@ baseline-grade 证据，也不能让 agent 靠记忆把 `best_observed_H` 写成
 5. 如果有模块代码改动，确认满足 `docs/workflow/code_interface_contract.md`。
 6. 确认外部日志 artifact URI、hash、size 和结果路径已经准备好。
 7. 确认 raw logs、checkpoint、generated figures 不会写入 GitHub。
+8. 确认实验结束后的 checkpoint retention 计划：模型 checkpoint 最多保留 3 个；若需要例外，
+   必须在 `quality_check.md` 写明原因。
 
 模块接口检查：
 
@@ -78,6 +80,7 @@ promote_to: vX
 - [ ] 对照明确：同 seed 对照已记录；高风险改动已说明是否需要多 seed。
 - [ ] 配置明确：trial config 和新版本 config 路径已记录。
 - [ ] 日志明确：外部日志 artifact id、URI、sha256、size 和保留位置已记录。
+- [ ] checkpoint 保留明确：模型 checkpoint 最多保留 3 个，或质量检查写明例外理由。
 - [ ] 口径不变：class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] 接口不乱：input/output shape、loss、eval、checkpoint 变化已声明。
 - [ ] 标注不乱：label mapping、seen/unseen split 和 class order 与 baseline 可比。

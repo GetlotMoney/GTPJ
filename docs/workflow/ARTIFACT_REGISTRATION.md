@@ -95,6 +95,24 @@ GTPJ_Warehouse/runs/<base_version>/<kind>/<experiment_id>/<attempt_id>/
 如果训练脚本临时写到了 repo 内的 `train_log/`，该路径只能作为临时产生位置。长期证据必须登记到
 Warehouse；GitHub 里不能引用未登记的临时路径作为最终证据。
 
+### Checkpoint retention
+
+每次真实实验完成并完成日志解析、指标确认、hash/size 计算和 manifest/result 登记后，
+Runner 或 Coordinator 必须清理模型 checkpoint：
+
+- 每个 run、batch 或 attempt 最多保留 3 个模型 checkpoint；
+- 默认保留按验证指标排序最高的 3 个，主指标是 GZSL-H；如果实验协议另有主指标，必须在
+  manifest 或 quality_check 中写明；
+- 如果有 owner 明确指定的 baseline/control checkpoint，它可以占用这 3 个名额之一；
+- 删除范围只限模型权重文件，例如 `.pth`、`.pt`、`.ckpt`、`.safetensors`；
+- 不得删除 raw log、config、manifest、result、quality_check、runner receipt、events、summary
+  或 Warehouse registry；
+- 被删除的 checkpoint 不再写入 manifest；如果已经登记过但后续被清理，必须把对应 artifact
+  状态改成 `pruned`，并记录保留的 3 个 checkpoint artifact id。
+
+这条规则是存储保留策略，不改变实验结论。若 promotion、baseline_grade 或论文复现实验需要更长
+保留期，必须在对应 quality_check 中显式写出例外理由。
+
 ## 4. 登记步骤
 
 ### Step 1: 确定 artifact 身份
@@ -185,6 +203,7 @@ Quality Checker 还要确认：
 - sha256 和 size 一致；
 - GitHub 没有 raw artifact；
 - result 的指标来自这个 artifact。
+- checkpoint retention 已执行：模型 checkpoint 最多保留 3 个，或 quality_check 写明例外。
 
 ## 5. Helper 使用边界
 
@@ -211,4 +230,5 @@ python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 - `result.yaml` 指向的 id 在 `manifest.yaml` 中无法解析；
 - Warehouse 文件不存在或 hash 不一致；
 - raw log/checkpoint/cache 被加入 Git；
-- 指标无法追溯到对应 raw log。
+- 指标无法追溯到对应 raw log；
+- 实验完成后模型 checkpoint 未清理，且没有记录为什么需要超过 3 个。

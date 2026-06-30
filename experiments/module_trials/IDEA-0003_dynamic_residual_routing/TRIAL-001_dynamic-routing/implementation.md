@@ -11,11 +11,12 @@ idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md
 ## New Module
 
 `DynamicRoutingGate` is a small initialized gate used only when `use_dynamic_routing=true`.
+
 It supports:
 
 - `fixed`: returns a constant tensor initialized to the v5 scalar.
-- `sample`: returns `[B（图片/样本数量）, 1]`.
-- `class`: returns `[B（图片/样本数量）, C（类别数量）]` for score gates, or `[C_seen（seen 类数量）, 1]` for PSE.
+- `sample`: returns `[B (image/sample count), 1]`.
+- `class`: returns `[B (image/sample count), C (class count)]` for score gates, or `[C_seen (seen class count), 1]` for PSE.
 
 ## Based On
 
@@ -30,23 +31,21 @@ Fixed anchors:
 
 ## Insertion Points
 
-| Item | Value |
-|---|---|
-| File | `model/MyModel.py` |
-| Class/function | `DynamicRoutingGate`, `GTPJ.forward`, `GTPJ.get_adapted_seen_text`, `GTPJ.compute_loss` |
-| Before | fixed scalar routes |
-| After | fixed or learned route tensors with the same broadcast target |
-| Consumes | CLS/sample feature, class text, score tensors |
-| Produces | dynamic gate tensors, route stats, optional anchor loss |
+| Gate | File/function | Before | After | First-principles intent |
+|---|---|---|---|---|
+| `local_gate` | `model/MyModel.py`, final score blend | fixed `local_weight` | fixed/sample/class gate tensor | add more local evidence when the sample/class pair needs fine-grained part evidence; add less when local evidence overfits seen classes |
+| `icsa_gate` | `GTPJ.forward`, ICSA text injection | fixed `icsa_ratio` | fixed/sample/class gate tensor | control image-conditioned text perturbation strength; this proved unstable in ATTEMPT-001 |
+| `direction_gate` | BVSA direction mix | fixed `weight_s2v` | fixed/sample/class gate tensor | choose S2V vs V2S mixture per sample/class according to alignment direction reliability |
+| `pse_gate` | `get_adapted_seen_text`, PSE outer residual | fixed `pse_outer_ratio` | fixed/class gate tensor | preserve raw text when PSE adaptation risks drift; trust PSE more for classes whose seen prototypes benefit from adaptation |
 
 ## Input Contract
 
 | Name | Shape | Dtype | Device | Meaning | Gradients |
 |---|---|---|---|---|---|
-| `sample_feat` | `[B（图片/样本数量）, D（特征维度）]` | float | model device | CLS or normalized sample feature | yes |
-| `class_text` | `[C（类别数量）, D（特征维度）]` or `[B（图片/样本数量）, C（类别数量）, D（特征维度）]` | float | model device | adapted or conditional class text | yes when text path is trainable |
-| `score_s2v`, `score_v2s` | `[B（图片/样本数量）, C（类别数量）]` | float | model device | BVSA direction scores | yes |
-| `pi_x` | `[B（图片/样本数量）, D（特征维度）]` | float | model device | ICSA image-conditioned text delta | yes |
+| `sample_feat` | `[B (image/sample count), D (feature dimension)]` | float | model device | CLS or normalized sample feature | yes |
+| `class_text` | `[C (class count), D (feature dimension)]` or `[B (image/sample count), C (class count), D (feature dimension)]` | float | model device | adapted or conditional class text | yes when text path is trainable |
+| `score_s2v`, `score_v2s` | `[B (image/sample count), C (class count)]` | float | model device | BVSA direction scores | yes |
+| `pi_x` | `[B (image/sample count), D (feature dimension)]` | float | model device | ICSA image-conditioned text delta | yes |
 
 ## Output Contract
 
@@ -63,8 +62,8 @@ Fixed anchors:
 
 - [x] Batch dimension stays unchanged.
 - [x] Class dimension stays unchanged.
-- [x] Train logits stay `[B（图片/样本数量）, n_seen（训练 seen 类数量）]`.
-- [x] Eval logits stay `[B（图片/样本数量）, C（全部类别数量）]`.
+- [x] Train logits stay `[B (image/sample count), n_seen (training seen class count)]`.
+- [x] Eval logits stay `[B (image/sample count), C (all class count)]`.
 - [x] Visual/text embedding dimension remains 768 before existing projections.
 - [x] Seen/unseen class order is unchanged.
 - [x] Gate broadcasting is explicit in tests.
@@ -82,6 +81,13 @@ dynamic_gate_anchor_lambda: float
 ```
 
 Trial base config path: `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/config.yaml`
+
+## Batch Profiles
+
+Implemented workflow profiles:
+
+- `balanced-aggressive`: first 50-job batch; completed as `RUN-20260630-0005-dynroute50-2gpu`.
+- `principled-followup`: second 50-job design after ATTEMPT-001; keeps ICSA fixed, explores direction/local/PSE more deliberately, and repeats top 3.
 
 ## Baseline-Off Path
 
@@ -116,32 +122,33 @@ metric calculation: unchanged GZSL U/S/H/ZS
 
 ```text
 new state_dict keys: dynamic_*_gate.* when use_dynamic_routing=true and mode is sample/class
-old checkpoint load behavior: unchanged for use_dynamic_routing=false; strict old-checkpoint load into dynamic model may report missing dynamic gate keys
-missing/unexpected keys: dynamic trial configs should not load old checkpoints with strict=True unless intentional
+old checkpoint load behavior: unchanged for use_dynamic_routing=false
+strict old-checkpoint load into a dynamic model may report missing dynamic gate keys
 ```
+
+## ATTEMPT-001 Runtime Outcome
+
+The first batch did not promote dynamic routing:
+
+- best overall: DR-001 static control, H=74.40;
+- best dynamic single: DR-008 local_class_h24, H=74.39;
+- best dynamic repeat mean: DR-008, H=74.23;
+- best direction single: DR-023, H=74.38 with U=72.26;
+- dynamic ICSA and combinations were unstable.
 
 ## Risks
 
 - Gate collapse to 0 or 1.
-- ICSA gate initially has no task gradient while meta_net output is zero; anchor and later meta_net movement mitigate this.
+- ICSA gate can over-inject unstable image-conditioned text.
 - Class-wise gates add compute and memory.
-- Repeat selection can overfit a noisy single run; top2 repeats are mandatory.
-
-## Minimum Verification
-
-- [x] Switch-off/fixed equivalent forward pass.
-- [x] Switch-on forward pass.
-- [x] Logits shape check.
-- [x] Loss scalar and backward check.
-- [x] all_text_cond reaches BVSA local_score when configured.
-- [ ] Pre-run Review 2.
-- [ ] Server batch status + Result Analyst report.
+- Repeat selection can overfit a noisy single run; repeat means are mandatory.
 
 ## Verification Commands
 
 ```bash
 python -m pytest tests/test_fae_memory_jepa.py
-python -m pytest tests/test_gtpj_workflow.py -k dynamic_routing_batch_plan
+python -m pytest tests/test_gtpj_workflow.py -q -k dynamic_routing
+python -m py_compile model/MyModel.py workflow/gtpj_workflow.py train_GTPJ_CUB.py
 python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py audit-boundary
 git diff --check

@@ -233,8 +233,10 @@
           "score": 82.0,
           "applicability": "direct",
           "stage": "trialing",
-          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. Dynamic routing tests whether sample/class-conditioned gates can improve U/S/H balance and repeat stability without changing class order, seen/unseen split, logits shape, or metric semantics.",
-          "blockers": []
+          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. TRIAL-001 ATTEMPT-001 completed 50/50 jobs; best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Follow-up should keep ICSA fixed and focus direction/local/PSE gates.",
+          "blockers": [
+            "ATTEMPT-001 did not exceed v4 confirmed_H=74.45 or v5 repeat mean H=74.44"
+          ]
         }
       },
       "base_versions": [
@@ -282,9 +284,14 @@
           "type": "baseline_anchor",
           "ref": "experiments/v5/VERSION.md",
           "note": "v5 is the active mainline; v4 confirmed_H=74.45 remains the confirmed reference."
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml",
+          "note": "RUN-20260630-0005 completed 50/50. Best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not exceed v4 confirmed H=74.45 or v5 repeat mean H=74.44; promotion rejected."
         }
       ],
-      "next_action": "Create TRIAL-001_dynamic-routing, implement dynamic gates and workflow automation, then run a 50-job balanced-aggressive two-GPU batch from the freeze commit."
+      "next_action": "Run the principled-followup 50-job design: keep dynamic ICSA fixed, focus direction/local/PSE gates, and repeat the top 3 candidates."
     }
   ]
 }
