@@ -7,17 +7,21 @@ base_version:
 code_branch:
 code_commit:
 activation_mode:
+agent_instance_mode:
 activation_reason:
 required_roles:
 required_real_agents:
+agent_persistent_threads:
 agent_set:
 serial_agents:
 parallel_agents:
 disabled_agents:
+temporary_subagents:
 tool_support:
 memory_policy:
 memory_used:
 memory_sources:
+persistent_thread_ids:
 agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
@@ -33,7 +37,10 @@ temporary_agents:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -57,7 +64,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -81,7 +91,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -103,7 +116,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -125,7 +141,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -147,7 +166,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -171,7 +193,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -195,7 +220,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:
@@ -219,7 +247,10 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
 inputs_checked:
 actions:

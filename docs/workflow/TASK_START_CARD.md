@@ -2,7 +2,7 @@
 
 ## 默认真实多 Agent 策略
 
-启动卡默认应写 `agents.activation_mode: real_multi_agent`。原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
+启动卡默认应写 `agents.activation_mode: real_multi_agent`，并为正式实验写明 `agents.agent_instance_mode: persistent_thread`。原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
 
 只有以下场景允许 `role_only`：
 
@@ -14,6 +14,8 @@
 任何真实实验运行、attempt 证据登记、正式结果解释、best 选择、promotion 准备、版本判断或下一轮高成本实验决策，都必须使用 `real_multi_agent`。Runner 仍然串行；并行的是只读或复核角色。
 
 如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断或显式降级为 debug/smoke；不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
+
+如果长期角色 persistent thread 不可用，启动卡必须列出缺失角色和 fallback 原因；`temporary_subagent` 只能作为一次性加速、只读复核或 debug/smoke 降级，不能静默替代长期 agent 的正式职责。
 
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
 `WORKFLOW_ROUTER.md`，而是把 Router 的判断落成一张可检查的任务单，避免每次靠口述重新解释。
@@ -143,6 +145,7 @@ inputs:
 
 agents:
   activation_mode:
+  agent_instance_mode:
   activation_reason:
   decision_basis:
     fastest_valid_path:
@@ -152,9 +155,21 @@ agents:
       skipped_agents:
       parallelized_roles:
       serialized_roles:
+      agent_instance_mode:
+      persistent_threads:
+      temporary_subagent_reason:
   required_roles:
   disabled_roles:
   required_real_agents:
+  persistent_threads:
+    required:
+    thread_ids:
+    missing:
+    reused:
+  temporary_subagents:
+    allowed:
+    reason:
+    debug_only:
   single_agent_allowed:
   owner_override:
   tool_support:
@@ -173,6 +188,7 @@ agents:
     repo_state_required:
     memory_used:
     memory_sources:
+    persistent_thread_ids:
     agent_profile_files:
     agent_memory_files:
     verified_against_current_repo:
@@ -247,11 +263,22 @@ role_only
 real_multi_agent
 ```
 
+`agents.agent_instance_mode` 只能选择：
+
+```text
+role_only
+persistent_thread
+temporary_subagent
+```
+
+正式 `real_multi_agent` 默认使用 `persistent_thread`。`temporary_subagent` 只能用于一次性加速、只读复核或显式 fallback，并必须填写 `temporary_subagents.reason`。
+
 `role_only_with_independent_sequential_review` 不是第三种 `activation_mode`。它只能写在：
 
 ```yaml
 agents:
   activation_mode: role_only
+  agent_instance_mode: role_only
   tool_support:
     real_multi_agent_available: false
     fallback_mode: role_only_with_independent_sequential_review
@@ -293,6 +320,13 @@ debug/smoke 降级。
 - 如果按规则应使用真实多 agents 但工具不可用，填写 `[]`，并在 `tool_support.fallback_mode` 写
   `role_only_with_independent_sequential_review`，同时触发阻断或 debug-only 降级。
 
+`agents.persistent_threads` 必须记录长期角色线程状态：
+
+- `required: true`：正式 evidence、best、promotion 或 owner 明确要求长期多 agent 时填写；
+- `thread_ids`：按角色记录当前使用的 thread id 或可见 label；
+- `missing`：记录缺失的长期角色 thread；
+- `reused`：说明本轮是否复用已有长期线程。
+
 `agents.required_roles` 必须写角色名，不写“按需”。常用角色集合：
 
 | 任务 | 必需角色 |
@@ -314,6 +348,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 - session context 只能作为任务上下文，不能直接当证据；
 - Codex 全局 memory 或历史会话摘要只能用于定位，必须回到当前仓库、日志或 artifact 验证；
 - 长期 agent 记忆必须来自 `docs/workflow/agents/shared_roles/<role>/memory.md`，并记录实际读取文件；
+- 长期 agent 活上下文必须记录 `persistent_thread_ids`；线程内容只能辅助定位，不能替代 repo/log/artifact 证据；
 - repo state 和 artifact 是正式实验事实源；
 - 使用 memory 时，必须记录 `memory_sources` 和 `verified_against_current_repo`。
 
@@ -434,9 +469,11 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 
 - 工作区 dirty 且未说明哪些改动属于当前任务；
 - 启动卡没有填写 `agents.activation_mode`、`activation_reason`、`decision_basis`、`single_agent_allowed` 或 `required_real_agents`；
-- 启动卡没有填写 `agents.required_roles`、`tool_support` 或 `memory_policy`；
+- 启动卡没有填写 `agents.agent_instance_mode`、`required_roles`、`tool_support`、`persistent_threads` 或 `memory_policy`；
 - 按规则应使用 `real_multi_agent`，但启动卡写成 `role_only`；
 - owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
+- 正式 evidence、best、promotion 或 owner 明确要求长期多 agent，但启动卡没有写 `agent_instance_mode: persistent_thread`，且没有记录缺失 thread 与 fallback/debug-only 原因；
+- 使用 `temporary_subagent` 替代长期角色 thread，却没有写 `temporary_subagents.reason`、`debug_only` 和持久化输出位置；
 - 工具不可用但任务硬门要求 `real_multi_agent`，且没有阻断或明确标成 debug/smoke 降级；
 - `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
 - 使用了 memory-derived fact，却没有说明 memory 来源和当前仓库 / artifact 验证方式；

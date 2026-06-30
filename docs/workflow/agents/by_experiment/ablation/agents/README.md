@@ -2,6 +2,8 @@
 
 本文件用于 version-level ablation。消融可以改代码，但代码是临时实验代码，不自动进入 `main`。
 
+正式 ablation run 默认使用 `real_multi_agent` + `agent_instance_mode: persistent_thread`。Interface Checker、Log Analyst、Quality Checker 和 Result Analyst 必须保留独立上下文；临时 sub-agent 只能作为一次性加速或只读复核，不能替代长期角色 thread 给出正式结论。
+
 如果消融对象只是某个 module trial 当前实现假设下的局部因素，使用 `module_trial_protocol.md`
 的 trial-internal narrow `ablation`，写入该 trial 的 `ATTEMPTS.md` 和
 `attempts/ATTEMPT-xxx/`，不写入 `experiments/vX/ablation/`。

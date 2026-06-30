@@ -5,6 +5,8 @@ Promotion agents 在实验记录已经写出 `promotion_decision: promote`、`pr
 
 Promotion 必须保留 `agent_summary.md`，记录 Quality Checker、Interface Checker、Result Analyst 和 Reviewer 的准入结论。长报告放 Warehouse，GitHub 只保存摘要和 artifact id。
 
+Promotion 默认使用 `real_multi_agent` + `agent_instance_mode: persistent_thread`。临时 sub-agent 不能替代长期角色 thread 给出最终通过结论；如果 thread 缺失，必须阻断或记录 owner 接受的 debug-only fallback。
+
 ## 启用角色
 
 ```text

@@ -32,9 +32,9 @@
 | workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |
 | 仓库结构总账本 | 已落地 | `docs/PROJECT_STRUCTURE.md` | 记录稳定目录和文件职责。 |
 | GitHub 治理 | 已落地 | `docs/GITHUB_GOVERNANCE.md` | 记录 main/tag/版本树/轻量边界。 |
-| agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；真正运行时仍由 Codex/OpenClaw 按任务调用。 |
-| 长期 agent 记忆 | 已落地 | `docs/workflow/agents/long_term_memory.md`, `docs/workflow/agents/shared_roles/*/memory.md` | 每个共享角色已有长期 `memory.md`，临时实例执行前必须读取或被传入对应长期身份包。 |
-| agent 工作凭证 | 已落地 | `docs/workflow/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；helper 会为新实验创建 `agent_summary.md`。 |
+| agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；正式 `real_multi_agent` 默认使用长期角色 persistent thread，运行时由 Codex/OpenClaw 按任务调用。 |
+| 长期 agent 记忆 | 已落地 | `docs/workflow/agents/long_term_memory.md`, `docs/workflow/agents/shared_roles/*/memory.md` | 每个共享角色已有长期 `memory.md`；正式长期 agent 由 persistent thread + profile/memory + evidence 构成，临时实例只能作为加速或 fallback。 |
+| agent 工作凭证 | 已落地 | `docs/workflow/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；凭证记录 `agent_instance_mode`、persistent thread id、临时 fallback 原因和 memory 验证。 |
 | 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
 | 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
 | Module trial attempt ledger | 已落地 | `docs/workflow/module_trial_protocol.md`, `experiments/templates/TRIAL_ATTEMPTS_template.md`, `experiments/templates/TRIAL_README_template.md` | module trial 已明确支持 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/` 多次尝试账本；正式 baseline 的 tune 表仍留在 `experiments/vX/tune/INDEX.md`。 |

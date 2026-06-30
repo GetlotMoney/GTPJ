@@ -20,6 +20,7 @@ base_version:
 target:
 writes:
 agent_mode:
+agent_instance_mode:
 gates:
 next_action:
 ```
@@ -34,6 +35,7 @@ next_action:
 | `target` | 本次目标，例如 baseline、参数、idea、trial 或候选列表。 |
 | `writes` | 本次会写哪里；只读任务写 `none`。 |
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
+| `agent_instance_mode` | `role_only`、`persistent_thread` 或 `temporary_subagent`；正式实验默认 `persistent_thread`。 |
 | `gates` | 本次真正相关的硬门，只列会影响开工的门。 |
 | `next_action` | 下一步最小动作；不能把完整流程丢给 owner 填。 |
 
@@ -65,6 +67,7 @@ base_version: current active baseline
 target: next selected ready idea
 writes: idea_tree + experiments/module_trials + Warehouse after run
 agent_mode: real_multi_agent, because new module code changes require Review 0-3
+agent_instance_mode: persistent_thread
 gates: source_status, interface_contract, innovation_code_review, artifact_boundary
 next_action: read active version idea view and select the highest-priority ready idea
 ```
@@ -78,6 +81,7 @@ base_version: current active baseline
 target: current baseline result
 writes: none until owner confirms run and evidence level
 agent_mode: real_multi_agent for a formal run; role_only only for preparation before Runner starts
+agent_instance_mode: persistent_thread for a formal run
 gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
 next_action: run repro-status, then decide quick_local vs formal confirmation target
 ```
@@ -91,6 +95,7 @@ base_version: current active baseline
 target: owner-supplied mechanism
 writes: Research/idea_tree only if owner asks to register; no code until ready
 agent_mode: role_only for pure triage; real_multi_agent if it becomes code or formal evidence
+agent_instance_mode: role_only for pure triage; persistent_thread if it becomes formal evidence
 gates: source_status, interface_contract
 next_action: judge whether this is inbox idea, ready idea, or blocked by missing source/scope
 ```

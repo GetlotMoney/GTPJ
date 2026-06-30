@@ -30,6 +30,8 @@
 `real_multi_agent`。这类任务必须阻断正式 run、promotion 或 best 结论，除非 owner 明确接受
 本次只作为 debug/smoke 降级。
 
+正式创新审查默认使用长期角色的 `persistent_thread`。临时 sub-agent 只能作为一次性加速、只读复核或显式 fallback；如果替代了某个长期角色 thread，必须在 task-start card 和 `agent_summary.md` 写明原因、debug-only 状态和持久化输出位置。
+
 ## 2. 最小审查轮次
 
 每个创新代码改动至少包含四轮审查：
@@ -123,11 +125,14 @@ agent_summary.md
 
 ## 3. 临时 agents 与长期 agents
 
-临时 sub-agent 可以用于本协议，但它不是长期记忆本身。Coordinator 启动临时 agent 时必须显式传入：
+长期 agent 由 persistent thread 与文件化角色身份共同构成。persistent thread 保留该角色的连续上下文和右侧栏可见过程；`profile.md`、`memory.md`、review 文件和 `agent_summary.md` 保留可审计事实。
+
+临时 sub-agent 可以用于本协议，但它不是长期 agent 本体。Coordinator 启动临时 agent 时必须显式传入：
 
 - 对应 `shared_roles/<role>/profile.md`；
 - 对应 `shared_roles/<role>/memory.md`；
 - `docs/workflow/agents/by_experiment/innovation/agents/README.md`；
+- 对应角色 persistent thread id / thread label，或说明为什么本轮缺失；
 - 本次 task-start card；
 - 本轮需要审查的具体文件列表；
 - 期望输出文件与结论格式。
@@ -144,6 +149,8 @@ workflow/gtpj_workflow.py helper 或 sync check
 
 临时 agent 的隐藏上下文不能作为实验证据。进入 `result.yaml`、`quality_check.md`、promotion evidence 或正式结论前，
 必须回到当前 repo、Research、Warehouse artifact 或日志重新验证。
+
+正式 best、promotion 或 owner 明确要求长期多 agent 时，不能只保留临时 agent 的对话结论；必须把结论收口到长期角色 thread 和文件化 evidence。
 
 ## 4. Writer / Reviewer 边界
 
@@ -222,7 +229,10 @@ attempts/ATTEMPT-xxx/quality_check.md
 ```text
 review_round:
 role:
+agent_instance_mode:
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
 inputs_checked:
 independence_scope:
 findings:
@@ -235,7 +245,7 @@ memory_sources:
 verified_against_current_repo:
 ```
 
-`agent_summary.md` 必须汇总四轮 review 的结论，并说明是否有临时 agents、长期角色记忆是否加载、
+`agent_summary.md` 必须汇总四轮 review 的结论，并说明是否有临时 agents、长期角色 thread 是否复用、长期角色记忆是否加载、
 哪些文件被独立审查、哪些 blocking issue 已解决。
 
 ## 8. 与其他协议的关系
@@ -246,4 +256,3 @@ verified_against_current_repo:
 - `agent_orchestration.md` 决定 agents 如何启用；
 - `agent_report_policy.md` 决定 agent evidence 如何保存；
 - 本协议决定 idea 到代码改动之间是否经过足够的独立审查。
-

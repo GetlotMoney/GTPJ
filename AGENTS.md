@@ -68,6 +68,9 @@
 
 - GTPJ 真实实验 workflow 默认使用 `real_multi_agent`。核心原因是一个长期角色对应一个独立上下文；把规划、执行、日志解析、质量检查、结果解释和复核放进同一个上下文，会污染证据链和决策。
 - 每次 GTPJ workflow 启动卡必须写明 `agents.activation_mode`，只能是 `role_only` 或 `real_multi_agent`。
+- 正式 `real_multi_agent` 默认使用 `agents.agent_instance_mode: persistent_thread`。长期 agent 不是单纯的临时 sub-agent，也不是只存在于文件里的身份包；它由可见、可复用的 persistent thread 加上 `profile.md`、`memory.md`、by-experiment 调用规则和 `agent_summary/review_round` 证据共同构成。
+- persistent thread 负责积累当前角色的活上下文和右侧栏可追踪过程；`profile.md`、`memory.md`、issues、agent summary 和 review 文件负责长期可审计事实。线程上下文可能压缩或漂移，所以任何结论进入正式 evidence 前仍必须回到 repo、log、artifact 或 Research 验证。
+- `temporary_subagent` 只允许作为一次性加速、只读复核或工具不可用时的显式 fallback；它不能替代长期角色的 persistent thread 来完成正式结果解释、best 选择、promotion 或 owner 已明确要求的长期多 agent 工作，除非本轮明确标成 debug/smoke 降级。
 - `role_only` 表示一个主 agent 按 Coordinator、Runner、Quality Checker 等角色清单串行执行；必须在 `agent_summary.md` 里说明为什么没有启动真实多 agents。
 - `real_multi_agent` 表示启动或委派独立 agent / reviewer / checker，保留独立输入、发现和结论；如果当前环境没有真实 multi-agent 工具，不能把顺序角色扮演写成 `real_multi_agent`。
 - `role_only_with_independent_sequential_review` 不是第三种 activation mode，只能写在 `agents.tool_support.fallback_mode`；它不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受 debug/smoke 降级。

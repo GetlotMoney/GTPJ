@@ -35,7 +35,8 @@ Coordinator
 - 只要 idea / 创新 / module trial 会落成代码改动，必须遵守
   `docs/workflow/innovation_code_review_protocol.md`。
 - 本类任务默认 `activation_mode: real_multi_agent`，不得用单 agent 顺序执行冒充真实多 agents。
-- 临时 sub-agent 可以开启，但必须加载对应长期角色的 `profile.md`、`memory.md` 和本文件。
+- 本类任务默认 `agent_instance_mode: persistent_thread`；Reader/Planner、Interface Checker、Quality Checker、Result Analyst、Reviewer 等长期角色优先复用各自 thread。
+- 临时 sub-agent 可以开启，但只能作为一次性加速、只读复核或 fallback，必须加载对应长期角色的 `profile.md`、`memory.md` 和本文件，并记录 `temporary_subagent_reason`。
 - Review 0 产出 `idea_intent_check.md`，确认 source intent 和 hypothesis。
 - Review 1 产出 `interface_precheck.md`，在写代码前确认接口设计。
 - Review 2 产出 `review_round_1.md`，在 Runner 前检查 code diff。

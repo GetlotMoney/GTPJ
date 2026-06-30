@@ -2,9 +2,11 @@
 
 ## 默认模式更新
 
-正式 tune run 默认使用 `real_multi_agent`。Reader/Planner、Runner、Log Analyst、Quality Checker、Result Analyst 必须按角色隔离上下文；Runner 仍然串行。
+正式 tune run 默认使用 `real_multi_agent` + `agent_instance_mode: persistent_thread`。Reader/Planner、Runner、Log Analyst、Quality Checker、Result Analyst 必须按角色隔离上下文；Runner 仍然串行。
 
 `role_only` 只允许用于训练前最多 3 个候选建议、纯配置查看，或明确不登记正式证据的 debug/smoke。
+
+`temporary_subagent` 只能作为一次性加速或只读复核；正式结果解释、best 候选判断和 promotion-facing 结论必须回到长期角色 thread 与文件化 evidence。
 
 本文件用于 version-level tune。调参只改变正式 baseline `vX` 的参数，不改变模型结构。
 训练串行，一次只跑一个 Runner。
