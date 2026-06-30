@@ -1,5 +1,25 @@
 # Agent 编排和长期管理
 
+## 默认真实多 Agent 策略
+
+GTPJ 实验工作流默认使用 `real_multi_agent`，不再默认优先 `role_only`。
+
+原因：每个长期角色都需要独立上下文。把规划、执行、读日志、质量检查、结果解释和复核放在同一个 agent 上下文里，会污染输入、判断和证据链。
+
+以下任务默认必须使用 `real_multi_agent`：
+
+- 启动真实 Runner；
+- 创建或登记正式实验/attempt 证据；
+- 改代码、配置语义、forward/loss/eval/data flow 或接口假设；
+- 选择 best、影响下一轮高成本实验、影响论文实验路线或 baseline 决策；
+- 准备 promotion、versioning、tag 或 owner-facing 正式结论。
+
+`role_only` 现在只是例外，只允许用于纯只读解释/状态检查、训练前候选 triage、不改变结论的机械账本格式整理，或明确不进入正式证据的 debug/smoke。
+
+如果当前工具环境不能提供真实 sub-agent，而任务又需要正式证据，Coordinator 必须阻断或把本轮显式降级为 debug/smoke。`role_only_with_independent_sequential_review` 只是 fallback 标签，不是 `real_multi_agent` 的替代品。
+
+即使在 `real_multi_agent` 下，Runner 仍然串行；Implementer 仍然是同一代码路径的唯一 writer；Coordinator 仍然是最终 GitHub 账本唯一 writer。并行的是 Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 等只读或复核角色。
+
 GitHub 保存长期规则和 agent IO 契约。本地 `gtpj-workflow` skill 保存执行入口。
 两边规则必须同步。
 
@@ -157,15 +177,16 @@ owner 明确接受它只作为 debug/smoke 证据。
 
 ### 最快合规路径
 
-Coordinator 默认必须选择“最快的有效执行路径”，而不是默认选择最重流程。
+Coordinator 默认必须选择“满足上下文隔离的最小有效路径”，不是把所有长期角色都拉满。
 
 规则：
 
-- 如果任务只是只读解释、状态检查、配置查看、窄范围 rerun/confirmation 准备、单 Runner frozen-config 执行、debug/smoke，或不改变结论的账本格式整理，默认用 `role_only`。
+- 如果任务只是只读解释、状态检查、配置查看、窄范围 rerun/confirmation 准备、debug/smoke，或不改变结论的账本格式整理，默认用 `role_only`。
+- 只要 Runner 产出的结果会进入正式 evidence、best 选择、confirmation、promotion 或下一轮高成本实验决策，即使是单 Runner frozen-config 串行执行，也默认用 `real_multi_agent`。
 - 如果 hard gate 或 owner 明确要求 `real_multi_agent`，必须用 `real_multi_agent`，但要把 Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 这类只读角色并行执行。
 - 不能为了“显得规范”而串行等待不必要 agents；未被 hard gate 要求、也不影响当前结论的角色必须跳过，并在启动卡里写明 `skipped_agents`。
 - Runner 永远串行并持有 GPU lock；Implementer 对同一代码路径永远单 writer；Coordinator 是最终 GitHub 账本唯一 writer。
-- 如果 real multi-agent 工具不可用，而任务没有 hard gate 要求真实多 agent，走 `role_only` 是最快合规路径；如果任务硬性要求真实多 agent，则阻断或降级为 debug/smoke，不能把正式证据伪装成已独立审查。
+- 如果 real multi-agent 工具不可用，而任务只是纯只读、pre-run triage、机械账本整理或非正式 debug/smoke，可以走 `role_only`；任何正式 evidence 任务必须阻断或降级为 debug/smoke，不能把正式证据伪装成已独立审查。
 
 启动卡里的 `agents.decision_basis` 必须包含：
 
@@ -185,7 +206,7 @@ fastest_valid_path:
 |---|---|---|
 | 只读解释、定位文件、查看配置、普通状态汇报 | `role_only` | 不产生实验事实，不改代码，不改变结论。 |
 | 窄范围 rerun / confirmation 准备 | `role_only` | 只准备冻结配置、启动卡或账本，不启动争议 run。 |
-| 单一 Runner 按 frozen config 串行训练 | `role_only` 可用 | 只执行已冻结配置，Runner/GPU 本来必须串行。 |
+| 单一 Runner 按 frozen config 串行训练 | `real_multi_agent` | Runner/GPU 串行执行；Log Analyst、Quality Checker、Result Analyst 等证据角色仍需独立上下文。 |
 | debug/smoke | `role_only` | 结果不作为 keep / best / promote / confirmation evidence。 |
 | 账本格式整理 | `role_only` | 不改变实验结论和证据语义。 |
 | owner 明确要求“多 agents”“多 agents 验证”“独立 review” | `real_multi_agent` | owner 已要求独立分工。 |
@@ -214,8 +235,8 @@ fastest_valid_path:
 |---|---|---|---|
 | 只读状态 / 配置检查 | Coordinator，必要时 Reader/Planner | `role_only` | 不跑训练，不写实验结论。 |
 | 调参建议 | Coordinator、Reader/Planner、Result Analyst | `role_only` | 只提出候选，不启动 Runner。 |
-| 调参真实运行 | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `role_only` 或 `real_multi_agent` | 单配置冻结复跑可 `role_only`；多候选、争议或正式 best 选择用 `real_multi_agent`。 |
-| confirmation / rerun | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `role_only` 或 `real_multi_agent` | 普通干净复跑可 `role_only`；争议确认、promotion 前确认用 `real_multi_agent`。 |
+| 调参真实运行 | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `real_multi_agent` | Runner 串行；Reader/Planner、Log Analyst、Quality Checker、Result Analyst 分别独立上下文。 |
+| confirmation / rerun | Coordinator、Runner、Log Analyst、Result Analyst、Quality Checker | `real_multi_agent` | 正式复现、best 复核和 promotion 前确认都必须独立分析；`role_only` 只用于准备或 debug/smoke。 |
 | ablation | Coordinator、Runner、Log Analyst、Interface Checker、Result Analyst、Quality Checker | `real_multi_agent` | 如果只改配置开关但不改代码，也要保留 Interface Checker 角色。 |
 | innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Result Analyst、Quality Checker、Reviewer | `real_multi_agent` | 新模块默认真实多 agent。 |
 | promotion | Coordinator、Quality Checker、Reviewer、Result Analyst，必要时 Interface Checker | `real_multi_agent` | promotion 不允许只靠 `role_only` 给最终通过结论。 |
@@ -342,7 +363,7 @@ docs/workflow/agent_report_policy.md
 调参：
 
 ```text
-Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality Checker -> Coordinator
+Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality Checker + Result Analyst -> Coordinator
 ```
 
 消融：
@@ -360,7 +381,7 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 重新复现：
 
 ```text
-Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
+Coordinator -> Runner -> Log Analyst + Quality Checker + Result Analyst -> Coordinator
 ```
 
 Promotion：

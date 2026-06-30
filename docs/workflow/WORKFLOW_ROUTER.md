@@ -1,5 +1,13 @@
 # GTPJ Workflow Router
 
+## 默认 agent 路由
+
+Router 默认把真实实验类任务路由到 `real_multi_agent`。原因是不同角色共享同一上下文会污染证据和判断。
+
+默认 `real_multi_agent` 的范围包括：真实 Runner、正式 attempt/result/quality 证据、代码或配置语义变化、结果解释、best 选择、promotion、版本判断、论文实验路线或下一轮高成本实验决策。
+
+`role_only` 只允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或 debug/smoke 且结果不进入正式证据。
+
 本文件是 GTPJ 的总教官。它不替代具体协议，而是在任何任务开始前先做路由判断：
 
 ```text

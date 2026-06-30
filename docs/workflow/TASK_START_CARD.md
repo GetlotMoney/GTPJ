@@ -1,5 +1,20 @@
 # Task Start Card
 
+## 默认真实多 Agent 策略
+
+启动卡默认应写 `agents.activation_mode: real_multi_agent`。原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
+
+只有以下场景允许 `role_only`：
+
+- 纯只读解释、状态检查或配置查看；
+- 训练前候选 triage，且不启动 Runner、不登记正式证据；
+- 不改变结论的机械账本格式整理；
+- debug/smoke，且输出明确不作为 keep、best、promotion 或 confirmation evidence。
+
+任何真实实验运行、attempt 证据登记、正式结果解释、best 选择、promotion 准备、版本判断或下一轮高成本实验决策，都必须使用 `real_multi_agent`。Runner 仍然串行；并行的是只读或复核角色。
+
+如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断或显式降级为 debug/smoke；不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
+
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
 `WORKFLOW_ROUTER.md`，而是把 Router 的判断落成一张可检查的任务单，避免每次靠口述重新解释。
 
@@ -249,6 +264,7 @@ debug/smoke 降级。
 必须选择 `real_multi_agent` 的情况：
 
 - owner 明确要求多 agents、独立 review 或多方验证；
+- 启动真实 Runner，或单一 Runner 按 frozen config 串行训练且结果会进入正式 evidence；
 - 任务修改模型结构、forward、loss、eval、数据流、label mapping、seen/unseen split、class order 或 logits shape；
 - 新 module trial 的实现、接口检查、promotion 前复核；
 - 结果异常、指标争议较大，或 owner 明确质疑当前解释；
@@ -259,7 +275,6 @@ debug/smoke 降级。
 
 - 只读解释、状态检查、配置查看；
 - 不改代码、不改实验语义的窄范围 rerun / confirmation 准备；
-- 单一 Runner 按 frozen config 串行训练；
 - 结果只作为 debug/smoke；
 - 只做账本格式整理且不改变实验结论。
 
@@ -267,7 +282,7 @@ debug/smoke 降级。
 
 `agents.decision_basis.fastest_valid_path` 必须说明本次为什么选择最快合规路径：
 
-- 简单只读、debug/smoke、单 Runner frozen config、账本格式整理等任务，默认选择 `role_only`，不启动不必要 agents。
+- 简单只读、debug/smoke、训练前候选 triage、账本格式整理等任务，可以选择 `role_only`；单 Runner frozen config 如果会进入正式 evidence，仍默认 `real_multi_agent`。
 - 如果 hard gate 或 owner 要求 `real_multi_agent`，默认并行执行只读审查角色，只串行 Implementer、Runner 和 Coordinator 写账本。
 - 被跳过的角色必须写入 `skipped_agents`，并说明跳过后为什么仍然满足 hard gates。
 

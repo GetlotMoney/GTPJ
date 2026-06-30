@@ -1,5 +1,13 @@
 # GTPJ 实验创新工作流总规范
 
+## 默认真实多 Agent 规范
+
+GTPJ 的真实实验 workflow 默认 `real_multi_agent`。一个 agent 一个上下文，不同长期角色不能默认共用同一上下文来完成正式证据链。
+
+默认 `real_multi_agent` 适用于：真实训练/复现运行、attempt/result/quality 证据登记、代码或配置语义变化、结果解释、best 选择、promotion、versioning、tag、论文实验路线或下一轮高成本实验决策。
+
+`role_only` 仅允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或明确不进入正式证据的 debug/smoke。工具不可用时不能冒充真实多 agent，必须阻断或降级。
+
 本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
 
 ## 0. 当前结论
@@ -860,6 +868,7 @@ agents:
 必须使用 `real_multi_agent` 的情况：
 
 - owner 明确说“用多 agents”“多 agents 验证”“独立 review”；
+- 启动真实 Runner，或单一 Runner 按 frozen config 串行训练且结果会进入正式 evidence；
 - 修改模型结构、forward、loss、eval、数据流、label mapping、seen/unseen split、class order 或 logits shape；
 - 新 module trial 的实现阶段、接口检查阶段或 promotion 前复核；
 - 结果异常或争议较大，例如明显低于预期、指标大幅波动、和 baseline 不可比，或 owner 对解释提出质疑；
@@ -871,7 +880,6 @@ agents:
 
 - 只读解释、定位文件、查看配置、普通状态汇报；
 - 不改代码、不改实验语义的窄范围 rerun / confirmation 准备；
-- 单一 Runner 按 frozen config 串行训练；
 - 结果只记为 debug/smoke，不作为 keep / best / promote / confirmation evidence；
 - 账本格式整理，且不改变实验结论。
 

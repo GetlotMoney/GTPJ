@@ -175,7 +175,7 @@ failed
 调参：
 
 ```text
-Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality Checker -> Coordinator
+Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality Checker + Result Analyst -> Coordinator
 ```
 
 看板重点显示：
@@ -218,7 +218,7 @@ Coordinator -> Reader/Planner -> Implementer -> Interface Checker -> Runner -> Q
 重新复现：
 
 ```text
-Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
+Coordinator -> Runner -> Log Analyst + Quality Checker + Result Analyst -> Coordinator
 ```
 
 看板重点显示：
