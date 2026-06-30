@@ -1950,7 +1950,7 @@ index 3ded092..37481d5 100644
      # ★ 2026-05-25: 多段训练 - 段边界自动切到下一段
      # 当前 epoch 等于某段终点 → 切换到下一段 lr + 重置 cosine T_max
 diff --git a/workflow/gtpj_workflow.py b/workflow/gtpj_workflow.py
-index 9477deb..639163a 100644
+index 9477deb..199edd8 100644
 --- a/workflow/gtpj_workflow.py
 +++ b/workflow/gtpj_workflow.py
 @@ -9,6 +9,7 @@ not run training, push to GitHub, or mutate Git history.
@@ -1961,7 +1961,7 @@ index 9477deb..639163a 100644
  import hashlib
  import json
  import re
-@@ -5283,6 +5284,756 @@ missing/unexpected keys:
+@@ -5283,6 +5284,759 @@ missing/unexpected keys:
      return 0
 
 
@@ -2409,10 +2409,13 @@ index 9477deb..639163a 100644
 +
 +        env = os.environ.copy()
 +        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
-+        cmd = [
-+            "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
-+            plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
-+        ]
++        if str(plan.get("conda_env", "")).lower() in {"", "direct", "none"}:
++            cmd = [plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config)]
++        else:
++            cmd = [
++                "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
++                plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
++            ]
 +        code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
 +        warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
 +        if code != 0:
@@ -2598,7 +2601,7 @@ index 9477deb..639163a 100644
 +    for gpu in gpus:
 +        gpu_lines.extend(
 +            [
-+                f"nohup python run_dynamic_routing_batch.py --gpu {gpu} > logs/gpu{gpu}.controller.out 2>&1 &",
++                f"nohup {args.controller_python} run_dynamic_routing_batch.py --gpu {gpu} > logs/gpu{gpu}.controller.out 2>&1 &",
 +                f"echo $! > pids/gpu{gpu}.pid",
 +            ]
 +        )
@@ -2718,7 +2721,7 @@ index 9477deb..639163a 100644
  def build_parser() -> argparse.ArgumentParser:
      parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
      sub = parser.add_subparsers(dest="command", required=True)
-@@ -5461,6 +6212,34 @@ def build_parser() -> argparse.ArgumentParser:
+@@ -5461,6 +6215,35 @@ def build_parser() -> argparse.ArgumentParser:
      new_trial.add_argument("--base-version", default="")
      new_trial.set_defaults(func=cmd_new_trial)
 
@@ -2739,6 +2742,7 @@ index 9477deb..639163a 100644
 +    dyn_plan.add_argument("--warehouse-root", default="/data/lby/projects/cv_project/GTPJ_Warehouse")
 +    dyn_plan.add_argument("--conda-env", default="dvsr_gpu")
 +    dyn_plan.add_argument("--python", default="python")
++    dyn_plan.add_argument("--controller-python", default="python3")
 +    dyn_plan.set_defaults(func=cmd_plan_dynamic_routing_batch)
 +
 +    dyn_status = sub.add_parser("dynamic-routing-status", help="读取 dynamic routing batch 状态")
