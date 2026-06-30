@@ -5728,10 +5728,13 @@ def run_job(run_dir, plan, job, gpu):
 
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = str(gpu)
-        cmd = [
-            "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
-            plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
-        ]
+        if str(plan.get("conda_env", "")).lower() in {"", "direct", "none"}:
+            cmd = [plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config)]
+        else:
+            cmd = [
+                "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
+                plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
+            ]
         code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
         warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
         if code != 0:
@@ -5917,7 +5920,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     for gpu in gpus:
         gpu_lines.extend(
             [
-                f"nohup python run_dynamic_routing_batch.py --gpu {gpu} > logs/gpu{gpu}.controller.out 2>&1 &",
+                f"nohup {args.controller_python} run_dynamic_routing_batch.py --gpu {gpu} > logs/gpu{gpu}.controller.out 2>&1 &",
                 f"echo $! > pids/gpu{gpu}.pid",
             ]
         )
@@ -6229,6 +6232,7 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--warehouse-root", default="/data/lby/projects/cv_project/GTPJ_Warehouse")
     dyn_plan.add_argument("--conda-env", default="dvsr_gpu")
     dyn_plan.add_argument("--python", default="python")
+    dyn_plan.add_argument("--controller-python", default="python3")
     dyn_plan.set_defaults(func=cmd_plan_dynamic_routing_batch)
 
     dyn_status = sub.add_parser("dynamic-routing-status", help="读取 dynamic routing batch 状态")
