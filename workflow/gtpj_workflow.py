@@ -5624,10 +5624,11 @@ def ensure_worktree(plan, gpu):
     worktree_root = Path(plan["worktree_root"])
     commit = plan["commit"]
     branch = plan["branch"]
+    git_remote = plan.get("git_remote", "origin")
     sha7 = commit[:7]
     worktree = worktree_root / f"dynroute_{sha7}_gpu{gpu}"
     worktree_root.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "-C", str(server_repo), "fetch", "origin", branch], check=False)
+    subprocess.run(["git", "-C", str(server_repo), "fetch", str(git_remote), branch], check=False)
     if not worktree.exists():
         subprocess.run(["git", "-C", str(server_repo), "worktree", "add", str(worktree), commit], check=True)
     return worktree
@@ -5875,6 +5876,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "trial_id": trial_id,
         "branch": branch,
         "commit": commit,
+        "git_remote": args.git_remote,
         "gpus": gpus,
         "server_repo": args.server_repo,
         "worktree_root": args.worktree_root,
@@ -6221,6 +6223,7 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--gpus", default="0,1")
     dyn_plan.add_argument("--branch", default="")
     dyn_plan.add_argument("--commit", default="")
+    dyn_plan.add_argument("--git-remote", default="origin")
     dyn_plan.add_argument("--server-repo", default="/data/lby/projects/cv_project/GTPJ")
     dyn_plan.add_argument("--worktree-root", default="/data/lby/projects/cv_project/GTPJ_worktrees")
     dyn_plan.add_argument("--warehouse-root", default="/data/lby/projects/cv_project/GTPJ_Warehouse")
