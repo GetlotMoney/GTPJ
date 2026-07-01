@@ -61,6 +61,7 @@ code_branch:
 code_commit:
 activation_mode:
 agent_instance_mode:
+lifecycle:
 activation_reason:
 required_roles:
 required_real_agents:
@@ -93,9 +94,11 @@ agent:
 role:
 agent_instance_mode:
 agent_instance_type:
+lifecycle:
 persistent_thread_id:
 temporary_subagent_reason:
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -121,10 +124,11 @@ blocking_issues:
 - Interface Checker 在 label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清时必须阻断。
 - 多个 agents 不得同时写同一个 GitHub 账本文件。
 - `real_multi_agent` 必须保留各 agent 的独立输入、发现和结论；如果当前工具不可用，只能在 `tool_support.fallback_mode` 记录 `role_only_with_independent_sequential_review`，不能冒充真实多 agent。
-- 正式 `real_multi_agent` 默认记录 `agent_instance_mode: persistent_thread`，并保存各长期角色的 thread id 或可见 label。
-- `temporary_subagent` 只能作为一次性加速、只读复核或显式 fallback；它不能替代长期角色 thread 来完成正式结果解释、best 选择、promotion 或 owner 明确要求的长期多 agent 工作。
+- 正式 `real_multi_agent` 默认记录 `agent_instance_mode: temporary_subagent` 和 `lifecycle: workflow_scoped`；长周期 campaign 可写 `campaign_scoped`。
+- `persistent_thread` 是跨 workflow 的可选活上下文；如启用，必须保存 thread id 或可见 label，但 thread 本身不是正式证据源。
+- `temporary_subagent` 可以覆盖本轮 workflow 或 campaign 阶段；它必须把正式输出写入 `agent_summary.md`、result、quality、issues、memory、Research、Warehouse 或 campaign ledger。
 - memory 只能用于定位和背景提醒；没有被当前 repo、日志或 artifact 验证的 memory-derived fact 不能写入正式结果、质量门或 promotion 证据。
-- 长期 agent 记忆来自 `docs/workflow/agents/shared_roles/<role>/memory.md`；每次真实实验必须记录读取了哪些角色记忆、使用了哪些 persistent thread，以及是否需要写回更新。
+- 长期 agent 记忆来自 `docs/workflow/agents/shared_roles/<role>/memory.md`；每次真实实验必须记录读取了哪些角色记忆、是否启用 persistent thread，以及是否需要写回更新。
 
 ## 入账时机
 
@@ -132,7 +136,7 @@ blocking_issues:
 
 - `agent_summary.md` 存在；
 - 已启用 agents 和禁用 agents 与实验类型匹配；
-- `activation_mode`、`agent_instance_mode`、`agent_instance_type`、`persistent_thread_id`、`independence_scope` 和 memory 字段已填写；
+- `activation_mode`、`agent_instance_mode`、`agent_instance_type`、`lifecycle`、`persistent_thread_id`、`independence_scope`、`output_locations` 和 memory 字段已填写；
 - blocking issue 已处理或结果被标记为 blocked/rerun/reject；
 - 需要长期保存的完整报告已经进入 Warehouse，GitHub 只记录 artifact id/URI。
 

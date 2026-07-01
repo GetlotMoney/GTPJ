@@ -5,6 +5,16 @@
 当前阶段已经强制执行核心 workflow。任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、
 agent 凭证和 promotion gate 都是正式规则，不是未来参考。
 
+长期目标见：
+
+```text
+docs/workflow/autonomous_research_campaign.md
+```
+
+该文档定义最终形态：owner 只给论文来源、评估标准、安全边界和实验标准，workflow 从 0 到最终结果接管
+paper intake、idea discovery、tune、ablation、confirmation、innovation/module trial、promotion、
+服务器长周期运行、证据入账和最终代码/结果交付。
+
 owner 日常不需要直接阅读完整协议森林。默认先看：
 
 ```text
@@ -43,6 +53,7 @@ docs/workflow/TASK_START_MINI.md
 docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/TASK_START_CARD.md
 docs/workflow/FIRST_CLOSED_LOOP.md
+docs/workflow/autonomous_research_campaign.md
 docs/workflow/CURRENT_WORKFLOW_REPORT.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
@@ -116,31 +127,32 @@ Coordinator / agent 完整展开顺序：
 1. `WORKFLOW_ROUTER.md`
 2. `TASK_START_CARD.md`
 3. `FIRST_CLOSED_LOOP.md`
-4. `CURRENT_WORKFLOW_REPORT.md`
-5. `GTPJ_WORKFLOW_SPEC.md`
-6. `IMPLEMENTATION_STATUS.md`
-7. `workflow_diagrams.md`
-8. `../GITHUB_GOVERNANCE.md`
-9. `../PROJECT_STRUCTURE.md`
-10. `../PROJECT_STATUS.md`
-11. `git_policy.md`
-12. `versioning.md`
-13. `idea_tree_protocol.md`
-14. `paper_intake.md`
-15. `module_trial_protocol.md`
-16. `code_interface_contract.md`
-17. `innovation_code_review_protocol.md`
-18. `artifact_policy.md`
-19. `ARTIFACT_REGISTRATION.md`
-20. `result_index_protocol.md`
-21. `experiment_protocol.md`
-22. `quality_gate.md`
-23. `promotion.md`
-24. `agent_contracts.md`
-25. `agent_report_policy.md`
-26. `agent_orchestration.md`
-27. `agents/README.md`
-28. `agents/long_term_memory.md`
-29. `progress_dashboard.md`
-30. `runbook.md`
-31. `../../workflow/README.md`
+4. `autonomous_research_campaign.md`
+5. `CURRENT_WORKFLOW_REPORT.md`
+6. `GTPJ_WORKFLOW_SPEC.md`
+7. `IMPLEMENTATION_STATUS.md`
+8. `workflow_diagrams.md`
+9. `../GITHUB_GOVERNANCE.md`
+10. `../PROJECT_STRUCTURE.md`
+11. `../PROJECT_STATUS.md`
+12. `git_policy.md`
+13. `versioning.md`
+14. `idea_tree_protocol.md`
+15. `paper_intake.md`
+16. `module_trial_protocol.md`
+17. `code_interface_contract.md`
+18. `innovation_code_review_protocol.md`
+19. `artifact_policy.md`
+20. `ARTIFACT_REGISTRATION.md`
+21. `result_index_protocol.md`
+22. `experiment_protocol.md`
+23. `quality_gate.md`
+24. `promotion.md`
+25. `agent_contracts.md`
+26. `agent_report_policy.md`
+27. `agent_orchestration.md`
+28. `agents/README.md`
+29. `agents/long_term_memory.md`
+30. `progress_dashboard.md`
+31. `runbook.md`
+32. `../../workflow/README.md`

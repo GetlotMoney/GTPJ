@@ -30,7 +30,7 @@
 `real_multi_agent`。这类任务必须阻断正式 run、promotion 或 best 结论，除非 owner 明确接受
 本次只作为 debug/smoke 降级。
 
-正式创新审查默认使用长期角色的 `persistent_thread`。临时 sub-agent 只能作为一次性加速、只读复核或显式 fallback；如果替代了某个长期角色 thread，必须在 task-start card 和 `agent_summary.md` 写明原因、debug-only 状态和持久化输出位置。
+正式创新审查默认使用 workflow-scoped `temporary_subagent`。如果某个角色需要跨多个 workflow 连续追踪，才启用 `persistent_thread`，并在 task-start card 和 `agent_summary.md` 写明 thread id 或可见 label。无论使用哪种活上下文，正式结论必须写入 review 文件、`agent_summary.md`、result、quality 或 artifact evidence。
 
 ## 2. 最小审查轮次
 
@@ -125,14 +125,14 @@ agent_summary.md
 
 ## 3. 临时 agents 与长期 agents
 
-长期 agent 由 persistent thread 与文件化角色身份共同构成。persistent thread 保留该角色的连续上下文和右侧栏可见过程；`profile.md`、`memory.md`、review 文件和 `agent_summary.md` 保留可审计事实。
+长期 agent 由文件化角色身份和历史凭证构成：`profile.md`、`memory.md`、by-experiment 调用规则、review 文件、`agent_summary.md` 和 issues。`persistent_thread` 只是跨 workflow 的可选活上下文，不是正式证据源。
 
-临时 sub-agent 可以用于本协议，但它不是长期 agent 本体。Coordinator 启动临时 agent 时必须显式传入：
+临时 sub-agent 是本轮 innovation workflow 的默认独立活上下文。Coordinator 启动临时 agent 时必须显式传入：
 
 - 对应 `shared_roles/<role>/profile.md`；
 - 对应 `shared_roles/<role>/memory.md`；
 - `docs/workflow/agents/by_experiment/innovation/agents/README.md`；
-- 对应角色 persistent thread id / thread label，或说明为什么本轮缺失；
+- 如启用 persistent thread，则传入对应 thread id / thread label；否则写明本轮使用 workflow-scoped temporary context；
 - 本次 task-start card；
 - 本轮需要审查的具体文件列表；
 - 期望输出文件与结论格式。
@@ -150,7 +150,7 @@ workflow/gtpj_workflow.py helper 或 sync check
 临时 agent 的隐藏上下文不能作为实验证据。进入 `result.yaml`、`quality_check.md`、promotion evidence 或正式结论前，
 必须回到当前 repo、Research、Warehouse artifact 或日志重新验证。
 
-正式 best、promotion 或 owner 明确要求长期多 agent 时，不能只保留临时 agent 的对话结论；必须把结论收口到长期角色 thread 和文件化 evidence。
+正式 best、promotion 或 owner 明确要求多 agent 时，不能只保留临时 agent 的对话结论；必须把结论收口到文件化 evidence。若启用了 persistent thread，也可以同步一份可见总结，但不能替代文件证据。
 
 ## 4. Writer / Reviewer 边界
 

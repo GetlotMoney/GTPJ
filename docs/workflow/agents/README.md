@@ -15,8 +15,9 @@ long_term_memory.md # 长期 agent 记忆协议
 - 每个实验类型有自己的 `by_experiment/<type>/agents/README.md`。
 - 实验类型目录只写调用顺序、启用角色、禁用角色和关键检查，不复制角色定义。
 - 本地 `gtpj-workflow` skill 必须镜像本目录。
-- 正式 workflow 中的长期 agent = 可见、可复用的 persistent thread + `profile.md` + `memory.md` + 调用协议 + 历史凭证。
-- 临时 sub-agent / reviewer 实例不是长期 agent 本体，只能作为一次性加速、只读复核或显式 fallback；正式结果解释、best 选择和 promotion 默认回到长期角色 thread 与文件化证据。
+- 长期 agent = `profile.md` + `memory.md` + 调用协议 + 历史 `agent_summary.md` + issues。
+- 临时 sub-agent / reviewer 实例是本轮 workflow 或 campaign 的活上下文；正式结果解释、best 选择和 promotion 必须回到文件化证据。
+- `persistent_thread` 是跨 workflow 的可选活上下文，不是正式证据源。
 
 实验类型：
 

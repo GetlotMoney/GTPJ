@@ -2,7 +2,18 @@
 
 ## 默认真实多 Agent 策略
 
-启动卡默认应写 `agents.activation_mode: real_multi_agent`，并为正式实验写明 `agents.agent_instance_mode: persistent_thread`。原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
+启动卡默认应为真实实验写：
+
+```yaml
+agents:
+  activation_mode: real_multi_agent
+  agent_instance_mode: temporary_subagent
+  lifecycle: workflow_scoped
+```
+
+原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
+`temporary_subagent` 在这里不是“一次性几分钟工具”，而是本轮 workflow / campaign 的活上下文。
+`persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或长周期 campaign 的 Coordinator/Monitor 需要跨天连续上下文时启用。
 
 只有以下场景允许 `role_only`：
 
@@ -15,7 +26,7 @@
 
 如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断或显式降级为 debug/smoke；不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
 
-如果长期角色 persistent thread 不可用，启动卡必须列出缺失角色和 fallback 原因；`temporary_subagent` 只能作为一次性加速、只读复核或 debug/smoke 降级，不能静默替代长期 agent 的正式职责。
+如果启用 persistent thread，启动卡必须列出 thread id 或可见 label。如果不启用，启动卡必须写明本轮 workflow-scoped agents 如何把状态写回 `agent_summary.md`、result、quality、Research、Warehouse 或 campaign ledger。
 
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
 `WORKFLOW_ROUTER.md`，而是把 Router 的判断落成一张可检查的任务单，避免每次靠口述重新解释。
@@ -146,6 +157,7 @@ inputs:
 agents:
   activation_mode:
   agent_instance_mode:
+  lifecycle:
   activation_reason:
   decision_basis:
     fastest_valid_path:
@@ -218,6 +230,7 @@ stop_if: copy the mandatory blocker checklist from section 5; never leave this f
 
 ```text
 paper intake / idea discovery
+autonomous research campaign
 local heuristic idea
 tune
 ablation
@@ -267,11 +280,22 @@ real_multi_agent
 
 ```text
 role_only
-persistent_thread
 temporary_subagent
+persistent_thread
 ```
 
-正式 `real_multi_agent` 默认使用 `persistent_thread`。`temporary_subagent` 只能用于一次性加速、只读复核或显式 fallback，并必须填写 `temporary_subagents.reason`。
+正式 `real_multi_agent` 默认使用 workflow-scoped `temporary_subagent`。`persistent_thread` 是跨 workflow 活上下文，用于 owner 明确要求可见长期追踪、跨天 campaign coordinator/monitor，或某角色需要跨多个 workflow 复用连续上下文时。
+
+`agents.lifecycle` 必须选择或描述：
+
+```text
+role_only
+workflow_scoped
+campaign_scoped
+cross_workflow
+```
+
+`workflow_scoped` 表示 agent 在本轮 workflow 全程存在；`campaign_scoped` 表示它在一个长周期 campaign 阶段内存在；`cross_workflow` 才要求 persistent thread 或等价长期可见线程。
 
 `role_only_with_independent_sequential_review` 不是第三种 `activation_mode`。它只能写在：
 
@@ -320,9 +344,9 @@ debug/smoke 降级。
 - 如果按规则应使用真实多 agents 但工具不可用，填写 `[]`，并在 `tool_support.fallback_mode` 写
   `role_only_with_independent_sequential_review`，同时触发阻断或 debug-only 降级。
 
-`agents.persistent_threads` 必须记录长期角色线程状态：
+`agents.persistent_threads` 必须记录跨 workflow 线程状态：
 
-- `required: true`：正式 evidence、best、promotion 或 owner 明确要求长期多 agent 时填写；
+- `required: true`：owner 明确要求跨 workflow 可见线程，或 campaign 设计要求某角色跨多轮连续跟踪时填写；
 - `thread_ids`：按角色记录当前使用的 thread id 或可见 label；
 - `missing`：记录缺失的长期角色 thread；
 - `reused`：说明本轮是否复用已有长期线程。
@@ -348,7 +372,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 - session context 只能作为任务上下文，不能直接当证据；
 - Codex 全局 memory 或历史会话摘要只能用于定位，必须回到当前仓库、日志或 artifact 验证；
 - 长期 agent 记忆必须来自 `docs/workflow/agents/shared_roles/<role>/memory.md`，并记录实际读取文件；
-- 长期 agent 活上下文必须记录 `persistent_thread_ids`；线程内容只能辅助定位，不能替代 repo/log/artifact 证据；
+- workflow-scoped agent 活上下文必须记录输出位置；persistent thread 如启用，必须记录 `persistent_thread_ids`；线程内容只能辅助定位，不能替代 repo/log/artifact 证据；
 - repo state 和 artifact 是正式实验事实源；
 - 使用 memory 时，必须记录 `memory_sources` 和 `verified_against_current_repo`。
 
@@ -469,11 +493,11 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 
 - 工作区 dirty 且未说明哪些改动属于当前任务；
 - 启动卡没有填写 `agents.activation_mode`、`activation_reason`、`decision_basis`、`single_agent_allowed` 或 `required_real_agents`；
-- 启动卡没有填写 `agents.agent_instance_mode`、`required_roles`、`tool_support`、`persistent_threads` 或 `memory_policy`；
+- 启动卡没有填写 `agents.agent_instance_mode`、`agents.lifecycle`、`required_roles`、`tool_support`、`persistent_threads` 或 `memory_policy`；
 - 按规则应使用 `real_multi_agent`，但启动卡写成 `role_only`；
 - owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
-- 正式 evidence、best、promotion 或 owner 明确要求长期多 agent，但启动卡没有写 `agent_instance_mode: persistent_thread`，且没有记录缺失 thread 与 fallback/debug-only 原因；
-- 使用 `temporary_subagent` 替代长期角色 thread，却没有写 `temporary_subagents.reason`、`debug_only` 和持久化输出位置；
+- 正式 evidence、best、promotion 或 owner 明确要求多 agents，但启动卡没有写各角色独立输入、独立输出和持久化位置；
+- 使用 `temporary_subagent` 却没有写 lifecycle、独立输出位置和本轮结束后的 agent_summary / memory / issues 写回规则；
 - 工具不可用但任务硬门要求 `real_multi_agent`，且没有阻断或明确标成 debug/smoke 降级；
 - `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
 - 使用了 memory-derived fact，却没有说明 memory 来源和当前仓库 / artifact 验证方式；

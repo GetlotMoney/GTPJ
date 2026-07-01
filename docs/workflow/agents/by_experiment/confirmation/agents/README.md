@@ -2,11 +2,11 @@
 
 ## 默认模式更新
 
-正式 confirmation / rerun 默认使用 `real_multi_agent` + `agent_instance_mode: persistent_thread`。Runner 仍然串行，但 Log Analyst、Quality Checker、Result Analyst 必须使用独立上下文；promotion 前或争议结果还必须启用 Reviewer。
+正式 confirmation / rerun 默认使用 `real_multi_agent` + workflow-scoped `temporary_subagent`。Runner 仍然串行，但 Log Analyst、Quality Checker、Result Analyst 必须使用独立上下文；promotion 前或争议结果还必须启用 Reviewer。
 
 `role_only` 只允许用于准备冻结配置、查看复现状态，或明确不登记正式证据的 debug/smoke。
 
-`temporary_subagent` 只能作为一次性加速或只读复核；正式复现结论、best 复核和 promotion-facing 结论必须回到长期角色 thread 与文件化 evidence。
+`temporary_subagent` 可以覆盖本轮 confirmation workflow；正式复现结论、best 复核和 promotion-facing 结论必须回到 `agent_summary.md`、result、quality 和 artifact evidence。跨 workflow 连续追踪时才启用 `persistent_thread`。
 
 本文件用于 version-level confirmation。重新复现用于验证已有 baseline 或版本级结果是否可信。
 

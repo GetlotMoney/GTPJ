@@ -2,13 +2,21 @@
 
 ## 默认真实多 Agent 规范
 
-GTPJ 的真实实验 workflow 默认 `real_multi_agent`，并默认使用 `agent_instance_mode: persistent_thread`。一个 agent 一个上下文，不同长期角色不能默认共用同一上下文来完成正式证据链。
+GTPJ 的真实实验 workflow 默认 `real_multi_agent`，并默认使用 workflow-scoped `temporary_subagent`。一个 agent 一个上下文，不同角色不能默认共用同一上下文来完成正式证据链。
 
 默认 `real_multi_agent` 适用于：真实训练/复现运行、attempt/result/quality 证据登记、代码或配置语义变化、结果解释、best 选择、promotion、versioning、tag、论文实验路线或下一轮高成本实验决策。
 
-长期 agent = 可见、可复用的 persistent thread + `profile.md` + `memory.md` + by-experiment 调用规则 + agent evidence。thread 负责活上下文，文件负责可审计事实；临时 sub-agent 只能作为一次性加速、只读复核或显式 fallback。
+长期 agent = `profile.md` + `memory.md` + by-experiment 调用规则 + 历史 `agent_summary.md` + issues。workflow-scoped temporary agents 负责本轮活上下文；persistent thread 只在跨 workflow 连续追踪时启用。正式证据永远来自文件和 artifact。
 
 `role_only` 仅允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或明确不进入正式证据的 debug/smoke。工具不可用时不能冒充真实多 agent，必须阻断或降级。
+
+长期目标见：
+
+```text
+docs/workflow/autonomous_research_campaign.md
+```
+
+最终形态是 owner 只给论文来源、评估标准、安全边界和实验标准，workflow 从 0 到最终结果与代码交付接管所有实验类型和长周期服务器运行。
 
 本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
 
@@ -728,7 +736,7 @@ innovation 的硬规则：
 - 关闭开关必须回到 base behavior。
 - 接口语义不清楚时不能跑正式结果。
 - 只要 idea / 创新 / module trial 会落成代码改动，必须遵守 `innovation_code_review_protocol.md`。
-- 必须使用 `real_multi_agent`，默认复用长期角色 persistent thread，并完成 Review 0-3；临时 agents 可以开启，但必须加载长期角色文件、记录 fallback 原因并留下审查凭证。
+- 必须使用 `real_multi_agent`，默认使用 workflow-scoped temporary agents，并完成 Review 0-3；临时 agents 必须加载长期角色文件并留下审查凭证。跨 workflow 连续追踪时才启用 persistent thread。
 - trial 通过不等于自动成为新版本。
 - 同一个 `TRIAL-001` 可以有多个 `ATTEMPT-xxx`，用于记录同一实现假设下的参数尝试、小范围 follow-up ablation、rerun 或 debug-fix。
 - trial 内部必须允许 `param_tune`、narrow `ablation` 和 clean `confirmation`，否则无法判断这个模块到底好不好。
@@ -847,7 +855,7 @@ GTPJ 任务只有两种 agent 启用模式：
 | 模式 | 含义 | 适用范围 |
 |---|---|---|
 | `role_only` | 一个主 agent 按多个角色清单串行执行，并在 `agent_summary.md` 记录各角色检查结果。 | 只读解释、状态检查、配置查看、窄范围 rerun / confirmation 准备、账本格式整理。 |
-| `real_multi_agent` | 启动或委派独立 agent / reviewer / checker 执行对应角色，保留独立输入、发现和结论；正式 evidence 默认配套 `agent_instance_mode: persistent_thread`。 | 代码语义变更、接口风险、promotion、争议结果、owner 明确要求多 agents。 |
+| `real_multi_agent` | 启动或委派独立 agent / reviewer / checker 执行对应角色，保留独立输入、发现和结论；正式 evidence 默认配套 workflow-scoped `temporary_subagent`。 | 代码语义变更、接口风险、promotion、争议结果、owner 明确要求多 agents。 |
 
 如果当前 Codex 环境没有真实 sub-agent / multi-agent 工具，不能把 `role_only` 写成
 `real_multi_agent`。`role_only_with_independent_sequential_review` 不是第三种 `activation_mode`，
