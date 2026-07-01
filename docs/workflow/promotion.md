@@ -35,12 +35,13 @@ config/reference by `confirmed_H` first, using repeat stability (`H_mean`,
 `H_min`, spread) as the guardrail or tie-breaker. Do not turn pure tuning into a
 new `vX`.
 
-## Standing GitHub Permission
+## GitHub Push Boundary
 
-The owner grants standing permission for the Coordinator to push validated
-promotion ledger commits and version tags to GitHub after checks pass.
+Promotion may create local files, commits, and local tags after checks pass.
+It must not push branches or tags to GitHub unless the owner explicitly asks
+for that push after validation.
 
-This permission does not allow:
+Even with explicit push approval, it never allows:
 
 - force-push;
 - deleting remote refs;
@@ -97,7 +98,8 @@ All gates must pass:
 - `quality_check.md` has no blocking issue;
 - GitHub does not contain raw logs, checkpoints, generated figures, or caches;
 - target config can be frozen to `config/versions/vX.yaml`;
-- current working tree is clean before tagging/pushing.
+- current working tree is clean before tagging and before any owner-authorized
+  push.
 
 If any hard gate fails, do not create the formal version. Record:
 
@@ -120,7 +122,8 @@ After gates pass, Coordinator should:
 9. Run validation.
 10. Commit the promotion ledger.
 11. Create local tag `vX`.
-12. Push the promotion branch and tag to GitHub under the standing permission.
+12. Do not push the promotion branch or tag to GitHub unless the owner explicitly
+    asks after validation.
 13. Do not change active code aliases unless `activate-version vX` is explicitly
     requested.
 

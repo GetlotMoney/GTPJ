@@ -11,31 +11,53 @@ agent 凭证和 promotion gate 以 `docs/workflow/` 中的规范为准。
 当前 active mainline code：
 
 ```text
-GTPJ-v3
-code_tag: v3
-best_observed_H: 74.27
-confirmed_H: pending
-status: owner_accepted_stochastic_unconfirmed
+GTPJ-v5
+code_tag: v5
+best_observed_H: 74.54
+confirmed_H: 74.44
+confirmation_status: owner_activated_provisional
+status: owner_activated_provisional
 长期分支: main
 ```
 
-历史 baseline：
+当前 confirmed reference：
+
+```text
+v3 CONFIRM-001 local-v3-054
+code_tag: v3
+confirmed_H: 74.47
+H_mean: 74.45
+historical_tag: v4 (legacy config-only tag; not a formal framework version)
+```
+
+历史 baseline / version tags：
 
 ```text
 GTPJ-v1
 code_tag: v1
 baseline H: 73.93
+
+GTPJ-v2 / tag v2
+best_observed_H: 74.29
+confirmed_H: pending
+
+GTPJ-v3 / tag v3
+best_observed_H: 74.27
+confirmed_H: pending
+
+GTPJ-v4 / tag v4
+legacy config-only reference from v3 confirmation, not a future tune-only promotion template
 ```
 
-`main` 是唯一长期分支。`v1`、`v2`、`v3` 是 tag，不是分支。
+`main` 是唯一长期分支。`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支。
 
 早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
-后按永久 tag 管理，不再移动。`v3` 是 2026-06-28 owner accepted stochastic 的当前正式 tag；
-`H=74.27` 在 clean confirmation 通过前只作为 `best_observed_H`。
+后按永久 tag 管理，不再移动。`GTPJ-v5` 是 owner 选择的 active mainline，用于后续动态路由与调参；它仍是 provisional active，不代表已经超过 confirmed reference。
+只调参数不能创建新的 formal method version；历史 `v4` 仅作为 legacy config-only tag 记录。
 
 ## 当前阶段只管理什么
 
-- baseline 版本：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`。
+- baseline / active 版本记录：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`、legacy `GTPJ-v4`、active provisional `GTPJ-v5`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
 - 分支：只有 `main` 长期存在；临时代码实验使用 `dev/...`、`exp/...` 或 `promote/...`。
 - 模块 trial 命名：`dev/v1-idea-0001-trial-001-short-name` 必须写出来源 baseline。

@@ -13,7 +13,8 @@
 证据等级硬门：任何结果必须先标明 `evidence_level`，再决定用途。
 
 ```text
-quick_local          本地快速复线或 debug；不得 promotion。
+debug_smoke          环境/流程排障；formal_evidence=false，不得进入 keep/best/promotion/confirmation。
+quick_local          本地快速复线或趋势观察；不得 promotion。
 valid_single_run     单次完整证据；可记录 best_observed_H，但仍需确认。
 confirmation_grade   clean confirmation 证据；可确认目标结果。
 baseline_grade       可作为稳定 baseline 的证据。

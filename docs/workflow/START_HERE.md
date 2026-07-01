@@ -59,6 +59,8 @@ lifecycle: workflow_scoped
 能不能开工：
 任务类型：
 基于版本/分支：
+baseline_repro_status：
+comparison_reference：
 是否进入 idea_tree：
 GitHub 写入：
 Research/Warehouse 写入：
@@ -90,3 +92,11 @@ Warehouse logs/checkpoints/receipts
 ```
 
 如果某个结论会影响 keep/drop/best/repeat/promotion/versioning 或下一轮高成本实验，就必须能追溯到文件或 artifact。
+
+debug/smoke 结果必须显式锁定为：
+
+```yaml
+evidence_level: debug_smoke
+formal_evidence: false
+eligible_for_keep_best_promotion_confirmation: false
+```

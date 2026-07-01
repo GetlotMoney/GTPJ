@@ -37,9 +37,9 @@
 ## 仓库规则
 
 - `main` 是唯一长期分支。
-- `v1`、`v2`、`v3`、`v4` 是永久 baseline tags；当前正式确定版本以 `README.md`、`docs/PROJECT_STATUS.md` 和 `experiments/VERSION_TREE.md` 为准。
+- `v1`、`v2`、`v3`、`v4`、`v5` 是永久版本 tags；当前正式确定版本以 `README.md`、`docs/PROJECT_STATUS.md` 和 `experiments/VERSION_TREE.md` 为准。`v4` 是历史 config-only tag，不作为以后“只调参也能开新 vX”的模板。
 - min3 复现实验中，同一候选至少 3 次 clean completed/ok 且有 H 指标时，即可按 `docs/workflow/promotion.md` 自动 promotion；多个 min3-confirmed 候选同时存在时，按 `confirmed_H` 最高者确定为正式版本，`best_observed_H` 只作平局辅助。promotion 表示确定正式版本/tag，不等于自动执行 `activate-version` 或切换 active runtime alias。
-- 训练产生的 checkpoint 不进 GitHub。一次 campaign 收口后，只保留 H 排名前 5 的 `model_best`/best-model checkpoint；其余训练 checkpoint 可在写入 retention manifest 后删除。日志、receipt、summary、manifest、registry 和配置证据不能随 checkpoint 清理一起删除。
+- 训练产生的 checkpoint 不进 GitHub。一次 campaign 收口后，只保留 H 排名前 3 的 `model_best`/best-model checkpoint；其余训练 checkpoint 可在写入 retention manifest 后删除。日志、receipt、summary、manifest、registry 和配置证据不能随 checkpoint 清理一起删除。
 - Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
 - 当前阶段已经强制执行 GTPJ 核心 workflow：任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、agent 凭证和 promotion gate 都必须遵守。
 - OpenClaw / Codex 只是不同 runtime 入口；它们必须共享同一套 GitHub 事实源和 workflow 规范。
@@ -68,9 +68,9 @@
 
 - GTPJ 真实实验 workflow 默认使用 `real_multi_agent`。核心原因是一个长期角色对应一个独立上下文；把规划、执行、日志解析、质量检查、结果解释和复核放进同一个上下文，会污染证据链和决策。
 - 每次 GTPJ workflow 启动卡必须写明 `agents.activation_mode`，只能是 `role_only` 或 `real_multi_agent`。
-- 正式 `real_multi_agent` 默认使用 `agents.agent_instance_mode: persistent_thread`。长期 agent 不是单纯的临时 sub-agent，也不是只存在于文件里的身份包；它由可见、可复用的 persistent thread 加上 `profile.md`、`memory.md`、by-experiment 调用规则和 `agent_summary/review_round` 证据共同构成。
-- persistent thread 负责积累当前角色的活上下文和右侧栏可追踪过程；`profile.md`、`memory.md`、issues、agent summary 和 review 文件负责长期可审计事实。线程上下文可能压缩或漂移，所以任何结论进入正式 evidence 前仍必须回到 repo、log、artifact 或 Research 验证。
-- `temporary_subagent` 只允许作为一次性加速、只读复核或工具不可用时的显式 fallback；它不能替代长期角色的 persistent thread 来完成正式结果解释、best 选择、promotion 或 owner 已明确要求的长期多 agent 工作，除非本轮明确标成 debug/smoke 降级。
+- 正式 `real_multi_agent` 默认使用 `agents.agent_instance_mode: temporary_subagent` 和 `lifecycle: workflow_scoped`。长期 agent 不是“永久在线聊天窗口”，而是 `profile.md`、`memory.md`、by-experiment 调用规则、历史 `agent_summary/review_round`、issues 和当前 workflow 的独立活上下文共同构成。
+- `temporary_subagent` 是本轮 workflow 或 campaign 阶段的活上下文；它可以持续到本轮工作结束，但结论必须沉淀到 repo、log、artifact、Research、Warehouse、result、quality 或 `agent_summary.md`。
+- `persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或长周期 campaign 的 Coordinator/Monitor 需要跨天连续上下文时启用。线程上下文可能压缩或漂移，所以任何结论进入正式 evidence 前仍必须回到 repo、log、artifact 或 Research 验证。
 - `role_only` 表示一个主 agent 按 Coordinator、Runner、Quality Checker 等角色清单串行执行；必须在 `agent_summary.md` 里说明为什么没有启动真实多 agents。
 - `real_multi_agent` 表示启动或委派独立 agent / reviewer / checker，保留独立输入、发现和结论；如果当前环境没有真实 multi-agent 工具，不能把顺序角色扮演写成 `real_multi_agent`。
 - `role_only_with_independent_sequential_review` 不是第三种 activation mode，只能写在 `agents.tool_support.fallback_mode`；它不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受 debug/smoke 降级。
@@ -78,7 +78,7 @@
 - 窄范围 rerun / confirmation 准备、训练前候选 triage、只读解释、配置查看、debug/smoke 或不改变结论的账本格式整理时，可以使用 `role_only`，但必须记录代执行的角色和升级条件；debug/smoke 结果不能进入 keep、best、promotion 或 confirmation evidence。
 - Runner 永远串行并锁 GPU；Implementer 是同一代码路径唯一 writer；Coordinator 是最终 GitHub 账本唯一写入者；Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行。
 - Agent 不能把隐藏聊天记忆当实验事实源。Codex memory 或历史会话摘要只能用于定位，必须回到当前 repo、日志或 artifact 验证后才能写入结果、质量门或 promotion 证据。
-- `agent_summary.md` 必须记录 `activation_mode`、`agent_instance_type`、`independence_scope`、`memory_used`、`memory_sources` 和 `verified_against_current_repo`。
+- `agent_summary.md` 必须记录 `activation_mode`、`agent_instance_mode`、`agent_instance_type`、`lifecycle`、`persistent_thread_id`（如启用）、`temporary_subagent_reason`、`independence_scope`、`output_locations`、`memory_used`、`memory_sources` 和 `verified_against_current_repo`。
 - 如果 owner 对 agent 模式提出异议，先暂停真实 run，修正启动卡或升级为 `real_multi_agent` 后再继续。
 
 ## 安全

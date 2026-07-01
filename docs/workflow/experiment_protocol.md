@@ -103,7 +103,7 @@ best_epoch:
 decision: keep | reject | rejected | rerun | needs_confirmation | blocked
 promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
-evidence_level: quick_local | valid_single_run | confirmation_grade | baseline_grade
+evidence_level: debug_smoke | quick_local | valid_single_run | confirmation_grade | baseline_grade
 result_status: debug | valid_observation | needs_confirmation | confirmed | blocked | rejected
 best_observed_H:
 confirmed_H:
@@ -118,7 +118,8 @@ confirmation_status: not_applicable | pending | confirmed | failed
 baseline、论文结论或下一步调参。
 
 ```text
-quick_local          只用于本地排查、快速复线、debug 趋势；不能用于 promotion 或正式 baseline。
+debug_smoke          只用于环境/流程排障；formal_evidence=false，不能进入 keep/best/promotion/confirmation。
+quick_local          只用于本地快速复线或趋势观察；不能用于 promotion 或正式 baseline。
 valid_single_run     config、log、checkpoint、manifest、result、quality 完整；可记录 best_observed_H。
 confirmation_grade   从 clean pre-run freeze commit 启动，复现目标在容忍范围内；可确认某个结果。
 baseline_grade       confirmation_grade 通过，或按质量门要求完成多 run 稳定性证据；可写成稳定 baseline。

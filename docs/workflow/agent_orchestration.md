@@ -115,6 +115,92 @@ shared_roles/<role>/memory.md
 Research / Warehouse / campaign ledger
 ```
 
+## Agent Runtime Protocol
+
+GTPJ workflow-v2 不按 agent 数量启动工作，而是按 `subject_id` 的
+`evidence_state transition` 启动必要角色。
+
+固定权限：
+
+```text
+Coordinator:
+  apply transition，最终写 GitHub 账本。
+
+Planner:
+  propose candidate / workstream / hypothesis transition。
+
+Implementer:
+  只改一个 trial/code path。
+
+Runner Monitor:
+  管服务器、GPU、队列、失败隔离。
+
+Experiment Runner:
+  执行单个 frozen run。
+
+Log Analyst:
+  propose single_run_valid / failed / metric_invalid。
+
+Result Analyst:
+  propose tune_promising / repeat_ready / reject / stop。
+
+Interface Checker:
+  check shape、input/output、GZSL hard rules、baseline-off。
+
+Quality Checker:
+  check evidence chain，默认 task_scoped。
+
+Reviewer:
+  check innovation、promotion、争议结果。
+```
+
+固定生命周期：
+
+```text
+campaign_scoped:
+  Coordinator
+  Runner Monitor
+  Campaign Result Comparator
+
+workstream_scoped:
+  Innovation Planner
+  Tune Planner
+  Ablation Planner
+  Confirmation Planner
+
+task_scoped:
+  Implementer
+  Interface Checker
+  Quality Checker
+  Reviewer
+  Result Analyst for one decision
+
+run_scoped:
+  Experiment Runner
+  Log Analyst
+  Warehouse Registrar
+```
+
+agent 输出必须包含：
+
+```text
+subject_id
+transition_id
+role_key
+lifecycle
+checked_inputs
+rule_checks
+authority_refs
+decision: propose | allow | block | warn
+blocking_issues
+non_blocking_warnings
+not_checked
+reason_summary
+```
+
+Quality Checker 默认 `task_scoped`，只有 campaign final audit 才可
+`campaign_scoped`，避免长上下文污染质量判断。
+
 ## Agent 启用字段
 
 每次任务启动卡必须显式写入：

@@ -14,12 +14,13 @@ Coordinator
 Quality Checker
 Interface Checker
 Result Analyst
+Reviewer
 ```
 
 ## 编排
 
 ```text
-Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinator
+Coordinator -> Quality Checker + Interface Checker + Result Analyst + Reviewer -> Coordinator
 ```
 
 ## 关键规则

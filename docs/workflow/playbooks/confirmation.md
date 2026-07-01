@@ -7,6 +7,7 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
+GZSL_HARD_RULES.md
 experiment_protocol.md
 quality_gate.md
 产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
@@ -33,9 +34,11 @@ quality_gate.md
 ```text
 official single = best repeat
 reported stability = mean / min / max
+promotion_compare_metric = repeat mean / confirmed_H
 ```
 
 不能隐藏较弱 repeat。稳定性属于正式证据的一部分。
+不得只凭 best repeat 做 promotion 或 baseline claim。
 
 ## 输出
 

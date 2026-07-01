@@ -26,6 +26,18 @@ promotion/version/tag 判断
 
 正式证据工作必须使用 `real_multi_agent`，除非 owner 明确降级为 debug/smoke。
 
+正式证据对象必须绑定 `subject_id` 和 `subject_type`。`evidence_state` 只能由
+tamper-evident append-only `TRANSITIONS.jsonl` 派生，`evidence_routing.yaml`
+只是当前状态缓存，不能手写覆盖。
+
+debug/smoke 只能用于排障或环境探针，必须记录：
+
+```yaml
+evidence_level: debug_smoke
+formal_evidence: false
+eligible_for_keep_best_promotion_confirmation: false
+```
+
 ## 3. Agent 规则
 
 正式任务默认：
@@ -43,10 +55,13 @@ lifecycle: workflow_scoped
 - `persistent_thread` 只是跨 workflow 可见追踪的可选上下文，不是 evidence。
 - 不要给每个实验 run 创建一个永久 agent/thread。
 - 角色名要清晰，例如 `运行监控 (Runner Monitor)`、`日志分析 (Log Analyst)`、`证据质量检查 (Evidence Quality Checker)`、`结果比较 (Result Comparator)`。
+- `Experiment Runner` 表示实际启动训练命令的运行角色；`Runner Monitor` 表示监控服务器、队列、GPU slot 和失败隔离的运行监控角色。小任务中二者可以由同一 Runner family 承担，但在启动卡和 `agent_summary.md` 里必须写清楚显示名和职责。
 
 写入边界：
 
 - 总控 (Coordinator) 是最终 GitHub 账本 writer。
+- 总控 (Coordinator) 是唯一可以 apply evidence transition 的角色。
+- 日志/结果角色可以 propose transition；接口/质量/复核角色可以 check transition。
 - 运行者 (Runner) 管理服务器/GPU 运行状态。
 - 同一个代码路径只能有一个实现者 (Implementer)。
 - 阅读/规划 (Reader/Planner)、日志分析 (Log Analyst)、质量检查 (Quality Checker)、结果分析 (Result Analyst)、接口检查 (Interface Checker) 和复核者 (Reviewer) 默认只读，除非明确授权。
@@ -56,6 +71,7 @@ lifecycle: workflow_scoped
 - 只调参数不能开新的 `vX`。
 - 新 `vX` 需要 confirmed promoted framework 或 method state，不能只是 tuned config。
 - confirmation 默认跑 3 次。复现通过后，正式单值取 3 次中的最高 H，同时保留 mean/min/max 作为稳定性证据。
+- promotion 和 baseline claim 默认比较 `confirmed_H` / repeat mean，不能只凭 best repeat。
 - 不能把未确认的 `best_observed_H` 说成 confirmed baseline。
 
 ## 5. 运行安全
@@ -73,6 +89,7 @@ checkpoint retention 规则
 ```
 
 如果 label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚，必须硬阻断。
+所有正式实验必须满足 `docs/workflow/GZSL_HARD_RULES.md`。
 
 ## 6. Checkpoint 保留规范
 
@@ -80,7 +97,7 @@ checkpoint retention 规则
 
 ```text
 每轮实验结束后删除非保留 checkpoint。
-除非 playbook 明确另有规定，否则只保留最好的 3 个模型 checkpoint。
+除非 playbook 明确另有规定，否则只保留最好的 3 个模型 checkpoint（Top-3）。
 永远不要删除 logs、manifest、result、quality_check 或 Warehouse receipt。
 ```
 
@@ -111,3 +128,16 @@ promotion 可以按协议创建本地文件、commit 和 tag，但不能 push，
 - 会跨越安全边界。
 
 停止时只汇报最小 unblock 动作。
+
+## 9. 反膨胀规则
+
+新增 workflow 文件、模板或协议前，必须至少满足一项：
+
+```text
+可机器检查
+能驱动 evidence_state transition
+是权威事实源
+是正式 evidence 必需模板
+```
+
+如果都不满足，不进入日常 workflow。

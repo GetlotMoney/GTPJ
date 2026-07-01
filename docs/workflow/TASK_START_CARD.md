@@ -31,8 +31,8 @@ agents:
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
 `WORKFLOW_ROUTER.md`，而是把 Router 的判断落成一张可检查的任务单，避免每次靠口述重新解释。
 
-Owner 不需要说“开启动卡”，也不需要自己填表。Owner 日常只需要使用
-`QUICK_START.md` 里的短口令；Coordinator 先输出 `TASK_START_MINI.md` 的 8 字段 mini
+Owner 不需要说“开启动卡”，也不需要自己填表。Coordinator 默认先读 `START_HERE.md`，
+`QUICK_START.md` 只是短口令备忘；Coordinator 先输出 `TASK_START_MINI.md` 的 8 字段 mini
 启动卡，再在后台展开完整启动卡字段。
 
 启动卡可以先写在当前对话里。纯规划阶段不要为了启动卡提前创建空 run 目录。只有当 owner 明确同意开工，
@@ -154,6 +154,15 @@ inputs:
   dataset:
   seed:
 
+evidence_routing:
+  subject_id:
+  subject_type:
+  hypothesis_id:
+  current_state:
+  transitions_file: TRANSITIONS.jsonl
+  authority_refs:
+  next_allowed_transitions:
+
 agents:
   activation_mode:
   agent_instance_mode:
@@ -194,6 +203,10 @@ agents:
   reviewer_roles:
   runner_required:
   gpu_lock_required:
+  transition_permissions:
+    proposers:
+    checkers:
+    applier: Coordinator
   memory_policy:
     session_context_allowed:
     codex_memory_allowed:
@@ -206,6 +219,7 @@ agents:
     verified_against_current_repo:
 
 hard_gates:
+  gzsl_hard_rules:
   interface_contract:
   innovation_code_review:
   source_status:
@@ -219,6 +233,7 @@ expected_outputs:
   github:
   research:
   warehouse:
+  transitions:
   sync_check:
 
 stop_if: copy the mandatory blocker checklist from section 5; never leave this field empty.
@@ -433,7 +448,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - seed；
 - 数据 split、class order、label mapping；
 - 预期对齐的旧结果；
-- 证据等级目标：`quick_local`、`valid_single_run`、`confirmation_grade` 或 `baseline_grade`；
+- 证据等级目标：`debug_smoke`、`quick_local`、`valid_single_run`、`confirmation_grade` 或 `baseline_grade`；
 - `best_observed_H` 和 `confirmed_H` 的当前状态；
 - confirmation target、tolerance 和失败时的降级规则；
 - 将被锁定的 `run_commit`；
@@ -494,6 +509,8 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 
 - 工作区 dirty 且未说明哪些改动属于当前任务；
 - 启动卡没有填写 `agents.activation_mode`、`activation_reason`、`decision_basis`、`single_agent_allowed` 或 `required_real_agents`；
+- 启动卡涉及正式 evidence，却没有填写 `evidence_routing.subject_id`、`subject_type`、`current_state` 或 `authority_refs`；
+- 启动卡需要推进状态，却没有写 `agents.transition_permissions`；
 - 启动卡没有填写 `agents.agent_instance_mode`、`agents.lifecycle`、`required_roles`、`tool_support`、`persistent_threads` 或 `memory_policy`；
 - 按规则应使用 `real_multi_agent`，但启动卡写成 `role_only`；
 - owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
@@ -537,6 +554,9 @@ agents.decision_basis.fastest_valid_path：
 agents.required_roles：
 agents.required_real_agents：
 agents.tool_support：
+evidence_routing.subject_id：
+evidence_routing.current_state：
+transition_permissions：
 硬门：
 当前阻塞：
 pre-run freeze commit：

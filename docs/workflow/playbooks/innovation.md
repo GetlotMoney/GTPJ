@@ -7,6 +7,8 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
+GZSL_HARD_RULES.md
+innovation_decomposition_protocol.md
 idea_tree_protocol.md
 module_trial_protocol.md
 code_interface_contract.md
@@ -34,6 +36,25 @@ agent_report_policy.md
 ```
 
 同一个代码路径只能有一个实现者 (Implementer)。
+
+## 创新拆解
+
+创新必须按下面层级管理：
+
+```text
+Paper
+-> Claim / Mechanism
+-> Hypothesis
+-> Interpretation
+-> Attachment Point
+-> Trial
+-> Attempt
+```
+
+`Hypothesis` 是科学假设；`Trial` 是该假设在某个接入点和实现契约下的一次工程绑定；
+`Attempt` 才是同一 Trial 内的参数、seed、epoch、权重或 top-k 尝试。
+
+同一个 Hypothesis 加到不同位置，通常新开 Trial；只调参数才留在 Attempt。
 
 ## 复核循环
 

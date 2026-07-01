@@ -7,6 +7,7 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
+GZSL_HARD_RULES.md
 experiment_protocol.md
 code_interface_contract.md
 产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
@@ -39,3 +40,6 @@ module_trial_protocol.md
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚。
 - 消融暗中改变了目标组件之外的东西。
 - 要和 unconfirmed baseline 比较，却没有标出这个边界。
+
+ablation 只有在组件贡献证据成立时才能进入 `ablation_supported`；如果消融不支持贡献，必须记录
+`stopped_ablation_not_supported` 或 `rejected` transition。

@@ -7,6 +7,7 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
+GZSL_HARD_RULES.md
 experiment_protocol.md
 产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
 ```
@@ -23,6 +24,7 @@ module_trial_protocol.md
 
 ```text
 总控 (Coordinator)
+调参规划 (Tune Planner)
 运行监控 (Runner Monitor)
 日志分析 (Log Analyst)
 证据质量检查 (Evidence Quality Checker)
@@ -51,3 +53,13 @@ raw logs 和 checkpoints 留在 Warehouse。
 只调参数带来的提升不能开新的 `vX`。
 
 重要 tuned config 必须 3 次 confirmation 后，才能作为正式数据表述。
+
+tune transition 默认只能进入：
+
+```text
+single_run_valid
+tune_promising
+rerun_required
+rejected
+stopped_no_gain
+```

@@ -76,6 +76,22 @@ experiments/vX/confirmation/
 experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
 ```
 
+Campaign 目录只保存 routing index，不保存 authoritative result facts。`RESULT_INDEX.md`
+只能引用正式 `result.yaml`、`quality_check.md`、manifest 和 Warehouse artifact。
+正式 H/U/S/ZS 不得以 campaign 文件作为权威来源。
+
+每个 campaign task 必须绑定：
+
+```text
+subject_id
+subject_type
+evidence_state
+next_allowed_transitions
+result_ref
+quality_ref
+authority: derived_index_only
+```
+
 ## 3. Agent 生命周期
 
 组合实验不按实验数量开永久 agent。默认只保留少量 campaign/workstream 级活上下文。
@@ -141,6 +157,19 @@ Coordinator 必须按下面顺序处理任意组合命令：
 11. Coordinator records decisions and schedules repeat/ablation/promotion only if gates pass.
 ```
 
+组合实验按证据成熟度路由，而不是按 run 数静态排队：
+
+```text
+hypothesis_ready
+-> interface_precheck_passed
+-> smoke_passed
+-> single_run_valid
+-> tune_promising
+-> ablation_supported
+-> min3_confirmed
+-> promotion_candidate
+```
+
 调度原则：
 
 - 不允许 100 个 tune 在没有 baseline repro/status 的情况下直接开跑。
@@ -176,8 +205,8 @@ agent_lifecycle:
     innovation:
       - Source Reader
       - Idea Planner
-    tune:
-      - Tune Planner
+  tune:
+    - Tune Planner
   task_scoped:
     innovation:
       - Code Implementer
@@ -187,6 +216,14 @@ agent_lifecycle:
     - Experiment Runner
     - Log Metric Parser
     - Warehouse Registrar
+```
+
+Agent 权限：
+
+```text
+Log/Result roles propose transition.
+Interface/Quality/Reviewer roles check transition.
+Coordinator applies transition.
 ```
 
 默认执行阶段：

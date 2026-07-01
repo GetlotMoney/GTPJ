@@ -6,6 +6,10 @@ decision: pending
 promotion_decision: not_applicable
 evidence_level: pending
 confirmation_status: not_applicable
+subject_id:
+subject_type:
+evidence_state:
+transition_id:
 ```
 
 ## 范围
@@ -21,7 +25,11 @@ confirmation_status: not_applicable
 - [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
 - [ ] class order、seen/unseen split、label mapping、logits shape、metric calculation 未改变或已按高风险记录。
+- [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。
+- [ ] `current_state` 能由 `TRANSITIONS.jsonl` 的 chain head 派生。
+- [ ] `authority_refs` 指向现有 GitHub 轻量证据或合法 Warehouse/Research URI。
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
+- [ ] checkpoint retention 已记录：默认最多保留 Top-3 checkpoint；logs、receipts、configs、summaries、manifests、registries 和 artifact id 不随 checkpoint 删除。
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 

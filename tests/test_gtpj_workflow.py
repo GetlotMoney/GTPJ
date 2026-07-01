@@ -192,6 +192,91 @@ class WorkflowHelperTest(unittest.TestCase):
         self._write_idea_tree([idea])
         return idea
 
+    def _transition_record(
+        self,
+        *,
+        transition_id: str = "TRN-20260701-0001",
+        previous_transition_id: str | None = None,
+        previous_transition_hash: str | None = None,
+        from_state: str = "smoke_passed",
+        to_state: str = "single_run_valid",
+        transition_type: str = "advance",
+        verdict: str = "pass",
+        authority_ref: str = "experiments/v1/tune/TUNE-001_ok/manifest.yaml",
+        include_not_checked: bool = True,
+    ) -> dict:
+        record = {
+            "schema_version": "gtpj.transition.v0",
+            "transition_id": transition_id,
+            "previous_transition_id": previous_transition_id,
+            "previous_transition_hash": previous_transition_hash,
+            "subject": {
+                "subject_id": "ATTEMPT-001",
+                "subject_type": "attempt",
+                "hypothesis_id": "HYP-0001",
+            },
+            "transition": {
+                "transition_type": transition_type,
+                "from_state": from_state,
+                "to_state": to_state,
+                "reason_summary": "test transition",
+            },
+            "rule_checks": [
+                {
+                    "rule_id": "GZSL.LOGITS_SHAPE",
+                    "verdict": verdict,
+                    "checked_by": "interface_checker",
+                    "authority_ref": authority_ref,
+                }
+            ],
+            "authority_refs": {
+                "manifest": authority_ref,
+            },
+            "agent_attribution": {
+                "proposed_by": {"role_key": "log_analyst", "agent_instance_id": "LOG-001"},
+                "checked_by": [{"role_key": "quality_checker", "agent_instance_id": "QC-001"}],
+                "applied_by": {"role_key": "coordinator", "agent_instance_id": "COORD-001"},
+            },
+            "decision": {
+                "blocking_issues": [],
+                "non_blocking_warnings": [],
+                "not_checked": [],
+            },
+            "created_at": "2026-07-01T00:00:00Z",
+            "current_transition_hash": "",
+        }
+        if not include_not_checked:
+            record["decision"].pop("not_checked")
+        record["current_transition_hash"] = self.module.evidence_transition_hash(record)
+        return record
+
+    def _write_evidence_routing_subject(self, transitions: list[dict]) -> Path:
+        subject_dir = self.repo / "experiments/v1/tune/TUNE-001_ok"
+        self._write(
+            "experiments/v1/tune/TUNE-001_ok/manifest.yaml",
+            "schema_version: gtpj-manifest/v1\n",
+        )
+        transitions_text = "\n".join(json.dumps(item, ensure_ascii=False, sort_keys=True) for item in transitions) + "\n"
+        self._write("experiments/v1/tune/TUNE-001_ok/TRANSITIONS.jsonl", transitions_text)
+        head = transitions[-1]
+        self._write(
+            "experiments/v1/tune/TUNE-001_ok/evidence_routing.yaml",
+            "schema_version: gtpj.evidence_routing.v0\n"
+            "subject:\n"
+            "  subject_id: ATTEMPT-001\n"
+            "  subject_type: attempt\n"
+            "  hypothesis_id: HYP-0001\n"
+            "current_state:\n"
+            f"  evidence_state: {head['transition']['to_state']}\n"
+            f"  derived_from_transition_id: {head['transition_id']}\n"
+            f"  derived_from_transition_hash: {head['current_transition_hash']}\n"
+            "transitions:\n"
+            "  file: TRANSITIONS.jsonl\n"
+            f"  chain_head_transition_id: {head['transition_id']}\n"
+            f"  chain_head_hash: {head['current_transition_hash']}\n",
+        )
+        return subject_dir
+
     def test_required_files_include_owner_facing_start_docs(self) -> None:
         required = self.module.required_repository_files()
 
@@ -1321,13 +1406,16 @@ No training result has been recorded.
         self.assertIn("model.pth", stderr)
 
     def test_audit_boundary_accepts_manifest_result_without_raw_artifacts(self) -> None:
+        sha = "0" * 64
         self._write(
             "experiments/v1/tune/TUNE-999_ok/manifest.yaml",
-            "schema_version: gtpj-manifest/v1\n"
-            "artifacts:\n"
-            "  train_log:\n"
-            "    artifact_id: log:TUNE-999_ok:attempt-001\n"
-            "    uri: warehouse://gtpj/runs/v1/tune/TUNE-999_ok/attempt-001/logs/train.log\n",
+            f"schema_version: gtpj-manifest/v1\n"
+            f"artifacts:\n"
+            f"  train_log:\n"
+            f"    artifact_id: log:TUNE-999_ok:attempt-001\n"
+            f"    uri: warehouse://gtpj/runs/v1/tune/TUNE-999_ok/attempt-001/logs/train.log\n"
+            f"    sha256: {sha}\n"
+            f"    size_bytes: 12\n",
         )
         self._write(
             "experiments/v1/tune/TUNE-999_ok/result.yaml",
@@ -1341,6 +1429,119 @@ No training result has been recorded.
         self.assertEqual("", stderr)
         self.assertEqual(0, code)
         self.assertIn("audit-boundary-ok", stdout)
+
+    def test_audit_boundary_rejects_result_artifact_missing_manifest_identity(self) -> None:
+        self._write(
+            "experiments/v1/tune/TUNE-999_bad/manifest.yaml",
+            "schema_version: gtpj-manifest/v1\n"
+            "artifacts:\n"
+            "  train_log:\n"
+            "    artifact_id: log:TUNE-999_bad:attempt-001\n"
+            "    uri: warehouse://gtpj/runs/v1/tune/TUNE-999_bad/attempt-001/logs/train.log\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-999_bad/result.yaml",
+            "schema_version: gtpj-result/v1\n"
+            "evidence:\n"
+            "  log_artifact_id: log:TUNE-999_bad:attempt-001\n",
+        )
+
+        code, _stdout, stderr = self._run_main("audit-boundary")
+
+        self.assertEqual(1, code)
+        self.assertIn("Broken result/manifest/artifact identity chain", stderr)
+        self.assertIn("missing identity fields: sha256, size_bytes", stderr)
+
+    def test_validate_evidence_routing_accepts_valid_transition_chain(self) -> None:
+        transition = self._transition_record()
+        self._write_evidence_routing_subject([transition])
+
+        code, stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-evidence-routing-ok subjects=1", stdout)
+
+    def test_validate_evidence_routing_rejects_current_state_mismatch(self) -> None:
+        transition = self._transition_record()
+        self._write_evidence_routing_subject([transition])
+        routing_path = self.repo / "experiments/v1/tune/TUNE-001_ok/evidence_routing.yaml"
+        routing_text = routing_path.read_text(encoding="utf-8").replace(
+            "evidence_state: single_run_valid",
+            "evidence_state: min3_confirmed",
+        )
+        routing_path.write_text(routing_text, encoding="utf-8")
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("current_state evidence_state does not match chain head", stderr)
+
+    def test_validate_evidence_routing_rejects_transition_hash_mutation(self) -> None:
+        transition = self._transition_record()
+        self._write_evidence_routing_subject([transition])
+        transition_path = self.repo / "experiments/v1/tune/TUNE-001_ok/TRANSITIONS.jsonl"
+        transition_text = transition_path.read_text(encoding="utf-8").replace("test transition", "mutated")
+        transition_path.write_text(transition_text, encoding="utf-8")
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("current_transition_hash mismatch", stderr)
+
+    def test_validate_evidence_routing_rejects_duplicate_transition_id(self) -> None:
+        first = self._transition_record(transition_id="TRN-20260701-0001")
+        second = self._transition_record(
+            transition_id="TRN-20260701-0001",
+            previous_transition_id=first["transition_id"],
+            previous_transition_hash=first["current_transition_hash"],
+            from_state="single_run_valid",
+            to_state="tune_promising",
+        )
+        self._write_evidence_routing_subject([first, second])
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("duplicate transition_id", stderr)
+
+    def test_validate_evidence_routing_rejects_missing_authority_ref(self) -> None:
+        transition = self._transition_record(authority_ref="experiments/v1/tune/TUNE-001_ok/missing.yaml")
+        self._write_evidence_routing_subject([transition])
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("missing authority ref", stderr)
+
+    def test_validate_evidence_routing_rejects_hard_rule_fail_advance(self) -> None:
+        transition = self._transition_record(verdict="fail")
+        self._write_evidence_routing_subject([transition])
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("cannot advance/promote with failed rule_checks", stderr)
+
+    def test_validate_evidence_routing_rejects_authoritative_campaign_metrics(self) -> None:
+        self._write(
+            "experiments/campaigns/CAMP-001/RESULT_INDEX.md",
+            "# Result Index\n\nsubject_id: ATTEMPT-001\nH: 74.50\nauthority: authoritative_result\n",
+        )
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("derived_index_only", stderr)
+
+    def test_validate_evidence_routing_rejects_missing_agent_runtime_field(self) -> None:
+        transition = self._transition_record(include_not_checked=False)
+        self._write_evidence_routing_subject([transition])
+
+        code, _stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual(1, code)
+        self.assertIn("decision missing not_checked", stderr)
 
     def test_validate_remote_accepts_origin_refs_matching_local_v1_tag(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:

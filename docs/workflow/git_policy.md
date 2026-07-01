@@ -3,20 +3,23 @@
 ## 永久对象
 
 - `main`：唯一长期分支，保存 owner 明确选择的 active code 和全部实验账本。
-- `v1`、`v2`、`v3`：永久 baseline tag，不是分支。
+- `v1`、`v2`、`v3`、`v4`、`v5`：永久版本 tag，不是分支；`v4` 是历史 config-only tag。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
 当前 active mainline code 是：
 
 ```text
-GTPJ-v3
-tag: v3
-best_observed_H: 74.27
-confirmed_H: pending
-status: owner_accepted_stochastic_unconfirmed
+GTPJ-v5
+tag: v5
+best_observed_H: 74.54
+confirmed_H: 74.44
+confirmation_status: owner_activated_provisional
+status: owner_activated_provisional
 ```
 
-历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。如果本地或远端 baseline tag
+历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。`v3 CONFIRM-001 local-v3-054`
+是当前 strongest confirmed reference，`confirmed_H=74.47`，历史 `v4` 只是 config-only tag。
+如果本地或远端 baseline tag
 指向的记录与版本账本不一致，说明 tag 错位，必须先修正，不能继续开正式实验。
 
 ## 临时分支

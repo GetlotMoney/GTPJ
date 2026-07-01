@@ -74,7 +74,8 @@ historical_tag: v4 (legacy config-only tag; not a formal framework version)
 
 ```text
 manifest: /data/lby/projects/cv_project/GTPJ_Warehouse/retention/model_best_retention_20260629_v4.json
-policy: keep Top-5 best model_best/best-model checkpoints by H
+historical_policy_applied: 2026-06-29 run kept 5 best model_best/best-model checkpoints by H
+current_workflow_policy: keep Top-3 best model_best/best-model checkpoints by H after each campaign
 kept: 5
 deleted: 199 training checkpoint files
 deleted_bytes: 31055128358

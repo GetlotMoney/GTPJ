@@ -1,0 +1,107 @@
+schema_version: gtpj.evidence_routing.schema.v0
+purpose: Minimal machine-readable contract for GTPJ workflow-v2 evidence routing.
+
+subject_types:
+  - hypothesis
+  - candidate
+  - trial
+  - attempt
+  - run
+  - campaign
+  - campaign_task
+
+evidence_states:
+  - hypothesis_ready
+  - interface_precheck_passed
+  - smoke_passed
+  - single_run_valid
+  - tune_promising
+  - ablation_supported
+  - min3_confirmed
+  - promotion_candidate
+  - promoted
+  - blocked
+  - rerun_required
+  - rejected
+  - stopped_no_gain
+  - stopped_repeat_unstable
+  - stopped_ablation_not_supported
+  - archived
+
+transition_types:
+  - init
+  - advance
+  - rerun
+  - revise
+  - reject
+  - block
+  - stop
+  - archive
+  - promote
+
+failure_types:
+  - shape_error
+  - metric_invalid
+  - label_mapping_risk
+  - seen_unseen_split_risk
+  - class_order_mismatch
+  - logits_shape_error
+  - no_gain
+  - U_gain_S_collapse
+  - repeat_unstable
+  - early_epoch_collapse
+  - overfit_seen
+  - interface_risk
+  - implementation_bug
+  - runner_failure
+  - artifact_missing
+  - config_hash_mismatch
+  - dirty_tree
+  - ablation_not_supported
+  - budget_exhausted
+
+required_evidence_routing_fields:
+  - schema_version
+  - subject.subject_id
+  - subject.subject_type
+  - current_state.evidence_state
+  - current_state.derived_from_transition_id
+  - current_state.derived_from_transition_hash
+  - transitions.file
+  - transitions.chain_head_transition_id
+  - transitions.chain_head_hash
+
+required_transition_fields:
+  - schema_version
+  - transition_id
+  - previous_transition_id
+  - previous_transition_hash
+  - subject.subject_id
+  - subject.subject_type
+  - transition.transition_type
+  - transition.to_state
+  - authority_refs
+  - rule_checks
+  - agent_attribution.proposed_by
+  - agent_attribution.checked_by
+  - agent_attribution.applied_by
+  - decision.blocking_issues
+  - decision.non_blocking_warnings
+  - decision.not_checked
+  - created_at
+  - current_transition_hash
+
+hash_contract:
+  algorithm: sha256
+  encoding: utf-8
+  canonical_json: true
+  sorted_keys: true
+  excluded_fields:
+    - current_transition_hash
+
+authority_ref_policy:
+  allowed_uri_prefixes:
+    - warehouse://
+    - research://
+  repo_relative_paths_must_exist: true
+  campaign_result_index_authority: derived_index_only

@@ -23,6 +23,20 @@ campaign
 
 不要给每个 run 创建一个永久 agent。
 
+每个 campaign task 必须有：
+
+```text
+subject_id
+subject_type
+evidence_state
+next_allowed_transitions
+result_ref
+quality_ref
+authority: derived_index_only
+```
+
+`RESULT_INDEX.md` 只能做派生索引，不能自建正式 H/U/S/ZS。
+
 ## 角色
 
 campaign 级默认角色：
@@ -45,6 +59,12 @@ Warehouse 登记 (Warehouse Registrar)
 运行监控 (Runner Monitor) 负责 GPU/服务器执行和失败隔离。
 
 结果比较 (Result Comparator) 根据 evidence 决定哪些方向需要 3-repeat confirmation。
+
+调度按 evidence state machine，不按 run 数硬排：
+
+```text
+hypothesis_ready -> interface_precheck_passed -> smoke_passed -> single_run_valid -> tune_promising -> ablation_supported -> min3_confirmed
+```
 
 ## 必要 Campaign 汇报
 

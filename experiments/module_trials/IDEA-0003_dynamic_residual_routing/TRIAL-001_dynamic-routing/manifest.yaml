@@ -36,6 +36,9 @@ artifacts:
   warehouse_batch_summary:
     artifact_id: "warehouse:v5:module_trial:TRIAL-001:RUN-20260630-0005:summary"
     role: "batch_summary_bundle"
+    uri: "warehouse://gtpj/runs/v5/module_trial/TRIAL-001/batch-RUN-20260630-0005-dynroute50-2gpu/summary.csv"
+    sha256: "a32a748e55f810b9d1a6fa7d9f0d2cd0c7d2ab85adc41241266a6dcd4049cf20"
+    size_bytes: 15387
     server_path: "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/batch-RUN-20260630-0005-dynroute50-2gpu"
     files:
       summary_csv:

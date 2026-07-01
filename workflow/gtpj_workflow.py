@@ -67,11 +67,52 @@ VERSION_STAGES = {
     "not_applicable",
 }
 EVIDENCE_LEVELS = {
+    "debug_smoke",
     "quick_local",
     "valid_single_run",
     "confirmation_grade",
     "baseline_grade",
 }
+EVIDENCE_ROUTING_STATES = {
+    "hypothesis_ready",
+    "interface_precheck_passed",
+    "smoke_passed",
+    "single_run_valid",
+    "tune_promising",
+    "ablation_supported",
+    "min3_confirmed",
+    "promotion_candidate",
+    "promoted",
+    "blocked",
+    "rerun_required",
+    "rejected",
+    "stopped_no_gain",
+    "stopped_repeat_unstable",
+    "stopped_ablation_not_supported",
+    "archived",
+}
+EVIDENCE_TRANSITION_TYPES = {
+    "init",
+    "advance",
+    "rerun",
+    "revise",
+    "reject",
+    "block",
+    "stop",
+    "archive",
+    "promote",
+}
+EVIDENCE_SUBJECT_TYPES = {
+    "hypothesis",
+    "candidate",
+    "trial",
+    "attempt",
+    "run",
+    "campaign",
+    "campaign_task",
+}
+EVIDENCE_BAD_RULE_VERDICTS = {"fail", "failed", "block", "blocked"}
+EVIDENCE_ADVANCING_TRANSITIONS = {"advance", "promote"}
 SOURCE_STATUS_RANK = {
     "verified": 3,
     "local_heuristic": 2,
@@ -931,6 +972,11 @@ def required_repository_files() -> list[str]:
         "docs/workflow/agent_contracts.md",
         "docs/workflow/agent_orchestration.md",
         "docs/workflow/agent_report_policy.md",
+        "docs/workflow/evidence_routing_protocol.md",
+        "docs/workflow/GZSL_HARD_RULES.md",
+        "docs/workflow/innovation_decomposition_protocol.md",
+        "docs/workflow/WORKFLOW_VERSION.md",
+        "docs/workflow/CHANGELOG.md",
         "docs/workflow/agents/README.md",
         "docs/workflow/agents/long_term_memory.md",
         "docs/workflow/idea_tree_protocol.md",
@@ -1021,6 +1067,7 @@ def required_repository_files() -> list[str]:
         "schemas/manifest.schema.json",
         "schemas/result.schema.json",
         "schemas/artifact_ref.schema.json",
+        "schemas/evidence_routing.schema.yaml",
     ]
 
 
@@ -1031,9 +1078,27 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
 
     marker_requirements = {
+        "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl"],
+        "docs/workflow/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
+        "docs/workflow/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
+        "docs/workflow/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
+        "docs/workflow/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
+        "docs/workflow/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
         "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
-        "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H"],
-        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status"],
+        "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
+        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id"],
+        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs"],
+        "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
+        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition"],
+        "docs/workflow/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state"],
+        "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
+        "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
+        "docs/workflow/playbooks/tune.md": ["tune_promising", "stopped_no_gain"],
+        "docs/workflow/playbooks/ablation.md": ["ablation_supported", "stopped_ablation_not_supported"],
+        "docs/workflow/playbooks/confirmation.md": ["promotion_compare_metric", "confirmed_H"],
+        "docs/workflow/artifact_policy.md": ["Top-3", "pruned"],
+        "docs/workflow/promotion.md": ["must not push", "explicitly asks"],
         "docs/workflow/experiment_protocol.md": ["mixed_confirmation", "strict_determinism"],
         "docs/workflow/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng"],
         "docs/workflow/runbook.md": ["mixed_confirmation", "batch_sampling_seed"],
@@ -1058,6 +1123,34 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
     if "## Framework Diagram" not in trial_template:
         raise WorkflowError("TRIAL_README_template.md must include ## Framework Diagram")
+    artifact_schema = read_text(REPO_ROOT / "schemas" / "artifact_ref.schema.json")
+    if '"pruned"' not in artifact_schema:
+        raise WorkflowError("artifact_ref.schema.json must allow status=pruned")
+    agent_template = read_text(REPO_ROOT / "experiments" / "templates" / "agent_summary_template.md")
+    for marker in [
+        "agent_instance_mode:",
+        "lifecycle:",
+        "persistent_thread_id:",
+        "temporary_subagent_reason:",
+        "output_locations:",
+        "verified_against_current_repo:",
+        "subject_id:",
+        "transition_id:",
+        "rule_checks:",
+        "authority_refs:",
+        "not_checked:",
+    ]:
+        if marker not in agent_template:
+            raise WorkflowError(f"agent_summary_template.md missing agent evidence field: {marker}")
+    quality_template = read_text(REPO_ROOT / "experiments" / "templates" / "quality_check_template.md")
+    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs"]:
+        if marker not in quality_template:
+            raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
+    promotion_agents = read_text(
+        REPO_ROOT / "docs" / "workflow" / "agents" / "by_experiment" / "promotion" / "agents" / "README.md"
+    )
+    if "Reviewer" not in promotion_agents:
+        raise WorkflowError("promotion agents must include Reviewer")
     for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
         if not version_dir.is_dir():
             continue
@@ -1602,17 +1695,22 @@ base_version: {version}
 code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
 code_commit:
 activation_mode:
+agent_instance_mode: temporary_subagent
+lifecycle: workflow_scoped
 activation_reason:
 required_roles:
 required_real_agents:
+agent_persistent_threads: none
 agent_set: {agent_set}
 serial_agents: {serial_agents}
 parallel_agents: {parallel_agents}
 disabled_agents: {disabled_agents}
+temporary_subagents: workflow-scoped role contexts
 tool_support:
 memory_policy:
 memory_used:
 memory_sources:
+persistent_thread_ids: none
 agent_profile_files:
 agent_memory_files:
 agent_memory_updates:
@@ -1628,8 +1726,13 @@ temporary_agents:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1652,8 +1755,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1676,8 +1784,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1698,8 +1811,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1720,8 +1838,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1742,8 +1865,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1766,8 +1894,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1790,8 +1923,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -1814,8 +1952,13 @@ blocking_issues:
 
 ```text
 role:
+agent_instance_mode: temporary_subagent
 agent_instance_type:
+persistent_thread_id:
+temporary_subagent_reason:
+lifecycle: workflow_scoped
 independence_scope:
+output_locations:
 inputs_checked:
 actions:
 outputs:
@@ -3196,13 +3339,17 @@ base_version: {version}
 code_branch: {code_branch}
 code_commit: {code_commit}
 activation_mode: real_multi_agent
+agent_instance_mode: temporary_subagent
+lifecycle: workflow_scoped
 activation_reason: module trial closeout requires Review 0-3 evidence and artifact boundary checks
 required_roles: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer
 required_real_agents: Reader/Planner, Interface Checker, Quality Checker, Reviewer, Log Analyst, Result Analyst
+agent_persistent_threads: none
 agent_set: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer
 serial_agents: Coordinator -> Review 0 -> Review 1 -> Implementer -> Review 2 -> Runner -> Review 3 -> Coordinator
 parallel_agents: Interface Checker + Quality Checker + Reviewer in Review 2; Log Analyst + Quality Checker + Result Analyst + Reviewer in Review 3
 disabled_agents: none
+temporary_subagents: workflow-scoped closeout roles; helper-generated summary records their required evidence slots
 tool_support: workflow_helper generated current-attempt closeout summary
 memory_policy: hidden/session memory is orientation only; formal facts come from current repo ledgers and Warehouse artifact identities
 memory_used: no
@@ -3211,6 +3358,7 @@ agent_profile_files: docs/workflow/agents/shared_roles/*/profile.md
 agent_memory_files: docs/workflow/agents/shared_roles/*/memory.md
 agent_memory_updates: none
 verified_against_current_repo: yes
+persistent_thread_ids: none
 runtime_state: completed
 attempt_id: {attempt_upper}
 warehouse_report_artifacts: {artifact_ids}
@@ -3224,8 +3372,13 @@ recorded_at: {recorded_at}
 
 ```text
 role: Coordinator
+agent_instance_mode: temporary_subagent
 agent_instance_type: workflow_helper
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: closeout summary generated from current repo evidence
 independence_scope: final ledger writer
+output_locations: manifest.yaml; result.yaml; result.md; quality_check.md; review_round_2.md; agent_summary.md
 inputs_checked: README.md; ATTEMPTS.md; attempts/{attempt_upper}/manifest.yaml; attempts/{attempt_upper}/result.yaml; attempts/{attempt_upper}/quality_check.md
 actions: synchronized trial root summary, Review 3 closeout, agent summary, module index, and idea tree
 outputs: manifest.yaml; result.yaml; result.md; quality_check.md; review_round_2.md; agent_summary.md
@@ -3246,8 +3399,13 @@ blocking_issues: none
 
 ```text
 role: Runner
+agent_instance_mode: temporary_subagent
 agent_instance_type: recorded_run
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: recorded serial GPU run evidence
 independence_scope: serial GPU owner
+output_locations: attempts/{attempt_upper}/manifest.yaml; Warehouse artifacts
 inputs_checked: command and config recorded in attempts/{attempt_upper}/manifest.yaml
 actions: {command}
 outputs: {artifact_ids}
@@ -3268,8 +3426,13 @@ blocking_issues: none
 
 ```text
 role: Log Analyst
+agent_instance_mode: temporary_subagent
 agent_instance_type: workflow_helper
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: parse current attempt result evidence
 independence_scope: parse metrics from registered attempt result
+output_locations: agent_summary.md; result.md
 inputs_checked: attempts/{attempt_upper}/result.yaml
 actions: extracted U/S/H/ZS and best_epoch
 outputs: U={metrics.get("U", "")}; S={metrics.get("S", "")}; H={metrics.get("H", "")}; ZS={metrics.get("ZS", "")}; best_epoch={metrics.get("best_epoch", "")}
@@ -3290,8 +3453,13 @@ blocking_issues: none
 
 ```text
 role: Quality Checker
+agent_instance_mode: temporary_subagent
 agent_instance_type: workflow_helper
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: check artifact boundary and ledger consistency
 independence_scope: artifact boundary and ledger consistency
+output_locations: review_round_2.md; quality_check.md; agent_summary.md
 inputs_checked: attempt manifest/result/quality; Warehouse artifact ids
 actions: required artifacts are referenced by root ledgers; raw artifacts stay outside GitHub
 outputs: review_round_2.md; quality_check.md
@@ -3312,8 +3480,13 @@ blocking_issues: none
 
 ```text
 role: Result Analyst
+agent_instance_mode: temporary_subagent
 agent_instance_type: workflow_helper
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: compare current attempt metrics against recorded references
 independence_scope: result interpretation from current attempt metrics
+output_locations: result.md; agent_summary.md
 inputs_checked: attempts/{attempt_upper}/result.yaml; baseline reproducibility fields in root result
 actions: compared H against recorded reference when available
 outputs: H={metrics.get("H", "")}; delta_H={metrics.get("delta_H", "")}; promotion_decision={evidence_defaults["promotion_decision"]}
@@ -3334,8 +3507,13 @@ blocking_issues: none
 
 ```text
 role: Reviewer
+agent_instance_mode: temporary_subagent
 agent_instance_type: workflow_helper
+lifecycle: workflow_scoped
+persistent_thread_id: none
+temporary_subagent_reason: final closeout evidence consistency review
 independence_scope: final evidence consistency check
+output_locations: review_round_2.md; agent_summary.md
 inputs_checked: review_round_2.md; agent_summary.md; result.yaml; quality_check.md
 actions: confirmed current-attempt summary points to {attempt_upper}
 outputs: final_decision={decision}
@@ -4195,6 +4373,360 @@ def is_forbidden_experiment_artifact(path_text: str) -> bool:
     return False
 
 
+def result_referenced_artifact_ids(result_text: str) -> set[str]:
+    ids: set[str] = set()
+    for match in re.finditer(
+        r"^\s*(?:log_artifact_id|train_log_artifact_id|checkpoint_artifact_id):\s*['\"]?([^'\"\s,#]+)",
+        result_text,
+        re.MULTILINE,
+    ):
+        artifact_id = match.group(1).strip()
+        if artifact_id:
+            ids.add(artifact_id)
+    return ids
+
+
+def manifest_artifact_identity_status(manifest_text: str) -> dict[str, dict[str, bool]]:
+    matches = list(
+        re.finditer(
+            r"^\s*artifact_id:\s*['\"]?([^'\"\n#]+)['\"]?\s*$",
+            manifest_text,
+            re.MULTILINE,
+        )
+    )
+    identities: dict[str, dict[str, bool]] = {}
+    for index, match in enumerate(matches):
+        artifact_id = match.group(1).strip()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(manifest_text)
+        window = manifest_text[match.end() : end]
+        identities[artifact_id] = {
+            "uri": bool(re.search(r"^\s*uri:\s*['\"]?(warehouse|research)://", window, re.MULTILINE)),
+            "sha256": bool(re.search(r"^\s*sha256:\s*['\"]?[0-9a-fA-F]{64}", window, re.MULTILINE)),
+            "size_bytes": bool(re.search(r"^\s*size_bytes:\s*['\"]?[0-9]+", window, re.MULTILINE)),
+        }
+    return identities
+
+
+def audit_result_manifest_artifact_chain() -> list[str]:
+    errors: list[str] = []
+    for result_path in sorted((REPO_ROOT / "experiments").rglob("result.yaml")):
+        result_text = read_text(result_path)
+        artifact_ids = result_referenced_artifact_ids(result_text)
+        if not artifact_ids:
+            continue
+        manifest_path = result_path.with_name("manifest.yaml")
+        if not manifest_path.exists():
+            errors.append(f"{rel(result_path)} references artifacts but is missing {rel(manifest_path)}")
+            continue
+        identities = manifest_artifact_identity_status(read_text(manifest_path))
+        for artifact_id in sorted(artifact_ids):
+            if artifact_id not in identities:
+                errors.append(
+                    f"{rel(result_path)} references {artifact_id}, but {rel(manifest_path)} does not register it"
+                )
+                continue
+            missing_fields = [field for field, ok in identities[artifact_id].items() if not ok]
+            if missing_fields:
+                errors.append(
+                    f"{rel(manifest_path)} artifact {artifact_id} missing identity fields: "
+                    + ", ".join(missing_fields)
+                )
+    return errors
+
+
+def canonical_transition_payload(record: dict[str, object]) -> str:
+    payload = {key: value for key, value in record.items() if key != "current_transition_hash"}
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def evidence_transition_hash(record: dict[str, object]) -> str:
+    payload = canonical_transition_payload(record).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def normalize_hash(value: object) -> str:
+    text = "" if value is None else str(value).strip()
+    if not text:
+        return ""
+    return text if text.startswith("sha256:") else f"sha256:{text}"
+
+
+def is_valid_authority_ref(value: str, routing_path: Path) -> bool:
+    text = value.strip()
+    if not text:
+        return True
+    if text.startswith(("warehouse://", "research://")):
+        return True
+    if re.fullmatch(r"(?:sha256:)?[0-9a-fA-F]{64}", text):
+        return True
+    candidate_paths = [REPO_ROOT / text, routing_path.parent / text]
+    return any(path.exists() for path in candidate_paths)
+
+
+def collect_authority_ref_errors(value: object, routing_path: Path, trail: str = "authority_refs") -> list[str]:
+    errors: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            errors.extend(collect_authority_ref_errors(child, routing_path, f"{trail}.{key}"))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            errors.extend(collect_authority_ref_errors(child, routing_path, f"{trail}[{index}]"))
+    elif isinstance(value, str):
+        if not is_valid_authority_ref(value, routing_path):
+            errors.append(f"{trail} points to missing authority ref: {value}")
+    elif value is not None:
+        errors.append(f"{trail} must contain strings, lists, or objects")
+    return errors
+
+
+def load_transition_log(path: Path) -> list[dict[str, object]]:
+    transitions: list[dict[str, object]] = []
+    for line_number, raw_line in enumerate(read_text(path).splitlines(), start=1):
+        if not raw_line.strip():
+            continue
+        try:
+            transition = json.loads(raw_line)
+        except json.JSONDecodeError as exc:
+            raise WorkflowError(f"{rel(path)} line {line_number} is not valid JSON: {exc}") from exc
+        if not isinstance(transition, dict):
+            raise WorkflowError(f"{rel(path)} line {line_number} must be a JSON object")
+        transitions.append(transition)
+    return transitions
+
+
+def require_transition_role(value: object, field: str, errors: list[str]) -> None:
+    if isinstance(value, dict):
+        if not value.get("role_key"):
+            errors.append(f"{field} missing role_key")
+        return
+    if isinstance(value, list) and value:
+        for index, item in enumerate(value):
+            require_transition_role(item, f"{field}[{index}]", errors)
+        return
+    errors.append(f"{field} must be a role object or non-empty list of role objects")
+
+
+def transition_string_section(record: dict[str, object], section: str, key: str) -> str:
+    value = record.get(section)
+    if isinstance(value, dict):
+        item = value.get(key)
+        return "" if item is None else str(item)
+    return ""
+
+
+def validate_transition_rule_checks(
+    transition: dict[str, object],
+    transition_type: str,
+    to_state: str,
+    errors: list[str],
+) -> None:
+    rule_checks = transition.get("rule_checks")
+    if not isinstance(rule_checks, list) or not rule_checks:
+        errors.append(f"{transition.get('transition_id', '<unknown>')} must include non-empty rule_checks")
+        return
+    has_bad_verdict = False
+    for index, rule in enumerate(rule_checks):
+        if not isinstance(rule, dict):
+            errors.append(f"{transition.get('transition_id', '<unknown>')} rule_checks[{index}] must be an object")
+            continue
+        for field in ["rule_id", "verdict", "authority_ref"]:
+            if not rule.get(field):
+                errors.append(
+                    f"{transition.get('transition_id', '<unknown>')} rule_checks[{index}] missing {field}"
+                )
+        verdict = str(rule.get("verdict", "")).lower()
+        if verdict in EVIDENCE_BAD_RULE_VERDICTS:
+            has_bad_verdict = True
+    if has_bad_verdict and (
+        transition_type in EVIDENCE_ADVANCING_TRANSITIONS
+        or to_state in {"promotion_candidate", "promoted"}
+    ):
+        errors.append(
+            f"{transition.get('transition_id', '<unknown>')} cannot advance/promote with failed rule_checks"
+        )
+
+
+def validate_transition_agent_attribution(transition: dict[str, object], errors: list[str]) -> None:
+    attribution = transition.get("agent_attribution")
+    if not isinstance(attribution, dict):
+        errors.append(f"{transition.get('transition_id', '<unknown>')} missing agent_attribution")
+        return
+    require_transition_role(attribution.get("proposed_by"), "agent_attribution.proposed_by", errors)
+    require_transition_role(attribution.get("checked_by"), "agent_attribution.checked_by", errors)
+    require_transition_role(attribution.get("applied_by"), "agent_attribution.applied_by", errors)
+
+
+def validate_transition_decision(transition: dict[str, object], errors: list[str]) -> None:
+    decision = transition.get("decision")
+    if not isinstance(decision, dict):
+        errors.append(f"{transition.get('transition_id', '<unknown>')} missing decision")
+        return
+    for field in ["blocking_issues", "non_blocking_warnings", "not_checked"]:
+        if field not in decision:
+            errors.append(f"{transition.get('transition_id', '<unknown>')} decision missing {field}")
+
+
+def resolve_transition_log_path(routing_path: Path, file_value: str) -> Path:
+    transition_path = Path(file_value)
+    if transition_path.is_absolute():
+        return transition_path
+    local_path = routing_path.parent / transition_path
+    if local_path.exists():
+        return local_path
+    return REPO_ROOT / transition_path
+
+
+def validate_evidence_routing_file(routing_path: Path) -> list[str]:
+    errors: list[str] = []
+    data = read_shallow_yaml(routing_path)
+    subject_id = yaml_section_value(data, "subject", "subject_id")
+    subject_type = yaml_section_value(data, "subject", "subject_type")
+    current_state = yaml_section_value(data, "current_state", "evidence_state")
+    derived_transition_id = yaml_section_value(data, "current_state", "derived_from_transition_id")
+    derived_transition_hash = normalize_hash(
+        yaml_section_value(data, "current_state", "derived_from_transition_hash")
+    )
+    transition_file_value = yaml_section_value(data, "transitions", "file")
+    chain_head_id = yaml_section_value(data, "transitions", "chain_head_transition_id")
+    chain_head_hash = normalize_hash(yaml_section_value(data, "transitions", "chain_head_hash"))
+
+    if not subject_id:
+        errors.append(f"{rel(routing_path)} missing subject.subject_id")
+    if subject_type not in EVIDENCE_SUBJECT_TYPES:
+        errors.append(f"{rel(routing_path)} invalid subject.subject_type: {subject_type}")
+    if current_state not in EVIDENCE_ROUTING_STATES:
+        errors.append(f"{rel(routing_path)} invalid current_state.evidence_state: {current_state}")
+    if not transition_file_value:
+        errors.append(f"{rel(routing_path)} missing transitions.file")
+        return errors
+
+    transition_log = resolve_transition_log_path(routing_path, transition_file_value)
+    if not transition_log.exists():
+        errors.append(f"{rel(routing_path)} missing transition log: {display_path(transition_log)}")
+        return errors
+
+    transitions = load_transition_log(transition_log)
+    if not transitions:
+        errors.append(f"{rel(transition_log)} must contain at least one transition")
+        return errors
+
+    seen_ids: set[str] = set()
+    previous_id = ""
+    previous_hash = ""
+    previous_to_state = ""
+    for index, transition in enumerate(transitions):
+        transition_id = str(transition.get("transition_id", "")).strip()
+        if not transition_id:
+            errors.append(f"{rel(transition_log)} transition #{index + 1} missing transition_id")
+        elif transition_id in seen_ids:
+            errors.append(f"{rel(transition_log)} duplicate transition_id: {transition_id}")
+        seen_ids.add(transition_id)
+
+        actual_hash = evidence_transition_hash(transition)
+        declared_hash = normalize_hash(transition.get("current_transition_hash"))
+        if declared_hash != actual_hash:
+            errors.append(f"{transition_id or '<unknown>'} current_transition_hash mismatch")
+
+        declared_previous_id = "" if transition.get("previous_transition_id") is None else str(transition.get("previous_transition_id", ""))
+        declared_previous_hash = normalize_hash(transition.get("previous_transition_hash"))
+        if index == 0:
+            if declared_previous_id or declared_previous_hash:
+                errors.append(f"{transition_id} first transition must not have previous transition identity")
+        else:
+            if declared_previous_id != previous_id:
+                errors.append(f"{transition_id} previous_transition_id must be {previous_id}")
+            if declared_previous_hash != previous_hash:
+                errors.append(f"{transition_id} previous_transition_hash must match previous transition hash")
+
+        transition_subject = transition.get("subject")
+        if not isinstance(transition_subject, dict):
+            errors.append(f"{transition_id} missing subject object")
+        else:
+            if transition_subject.get("subject_id") != subject_id:
+                errors.append(f"{transition_id} subject_id does not match {rel(routing_path)}")
+            if transition_subject.get("subject_type") not in EVIDENCE_SUBJECT_TYPES:
+                errors.append(f"{transition_id} invalid subject_type")
+
+        transition_body = transition.get("transition")
+        if not isinstance(transition_body, dict):
+            errors.append(f"{transition_id} missing transition object")
+            transition_type = ""
+            from_state = ""
+            to_state = ""
+        else:
+            transition_type = str(transition_body.get("transition_type", ""))
+            from_state = "" if transition_body.get("from_state") is None else str(transition_body.get("from_state", ""))
+            to_state = str(transition_body.get("to_state", ""))
+            if transition_type not in EVIDENCE_TRANSITION_TYPES:
+                errors.append(f"{transition_id} invalid transition_type: {transition_type}")
+            if to_state not in EVIDENCE_ROUTING_STATES:
+                errors.append(f"{transition_id} invalid to_state: {to_state}")
+            if from_state and from_state not in EVIDENCE_ROUTING_STATES:
+                errors.append(f"{transition_id} invalid from_state: {from_state}")
+            if index > 0 and from_state != previous_to_state:
+                errors.append(f"{transition_id} from_state must equal previous to_state {previous_to_state}")
+
+        validate_transition_rule_checks(transition, transition_type, to_state, errors)
+        validate_transition_agent_attribution(transition, errors)
+        validate_transition_decision(transition, errors)
+        authority_refs = transition.get("authority_refs")
+        if not isinstance(authority_refs, dict):
+            errors.append(f"{transition_id} missing authority_refs object")
+        else:
+            errors.extend(collect_authority_ref_errors(authority_refs, routing_path, "authority_refs"))
+
+        previous_id = transition_id
+        previous_hash = actual_hash
+        previous_to_state = to_state
+
+    head = transitions[-1]
+    head_id = str(head.get("transition_id", ""))
+    head_hash = evidence_transition_hash(head)
+    head_state = transition_string_section(head, "transition", "to_state")
+    if derived_transition_id != head_id:
+        errors.append(f"{rel(routing_path)} current_state derived_from_transition_id does not match chain head")
+    if derived_transition_hash != head_hash:
+        errors.append(f"{rel(routing_path)} current_state derived_from_transition_hash does not match chain head")
+    if current_state != head_state:
+        errors.append(f"{rel(routing_path)} current_state evidence_state does not match chain head")
+    if chain_head_id != head_id:
+        errors.append(f"{rel(routing_path)} transitions.chain_head_transition_id does not match chain head")
+    if chain_head_hash != head_hash:
+        errors.append(f"{rel(routing_path)} transitions.chain_head_hash does not match chain head")
+    return errors
+
+
+def validate_campaign_result_indexes() -> list[str]:
+    errors: list[str] = []
+    campaigns_root = REPO_ROOT / "experiments" / "campaigns"
+    if not campaigns_root.exists():
+        return errors
+    for result_index in sorted(campaigns_root.rglob("RESULT_INDEX.md")):
+        text = read_text(result_index)
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if re.search(r"\bauthority\s*:\s*(?!derived_index_only\b)", line):
+                errors.append(f"{rel(result_index)}:{line_number} campaign index authority must be derived_index_only")
+        if re.search(r"\bauthoritative\b", text, flags=re.IGNORECASE):
+            errors.append(f"{rel(result_index)} must not claim authoritative campaign metrics")
+        if re.search(r"\b[HUSZS]{1,2}\s*[:=]\s*[0-9]", text) and not re.search(
+            r"(result_ref|metric_source|authority_source|derived_index_only)", text
+        ):
+            errors.append(f"{rel(result_index)} appears to contain metrics without source refs")
+    return errors
+
+
+def cmd_validate_evidence_routing(_: argparse.Namespace) -> int:
+    errors: list[str] = []
+    routing_files = sorted((REPO_ROOT / "experiments").rglob("evidence_routing.yaml"))
+    for routing_path in routing_files:
+        errors.extend(validate_evidence_routing_file(routing_path))
+    errors.extend(validate_campaign_result_indexes())
+    if errors:
+        raise WorkflowError("Evidence routing validation failed:\n" + "\n".join(errors))
+    print(f"validate-evidence-routing-ok subjects={len(routing_files)}")
+    return 0
+
+
 def cmd_audit_boundary(_: argparse.Namespace) -> int:
     offenders = [path for path in tracked_and_candidate_files() if is_forbidden_experiment_artifact(path)]
     copied_log_refs: list[str] = []
@@ -4217,6 +4749,9 @@ def cmd_audit_boundary(_: argparse.Namespace) -> int:
         errors.append("Forbidden raw experiment artifacts:\n" + "\n".join(offenders))
     if copied_log_refs:
         errors.append("Forbidden copied_log references:\n" + "\n".join(sorted(set(copied_log_refs))))
+    artifact_chain_errors = audit_result_manifest_artifact_chain()
+    if artifact_chain_errors:
+        errors.append("Broken result/manifest/artifact identity chain:\n" + "\n".join(artifact_chain_errors))
     if errors:
         raise WorkflowError("Boundary audit failed:\n" + "\n\n".join(errors))
     print("audit-boundary-ok")
@@ -5013,9 +5548,14 @@ flowchart TD
 ```text
 review_round:
 role:
+agent_instance_mode:
 agent_instance_type:
-inputs_checked:
+lifecycle:
+persistent_thread_id:
+temporary_subagent_reason:
 independence_scope:
+output_locations:
+inputs_checked:
 findings:
 blocking_issues:
 non_blocking_issues:
@@ -6830,6 +7370,9 @@ def build_parser() -> argparse.ArgumentParser:
     validate = sub.add_parser("validate", help="校验仓库结构")
     validate.set_defaults(func=cmd_validate)
 
+    validate_evidence = sub.add_parser("validate-evidence-routing", help="校验 workflow-v2 evidence routing 状态链")
+    validate_evidence.set_defaults(func=cmd_validate_evidence_routing)
+
     validate_remote = sub.add_parser("validate-remote", help="校验远端 main/baseline tags 与本地治理事实")
     validate_remote.add_argument("--remote", default="origin")
     validate_remote.set_defaults(func=cmd_validate_remote)
@@ -6955,7 +7498,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_trial.add_argument(
         "--evidence-level",
         default="",
-        choices=["", "quick_local", "valid_single_run", "confirmation_grade", "baseline_grade"],
+        choices=["", "debug_smoke", "quick_local", "valid_single_run", "confirmation_grade", "baseline_grade"],
     )
     sync_trial.add_argument(
         "--promotion-decision",
