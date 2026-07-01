@@ -47,11 +47,11 @@ config_delta:
   clip_a_self_outer_ratio: "0.5"
   local_weight: "0.1"
 decision:
-  status: "promote"
+  status: "confirmed_config"
   result_status: "confirmed"
-  promotion_decision: "promote"
-  promote_to: "v4"
-  reason: "Three clean server repeats reproduce H above the accepted v3 reference; owner standing rule promotes min3-confirmed strongest candidates to formal versions."
+  promotion_decision: "confirmed_config_only"
+  promote_to: ""
+  reason: "Three clean server repeats reproduce H above the accepted v3 reference; because this is pure tuning/config-only, it is a confirmed config under v3 rather than a new formal version."
 evidence:
   evidence_level: "baseline_grade"
   best_observed_H: "74.47"
@@ -83,7 +83,7 @@ quality:
   evaluation_semantics_verified: "true"
   raw_artifacts_in_git: "false"
 warnings:
-  - "This promotes a tuned v3-derived configuration to GTPJ-v4; it does not mutate the canonical v3 baseline."
-  - "Promotion creates a formal version/tag, not an automatic activate-version code switch."
+  - "This confirms a tuned v3-derived configuration; it does not mutate the canonical v3 baseline."
+  - "Pure tuning/config-only confirmation does not create a formal framework version; historical v4 is a legacy config-only tag."
   - "Related candidates local-v3-022 and trial003-tune-026 did not meet the same stable min3 bar."
 recorded_at: "2026-06-29T11:40:47+00:00"

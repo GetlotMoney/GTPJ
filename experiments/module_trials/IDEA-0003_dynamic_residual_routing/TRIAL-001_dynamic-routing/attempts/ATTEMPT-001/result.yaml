@@ -8,7 +8,8 @@ jobs:
   completed: 50
   failed: 0
 references:
-  v4_confirmed_H: 74.47
+  reference_confirmed_config_H: 74.47
+  reference_confirmed_config: "v3/CONFIRM-001 local-v3-054"
   v5_repeat_mean_H: 74.44
 top_results:
   - rank: 1
@@ -73,7 +74,7 @@ group_stats:
 decision:
   trial_decision: "revise"
   promotion_decision: "rejected"
-  reason: "Dynamic repeat mean does not exceed v4 confirmed H=74.47 or v5 repeat mean H=74.44."
+  reason: "Dynamic repeat mean does not exceed v3/CONFIRM-001 local-v3-054 confirmed H=74.47 or v5 repeat mean H=74.44."
 follow_up:
   profile: "principled-followup"
   priority: "direction/local/PSE, keep ICSA fixed"

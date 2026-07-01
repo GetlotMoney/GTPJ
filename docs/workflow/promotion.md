@@ -1,8 +1,12 @@
 # Automatic Promotion
 
-Promotion means a clean code/config state is accepted as a new formal baseline
-version. A promotion creates version materials and a version tag. It does not
-automatically run `activate-version`.
+Promotion means a clean framework/code semantic state is accepted as a new
+formal baseline version. A promotion creates version materials and a version
+tag. It does not automatically run `activate-version`.
+
+Pure tuning is not promotion. If a run changes only config or hyperparameters,
+it may become a confirmed config/reference under its existing `vX`, but it must
+not create a new formal `vY`.
 
 ## Owner Standing Rule: Min3 Auto Promotion
 
@@ -15,8 +19,10 @@ are true:
 - class order, seen/unseen split, label mapping, logits shape, and metric
   semantics are unchanged or explicitly audited.
 
-Such a candidate is upgraded to `baseline_grade` evidence and can be promoted
-automatically to the next formal version.
+Such a candidate is upgraded to `baseline_grade` evidence. It can be promoted
+automatically to the next formal version only if the underlying candidate also
+contains a framework/code semantic change. If it is pure tune/config-only, keep
+it under the parent version as a confirmed config/reference.
 
 For a min3-confirmed candidate, the formal result row uses the successful repeat
 with the highest H. Record that row as `confirmed_H` / official H, and take the
@@ -24,9 +30,10 @@ official U/S/ZS from the same repeat. Still record `H_mean`, `H_min`, `H_max`,
 and repeat count as stability evidence. A single high run cannot become
 `confirmed_H` until the min3 confirmation cluster has passed.
 
-When several min3-confirmed candidates exist, promote the strongest candidate by
-`confirmed_H` first, using repeat stability (`H_mean`, `H_min`, spread) as the
-guardrail or tie-breaker.
+When several min3-confirmed candidates exist, select the strongest confirmed
+config/reference by `confirmed_H` first, using repeat stability (`H_mean`,
+`H_min`, spread) as the guardrail or tie-breaker. Do not turn pure tuning into a
+new `vX`.
 
 ## Standing GitHub Permission
 
@@ -66,6 +73,8 @@ confirmation_status: confirmed
 
 For min3 auto promotion, the source confirmation may be upgraded from
 `confirmation_grade` to `baseline_grade` when the min3 rule above is satisfied.
+For pure tuning, this upgrade means confirmed config/reference only; it still
+does not authorize a new formal version.
 
 If the owner accepts or activates a candidate without `baseline_grade` evidence,
 record it as `owner_activated_unconfirmed` or another explicit provisional
@@ -78,6 +87,8 @@ All gates must pass:
 
 - source experiment/trial records parent version, code source, branch, commit,
   config, command, metrics, and artifact evidence;
+- source experiment/trial contains a framework/code semantic change; pure tune
+  must stay under the existing version;
 - source evidence is not a single high point only;
 - `dirty_state: clean` and `git_dirty: false` are recorded or inferable;
 - metrics include U, S, H, ZS, seed, best epoch, and comparison reference;

@@ -95,4 +95,4 @@ code_vs_intent: implemented path matches owner intent for BVSA text input; train
 
 `owner_activated_to_v5`.
 
-The code path is implemented, locally tested, and externally run in `RUN-20260630-0002-trial003-main100-2gpu`. The owner selected the best conditional BVSA text candidate as the new active mainline `GTPJ-v5`. Because the frozen-repeat mean is `H=74.44`, `GTPJ-v4 confirmed_H=74.47` remains the stronger confirmed reference.
+The code path is implemented, locally tested, and externally run in `RUN-20260630-0002-trial003-main100-2gpu`. The owner selected the best conditional BVSA text candidate as the new active mainline `GTPJ-v5`. Because the frozen-repeat mean is `H=74.44`, `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` remains the stronger confirmed reference.

@@ -30,9 +30,9 @@ result_md: result.md
 agent_summary: agent_summary.md
 quality_check: quality_check.md
 attempt_id: attempt-001
-decision: promote
-promotion_decision: promote
-promote_to: v4
+decision: confirmed_config
+promotion_decision: confirmed_config_only
+promote_to:
 evidence_level: baseline_grade
 result_status: confirmed
 best_observed_H: 74.47
@@ -41,7 +41,7 @@ H_mean: 74.45
 confirmation_target: local-v3-054
 confirmation_tolerance_H: min3 clean server repeats, no tolerance override
 confirmation_status: confirmed
-status: promoted_to_v4
+status: confirmed_config
 ```
 
 ## Question
@@ -57,7 +57,7 @@ The confirmation uses the v3 baseline model/training code and changes only the s
 | `pse_outer_ratio` / `clip_a_self_outer_ratio` | 0.15 | 0.5 |
 | `local_weight` | 0.3 | 0.1 |
 
-All model/training framework semantics remain the v3 frozen implementation: PSE, ICSA, FGVD, BVSA, and SGMP, with `all_text_cond` entering BVSA through `bvsa_text_mode: conditional`. `GTPJ-v4` is therefore a confirmed config-version, not a model-code rewrite.
+All model/training framework semantics remain the v3 frozen implementation: PSE, ICSA, FGVD, BVSA, and SGMP, with `all_text_cond` entering BVSA through `bvsa_text_mode: conditional`. This is therefore a confirmed config under `v3`, not a new formal framework version.
 
 ## Server Repeats
 
@@ -91,4 +91,4 @@ Summary:
 
 ## Decision
 
-`local-v3-054` is promoted to the formal version `GTPJ-v4` under the owner standing rule that min3 clean reproduction is reproducible enough for automatic promotion. Because the min3 cluster passed, the formal result uses the highest successful repeat (`rep03`, H=74.47) as `confirmed_H`, while the mean (`H_mean=74.45`) remains stability evidence. This creates a confirmed version record and tag; it does not by itself run `activate-version` or switch the current active code alias.
+`local-v3-054` is accepted as a confirmed config under `GTPJ-v3`. Because the min3 cluster passed, the confirmed result uses the highest successful repeat (`rep03`, H=74.47) as `confirmed_H`, while the mean (`H_mean=74.45`) remains stability evidence. Under the current version rule, pure tuning/config-only confirmation does not create a new formal `vX`; the historical `v4` tag is retained only as a legacy record.

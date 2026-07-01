@@ -17,22 +17,22 @@ metrics:
   H_min: "74.35"
   H_max: "74.54"
   baseline_H: "74.47"
-  baseline_reference: v4_confirmed_H
+  baseline_reference: v3_confirmed_config_H
   delta_H_repeat_mean: "-0.03"
   delta_H_best_observed: "+0.07"
   seed: "5"
   source: "TRIAL-003 main100 source config plus frozen repeats"
   metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
 baseline:
-  version: v4
+  version: v3
   H: "74.47"
-  reference_field: confirmed_H
-  reference_status: confirmed
+  reference_field: confirmed_config_H
+  reference_status: confirmed_config
   confirmed_H: "74.47"
   confirmation_status: confirmed
 delta:
-  repeat_mean_vs_v4_confirmed_H: "-0.03"
-  best_observed_vs_v4_confirmed_H: "+0.07"
+  repeat_mean_vs_confirmed_config_H: "-0.03"
+  best_observed_vs_confirmed_config_H: "+0.07"
 run:
   seed: "5"
   source_run_id: RUN-20260630-0002-trial003-main100-2gpu
@@ -56,7 +56,8 @@ evidence:
   confirmed_H_method: "mean_of_5_frozen_repeats_091_to_095"
   confirmation_status: owner_activated_provisional
   confirmation_target: trial003-main100-069
-  reference_v4_confirmed_H: "74.47"
+  reference_confirmed_config_H: "74.47"
+  reference_confirmed_config: "v3/CONFIRM-001 local-v3-054"
   log_artifact_id: summary:v3:module_trial:TRIAL-003:main100
   manifest: manifest.yaml
   source_summary: warehouse://gtpj/runs/v3/module_trial/TRIAL-003_conditional_bvsa_text/main100/summary.csv
@@ -69,5 +70,5 @@ quality:
   interface_contract_checked: true
   evaluation_semantics_verified: true
   owner_activation_rule: true
-  stronger_than_v4_confirmed_mean: false
+  stronger_than_confirmed_config_mean: false
 recorded_at: "2026-06-30T00:30:00+00:00"

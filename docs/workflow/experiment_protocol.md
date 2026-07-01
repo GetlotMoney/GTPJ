@@ -4,7 +4,13 @@
 baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt。
 
 版本级 tune、ablation 和 confirmation 都属于某个正式 baseline 版本 `vX`。它们保存证据，
-不自动产生新版本；只有满足 `docs/workflow/promotion.md` 的自动 promotion gate，
+不自动产生新版本。
+
+纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
+形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 3 次复现通过，也只能成为该
+`vX` 下面的 confirmed config / confirmed tune record。
+
+只有存在框架/代码语义变化，且满足 `docs/workflow/promotion.md` 的自动 promotion gate，
 才会生成新的正式 `vY`。
 
 模块 trial 内部也可以、也应该做参数尝试、窄消融和 clean confirmation。那类运行写在：
@@ -217,8 +223,9 @@ run_log_sha256   = log_sha256
 - seed、训练轮数、config 中已有开关或数值；
 - 不改变 forward 结构、模块连接、loss 形式、logits shape 或 eval 语义。
 
-调参不自动生成新版本。调参结果如果想成为新 baseline，必须先记录
-`promotion_decision: promote`，再走 `docs/workflow/promotion.md`。
+调参不生成新 `vY`。调参结果如果复现通过，可以成为当前 `vX` 下的 confirmed config
+或 confirmed reference，但不得创建新的正式框架版本。若调参过程中引入了模型/训练代码语义变化，
+必须改走 module trial / ablation / promotion 规则，而不是继续记为纯 tune。
 
 ### 当前版本调参
 

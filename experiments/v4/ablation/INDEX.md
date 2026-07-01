@@ -2,4 +2,4 @@
 
 | Experiment | Status | Directory | Note |
 |---|---|---|---|
-| none | - | - | No v4 ablation experiments recorded yet. |
+| none | - | - | `v4` is a legacy config-only tag; do not create new ablation work under it. |

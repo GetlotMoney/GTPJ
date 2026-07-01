@@ -15,7 +15,7 @@ future_tuning_base: config/versions/v5.yaml
 
 `GTPJ-v5` is the active mainline selected by the owner on 2026-06-30. It activates the TRIAL-003 conditional BVSA text path, so `all_text_cond [B, C, 768]` enters BVSA, including the cross/local_score branch.
 
-The stronger confirmed reference remains `GTPJ-v4 / tag v4 / confirmed_H=74.47`. v5 is active for the next tuning round, but its frozen-repeat mean is `74.44`, so it is not a stronger confirmed-baseline claim over v4.
+The stronger confirmed reference is `v3 / CONFIRM-001 local-v3-054 / confirmed_H=74.47`. v5 is active for the next tuning round, but its frozen-repeat mean is `74.44`, so it is not a stronger confirmed-baseline claim over that confirmed v3 config.
 
 ## Versions
 
@@ -24,7 +24,7 @@ The stronger confirmed reference remains `GTPJ-v4 / tag v4 / confirmed_H=74.47`.
 | `GTPJ-v1` | `v1` | confirmed | CUB GZSL | First formal baseline, seed=5, H=73.93. |
 | `GTPJ-v2` | `v2` | owner activated, needs confirmation | CUB GZSL | CLIP-A-self text prototype adapter, best_observed_H=74.29. |
 | `GTPJ-v3` | `v3` | owner accepted stochastic, needs confirmation | CUB GZSL | Strict conditional FAE-memory JEPA, best_observed_H=74.27. |
-| `GTPJ-v4` | `v4` | confirmed formal reference | CUB GZSL | min3-confirmed `local-v3-054`, confirmed_H=74.47, repeat mean H=74.45. |
+| `GTPJ-v4` | `v4` | legacy config-only tag | CUB GZSL | Historical misclassification of `v3/CONFIRM-001 local-v3-054`; not a formal framework version. |
 | `GTPJ-v5` | `v5` | owner activated provisional active mainline | CUB GZSL | TRIAL-003 conditional BVSA text, best_observed_H=74.54, repeat mean H=74.44. |
 
 Version tree:
@@ -33,11 +33,11 @@ Version tree:
 v1
 `-- v2 = parent v1 + IDEA-0001/TRIAL-001 CLIP-A-self / PSE
     `-- v3 = parent v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA
-        `-- v4 = parent v3 + local-v3-054 min3-confirmed tuned config
-            `-- v5 = parent v4 + TRIAL-003 conditional BVSA text active mainline
+        |-- CONFIRM-001 = local-v3-054 min3-confirmed tuned config (not a v-version)
+        `-- v5 = parent v3 + TRIAL-003 conditional BVSA text active mainline
 ```
 
-`main` stores the current active code plus all historical governance ledgers. `v1` to `v5` are Git tags, not long-running branches.
+`main` stores the current active code plus all historical governance ledgers. `v1`, `v2`, `v3`, and `v5` are formal framework tags. `v4` exists as a historical config-only tag and should not be used as a precedent for opening new versions from pure tuning.
 
 ## Current Mainline Config
 

@@ -61,7 +61,7 @@ Reference baselines:
 
 | Reference | H | Note |
 |---|---:|---|
-| v4 confirmed | 74.47 | stronger confirmed reference |
+| v3 CONFIRM-001 confirmed config | 74.47 | stronger confirmed reference |
 | v5 repeat mean | 74.44 | active mainline repeat mean |
 
 Top results from this batch:
@@ -95,7 +95,7 @@ Group summary:
 
 `promotion_decision: rejected`.
 
-The best dynamic single result, DR-008 at H=74.39, did not beat v4 confirmed H=74.47 or v5 repeat mean H=74.44. The repeated dynamic candidate averaged H=74.23 and had a low U mean. The static control also did not exceed references.
+The best dynamic single result, DR-008 at H=74.39, did not beat `v3/CONFIRM-001 local-v3-054` confirmed H=74.47 or v5 repeat mean H=74.44. The repeated dynamic candidate averaged H=74.23 and had a low U mean. The static control also did not exceed references.
 
 `trial_decision: revise`.
 

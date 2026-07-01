@@ -28,4 +28,4 @@ clip_a_self_outer_ratio: 0.65
 local_weight: 0.2
 ```
 
-The active mainline now routes `all_text_cond` into BVSA, including the BVSA local score branch. The evidence is useful for future tuning, but the repeat mean does not exceed `GTPJ-v4 confirmed_H=74.47`.
+The active mainline now routes `all_text_cond` into BVSA, including the BVSA local score branch. The evidence is useful for future tuning, but the repeat mean does not exceed `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`.

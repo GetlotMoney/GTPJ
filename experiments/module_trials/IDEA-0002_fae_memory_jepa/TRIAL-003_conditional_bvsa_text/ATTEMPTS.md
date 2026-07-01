@@ -15,4 +15,4 @@
 - This is a new implementation hypothesis relative to TRIAL-002 because BVSA now directly consumes sample-conditioned text.
 - The main100 batch completed 100 jobs with 95 conditional-mode ok runs, 4 adapted-mode ok controls, and 1 failed job.
 - `trial003-main100-069` is the source config promoted to `GTPJ-v5`; `trial003-main100-095` is the best observed frozen repeat.
-- Frozen repeat mean for 091-095 is `H=74.44`, so this is owner activation for future tuning, not a stronger confirmed reference than `GTPJ-v4 confirmed_H=74.47`.
+- Frozen repeat mean for 091-095 is `H=74.44`, so this is owner activation for future tuning, not a stronger confirmed reference than `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`.

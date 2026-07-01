@@ -130,7 +130,7 @@ CANONICAL_BASELINES = {
         "status": "owner_accepted_stochastic_unconfirmed",
     },
     "v4": {
-        "name": "GTPJ-v4",
+        "name": "GTPJ-v4 legacy config-only tag",
         "H": "74.47",
         "repeat_mean_H": "74.45",
         "result_file": "experiments/v4/result.md",
@@ -139,7 +139,7 @@ CANONICAL_BASELINES = {
         "best_observed_H": "74.47",
         "confirmed_H": "74.47",
         "confirmation_status": "confirmed",
-        "status": "confirmed",
+        "status": "legacy_config_only_not_framework_version",
     },
     "v5": {
         "name": "GTPJ-v5",
@@ -892,6 +892,9 @@ def cmd_repro_status(args: argparse.Namespace) -> int:
         f"{'' if confirmed else ' (unconfirmed)'}"
     )
     print(f"- can_claim_confirmed_baseline: {'yes' if confirmed else 'no'}")
+    if "legacy_config_only" in evidence.get("status", ""):
+        print("- framework_version: no")
+        print("- note: pure tuning/config-only records stay under the parent version; use v3/CONFIRM-001 local-v3-054 as the formal reference")
     if not confirmed:
         status = evidence.get("status", "")
         if "owner_accepted" in status or "owner_activated" in status:
@@ -6784,7 +6787,7 @@ def cmd_analyze_dynamic_routing_batch(args: argparse.Namespace) -> int:
     completed = [row for row in rows if row.get("status") == "completed" and row.get("H")]
     completed.sort(key=lambda row: float(row["H"]), reverse=True)
     print(f"completed: {len(completed)} / {len(rows)}")
-    print(f"reference: v4 confirmed_H=74.47; v5 repeat mean H=74.44")
+    print(f"reference: v3/CONFIRM-001 local-v3-054 confirmed_H=74.47; v5 repeat mean H=74.44")
     for row in completed[: int(args.top_k)]:
         print(
             f"rank: {row.get('job_id')} group={row.get('group')} name={row.get('name')} "

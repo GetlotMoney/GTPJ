@@ -38,7 +38,7 @@ GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment 
 idea_tree/                 # 创意来源、评分、排序
   -> experiments/module_trials/
                              # 模块创意被选中后，保存实现和证据
-  -> promoted baseline vX    # 成功 trial 才能提升为新版本
+  -> promoted baseline vX    # 成功且有框架/代码语义变化的 trial 才能提升为新版本
   -> experiments/vX/         # 新版本自己的 tune / ablation / confirmation 记录
 ```
 
@@ -55,8 +55,8 @@ idea_tree/                 # 创意来源、评分、排序
 ```
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
-当前更强的 confirmed reference 是 `GTPJ-v4 / tag v4 / confirmed_H=74.47`。`main` 是唯一长期分支；
-`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支。
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 是唯一长期分支；
+`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
 
 代码层和实验层不要混淆：
 
@@ -91,7 +91,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
 | `config/versions/v2.yaml` | `GTPJ-v2` 的固定配置，是历史 owner-activated mainline code 的权威配置源。 |
 | `config/versions/v3.yaml` | `GTPJ-v3` 的固定配置，是当前 owner-accepted stochastic tag 的权威配置源。 |
-| `config/versions/v4.yaml` | `GTPJ-v4` 的 confirmed reference 配置，`confirmed_H=74.47`，`H_mean=74.45`。 |
+| `config/versions/v4.yaml` | 历史 config-only tag 的配置快照；正式引用应写 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。 |
 | `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置，后续调参从这里开始。 |
 | `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v5`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |

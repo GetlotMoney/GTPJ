@@ -37,10 +37,10 @@ run:
   source_run_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
   command: "/data/lby/.conda/envs/dvsr_gpu/bin/python -u train_GTPJ_CUB.py --config <warehouse config>"
 decision:
-  status: confirmed
-  result_status: confirmed
-  promotion_decision: promote
-  promote_to: v4
+  status: legacy_config_only_not_framework_version
+  result_status: confirmed_config
+  promotion_decision: confirmed_config_only
+  promote_to: ""
   active_main_update: not_activated
 evidence:
   evidence_level: baseline_grade

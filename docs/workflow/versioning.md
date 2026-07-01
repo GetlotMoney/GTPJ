@@ -69,6 +69,10 @@ inherits_code_from: v1
 does_not_inherit: v2
 ```
 
+纯调参、纯 config search、batch size/epoch/loss weight/ratio 等数值调整，不是正式版本
+变化类型。它们只能记录为某个 `vX` 下的 tune/confirmation/confirmed config。即使复现通过，
+也不能新建 `vY`。
+
 ## 版本流程图
 
 每个正式版本的 `experiments/vX/VERSION.md` 必须包含：
@@ -163,7 +167,8 @@ based_on_trial:
 
 ## 提升规则
 
-只有成功且通过自动 promotion gate 的实验才能成为新的 baseline。完整硬门见：
+只有成功、通过自动 promotion gate、且包含框架/代码语义变化的实验才能成为新的 baseline
+版本。完整硬门见：
 
 ```text
 docs/workflow/promotion.md
@@ -173,9 +178,10 @@ docs/workflow/promotion.md
 GTPJ-v1 -> IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
 ```
 
-不要因为每个小尝试都创建一个新的 `vX`。只有实验记录明确写
-`promotion_decision: promote`、`evidence_level: baseline_grade`，并通过硬门后，
-才自动创建本地新版本材料和本地 tag。
+不要因为每个小尝试或纯调参高点创建一个新的 `vX`。纯 tune/config-only 结果只能成为
+父版本下的 confirmed config/reference。只有实验记录明确写 `promotion_decision: promote`、
+`evidence_level: baseline_grade`、包含框架/代码语义变化，并通过硬门后，才自动创建本地新版本材料
+和本地 tag。
 推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。promotion 不自动切换 `main` 当前代码。
 
 `vX` 不要求严格线性继承。`v3` 可以基于 `v1` 的新 trial 产生，

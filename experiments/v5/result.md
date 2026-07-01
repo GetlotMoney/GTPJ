@@ -30,4 +30,4 @@ H_mean: 74.44
 ZS_mean: 81.56
 ```
 
-`GTPJ-v5` is the owner-selected active mainline for the next tuning round. The strongest single observation is above `GTPJ-v4 confirmed_H=74.47`, but the 5-repeat mean is `74.44`, so v4 remains the stronger confirmed reference unless a later v5 confirmation/tune run changes that.
+`GTPJ-v5` is the owner-selected active mainline for the next tuning round. The strongest single observation is above `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`, but the 5-repeat mean is `74.44`, so the confirmed v3 config remains the stronger confirmed reference unless a later v5 confirmation/tune run changes that.

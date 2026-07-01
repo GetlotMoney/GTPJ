@@ -2,10 +2,10 @@
 
 ```text
 quality_check_mode: STRICT_MIN3_AUTO_PROMOTION
-decision: PASS_BASELINE_GRADE
-status: confirmed
-promotion_decision: promote
-promote_to: v4
+decision: PASS_CONFIRMED_CONFIG
+status: legacy_config_only_not_framework_version
+promotion_decision: confirmed_config_only
+promote_to:
 evidence_level: baseline_grade
 best_observed_H: 74.47
 confirmed_H: 74.47
@@ -19,7 +19,7 @@ active_main_update: not_activated
 - Parent baseline: `GTPJ-v3 / tag v3 / best_observed_H=74.27 / confirmed_H=pending`
 - Source confirmation: `CONFIRM-001_local_v3_054_min3`
 - Source candidate: `local-v3-054`
-- Formal tag target: `GTPJ-v4 / tag v4`
+- Historical tag target: `GTPJ-v4 / tag v4` (config-only legacy tag)
 - Evidence status: `baseline_grade`; `confirmed_H=74.47` is the highest successful repeat after the min3 cluster passed, and `H_mean=74.45` is retained as stability evidence.
 
 ## Findings
@@ -35,16 +35,16 @@ active_main_update: not_activated
 
 - [x] Parent version and parent tag are explicit: `v3`.
 - [x] Source confirmation, source run, and source config are explicit.
-- [x] Baseline H, v4 confirmed H, delta H, U/S/ZS, seed, and best epoch are explicit.
+- [x] Baseline H, confirmed config H, delta H, U/S/ZS, seed, and best epoch are explicit.
 - [x] Source config and v4 config snapshots are explicit and have the same SHA256.
 - [x] External artifact ids, URIs, sha256, and sizes are recorded through the source manifest.
 - [x] Artifact boundary passes: no raw logs, checkpoints, generated figures, or cache files are tracked.
 - [x] Evaluation contract is unchanged.
 - [x] Owner standing min3 rule authorizes automatic promotion without a second approval.
-- [x] Promotion creates a formal version and tag; it does not run `activate-version`.
+- [x] Current rule correction: pure tuning creates a confirmed config/reference, not a formal framework version.
 
 ## Decision
 
-PASS_BASELINE_GRADE.
+PASS_CONFIRMED_CONFIG.
 
-`GTPJ-v4` is a confirmed formal version. It is the current strongest confirmed version, but it does not automatically switch active code aliases.
+`GTPJ-v4` is a historical config-only tag for the current strongest confirmed config. It is not a formal framework version and does not automatically switch active code aliases.
