@@ -5824,6 +5824,142 @@ def _direction_exploit_followup_specs() -> list[tuple[str, str, dict[str, object
     return specs
 
 
+def _best_repro_tune_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def add_repeats(count: int, group: str, name: str, updates: dict[str, object]) -> None:
+        for repeat_index in range(1, count + 1):
+            specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
+
+    add_repeats(3, "must_reproduce", "static_v5_control", {"use_dynamic_routing": False})
+    add_repeats(
+        3,
+        "must_reproduce",
+        "dr008_local_class_h24_a0.001",
+        _dynamic_updates(
+            dynamic_local_mode="class",
+            dynamic_gate_hidden=24,
+            dynamic_gate_anchor_lambda=0.001,
+        ),
+    )
+    add_repeats(
+        3,
+        "must_reproduce",
+        "dr023_direction_sample_h48_a0.003",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.003,
+        ),
+    )
+    specs.append(("must_reproduce", "dynamic_fixed_all_r01", _dynamic_updates()))
+
+    for mode, hidden, weight_s2v, anchor in [
+        ("sample", 32, 0.50, 0.001),
+        ("sample", 40, 0.45, 0.003),
+        ("sample", 40, 0.48, 0.003),
+        ("sample", 40, 0.50, 0.005),
+        ("sample", 48, 0.42, 0.003),
+        ("sample", 48, 0.45, 0.003),
+        ("sample", 48, 0.48, 0.003),
+        ("sample", 48, 0.50, 0.003),
+        ("sample", 48, 0.50, 0.005),
+        ("sample", 48, 0.52, 0.005),
+        ("sample", 56, 0.45, 0.003),
+        ("sample", 56, 0.48, 0.005),
+        ("sample", 56, 0.50, 0.005),
+        ("sample", 64, 0.45, 0.005),
+        ("sample", 64, 0.48, 0.007),
+        ("sample", 64, 0.50, 0.007),
+        ("class", 40, 0.45, 0.003),
+        ("class", 48, 0.45, 0.003),
+        ("class", 48, 0.50, 0.005),
+        ("class", 56, 0.48, 0.005),
+    ]:
+        specs.append(
+            (
+                "direction_repro_tune",
+                f"direction_{mode}_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for mode, hidden, local_weight, anchor in [
+        ("class", 16, 0.12, 0.001),
+        ("class", 24, 0.12, 0.001),
+        ("class", 24, 0.16, 0.001),
+        ("class", 24, 0.20, 0.001),
+        ("class", 32, 0.12, 0.003),
+        ("class", 48, 0.10, 0.003),
+        ("sample", 24, 0.10, 0.001),
+        ("sample", 32, 0.12, 0.003),
+    ]:
+        specs.append(
+            (
+                "local_repro_tune",
+                f"local_{mode}_h{hidden}_l{local_weight:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_local_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=local_weight,
+                ),
+            )
+        )
+
+    for mode, hidden, pse_outer_ratio, anchor in [
+        ("fixed", 32, 0.55, 0.001),
+        ("fixed", 48, 0.65, 0.003),
+        ("class", 32, 0.55, 0.001),
+        ("class", 48, 0.55, 0.003),
+        ("class", 48, 0.65, 0.003),
+        ("class", 64, 0.65, 0.005),
+    ]:
+        specs.append(
+            (
+                "pse_repro_tune",
+                f"pse_{mode}_h{hidden}_p{pse_outer_ratio:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_pse_mode=mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    for name, local_mode, direction_mode, pse_mode, hidden, anchor, local_weight, weight_s2v, pse_outer_ratio in [
+        ("ld_sample_h48_l0.06_w0.45_a0.003", "sample", "sample", "fixed", 48, 0.003, 0.06, 0.45, None),
+        ("ld_classlocal_h48_l0.06_w0.45_a0.003", "class", "sample", "fixed", 48, 0.003, 0.06, 0.45, None),
+        ("ld_sample_h56_l0.08_w0.48_a0.005", "sample", "sample", "fixed", 56, 0.005, 0.08, 0.48, None),
+        ("dp_h48_w0.45_p0.55_a0.003", "fixed", "sample", "class", 48, 0.003, None, 0.45, 0.55),
+        ("dp_h56_w0.48_p0.55_a0.005", "fixed", "sample", "class", 56, 0.005, None, 0.48, 0.55),
+        ("ldp_sample_h48_l0.06_w0.45_p0.55_a0.005", "sample", "sample", "class", 48, 0.005, 0.06, 0.45, 0.55),
+    ]:
+        updates = _dynamic_updates(
+            dynamic_local_mode=local_mode,
+            dynamic_direction_mode=direction_mode,
+            dynamic_pse_mode=pse_mode,
+            dynamic_gate_hidden=hidden,
+            dynamic_gate_anchor_lambda=anchor,
+            weight_s2v=weight_s2v,
+        )
+        if local_weight is not None:
+            updates["local_weight"] = local_weight
+        if pse_outer_ratio is not None:
+            updates["pse_outer_ratio"] = pse_outer_ratio
+        specs.append(("combination_repro_tune", name, updates))
+
+    if len(specs) != 50:
+        raise WorkflowError(f"Best reproduce/tune follow-up plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
 def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
     specs: list[tuple[str, str, dict[str, object]]] = [
         ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
@@ -5977,6 +6113,9 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         repeat_source_ranks = []
     elif profile == "direction-exploit-followup":
         specs = _direction_exploit_followup_specs()
+        repeat_source_ranks = []
+    elif profile == "best-repro-tune-followup":
+        specs = _best_repro_tune_followup_specs()
         repeat_source_ranks = []
     elif profile == "dynamic-bold-followup":
         specs = _dynamic_bold_followup_specs()

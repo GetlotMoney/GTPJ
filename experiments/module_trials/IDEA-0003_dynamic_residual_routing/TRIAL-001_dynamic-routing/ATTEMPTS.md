@@ -4,6 +4,7 @@
 |---|---|---|---|---|---|---|
 | `ATTEMPT-001` | `RUN-20260630-0005-dynroute50-2gpu` | 50 completed / 0 failed | DR-001 static control H=74.40 | DR-008 local_class_h24 H=74.39 | DR-008 repeat mean H=74.23 | revise, no promotion |
 | `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | 94 completed / 6 failed, bs=128 | DR-014 H=70.84 | DR-014 direction_sample_h112_w0.5_a0.02 H=70.84 | no repeat; bs128 control H=69.70 | reject, restore bs=64 |
+| `ATTEMPT-003` | `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` | planned | pending | pending | static / DR-008 / DR-023 each x3 | run bs64 reproduce + tune |
 
 ## ATTEMPT-001 Notes
 
@@ -64,3 +65,23 @@ Workflow decision:
 
 - Restore and keep `batch_size=64` for future dynamic routing trials unless the owner explicitly reopens batch-size ablation.
 - Future profiles should avoid `dynamic_pse_mode=sample` until the model supports sample-conditioned PSE gates.
+
+## ATTEMPT-003 Pre-Run Notes
+
+This attempt returns to the validated bs=64 setting and uses the `best-repro-tune-followup`
+workflow profile for one 50-job two-GPU batch.
+
+Plan:
+
+- Reproduce current leading evidence three times each: static v5 control, DR-008 local_class_h24,
+  and DR-023 direction_sample_h48_a0.003.
+- Tune direction routing around the DR-023 signal with small changes to gate hidden width,
+  anchor strength, and `weight_s2v`.
+- Tune local routing around the DR-008 signal with lower local residual weight to improve U/S balance.
+- Tune legal PSE modes only (`fixed` and `class`); `sample` remains prohibited until model support exists.
+- Keep dynamic ICSA frozen in this profile because ATTEMPT-001 and ATTEMPT-002 showed instability.
+
+Promotion boundary:
+
+- Do not promote from a single run. A dynamic route must beat the v4/v5 reference boundary
+  around H=74.45 and hold up under its reproduce cluster before any v6 discussion.

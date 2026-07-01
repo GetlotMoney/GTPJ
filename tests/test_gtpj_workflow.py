@@ -866,6 +866,31 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 3)
         self.assertTrue(all(job["seed"] == 5 for job in jobs))
 
+    def test_dynamic_routing_batch_plan_has_best_repro_tune_followup_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="best-repro-tune-followup")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        names = Counter(job["name"].rsplit("_r", 1)[0] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(phases["explore"], 50)
+        self.assertEqual(groups["must_reproduce"], 10)
+        self.assertEqual(groups["direction_repro_tune"], 20)
+        self.assertEqual(groups["local_repro_tune"], 8)
+        self.assertEqual(groups["pse_repro_tune"], 6)
+        self.assertEqual(groups["combination_repro_tune"], 6)
+        self.assertEqual(names["static_v5_control"], 3)
+        self.assertEqual(names["dr008_local_class_h24_a0.001"], 3)
+        self.assertEqual(names["dr023_direction_sample_h48_a0.003"], 3)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+        self.assertFalse(any("copy_from_top_rank" in update for update in updates))
+        self.assertTrue(all(update.get("dynamic_icsa_mode", "fixed") == "fixed" for update in updates))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(any(update.get("weight_s2v") == 0.45 for update in updates))
+        self.assertTrue(any(update.get("local_weight") == 0.12 for update in updates))
+        self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
+
     def test_dynamic_routing_batch_plan_has_dynamic_bold_followup_50_jobs(self) -> None:
         jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="dynamic-bold-followup")
         groups = Counter(job["group"] for job in jobs)
