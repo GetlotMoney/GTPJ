@@ -92,3 +92,11 @@ not be used as formal evidence.
 - Server `audit-boundary` must pass before planning.
 - Server `validate` may still fail on historical `.gtpj_runtime` references to old TUNE records;
   that is a known pre-existing runtime preflight exception and must not be counted as ATTEMPT-002 evidence.
+
+## Post-Run Resolution
+
+- `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu`: 50 completed / 0 failed; best H=70.58.
+- `RUN-20260701-0008-dynroute-bs128-bold50-2gpu`: 44 completed / 6 failed; best H=70.84.
+- The bs=128 static v5 control reached only H=69.70, so bs=128 is rejected as a batch-size / schedule mismatch.
+- Future dynamic routing batches are locked back to `batch_size=64` unless the owner explicitly reopens batch-size ablation.
+- Future profile generation should avoid `dynamic_pse_mode=sample`; current PSE routing supports only `fixed` and `class`.
