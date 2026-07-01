@@ -4,17 +4,19 @@ experiment_name: GTPJ-v4-baseline
 kind: baseline
 version: v4
 metrics:
-  U: "71.54"
-  S: "77.61"
-  H: "74.45"
+  U: "71.53"
+  S: "77.66"
+  H: "74.47"
   H_values: ["74.46", "74.42", "74.47"]
+  H_mean: "74.45"
   H_min: "74.42"
   H_max: "74.47"
-  ZS: "81.30"
+  ZS: "81.25"
   best_epoch: "34"
   baseline_H: "74.27"
   baseline_reference: best_observed_H
-  delta_H: "+0.18"
+  delta_H: "+0.20"
+  delta_H_mean: "+0.18"
   seed: "5"
   source: "min3 server confirmation"
   metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
@@ -26,7 +28,8 @@ baseline:
   confirmed_H: pending
   confirmation_status: needs_confirmation
 delta:
-  H: "+0.18"
+  H: "+0.20"
+  H_mean: "+0.18"
 run:
   seed: "5"
   source_run_id: RUN-20260629-1722-server-gpu0-local-top2-min3
@@ -42,8 +45,9 @@ decision:
 evidence:
   evidence_level: baseline_grade
   best_observed_H: "74.47"
-  confirmed_H: "74.45"
-  confirmed_H_method: "mean_of_3_clean_server_repeats"
+  confirmed_H: "74.47"
+  confirmed_H_method: "max_of_3_clean_server_repeats_after_min3_pass"
+  stability_H_mean: "74.45"
   confirmation_status: confirmed
   confirmation_target: local-v3-054
   confirmation_tolerance_H: "min3 successful repeats with H metrics"

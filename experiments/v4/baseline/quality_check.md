@@ -8,7 +8,8 @@ promotion_decision: promote
 promote_to: v4
 evidence_level: baseline_grade
 best_observed_H: 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 confirmation_status: confirmed
 active_main_update: not_activated
 ```
@@ -19,13 +20,13 @@ active_main_update: not_activated
 - Source confirmation: `CONFIRM-001_local_v3_054_min3`
 - Source candidate: `local-v3-054`
 - Formal tag target: `GTPJ-v4 / tag v4`
-- Evidence status: `baseline_grade`; `confirmed_H=74.45` is the mean of 3 clean server repeats.
+- Evidence status: `baseline_grade`; `confirmed_H=74.47` is the highest successful repeat after the min3 cluster passed, and `H_mean=74.45` is retained as stability evidence.
 
 ## Findings
 
 - Min3 repeats are `H=74.46`, `H=74.42`, and `H=74.47`.
 - All three repeats exceeded the v3 accepted reference `H=74.27`.
-- The promoted configuration changes only `pse_outer_ratio`, `clip_a_self_outer_ratio`, and `local_weight`.
+- The promoted configuration changes only `pse_outer_ratio`, `clip_a_self_outer_ratio`, and `local_weight`; model/training code remains the v3 frozen path.
 - Raw logs and receipts remain outside GitHub in Warehouse.
 - Label mapping, seen/unseen split, class order, logits shape, and metric calculation are recorded as unchanged.
 - `config/versions/v4.yaml`, `experiments/v4/config.yaml`, and `experiments/v4/baseline/config.yaml` are identical.

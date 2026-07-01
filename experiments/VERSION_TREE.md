@@ -26,7 +26,7 @@ v1
 | `v1` | none | `v1` | initial | initial_baseline | none | First formal baseline. |
 | `v2` | `v1` | `v2` | `dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly@f24a277` | add_module | `trial/v1/idea-0001/trial-001` | CLIP-A-self text prototype adapter; best_observed_H=74.29, confirmed_H=pending. |
 | `v3` | `v2` | `v3` | `dev/v2-idea-0002-trial-002-strict-conditional-jepa@875cbb6` | add_module | `trial/v2/idea-0002/trial-002` | Strict conditional FAE-memory JEPA; best_observed_H=74.27, confirmed_H=pending. |
-| `v4` | `v3` | `v4` | `exp/v3-confirm-001-local-v3-054-min3@39ff2e7` | tune_config | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Min3-confirmed tuned v3 configuration; confirmed_H=74.45, best_observed_H=74.47, active_main_update=not_activated. |
+| `v4` | `v3` | `v4` | `exp/v3-confirm-001-local-v3-054-min3@39ff2e7` | tune_config | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Min3-confirmed tuned v3 configuration; confirmed_H=74.47, repeat mean H=74.45, active_main_update=not_activated. |
 | `v5` | `v4` | `v5` | `main owner activation 2026-06-30` | combo | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text` | Conditional BVSA text active mainline from `trial003-main100-069`; best_observed_H=74.54, confirmed_H=74.44, active_main_update=activated, v4 remains confirmed reference. |
 
 ## Record Template

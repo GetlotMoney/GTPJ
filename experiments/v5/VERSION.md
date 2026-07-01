@@ -60,16 +60,16 @@ The config still keeps ICSA, SGMP, and JEPA text modes conditional. No class ord
 evidence_level: confirmation_grade
 best_observed_H: 74.54
 confirmed_H: 74.44
-reference_v4_confirmed_H: 74.45
-delta_repeat_mean_vs_v4_confirmed_H: -0.01
-delta_best_observed_vs_v4_confirmed_H: +0.09
+reference_v4_confirmed_H: 74.47
+delta_repeat_mean_vs_v4_confirmed_H: -0.03
+delta_best_observed_vs_v4_confirmed_H: +0.07
 confirmation_status: owner_activated_provisional
 ```
 
 ## Quality Notes
 
 - The best single observed run is `trial003-main100-095`, a frozen repeat of source config `trial003-main100-069`.
-- The 5 frozen repeats give mean `H=74.44`, which is effectively tied with but slightly below `GTPJ-v4 confirmed_H=74.45`.
+- The 5 frozen repeats give mean `H=74.44`, which is below `GTPJ-v4 confirmed_H=74.47`.
 - Therefore `GTPJ-v5` is the active owner-selected mainline for future tuning, not a stronger confirmed baseline claim over `GTPJ-v4`.
 - Raw logs, receipts, checkpoints, and full runtime outputs remain in Warehouse.
 
@@ -85,7 +85,7 @@ notes: v5 = v4 governance parent + TRIAL-003 conditional BVSA text code + trial0
 
 ```mermaid
 flowchart TD
-  V4["GTPJ-v4 tag v4<br/>confirmed_H=74.45"] --> Trial["TRIAL-003 conditional BVSA text"]
+  V4["GTPJ-v4 tag v4<br/>confirmed_H=74.47"] --> Trial["TRIAL-003 conditional BVSA text"]
   Trial --> Batch["RUN-20260630-0002<br/>100 jobs, 95 conditional ok, 4 adapted ok, 1 failed"]
   Batch --> Source["trial003-main100-069<br/>H=74.43<br/>pse_outer=0.65 local_weight=0.2"]
   Source --> R91["091 H=74.49"]

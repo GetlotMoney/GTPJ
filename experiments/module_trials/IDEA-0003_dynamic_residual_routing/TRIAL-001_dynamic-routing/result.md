@@ -30,7 +30,7 @@ References:
 
 | Reference | H |
 |---|---:|
-| v4 confirmed | 74.45 |
+| v4 confirmed | 74.47 |
 | v5 repeat mean | 74.44 |
 
 ## Evidence
@@ -47,4 +47,4 @@ batch_status_json_sha256: 5f32239fd3c94cade94b84a934b2f825f49261ee0a35bf089fbef1
 
 No promotion.
 
-The best dynamic single H=74.39 and best dynamic repeat mean H=74.23 do not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Direction routing is the best follow-up signal; dynamic ICSA and coupled combinations should be treated as unstable in this profile.
+The best dynamic single H=74.39 and best dynamic repeat mean H=74.23 do not beat v4 confirmed H=74.47 or v5 repeat mean H=74.44. Direction routing is the best follow-up signal; dynamic ICSA and coupled combinations should be treated as unstable in this profile.

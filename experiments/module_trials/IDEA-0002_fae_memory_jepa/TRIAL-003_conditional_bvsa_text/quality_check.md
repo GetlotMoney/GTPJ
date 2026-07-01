@@ -21,7 +21,7 @@ Code, config, and post-run evidence for `TRIAL-003_conditional_bvsa_text`.
 - Tests cover framework-only keys, legacy-only keys, and framework-key priority on conflicts.
 - No raw logs, checkpoints, generated figures, or cache files were added.
 - The main100 run produced best observed `H=74.54` and frozen-repeat mean `H=74.44`.
-- `GTPJ-v4 confirmed_H=74.45` remains the stronger confirmed reference.
+- `GTPJ-v4 confirmed_H=74.47` remains the stronger confirmed reference.
 
 ## Quality Checks
 
@@ -37,4 +37,4 @@ Code, config, and post-run evidence for `TRIAL-003_conditional_bvsa_text`.
 ## Follow-up
 
 - Future v5 tuning should use `config/versions/v5.yaml`.
-- Future confirmation should compare repeat mean against `GTPJ-v4 confirmed_H=74.45`.
+- Future confirmation should compare repeat evidence against `GTPJ-v4 confirmed_H=74.47`.

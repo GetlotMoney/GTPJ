@@ -28,7 +28,7 @@ Files and artifacts checked:
 - The 50-job server batch completed with 50 completed / 0 failed.
 - The best overall job was the static v5 control, DR-001, at H=74.40.
 - The best dynamic single job was DR-008, `local_class_h24`, at H=74.39.
-- The best dynamic repeat source averaged H=74.23 over 5 repeats, below v4 confirmed H=74.45 and v5 repeat mean H=74.44.
+- The best dynamic repeat source averaged H=74.23 over 5 repeats, below v4 confirmed H=74.47 and v5 repeat mean H=74.44.
 - Direction gates produced the best follow-up signal: DR-023 reached H=74.38 with U=72.26 and S=76.63.
 - Dynamic ICSA and broad combinations were unstable in this profile and should not be promoted.
 - The batch summary files were copied from runtime storage into Warehouse summary storage and hashes were recorded.

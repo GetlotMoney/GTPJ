@@ -2,4 +2,4 @@
 
 | Experiment | Status | Directory | Note |
 |---|---|---|---|
-| none | - | - | v5 is owner-activated provisional; future confirmation should compare repeat mean against `v4 confirmed_H=74.45`. |
+| none | - | - | v5 is owner-activated provisional; future confirmation should compare repeat evidence against `v4 confirmed_H=74.47`. |

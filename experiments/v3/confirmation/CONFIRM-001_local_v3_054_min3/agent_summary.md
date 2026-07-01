@@ -28,7 +28,8 @@ Mode: role-only workflow review. No new model agents were launched for this reco
 
 ```text
 H values: 74.46 / 74.42 / 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 best_observed_H: 74.47
 reference_H: 74.27
 delta_H_vs_reference_mean: +0.18

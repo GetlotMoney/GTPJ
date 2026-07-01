@@ -33,11 +33,12 @@ local_weight: 0.2
 name: GTPJ-v4
 code_tag: v4
 status: confirmed
-confirmed_H: 74.45
+confirmed_H: 74.47
 best_observed_H: 74.47
+H_mean: 74.45
 ```
 
-`GTPJ-v4` remains the stronger confirmed reference because its min3 mean is `74.45`, while the v5 frozen-repeat mean is `74.44`. `GTPJ-v5` is active because the owner explicitly selected it as the next mainline for tuning, not because it supersedes v4 as a stronger confirmed result.
+`GTPJ-v4` remains the stronger confirmed reference because its min3 cluster passed and the formal confirmed H is `74.47`; its repeat mean is `74.45`, while the v5 frozen-repeat mean is `74.44`. `GTPJ-v5` is active because the owner explicitly selected it as the next mainline for tuning, not because it supersedes v4 as a stronger confirmed result.
 
 ## Enabled Modules
 
@@ -57,14 +58,14 @@ best_observed_H: 74.47
 | `GTPJ-v1` | CUB GZSL | 5 | 72.36 | 75.57 | 73.93 | 81.62 | confirmed |
 | `GTPJ-v2` | CUB GZSL | 5 | 71.32 | 77.52 | 74.29 | 81.59 | owner activated, needs confirmation |
 | `GTPJ-v3` | CUB GZSL | 5 | 71.22 | 77.60 | 74.27 | 81.38 | owner accepted stochastic, needs confirmation |
-| `GTPJ-v4` | CUB GZSL | 5 | 71.54 | 77.61 | 74.45 | 81.30 | confirmed min3 formal reference |
+| `GTPJ-v4` | CUB GZSL | 5 | 71.53 | 77.66 | 74.47 | 81.25 | confirmed min3 formal reference; H_mean=74.45 |
 | `GTPJ-v5` | CUB GZSL | 5 | 72.00 | 77.07 | 74.44 | 81.56 | owner activated provisional active mainline |
 
 ## Known Risks
 
-- `GTPJ-v5` has a best single repeat of `H=74.54`, but its 5-repeat mean is `H=74.44`, slightly below `GTPJ-v4 confirmed_H=74.45`.
+- `GTPJ-v5` has a best single repeat of `H=74.54`, but its 5-repeat mean is `H=74.44`, below `GTPJ-v4 confirmed_H=74.47`.
 - Future manuscript-grade claims should cite whether a number is `confirmed_H`, repeat mean, or `best_observed_H`.
-- The next tuning round should start from `config/versions/v5.yaml` but still compare against `v4 confirmed_H=74.45`.
+- The next tuning round should start from `config/versions/v5.yaml` but still compare against `v4 confirmed_H=74.47`.
 
 ## Warehouse Retention
 
@@ -81,4 +82,4 @@ excluded: logs, receipts, summaries, configs, manifests, registries, and data/ca
 
 ## Next Steps
 
-Use `GTPJ-v5` as the active base for future tune, ablation, and confirmation work. Treat `GTPJ-v4 confirmed_H=74.45` as the reference that the next v5-derived candidate must beat by repeat evidence.
+Use `GTPJ-v5` as the active base for future tune, ablation, and confirmation work. Treat `GTPJ-v4 confirmed_H=74.47` as the reference that the next v5-derived candidate must beat by repeat evidence.

@@ -121,6 +121,9 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 硬规则：
 
 - 单次最高结果只能写为 `best_observed_H`，不能直接写成 `confirmed_H`。
+- 若 3 次 clean reproduction / confirmation 全部通过，则正式结果取通过簇中 H 最高的那一次；
+  `confirmed_H` 写该最高 H，正式 U/S/ZS 取同一次 repeat，`H_mean` / `H_min` / `H_max`
+  作为稳定性证据保留。
 - 任意结果比较、`delta_H` 解释、promotion 或 tag 决策前，先运行或等价执行
   `python workflow/gtpj_workflow.py repro-status --version <vX>`。如果对照版本只有
   `best_observed_H` 且 `confirmed_H=pending`，它只能写成未确认参考，不能写成 confirmed baseline。

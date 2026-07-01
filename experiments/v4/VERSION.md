@@ -19,7 +19,8 @@ config: experiments/v4/config.yaml
 baseline_evidence: experiments/v4/baseline/
 evidence_level: baseline_grade
 best_observed_H: 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 confirmation_status: confirmed
 active_main_update: not_activated
 owner_decision_date: 2026-06-29
@@ -43,18 +44,19 @@ owner_decision: min3-confirmed candidates automatically promote to formal versio
 - `pse_outer_ratio` / `clip_a_self_outer_ratio`: `0.15 -> 0.5`
 - `local_weight`: `0.3 -> 0.1`
 
-No model code, class order, seen/unseen split, label mapping, logits shape, or GZSL metric semantics are changed by this promotion.
+No model/training code, class order, seen/unseen split, label mapping, logits shape, or GZSL metric semantics are changed by this promotion. This is a config-version promotion, not a framework rewrite.
 
 ## Results
 
-| Dataset | Repeats | U mean | S mean | H values | confirmed_H | best_observed_H | ZS mean |
+| Dataset | Repeats | Official U | Official S | H values | confirmed_H | H mean | Official ZS |
 |---|---:|---:|---:|---|---:|---:|---:|
-| CUB GZSL | 3 | 71.54 | 77.61 | 74.46 / 74.42 / 74.47 | 74.45 | 74.47 | 81.30 |
+| CUB GZSL | 3 | 71.53 | 77.66 | 74.46 / 74.42 / 74.47 | 74.47 | 74.45 | 81.25 |
 
 ```text
 evidence_level: baseline_grade
 best_observed_H: 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 confirmation_status: confirmed
 ```
 
@@ -80,7 +82,7 @@ flowchart TD
   Tune --> R1["rep01 H=74.46"]
   Tune --> R2["rep02 H=74.42"]
   Tune --> R3["rep03 H=74.47"]
-  R1 --> V4["GTPJ-v4 tag v4<br/>confirmed_H=74.45"]
+  R1 --> V4["GTPJ-v4 tag v4<br/>confirmed_H=74.47<br/>H_mean=74.45"]
   R2 --> V4
   R3 --> V4
   V4 --> Active["active_main_update: not_activated"]

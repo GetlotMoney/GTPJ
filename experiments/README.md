@@ -17,7 +17,7 @@ v5/                      GTPJ-v5 owner-activated active mainline 记录
 
 当前 active mainline code 是 `GTPJ-v5 / tag v5`。`GTPJ-v5` 是 owner-activated provisional，`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
 
-当前更强的 confirmed reference 仍是 `GTPJ-v4 / tag v4 / confirmed_H=74.45`。
+当前更强的 confirmed reference 仍是 `GTPJ-v4 / tag v4 / confirmed_H=74.47`。
 
 旧的 `experiments/v1/` 到 `experiments/v4/` 不删除。`main` 保存全部版本账本，代码快照靠对应 tag 回滚。
 

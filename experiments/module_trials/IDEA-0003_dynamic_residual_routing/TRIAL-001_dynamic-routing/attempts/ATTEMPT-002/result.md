@@ -43,7 +43,7 @@ to prevent future profiles from emitting `dynamic_pse_mode=sample`.
 
 `promotion_decision: rejected`.
 
-ATTEMPT-002 does not approach v4 confirmed H=74.45, v5 repeat mean H=74.44, or
+ATTEMPT-002 does not approach v4 confirmed H=74.47, v5 repeat mean H=74.44, or
 the ATTEMPT-001 bs=64 control region. It is not a promotion candidate and does
 not change the current best evidence from ATTEMPT-001.
 

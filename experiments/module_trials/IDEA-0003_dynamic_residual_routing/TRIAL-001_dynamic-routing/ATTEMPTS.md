@@ -89,4 +89,4 @@ Plan:
 Promotion boundary:
 
 - Do not promote from a single run. A dynamic route must beat the v4/v5 reference boundary
-  around H=74.45 and hold up under its reproduce cluster before any v6 discussion.
+  around H=74.47 and hold up under its reproduce cluster before any v6 discussion.

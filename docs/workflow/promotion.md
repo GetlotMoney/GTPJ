@@ -18,8 +18,15 @@ are true:
 Such a candidate is upgraded to `baseline_grade` evidence and can be promoted
 automatically to the next formal version.
 
+For a min3-confirmed candidate, the formal result row uses the successful repeat
+with the highest H. Record that row as `confirmed_H` / official H, and take the
+official U/S/ZS from the same repeat. Still record `H_mean`, `H_min`, `H_max`,
+and repeat count as stability evidence. A single high run cannot become
+`confirmed_H` until the min3 confirmation cluster has passed.
+
 When several min3-confirmed candidates exist, promote the strongest candidate by
-`confirmed_H` first, using `best_observed_H` only as the tie-breaker.
+`confirmed_H` first, using repeat stability (`H_mean`, `H_min`, spread) as the
+guardrail or tie-breaker.
 
 ## Standing GitHub Permission
 

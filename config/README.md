@@ -1,6 +1,6 @@
 # 配置策略
 
-`config/versions/v5.yaml` 是当前 owner-activated active mainline 配置。`config/versions/v4.yaml` 仍是更强的 confirmed reference 配置，`confirmed_H=74.45`。
+`config/versions/v5.yaml` 是当前 owner-activated active mainline 配置。`config/versions/v4.yaml` 仍是更强的 confirmed reference 配置，`confirmed_H=74.47`，3 次复现均值 `H_mean=74.45`。
 
 规则：
 

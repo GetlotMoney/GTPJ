@@ -131,12 +131,13 @@ CANONICAL_BASELINES = {
     },
     "v4": {
         "name": "GTPJ-v4",
-        "H": "74.45",
+        "H": "74.47",
+        "repeat_mean_H": "74.45",
         "result_file": "experiments/v4/result.md",
         "version_file": "experiments/v4/VERSION.md",
         "evidence_level": "baseline_grade",
         "best_observed_H": "74.47",
-        "confirmed_H": "74.45",
+        "confirmed_H": "74.47",
         "confirmation_status": "confirmed",
         "status": "confirmed",
     },
@@ -6783,7 +6784,7 @@ def cmd_analyze_dynamic_routing_batch(args: argparse.Namespace) -> int:
     completed = [row for row in rows if row.get("status") == "completed" and row.get("H")]
     completed.sort(key=lambda row: float(row["H"]), reverse=True)
     print(f"completed: {len(completed)} / {len(rows)}")
-    print(f"reference: v4 confirmed_H=74.45; v5 repeat mean H=74.44")
+    print(f"reference: v4 confirmed_H=74.47; v5 repeat mean H=74.44")
     for row in completed[: int(args.top_k)]:
         print(
             f"rank: {row.get('job_id')} group={row.get('group')} name={row.get('name')} "

@@ -36,7 +36,8 @@ promote_to: v4
 evidence_level: baseline_grade
 result_status: confirmed
 best_observed_H: 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 confirmation_target: local-v3-054
 confirmation_tolerance_H: min3 clean server repeats, no tolerance override
 confirmation_status: confirmed
@@ -49,14 +50,14 @@ Does the local search candidate `local-v3-054` remain above the v3 accepted-but-
 
 ## Configuration Delta
 
-The confirmation uses the v3 baseline code and changes only the two selected hyperparameters from the local exploration source:
+The confirmation uses the v3 baseline model/training code and changes only the selected config hyperparameters from the local exploration source:
 
 | Key | v3 value | confirmed value |
 |---|---:|---:|
 | `pse_outer_ratio` / `clip_a_self_outer_ratio` | 0.15 | 0.5 |
 | `local_weight` | 0.3 | 0.1 |
 
-All framework semantics remain the v3 frozen implementation: PSE, ICSA, FGVD, BVSA, and SGMP, with `all_text_cond` entering BVSA through `bvsa_text_mode: conditional`.
+All model/training framework semantics remain the v3 frozen implementation: PSE, ICSA, FGVD, BVSA, and SGMP, with `all_text_cond` entering BVSA through `bvsa_text_mode: conditional`. `GTPJ-v4` is therefore a confirmed config-version, not a model-code rewrite.
 
 ## Server Repeats
 
@@ -72,7 +73,8 @@ Summary:
 |---|---:|
 | `U_mean` | 71.54 |
 | `S_mean` | 77.61 |
-| `H_mean` / `confirmed_H` | 74.45 |
+| `confirmed_H` / official H | 74.47 |
+| `H_mean` | 74.45 |
 | `H_min` | 74.42 |
 | `H_max` / `best_observed_H` | 74.47 |
 | `ZS_mean` | 81.30 |
@@ -89,4 +91,4 @@ Summary:
 
 ## Decision
 
-`local-v3-054` is promoted to the formal version `GTPJ-v4` under the owner standing rule that min3 clean reproduction is reproducible enough for automatic promotion. This creates a confirmed version record and tag; it does not by itself run `activate-version` or switch the current active code alias.
+`local-v3-054` is promoted to the formal version `GTPJ-v4` under the owner standing rule that min3 clean reproduction is reproducible enough for automatic promotion. Because the min3 cluster passed, the formal result uses the highest successful repeat (`rep03`, H=74.47) as `confirmed_H`, while the mean (`H_mean=74.45`) remains stability evidence. This creates a confirmed version record and tag; it does not by itself run `activate-version` or switch the current active code alias.

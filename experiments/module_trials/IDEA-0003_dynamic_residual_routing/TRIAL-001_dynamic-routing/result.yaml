@@ -51,7 +51,7 @@ metrics:
     S: 77.02
     H: 74.34
 baseline:
-  v4_confirmed_H: 74.45
+  v4_confirmed_H: 74.47
   v5_repeat_mean_H: 74.44
   metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
 delta:
@@ -62,7 +62,7 @@ decision:
   result_status: "valid_single_batch"
   promotion_decision: "rejected"
   promote_to: ""
-  reason: "No dynamic single or repeat mean exceeds v4 confirmed H=74.45 or v5 repeat mean H=74.44."
+  reason: "No dynamic single or repeat mean exceeds v4 confirmed H=74.47 or v5 repeat mean H=74.44."
 evidence:
   evidence_level: "valid_single_batch"
   best_observed_H: 74.40

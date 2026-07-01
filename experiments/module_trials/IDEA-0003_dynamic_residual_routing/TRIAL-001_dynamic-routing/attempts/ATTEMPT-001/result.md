@@ -13,7 +13,7 @@ promotion_decision: rejected
 
 | Reference | H |
 |---|---:|
-| v4 confirmed | 74.45 |
+| v4 confirmed | 74.47 |
 | v5 repeat mean | 74.44 |
 
 ## Top Results
@@ -35,7 +35,7 @@ promotion_decision: rejected
 
 ## Interpretation
 
-The dynamic routing idea is not promoted from this attempt. The best dynamic single result was close to the static control, but it did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. The dynamic repeat mean weakened to H=74.23 and had low U.
+The dynamic routing idea is not promoted from this attempt. The best dynamic single result was close to the static control, but it did not beat v4 confirmed H=74.47 or v5 repeat mean H=74.44. The dynamic repeat mean weakened to H=74.23 and had low U.
 
 Direction routing is the most promising follow-up because DR-023 reached H=74.38 with a better U/S balance than the local-gate winner. Local gates remain worth tuning, but the first repeat set suggests the class-local configuration is not stable enough. Dynamic ICSA should be treated cautiously because the ICSA group collapsed in this profile.
 

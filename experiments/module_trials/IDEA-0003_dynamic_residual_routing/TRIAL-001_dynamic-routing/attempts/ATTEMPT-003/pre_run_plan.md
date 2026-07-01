@@ -62,4 +62,4 @@ Decision should prioritize:
 - reproduce cluster mean and variance
 - U/S stability, not H alone
 - failures and invalid configs
-- comparison against H=74.45 reference boundary
+- comparison against H=74.47 reference boundary

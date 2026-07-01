@@ -25,5 +25,6 @@ This check covers only the server min3 reproduction evidence for `local-v3-054` 
 ## Notes
 
 - `local-v3-054` is baseline-grade under the owner standing min3 rule because all three repeats exceed the accepted v3 reference `H=74.27`.
+- The formal confirmed result uses the best successful repeat after the min3 cluster passed: `confirmed_H=74.47`; `H_mean=74.45` remains stability evidence.
 - `local-v3-022` and `trial003-tune-026` are intentionally not promoted by this record; their min3 repeats did not reproduce their strongest single-run values.
 - This ledger record promotes `local-v3-054` to `GTPJ-v4`, but it is not an automatic mutation of the canonical v3 result and does not activate current code aliases.

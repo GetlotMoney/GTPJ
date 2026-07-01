@@ -47,7 +47,7 @@ not be used as formal evidence.
 ## Decision Rules
 
 - First compare within bs=128: best single, top cluster consistency, U/S balance, failures, and best epoch.
-- Then compare against references as provisional evidence only: v4 confirmed_H=74.45 and v5 repeat mean H=74.44.
+- Then compare against references as provisional evidence only: v4 confirmed_H=74.47 and v5 repeat mean H=74.44.
 - Promotion discussion only starts if bs=128 repeat or cluster evidence clearly beats both references while keeping U/S stable.
 - A single high-H job is not enough for promotion.
 

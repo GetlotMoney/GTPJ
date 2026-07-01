@@ -15,7 +15,7 @@ jobs:
   completed: 94
   failed: 6
 references:
-  v4_confirmed_H: 74.45
+  v4_confirmed_H: 74.47
   v5_repeat_mean_H: 74.44
   attempt_001_bs64_static_control_H: 74.40
 metrics:
@@ -24,7 +24,7 @@ metrics:
   H: 70.84
   ZS: 81.15
   best_epoch: 12
-  baseline_H: 74.45
+  baseline_H: 74.47
   delta_H: -3.61
   seed: 5
 runs:

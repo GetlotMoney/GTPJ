@@ -48,6 +48,8 @@ confirmation_grade:
   目的: 确认某个 best_observed 或 baseline。
   要求: clean pre-run freeze commit、run_commit 唯一、git_dirty=false、目标和容忍范围明确。
   用途: 复现通过后写 confirmed_H；失败时写 needs_confirmation/not_confirmed。
+        若 3 次 clean reproduction 全部通过，正式数据取通过簇中 H 最高的一次，
+        repeat mean/min/max 另作为稳定性证据。
 
 baseline_grade:
   目的: 作为稳定 baseline 或 promotion 证据。
@@ -112,6 +114,8 @@ repro-status 明确区分 best_observed_H 和 confirmed_H
 2. 检查 training log 是否记录 strict_determinism、use_dedicated_batch_rng、batch_sampling_seed、torch/cuda/cuDNN 状态。
 3. 如果旧 log 缺这些字段，先补训练入口日志和可选开关，再用新 ATTEMPT 做 deterministic confirmation。
 4. deterministic confirmation 仍混合时，记录为算子/训练方差风险，不能把单次最高 H 当 confirmed_H。
+5. 只有当 3 次 clean reproduction cluster 通过时，最高 H 才能升级为正式 confirmed_H；
+   否则最高 H 只能写 best_observed_H。
 ```
 
 Owner 日常只需要使用 `docs/workflow/QUICK_START.md` 中的人话口令。检查通过后，

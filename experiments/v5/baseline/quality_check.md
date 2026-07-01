@@ -16,7 +16,7 @@ active_main_update: activated
 
 ## Scope
 
-- Parent confirmed reference: `GTPJ-v4 / tag v4 / confirmed_H=74.45`.
+- Parent confirmed reference: `GTPJ-v4 / tag v4 / confirmed_H=74.47`.
 - Source trial: `TRIAL-003_conditional_bvsa_text`.
 - Source batch: `RUN-20260630-0002-trial003-main100-2gpu`.
 - Source config: `trial003-main100-069`.
@@ -29,7 +29,7 @@ active_main_update: activated
 - Source config `trial003-main100-069` produced `H=74.43`.
 - Frozen repeats 091-095 produced `H=74.49 / 74.43 / 74.35 / 74.41 / 74.54`.
 - Best observed repeat is `H=74.54`, but repeat mean is `H=74.44`.
-- The repeat mean is slightly below `GTPJ-v4 confirmed_H=74.45`; this is an owner activation, not a stronger confirmed-baseline claim.
+- The repeat mean is below `GTPJ-v4 confirmed_H=74.47`; this is an owner activation, not a stronger confirmed-baseline claim.
 - Raw logs, receipts, checkpoints, generated figures, and cache files remain outside GitHub.
 - Label mapping, seen/unseen split, class order, logits shape, and metric calculation are recorded as unchanged.
 - `config/versions/v5.yaml`, `experiments/v5/config.yaml`, `experiments/v5/baseline/config.yaml`, and `config/GTPJ_cub_gzsl.yaml` are identical.
