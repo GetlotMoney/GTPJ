@@ -62,6 +62,12 @@ promotion / version ledger
 final report / final code handoff
 ```
 
+任意组合数量命令，例如 `跑10创新+100调参`，必须遵守：
+
+```text
+docs/workflow/mixed_experiment_campaign_protocol.md
+```
+
 Coordinator 必须为每个子任务选择正确协议，不允许把所有事情塞进一个模糊 experiment。
 
 规则：

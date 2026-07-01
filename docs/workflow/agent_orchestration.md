@@ -33,6 +33,7 @@ agents:
 - 选择 best、影响下一轮高成本实验、影响论文实验路线或 baseline 决策；
 - 准备 promotion、versioning、tag 或 owner-facing 正式结论；
 - 长周期 autonomous research campaign。
+- 任意组合 mixed experiment campaign，例如 `跑10创新+100调参`。
 
 `role_only` 只允许用于纯只读解释/状态检查、训练前候选 triage、不改变结论的机械账本格式整理，或明确不进入正式证据的 debug/smoke。
 
@@ -213,6 +214,7 @@ fastest_valid_path:
 | 结果异常、争议大、owner 质疑解释 | `real_multi_agent` | `temporary_subagent` | 需要独立复核日志、配置、代码和质量证据。 |
 | 准备写 `promotion_decision: promote`、创建 `vX` 或打 tag | `real_multi_agent` | `temporary_subagent` | 版本事实不可由单一视角确认。 |
 | 10 到 20 天 autonomous research campaign | `real_multi_agent` | `temporary_subagent` + optional `persistent_thread` | workflow 自行调度多实验类型和最终交付。 |
+| 任意组合 mixed experiment campaign | `real_multi_agent` | `temporary_subagent` with campaign/workstream/task/run lifecycle | 根据 requested_mix 拆分多个 workstream，不按实验数量开永久 agent。 |
 
 ## 按任务选角色
 
@@ -226,6 +228,7 @@ fastest_valid_path:
 | innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Result Analyst、Quality Checker、Reviewer | `real_multi_agent` |
 | promotion | Coordinator、Quality Checker、Reviewer、Result Analyst，必要时 Interface Checker | `real_multi_agent` |
 | autonomous research campaign | Coordinator、Source Reader、Idea Planner、Runner Monitor、Log Metric Parser、Result Comparator、Evidence Quality Checker；按阶段加 Runner、Implementer、Interface Checker、Reviewer、Promotion Manager | `real_multi_agent` |
+| mixed experiment campaign | Workflow Coordinator、Campaign Planner、Runner Monitor、Result Comparator、Evidence Quality Checker、Warehouse Registrar；按 workstream 加专用角色 | `real_multi_agent` |
 | debug / smoke | Coordinator、Runner、Log Analyst，必要时 Interface Checker | `role_only` |
 
 ## Agent 记忆规则

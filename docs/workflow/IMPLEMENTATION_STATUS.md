@@ -35,6 +35,7 @@
 | agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；正式 `real_multi_agent` 默认使用 workflow-scoped temporary agents，persistent thread 只作为跨 workflow 可选活上下文。 |
 | 长期 agent 记忆 | 已落地 | `docs/workflow/agents/long_term_memory.md`, `docs/workflow/agents/shared_roles/*/memory.md` | 每个共享角色已有长期 `memory.md`；长期 agent 由 profile/memory/call protocol/history evidence 构成，临时实例承担本轮活上下文。 |
 | 全自动研究 campaign 规范 | 已落地 | `docs/workflow/autonomous_research_campaign.md` | 定义 owner 只给来源、评估标准、安全边界和实验标准时，workflow 从 0 到最终结果与代码交付的长周期接管目标；自动 runtime 仍按需产品化。 |
+| 任意组合实验 campaign 规范 | 已落地 | `docs/workflow/mixed_experiment_campaign_protocol.md` | 定义 `跑10创新+100调参` 这类组合命令的解析、workstream 拆分、agent 生命周期、调度、证据、失败隔离和汇报规则。 |
 | agent 工作凭证 | 已落地 | `docs/workflow/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；凭证记录 `agent_instance_mode`、persistent thread id、临时 fallback 原因和 memory 验证。 |
 | 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
 | 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |

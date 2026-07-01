@@ -54,6 +54,7 @@ docs/workflow/WORKFLOW_ROUTER.md
 docs/workflow/TASK_START_CARD.md
 docs/workflow/FIRST_CLOSED_LOOP.md
 docs/workflow/autonomous_research_campaign.md
+docs/workflow/mixed_experiment_campaign_protocol.md
 docs/workflow/CURRENT_WORKFLOW_REPORT.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
 docs/workflow/IMPLEMENTATION_STATUS.md
@@ -128,31 +129,32 @@ Coordinator / agent 完整展开顺序：
 2. `TASK_START_CARD.md`
 3. `FIRST_CLOSED_LOOP.md`
 4. `autonomous_research_campaign.md`
-5. `CURRENT_WORKFLOW_REPORT.md`
-6. `GTPJ_WORKFLOW_SPEC.md`
-7. `IMPLEMENTATION_STATUS.md`
-8. `workflow_diagrams.md`
-9. `../GITHUB_GOVERNANCE.md`
-10. `../PROJECT_STRUCTURE.md`
-11. `../PROJECT_STATUS.md`
-12. `git_policy.md`
-13. `versioning.md`
-14. `idea_tree_protocol.md`
-15. `paper_intake.md`
-16. `module_trial_protocol.md`
-17. `code_interface_contract.md`
-18. `innovation_code_review_protocol.md`
-19. `artifact_policy.md`
-20. `ARTIFACT_REGISTRATION.md`
-21. `result_index_protocol.md`
-22. `experiment_protocol.md`
-23. `quality_gate.md`
-24. `promotion.md`
-25. `agent_contracts.md`
-26. `agent_report_policy.md`
-27. `agent_orchestration.md`
-28. `agents/README.md`
-29. `agents/long_term_memory.md`
-30. `progress_dashboard.md`
-31. `runbook.md`
-32. `../../workflow/README.md`
+5. `mixed_experiment_campaign_protocol.md`
+6. `CURRENT_WORKFLOW_REPORT.md`
+7. `GTPJ_WORKFLOW_SPEC.md`
+8. `IMPLEMENTATION_STATUS.md`
+9. `workflow_diagrams.md`
+10. `../GITHUB_GOVERNANCE.md`
+11. `../PROJECT_STRUCTURE.md`
+12. `../PROJECT_STATUS.md`
+13. `git_policy.md`
+14. `versioning.md`
+15. `idea_tree_protocol.md`
+16. `paper_intake.md`
+17. `module_trial_protocol.md`
+18. `code_interface_contract.md`
+19. `innovation_code_review_protocol.md`
+20. `artifact_policy.md`
+21. `ARTIFACT_REGISTRATION.md`
+22. `result_index_protocol.md`
+23. `experiment_protocol.md`
+24. `quality_gate.md`
+25. `promotion.md`
+26. `agent_contracts.md`
+27. `agent_report_policy.md`
+28. `agent_orchestration.md`
+29. `agents/README.md`
+30. `agents/long_term_memory.md`
+31. `progress_dashboard.md`
+32. `runbook.md`
+33. `../../workflow/README.md`

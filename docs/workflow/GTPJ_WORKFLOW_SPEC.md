@@ -18,6 +18,12 @@ docs/workflow/autonomous_research_campaign.md
 
 最终形态是 owner 只给论文来源、评估标准、安全边界和实验标准，workflow 从 0 到最终结果与代码交付接管所有实验类型和长周期服务器运行。
 
+任意组合实验命令，例如 `跑10创新+100调参`，按以下协议拆分 workstreams、agents 生命周期和证据：
+
+```text
+docs/workflow/mixed_experiment_campaign_protocol.md
+```
+
 本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
 
 ## 0. 当前结论

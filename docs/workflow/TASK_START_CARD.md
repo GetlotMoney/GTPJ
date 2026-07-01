@@ -231,6 +231,7 @@ stop_if: copy the mandatory blocker checklist from section 5; never leave this f
 ```text
 paper intake / idea discovery
 autonomous research campaign
+mixed experiment campaign
 local heuristic idea
 tune
 ablation

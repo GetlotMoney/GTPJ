@@ -113,3 +113,17 @@ agent_instance_mode: temporary_subagent, lifecycle workflow_scoped; persistent_t
 gates: source_status, baseline_repro_status, interface_contract, metric_semantics, artifact_boundary, quality_gate, promotion_gate
 next_action: create campaign brief from sources, evaluation standard, safety boundaries, experiment standard, budget, and deliverables
 ```
+
+### 任意组合实验
+
+```yaml
+owner_phrase: 跑10创新+100调参
+task_type: mixed experiment campaign
+base_version: current active baseline unless owner specifies another
+target: requested_mix innovation=10, tune=100
+writes: experiments/campaigns + each workstream's canonical experiment directory + Warehouse
+agent_mode: real_multi_agent, because multiple workstreams require isolated planning, running, analysis, and quality checks
+agent_instance_mode: temporary_subagent, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
+gates: baseline_repro_status, source_status, interface_contract, metric_semantics, artifact_boundary, quality_gate
+next_action: parse requested_mix, create campaign manifest, build workstreams, and freeze campaign plan before Runner starts
+```
