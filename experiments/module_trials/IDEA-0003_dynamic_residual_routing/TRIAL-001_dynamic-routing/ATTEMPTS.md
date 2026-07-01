@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|---|
 | `ATTEMPT-001` | `RUN-20260630-0005-dynroute50-2gpu` | 50 completed / 0 failed | DR-001 static control H=74.40 | DR-008 local_class_h24 H=74.39 | DR-008 repeat mean H=74.23 | revise, no promotion |
 | `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | 94 completed / 6 failed, bs=128 | DR-014 H=70.84 | DR-014 direction_sample_h112_w0.5_a0.02 H=70.84 | no repeat; bs128 control H=69.70 | reject, restore bs=64 |
-| `ATTEMPT-003` | `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` | planned | pending | pending | static / DR-008 / DR-023 each x3 | run bs64 reproduce + tune |
+| `ATTEMPT-003` | `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` aborted pre-evidence; `RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu` planned | planned | pending | pending | static / DR-008 / DR-023 each x3 | run bs64 reproduce + tune |
 
 ## ATTEMPT-001 Notes
 
@@ -70,6 +70,11 @@ Workflow decision:
 
 This attempt returns to the validated bs=64 setting and uses the `best-repro-tune-followup`
 workflow profile for one 50-job two-GPU batch.
+
+The initial `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` launch was stopped before
+completion evidence because one controller hit a concurrent `batch_status.json` read/write race.
+The formal evidence run is `RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu` after the runner
+status writer was changed to atomic replace plus short read retries.
 
 Plan:
 

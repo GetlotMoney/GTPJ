@@ -6218,12 +6218,25 @@ def utc_now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def load_json(path):
-    return json.loads(path.read_text(encoding="utf-8"))
+def load_json(path, retries=20, delay=0.05):
+    last_error = None
+    for _ in range(retries):
+        try:
+            text = path.read_text(encoding="utf-8")
+            if text.strip():
+                return json.loads(text)
+        except (FileNotFoundError, json.JSONDecodeError) as exc:
+            last_error = exc
+        time.sleep(delay)
+    if last_error is not None:
+        raise last_error
+    raise ValueError(f"{path} stayed empty while reading JSON")
 
 
 def write_json(path, data):
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp_path, path)
 
 
 def run(cmd, cwd=None, env=None, log_path=None):

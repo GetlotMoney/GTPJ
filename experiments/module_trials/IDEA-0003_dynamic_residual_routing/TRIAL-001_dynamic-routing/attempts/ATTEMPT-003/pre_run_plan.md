@@ -3,7 +3,7 @@
 ## Scope
 
 - Trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
-- Server run: RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu
+- Server run: RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu
 - Workflow profile: best-repro-tune-followup
 - Batch size: 64
 - Epochs: 30
@@ -16,6 +16,11 @@ ATTEMPT-001 showed that the strongest dynamic signals were close to the static v
 not strong enough for promotion. ATTEMPT-002 showed that batch_size=128 caused a broad control
 collapse and is rejected. ATTEMPT-003 therefore returns to bs=64 and spends the budget on
 reproducing the current best evidence plus narrow parameter tuning.
+
+The first launch id, RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu, was stopped before
+completion evidence because one controller hit a concurrent batch_status.json read/write race.
+The formal run id is RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu after fixing runner
+status writes to atomic replace plus short read retries.
 
 ## Job Budget
 
@@ -44,6 +49,7 @@ reproducing the current best evidence plus narrow parameter tuning.
 - Keep dynamic ICSA frozen.
 - Keep batch_size=64.
 - Do not use `dynamic_pse_mode=sample`.
+- Use atomic runner status writes and short JSON read retries for two-controller safety.
 - Retain only the best three saved model files per job artifact.
 - Use workflow runner status and warehouse artifacts as the evidence source.
 
