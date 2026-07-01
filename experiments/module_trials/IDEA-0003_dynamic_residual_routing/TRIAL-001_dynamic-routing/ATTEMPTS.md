@@ -41,7 +41,12 @@ after both bs=128 batches finish or fail under the workflow runner.
 Attempt-local records:
 
 - `attempts/ATTEMPT-002/config.yaml`
+- `attempts/ATTEMPT-002/manifest.yaml`
 - `attempts/ATTEMPT-002/pre_run_plan.md`
+- `attempts/ATTEMPT-002/result.yaml`
+- `attempts/ATTEMPT-002/result.md`
+- `attempts/ATTEMPT-002/quality_check.md`
+- `attempts/ATTEMPT-002/agent_summary.md`
 
 ## ATTEMPT-002 Post-Run Notes
 

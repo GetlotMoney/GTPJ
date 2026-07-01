@@ -1,0 +1,104 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: "ATTEMPT-002"
+trial_id: "TRIAL-001"
+idea_id: "IDEA-0003"
+base_version: "v5"
+attempt_type: "batch_size_ablation_followup"
+batch_size: 128
+pre_run_freeze_commit: "bbc5af90e72a8f6b39cff6d802a1a9de429aff35"
+status: "completed_with_failures"
+run_ids:
+  - "RUN-20260701-0007-dynroute-bs128-exploit50-2gpu"
+  - "RUN-20260701-0008-dynroute-bs128-bold50-2gpu"
+jobs:
+  total: 100
+  completed: 94
+  failed: 6
+references:
+  v4_confirmed_H: 74.45
+  v5_repeat_mean_H: 74.44
+  attempt_001_bs64_static_control_H: 74.40
+metrics:
+  U: 63.71
+  S: 79.77
+  H: 70.84
+  ZS: 81.15
+  best_epoch: 12
+  baseline_H: 74.45
+  delta_H: -3.61
+  seed: 5
+runs:
+  - run_id: "RUN-20260701-0007-dynroute-bs128-exploit50-2gpu"
+    profile: "direction-exploit-followup"
+    completed: 50
+    failed: 0
+    best_completed:
+      job_id: "DR-029"
+      group: "direction_microgrid"
+      name: "direction_sample_h56_w0.52_a0.01"
+      H: 70.58
+      U: 63.22
+      S: 79.89
+      ZS: 81.48
+      best_epoch: 13
+    runtime_artifacts:
+      summary_csv:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/summary.csv"
+        sha256: "d32527adf1cf2ad0b12f88370374a6517bb50138abb97905ec340eb73bfaed31"
+        size_bytes: 17073
+      summary_jsonl:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/summary.jsonl"
+        sha256: "1e17f45fb01211f1f9df6f721d10df0a217892c93fd0a88ab1665283d86b7070"
+        size_bytes: 42723
+      batch_status_json:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/batch_status.json"
+        sha256: "7de231343ebe00449695853fc33f365afccba2e56f88ab9f5e6135ef765d7080"
+        size_bytes: 38345
+  - run_id: "RUN-20260701-0008-dynroute-bs128-bold50-2gpu"
+    profile: "dynamic-bold-followup"
+    completed: 44
+    failed: 6
+    best_completed:
+      job_id: "DR-014"
+      group: "direction_bold"
+      name: "direction_sample_h112_w0.5_a0.02"
+      H: 70.84
+      U: 63.71
+      S: 79.77
+      ZS: 81.15
+      best_epoch: 12
+    static_control:
+      job_id: "DR-001"
+      name: "static_v5_control"
+      H: 69.70
+      U: 60.85
+      S: 81.56
+      ZS: 81.39
+      best_epoch: 15
+    failures:
+      job_ids: ["DR-017", "DR-018", "DR-019", "DR-020", "DR-041", "DR-045"]
+      reason: "dynamic_pse_mode=sample is unsupported; PSE gates are built before sample-conditioned text exists."
+    runtime_artifacts:
+      summary_csv:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/summary.csv"
+        sha256: "6ede0a9df6f8f7e6dd7cf08ca42d9850ad4f767dbdb64e5347c3b2311c90f341"
+        size_bytes: 16295
+      summary_jsonl:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/summary.jsonl"
+        sha256: "75e20ee705286989c122c8e0f37f508a4af008d8def66bcd35bd7cd727b838d3"
+        size_bytes: 42062
+      batch_status_json:
+        uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/batch_status.json"
+        sha256: "d11bc598398f54ed6976c8526ae15e7f97219a72da08ef874ba37f90aff2942d"
+        size_bytes: 36832
+decision:
+  status: "rejected"
+  trial_decision: "revise"
+  promotion_decision: "rejected"
+  evidence_level: "valid_batch_ablation"
+  reason: "The bs=128 intervention underperformed the bs=64 control region by about 3.6 H, and the bs=128 static control also dropped to H=69.70."
+follow_up:
+  future_batch_size: 64
+  root_config_restored_to: 64
+  avoid_dynamic_pse_mode_sample: true
+  priority: "continue from bs64 direction/local/legal-PSE signals; keep dynamic ICSA cautious"

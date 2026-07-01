@@ -81,4 +81,13 @@ quality:
   interface_contract_checked: "true"
   evaluation_semantics_verified: "true"
   checkpoint_retention_applied: "true"
+follow_up_attempts:
+  ATTEMPT-002:
+    manifest: "attempts/ATTEMPT-002/manifest.yaml"
+    result: "attempts/ATTEMPT-002/result.yaml"
+    decision: "rejected"
+    best_H: 70.84
+    artifacts:
+      - "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary"
+      - "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary"
 recorded_at: "2026-06-30T20:41:26+08:00"

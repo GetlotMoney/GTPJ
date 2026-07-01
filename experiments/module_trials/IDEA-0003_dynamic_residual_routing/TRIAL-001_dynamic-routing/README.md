@@ -101,6 +101,25 @@ The best dynamic single result, DR-008 at H=74.39, did not beat v4 confirmed H=7
 
 Follow-up work should keep ICSA fixed, prioritize direction/local/PSE gates, and use the `principled-followup` batch profile that was added after this run.
 
+## Follow-Up Attempt Status
+
+ATTEMPT-002 tested a deliberate `batch_size=128` intervention with two 50-job
+workflow batches:
+
+| Attempt | Runs | Status | Best H | Decision |
+|---|---|---|---:|---|
+| `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | 94 completed / 6 failed | 70.84 | reject, restore future bs=64 |
+
+This follow-up is negative batch-size evidence, not promotion evidence. The bs=128
+static control reached only H=69.70, far below the bs=64 control region, so future
+dynamic routing batches are locked back to `batch_size=64` unless the owner
+explicitly reopens batch-size ablation.
+
+ATTEMPT-002 summary artifacts:
+
+- `runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary` -> `lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/summary.csv`
+- `runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary` -> `lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/summary.csv`
+
 ## Checkpoint Retention
 
 The server Warehouse was pruned according to the workflow rule "keep only the best 3 model checkpoints after each experiment batch." The retained checkpoints are:
@@ -120,6 +139,11 @@ The server Warehouse was pruned according to the workflow rule "keep only the be
 - `attempts/ATTEMPT-001/result.yaml`
 - `attempts/ATTEMPT-001/result.md`
 - `attempts/ATTEMPT-001/quality_check.md`
+- `attempts/ATTEMPT-002/manifest.yaml`
+- `attempts/ATTEMPT-002/result.yaml`
+- `attempts/ATTEMPT-002/result.md`
+- `attempts/ATTEMPT-002/quality_check.md`
+- `attempts/ATTEMPT-002/agent_summary.md`
 - `manifest.yaml`
 - `result.yaml`
 - `result.md`

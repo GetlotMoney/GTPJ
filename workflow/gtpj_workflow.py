@@ -5860,10 +5860,10 @@ def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
         )
 
     for mode, hidden, pse_outer_ratio, anchor in [
-        ("sample", 32, 0.35, 0.005),
-        ("sample", 48, 0.45, 0.010),
-        ("sample", 64, 0.55, 0.015),
-        ("sample", 96, 0.75, 0.020),
+        ("fixed", 32, 0.35, 0.005),
+        ("fixed", 48, 0.45, 0.010),
+        ("fixed", 64, 0.55, 0.015),
+        ("fixed", 96, 0.75, 0.020),
         ("class", 24, 0.35, 0.005),
         ("class", 32, 0.45, 0.010),
         ("class", 48, 0.55, 0.010),
@@ -5930,11 +5930,11 @@ def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
         )
 
     for name, local_mode, icsa_mode, direction_mode, pse_mode, hidden, anchor, local_weight, weight_s2v, pse_outer_ratio, icsa_ratio in [
-        ("combo_dp_sample_h48_w0.45_p0.45", "fixed", "fixed", "sample", "sample", 48, 0.010, None, 0.45, 0.45, None),
+        ("combo_dp_sample_h48_w0.45_p0.45", "fixed", "fixed", "sample", "class", 48, 0.010, None, 0.45, 0.45, None),
         ("combo_dp_sample_h64_w0.55_p0.75", "fixed", "fixed", "sample", "class", 64, 0.015, None, 0.55, 0.75, None),
         ("combo_ld_sample_h48_l0.06_w0.45", "sample", "fixed", "sample", "fixed", 48, 0.010, 0.06, 0.45, None, None),
         ("combo_ld_class_h64_l0.08_w0.55", "class", "fixed", "sample", "fixed", 64, 0.015, 0.08, 0.55, None, None),
-        ("combo_lpd_sample_h48_l0.06_w0.45_p0.45", "sample", "fixed", "sample", "sample", 48, 0.010, 0.06, 0.45, 0.45, None),
+        ("combo_lpd_sample_h48_l0.06_w0.45_p0.45", "sample", "fixed", "sample", "class", 48, 0.010, 0.06, 0.45, 0.45, None),
         ("combo_lpd_class_h64_l0.08_w0.55_p0.55", "class", "fixed", "sample", "class", 64, 0.015, 0.08, 0.55, 0.55, None),
         ("combo_id_sample_h32_r0.002_w0.45", "fixed", "sample", "sample", "fixed", 32, 0.010, None, 0.45, None, 0.002),
         ("combo_id_class_h48_r0.004_w0.45", "fixed", "class", "sample", "fixed", 48, 0.010, None, 0.45, None, 0.004),
@@ -5990,6 +5990,12 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     jobs: list[dict[str, object]] = []
     for index, (group, name, updates) in enumerate(specs, start=1):
         updates = dict(updates)
+        pse_mode = updates.get("dynamic_pse_mode")
+        if pse_mode not in (None, "fixed", "class"):
+            raise WorkflowError(
+                "Dynamic routing batch profiles must not emit "
+                f"unsupported dynamic_pse_mode={pse_mode!r}; use 'fixed' or 'class'."
+            )
         updates["random_seed"] = seed
         jobs.append(
             {

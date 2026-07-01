@@ -2,6 +2,7 @@
 
 ```text
 experiment_id: TRIAL-001
+attempt_id: ATTEMPT-002
 run_id: RUN-20260630-0005-dynroute50-2gpu
 base_version: v5
 code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
@@ -20,6 +21,23 @@ warehouse_report_artifacts: available
 final_decision: revise; no promotion
 review_rounds: Review 0 allow; Review 1 allow; Review 2 allow after revision; Review 3 revise/no promotion
 temporary_agents: Interface Checker subagent 019f177a-a8d9-7513-9a5a-3788f60411a2; Quality Checker subagent 019f177a-e656-7430-bf9b-cbc2f3b10d24
+```
+
+## ATTEMPT-002 Closeout
+
+```text
+role: Coordinator
+agent_instance_type: main_agent_closeout
+independence_scope: ATTEMPT-002 result and GitHub ledger closeout
+inputs_checked: attempts/ATTEMPT-002/manifest.yaml; attempts/ATTEMPT-002/result.yaml; attempts/ATTEMPT-002/quality_check.md; server dynamic-routing-status/analyze outputs
+actions: recorded bs128 negative evidence; restored future root batch_size=64; fixed workflow planner to avoid dynamic_pse_mode=sample
+outputs: attempts/ATTEMPT-002/result.yaml; attempts/ATTEMPT-002/quality_check.md; attempts/ATTEMPT-002/agent_summary.md
+issues: bs128 static control collapsed to H=69.70; six bold jobs failed from invalid PSE sample mode
+decision: rejected; revise
+evidence_refs: runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary; runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary
+verified_against_current_repo: yes
+review_round: Review 3 closeout
+blocking_issues: promotion rejected
 ```
 
 ## Coordinator

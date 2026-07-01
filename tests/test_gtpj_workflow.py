@@ -882,6 +882,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(groups["combination_bold"], 10)
         self.assertTrue(any(update.get("dynamic_icsa_mode") == "sample" for update in updates))
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.85 for update in updates))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
         self.assertTrue(
             all(float(update.get("icsa_ratio", 0.0)) <= 0.006 for update in updates if "icsa_ratio" in update)
         )
