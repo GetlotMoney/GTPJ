@@ -1,18 +1,18 @@
-# GTPJ Workflow Start Here
+# GTPJ 工作流入口
 
-This is the compact entry for every GTPJ task. It replaces the habit of reading the entire workflow directory.
+这是每个 GTPJ 任务的精简入口，用来取代“每次都读完整 workflow 目录”的旧习惯。
 
-## 1. Decide The Mode
+## 1. 先判断模式
 
-Use the smallest mode that is still valid:
+使用仍然合规的最小模式：
 
-| Request | Mode |
+| 请求 | 模式 |
 |---|---|
-| Explain, inspect, report status, or list options | `role_only` |
-| Start/monitor a real runner, record formal evidence, compare best results, affect next expensive runs, change code/config semantics, or prepare promotion | `real_multi_agent` |
-| Debug/smoke that will not count as evidence | `role_only` allowed, but result cannot be kept as formal evidence |
+| 解释、检查、汇报状态、列候选 | `role_only` |
+| 启动或监控真实 runner、记录正式证据、比较 best、影响下一轮高成本实验、改变代码/配置语义、准备 promotion | `real_multi_agent` |
+| 不计入证据的 debug/smoke | 可以 `role_only`，但结果不能作为正式 evidence |
 
-Formal experiment workflows default to:
+正式实验默认：
 
 ```yaml
 activation_mode: real_multi_agent
@@ -20,40 +20,40 @@ agent_instance_mode: temporary_subagent
 lifecycle: workflow_scoped
 ```
 
-Persistent threads are optional visible long-running context. They are not evidence.
+`persistent_thread` 只是可选的可见长期上下文，不是正式证据。
 
-## 2. Minimal Read Order
+## 2. 最小阅读顺序
 
-Read only this chain unless the task requires more:
+除非任务需要更多细节，否则只读这条链：
 
 ```text
 1. START_HERE.md
 2. WORKFLOW_KERNEL.md
-3. selected playbook under docs/workflow/playbooks/
-4. WORKFLOW_ROUTER.md only if routing is ambiguous or mixed
-5. TASK_START_MINI.md before reporting the start summary
-6. TASK_START_CARD.md before formal writes/runs
+3. docs/workflow/playbooks/ 下的相关 playbook
+4. 只有路由模糊或混合任务时才读 WORKFLOW_ROUTER.md
+5. 汇报启动摘要前读 TASK_START_MINI.md
+6. 正式写入或运行前读 TASK_START_CARD.md
 ```
 
-Do not deep-read every old protocol by default.
+不要默认深读所有旧协议。
 
-## 3. Owner Phrase Routing
+## 3. 用户人话路由
 
-| Owner says | Default route | Playbook |
+| 用户说 | 默认路由 | 执行卡 |
 |---|---|---|
-| `汇报`, `查状态`, `现在怎么样` | read-only status | none, use `WORKFLOW_KERNEL.md` |
-| `读论文`, `找创新点` | paper intake / idea discovery | `playbooks/paper_intake.md` |
-| `调参` | tune | `playbooks/tune.md` |
-| `消融` | ablation | `playbooks/ablation.md` |
-| `复现`, `确认这个结果` | confirmation | `playbooks/confirmation.md` |
-| `开新模块`, `试这个想法` | innovation / module trial | `playbooks/innovation.md` |
-| `升版本` | promotion | `playbooks/promotion.md` |
-| `跑10创新+100调参` or any mixed count | mixed experiment campaign | `playbooks/mixed_campaign.md` |
-| `全自动研究campaign`, `从论文到最终结果都接管` | autonomous research campaign | `playbooks/autonomous_campaign.md` |
+| `汇报`, `查状态`, `现在怎么样` | 只读状态检查 | 无，使用 `WORKFLOW_KERNEL.md` |
+| `读论文`, `找创新点` | 论文读取 / idea discovery | `playbooks/paper_intake.md` |
+| `调参` | 调参 Tune | `playbooks/tune.md` |
+| `消融` | 消融 Ablation | `playbooks/ablation.md` |
+| `复现`, `确认这个结果` | 复现确认 Confirmation | `playbooks/confirmation.md` |
+| `开新模块`, `试这个想法` | 创新 / module trial | `playbooks/innovation.md` |
+| `升版本` | 升版 Promotion | `playbooks/promotion.md` |
+| `跑10创新+100调参` 或任意数量组合 | 混合实验 campaign | `playbooks/mixed_campaign.md` |
+| `全自动研究campaign`, `从论文到最终结果都接管` | 全自动研究 campaign | `playbooks/autonomous_campaign.md` |
 
-## 4. Start Summary
+## 4. 启动摘要
 
-Before editing files, running experiments, recording results, or selecting best, report:
+在改文件、跑实验、记录结果或选择 best 前，先汇报：
 
 ```text
 能不能开工：
@@ -69,13 +69,13 @@ agents 模式：
 下一步最小动作：
 ```
 
-For a pure status/report request, keep this summary short.
+如果只是状态汇报，保持简短即可。
 
-## 5. Evidence First
+## 5. 证据优先
 
-Never let chat memory become official evidence.
+不要让聊天记忆变成正式证据。
 
-Official evidence lives in:
+正式证据只来自：
 
 ```text
 manifest.yaml
@@ -86,7 +86,7 @@ agent_summary.md
 ATTEMPTS.md
 batch_status.json
 Warehouse logs/checkpoints/receipts
-Research source notes when needed
+必要时的 Research source notes
 ```
 
-If a conclusion affects keep/drop/best/repeat/promotion/versioning or the next high-cost run, it must be traceable to files or artifacts.
+如果某个结论会影响 keep/drop/best/repeat/promotion/versioning 或下一轮高成本实验，就必须能追溯到文件或 artifact。

@@ -1,51 +1,51 @@
-# Playbook: Confirmation
+# 执行卡：复现 / 确认 Confirmation
 
-Use for reproducing or confirming a result.
+用于复现或确认一个结果。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
 experiment_protocol.md
 quality_gate.md
-ARTIFACT_REGISTRATION.md when raw artifacts are produced
+产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
 ```
 
-## Agents
+## 角色
 
-Default formal set:
+正式默认角色：
 
 ```text
-Coordinator
-Runner Monitor
-Log Analyst
-Evidence Quality Checker
-Result Comparator
+总控 (Coordinator)
+运行监控 (Runner Monitor)
+日志分析 (Log Analyst)
+证据质量检查 (Evidence Quality Checker)
+结果比较 (Result Comparator)
 ```
 
-## Repeat Rule
+## Repeat 规则
 
-Default confirmation size is 3 repeats.
+默认 confirmation 跑 3 次。
 
-If repeats pass:
+如果复现通过：
 
 ```text
 official single = best repeat
 reported stability = mean / min / max
 ```
 
-Do not hide weak repeats. Stability remains part of the official evidence.
+不能隐藏较弱 repeat。稳定性属于正式证据的一部分。
 
-## Outputs
+## 输出
 
-Version-level confirmation:
+版本级 confirmation：
 
 ```text
 experiments/vX/confirmation/
 ```
 
-Trial-internal confirmation:
+trial 内部 confirmation：
 
 ```text
 experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md

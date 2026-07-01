@@ -1,57 +1,57 @@
-# Playbook: Autonomous Research Campaign
+# 执行卡：全自动研究 Campaign
 
-Use for the long-term target where the owner provides sources, evaluation standards, safety boundaries, and experiment standards, then workflow manages the rest.
+用于长期目标：用户只给论文来源、评估标准、安全边界和实验标准，工作流接管剩余过程。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
 WORKFLOW_ROUTER.md
 autonomous_research_campaign.md
-mixed_experiment_campaign_protocol.md when multiple experiment types are requested
+如果请求包含多种实验类型，再读 mixed_experiment_campaign_protocol.md
 ```
 
-## Inputs From Owner
+## 用户输入
 
 ```text
-paper/source scope
-evaluation metric and baseline
-safety boundaries
-experiment budget and stop conditions
-promotion standard
-final deliverable standard
+论文/来源范围
+评估指标和 baseline
+安全边界
+实验预算和停止条件
+升版标准
+最终交付标准
 ```
 
-## Workflow Owns
+## 工作流负责
 
 ```text
-paper intake
-source review
-idea discovery and ranking
-experiment planning
-code changes
-server runs
-evidence registration
+论文读取
+来源复核
+idea 发现和排序
+实验规划
+代码修改
+服务器运行
+证据登记
 repeat/confirmation
 promotion proposal
-final result and code report
+最终结果和代码报告
 ```
 
-## Agent Shape
+## Agent 形态
 
-Use campaign-scoped real multi-agent. Add persistent threads only for visible long-running Coordinator/Monitor continuity when explicitly useful.
+使用 campaign-scoped real multi-agent。只有在可见长周期总控/监控连续性确实有用时，才额外加 `persistent_thread`。
 
-Formal evidence remains file-backed.
+正式证据仍然以文件为准。
 
-## Final Deliverables
+## 最终交付
 
 ```text
-final experiment table
-best confirmed framework and parameters
-failed directions and why
-code/config diff summary
-Warehouse artifact index
-promotion recommendation
-remaining risks
+最终实验表
+最佳已确认框架和参数
+失败方向及原因
+代码/config diff 摘要
+Warehouse artifact 索引
+升版建议
+剩余风险
 ```

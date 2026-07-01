@@ -1,53 +1,53 @@
-# Playbook: Tune
+# 执行卡：调参 Tune
 
-Use for parameter, seed, epoch, batch, loss weight, or narrow config search that does not change method semantics.
+用于参数、seed、epoch、batch、loss weight 或不改变方法语义的窄配置搜索。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
 experiment_protocol.md
-ARTIFACT_REGISTRATION.md when raw artifacts are produced
+产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
 ```
 
-If tuning is inside a module trial, also read:
+如果调参发生在 module trial 内部，还要读：
 
 ```text
 module_trial_protocol.md
 ```
 
-## Agents
+## 角色
 
-Formal tune defaults to `real_multi_agent`:
+正式 tune 默认使用 `real_multi_agent`：
 
 ```text
-Coordinator
-Runner Monitor
-Log Analyst
-Evidence Quality Checker
-Result Comparator
+总控 (Coordinator)
+运行监控 (Runner Monitor)
+日志分析 (Log Analyst)
+证据质量检查 (Evidence Quality Checker)
+结果比较 (Result Comparator)
 ```
 
-## Outputs
+## 输出
 
-Version-level tune:
+版本级 tune：
 
 ```text
 experiments/vX/tune/
 ```
 
-Trial-internal tune:
+trial 内部 tune：
 
 ```text
 experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
 experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
 ```
 
-Raw logs and checkpoints stay in Warehouse.
+raw logs 和 checkpoints 留在 Warehouse。
 
-## Decision Rule
+## 决策规则
 
-Tune-only gains do not create a new `vX`.
+只调参数带来的提升不能开新的 `vX`。
 
-If a tuned config is important, confirm with 3 repeats before calling it formal.
+重要 tuned config 必须 3 次 confirmation 后，才能作为正式数据表述。

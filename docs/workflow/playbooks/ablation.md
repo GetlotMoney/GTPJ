@@ -1,41 +1,41 @@
-# Playbook: Ablation
+# 执行卡：消融 Ablation
 
-Use for removing, replacing, disabling, or isolating a component.
+用于移除、替换、关闭或隔离某个组件。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
 experiment_protocol.md
 code_interface_contract.md
-ARTIFACT_REGISTRATION.md when raw artifacts are produced
+产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
 ```
 
-If the ablation is inside a module trial, also read:
+如果消融发生在 module trial 内部，还要读：
 
 ```text
 module_trial_protocol.md
 ```
 
-## Agents
+## 角色
 
-Default formal set:
+正式默认角色：
 
 ```text
-Coordinator
-Reader/Planner
-Interface Checker
-Runner Monitor
-Log Analyst
-Evidence Quality Checker
-Result Comparator
+总控 (Coordinator)
+阅读/规划 (Reader/Planner)
+接口检查 (Interface Checker)
+运行监控 (Runner Monitor)
+日志分析 (Log Analyst)
+证据质量检查 (Evidence Quality Checker)
+结果比较 (Result Comparator)
 ```
 
-Add `Implementer` only if code changes are required.
+只有需要改代码时才加入 `实现者 (Implementer)`。
 
-## Stop Gates
+## 阻断门
 
-- Label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear.
-- Ablation silently changes more than the intended component.
-- Result would be compared against an unconfirmed baseline without marking that boundary.
+- label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚。
+- 消融暗中改变了目标组件之外的东西。
+- 要和 unconfirmed baseline 比较，却没有标出这个边界。

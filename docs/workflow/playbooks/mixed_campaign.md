@@ -1,18 +1,18 @@
-# Playbook: Mixed Experiment Campaign
+# 执行卡：混合实验 Campaign
 
-Use for arbitrary combinations such as `跑10创新+100调参`.
+用于 `跑10创新+100调参` 这类任意组合实验命令。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
 WORKFLOW_ROUTER.md
 mixed_experiment_campaign_protocol.md
-one playbook per requested workstream
+每个 requested workstream 对应的 playbook
 ```
 
-## Structure
+## 结构
 
 ```text
 campaign
@@ -21,40 +21,40 @@ campaign
       -> run
 ```
 
-Do not create one permanent agent per run.
+不要给每个 run 创建一个永久 agent。
 
-## Agents
+## 角色
 
-Campaign-level defaults:
+campaign 级默认角色：
 
 ```text
-Workflow Coordinator
-Campaign Planner
-Runner Monitor
-Result Comparator
-Evidence Quality Checker
-Warehouse Registrar
+工作流总控 (Workflow Coordinator)
+Campaign 规划 (Campaign Planner)
+运行监控 (Runner Monitor)
+结果比较 (Result Comparator)
+证据质量检查 (Evidence Quality Checker)
+Warehouse 登记 (Warehouse Registrar)
 ```
 
-Add workstream-specific agents from the relevant playbook.
+再按对应 playbook 加入 workstream 专属角色。
 
-## Scheduling Rule
+## 调度规则
 
-The Coordinator owns priority and boundaries.
+总控 (Coordinator) 负责优先级和边界。
 
-Runner Monitor owns GPU/server execution and failure isolation.
+运行监控 (Runner Monitor) 负责 GPU/服务器执行和失败隔离。
 
-Result Comparator decides which directions need 3-repeat confirmation, based on evidence.
+结果比较 (Result Comparator) 根据 evidence 决定哪些方向需要 3-repeat confirmation。
 
-## Required Campaign Report
+## 必要 Campaign 汇报
 
 ```text
-requested mix
-actual planned runs
+请求组合 requested mix
+实际规划 runs
 completed/running/pending/failed
-best single
-top repeated candidates
+最佳单次 best single
+进入复现的 top candidates
 confirmed/rejected directions
-next 10-50 run plan
-checkpoint retention result
+下一轮 10-50 run 计划
+checkpoint retention 结果
 ```

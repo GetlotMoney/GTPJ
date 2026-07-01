@@ -1,27 +1,27 @@
-# GTPJ Workflow Quick Start
+# GTPJ 工作流快速入口
 
-The compact entry is now:
+现在的精简入口是：
 
 ```text
 docs/workflow/START_HERE.md
 docs/workflow/WORKFLOW_KERNEL.md
 ```
 
-Use this file only as a short owner phrase cheat sheet.
+本文件只作为 owner 人话短语速查表。
 
-| Owner phrase | Route |
+| 用户短语 | 路由 |
 |---|---|
-| `汇报`, `查状态` | Read-only status. Do not write evidence unless asked. |
-| `读论文`, `找创新点` | Paper intake / idea discovery. |
-| `调参` | Tune. Use `playbooks/tune.md`. |
-| `消融` | Ablation. Use `playbooks/ablation.md`. |
-| `复现`, `确认结果` | Confirmation. Use `playbooks/confirmation.md`. |
-| `开新模块`, `试这个想法` | Innovation / module trial. Use `playbooks/innovation.md`. |
-| `升版本` | Promotion gate. Use `playbooks/promotion.md`. |
-| `跑10创新+100调参` | Mixed campaign. Use `playbooks/mixed_campaign.md`. |
-| `全自动研究campaign` | Autonomous campaign. Use `playbooks/autonomous_campaign.md`. |
+| `汇报`, `查状态` | 只读状态检查。除非明确要求，不写 evidence。 |
+| `读论文`, `找创新点` | 论文读取 / idea discovery。 |
+| `调参` | 调参 Tune。使用 `playbooks/tune.md`。 |
+| `消融` | 消融 Ablation。使用 `playbooks/ablation.md`。 |
+| `复现`, `确认结果` | 复现确认 Confirmation。使用 `playbooks/confirmation.md`。 |
+| `开新模块`, `试这个想法` | 创新 / module trial。使用 `playbooks/innovation.md`。 |
+| `升版本` | 升版门 Promotion gate。使用 `playbooks/promotion.md`。 |
+| `跑10创新+100调参` | 混合实验 campaign。使用 `playbooks/mixed_campaign.md`。 |
+| `全自动研究campaign` | 全自动研究 campaign。使用 `playbooks/autonomous_campaign.md`。 |
 
-Default formal agent mode:
+正式任务默认 agent 模式：
 
 ```yaml
 activation_mode: real_multi_agent
@@ -29,16 +29,16 @@ agent_instance_mode: temporary_subagent
 lifecycle: workflow_scoped
 ```
 
-Long-term agents are file-backed role identities and accumulated evidence, not mandatory permanent chat windows.
+长期 agent 是文件支撑的角色身份和累积证据，不等于必须常驻的聊天窗口。
 
-Persistent threads are optional live context for visible long-running monitoring. They do not replace files, logs, results, quality checks, or Warehouse artifacts.
+`persistent_thread` 是可选活上下文，适合可见的长周期监控，但不能替代文件、日志、result、quality check 或 Warehouse artifact。
 
-Before formal writes or runs, produce the `START_HERE.md` start summary and then fill the full task card when needed.
+正式写入或运行前，先按 `START_HERE.md` 输出启动摘要；需要正式证据时再填写完整 task card。
 
-Baseline reproducibility remains a hard gate. Before status comparison, best selection, confirmation, promotion, or tag/version claims, run or record:
+baseline 复现状态仍然是硬门。状态比较、best 选择、复现确认、升版、tag/version 表述前，必须运行或记录：
 
 ```bash
 python workflow/gtpj_workflow.py repro-status --version <vX>
 ```
 
-The start summary must include `baseline_repro_status`. Do not treat `best_observed_H` as a confirmed baseline unless `confirmed_H` and `confirmation_status` support it.
+启动摘要必须包含 `baseline_repro_status`。除非 `confirmed_H` 和 `confirmation_status` 支持，否则不能把 `best_observed_H` 当成已确认 baseline。

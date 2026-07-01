@@ -1,8 +1,8 @@
-# Playbook: Promotion
+# 执行卡：升版 Promotion
 
-Use when a result may become a new baseline/version.
+当某个结果可能成为新 baseline/version 时使用。
 
-## Read
+## 必读
 
 ```text
 START_HERE.md
@@ -13,32 +13,32 @@ versioning.md
 git_policy.md
 ```
 
-## Agents
+## 角色
 
-Promotion requires formal independent checking:
+promotion 必须做正式独立检查：
 
 ```text
-Coordinator
-Evidence Quality Checker
-Interface Checker
-Result Comparator
-Reviewer
+总控 (Coordinator)
+证据质量检查 (Evidence Quality Checker)
+接口检查 (Interface Checker)
+结果比较 (Result Comparator)
+复核者 (Reviewer)
 ```
 
-## Required Evidence
+## 必要证据
 
 ```text
 promotion_decision: promote
-complete manifest/result/quality/interface evidence
-repeat or confirmation evidence when required
-target version declared
-no unresolved hard gate
+完整 manifest/result/quality/interface evidence
+必要时有 repeat 或 confirmation evidence
+已声明目标版本
+没有未解决硬门
 ```
 
-## Boundary
+## 边界
 
-Tuning alone does not create a new `vX`.
+只调参数不能创建新的 `vX`。
 
-Promotion may create local files, commits, and local tags if the protocol requires it.
+promotion 可以在协议要求时创建本地文件、commit 和 tag。
 
-Do not push unless the owner explicitly asks.
+除非 owner 明确要求，否则不能 push。

@@ -1,33 +1,33 @@
-# GTPJ Workflow File Map
+# GTPJ 工作流文件地图
 
-This map keeps the workflow readable. It says which files are daily entry points and which are reference material.
+这个文件用来让 workflow 目录可读：哪些是日常入口，哪些只是参考材料。
 
-## Daily Canonical Files
+## 日常权威文件
 
-| File | Status |
+| 文件 | 状态 |
 |---|---|
-| `START_HERE.md` | Start here for every GTPJ workflow task. |
-| `WORKFLOW_KERNEL.md` | Hard rules. Keep short and authoritative. |
-| `WORKFLOW_ROUTER.md` | Full routing table. Read when task type is ambiguous or mixed. |
-| `TASK_START_MINI.md` | Owner-facing compact start summary. |
-| `TASK_START_CARD.md` | Full start record for formal writes/runs. |
+| `START_HERE.md` | 每个 GTPJ 工作流任务从这里开始。 |
+| `WORKFLOW_KERNEL.md` | 硬规则层。必须短而权威。 |
+| `WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
+| `TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
+| `TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |
 
-## Active Playbooks
+## 有效执行卡
 
-| File | Status |
+| 文件 | 状态 |
 |---|---|
-| `playbooks/paper_intake.md` | Paper/source/idea discovery operating card. |
-| `playbooks/tune.md` | Parameter tuning operating card. |
-| `playbooks/ablation.md` | Ablation operating card. |
-| `playbooks/confirmation.md` | Reproduce/confirm operating card. |
-| `playbooks/innovation.md` | Idea/module-trial operating card. |
-| `playbooks/promotion.md` | Promotion operating card. |
-| `playbooks/mixed_campaign.md` | Arbitrary mixed experiment campaign card. |
-| `playbooks/autonomous_campaign.md` | Long autonomous research campaign card. |
+| `playbooks/paper_intake.md` | 论文/来源/idea discovery 操作卡。 |
+| `playbooks/tune.md` | 调参操作卡。 |
+| `playbooks/ablation.md` | 消融操作卡。 |
+| `playbooks/confirmation.md` | 复现/确认操作卡。 |
+| `playbooks/innovation.md` | idea/module-trial 操作卡。 |
+| `playbooks/promotion.md` | 升版操作卡。 |
+| `playbooks/mixed_campaign.md` | 任意组合实验 campaign 操作卡。 |
+| `playbooks/autonomous_campaign.md` | 长周期全自动研究 campaign 操作卡。 |
 
-## Reference Protocols
+## 参考协议
 
-Read these only when the active playbook asks for details:
+只有被当前 playbook 要求时才读：
 
 ```text
 paper_intake.md
@@ -46,9 +46,9 @@ mixed_experiment_campaign_protocol.md
 autonomous_research_campaign.md
 ```
 
-## Historical Or Status Files
+## 历史或状态文件
 
-These preserve decisions, history, diagrams, or implementation state. Do not treat them as the first thing to read.
+这些文件保存决策、历史、图示或实现状态，不作为第一阅读入口：
 
 ```text
 GTPJ_WORKFLOW_SPEC.md
@@ -61,9 +61,9 @@ progress_dashboard.md
 issues/
 ```
 
-## Templates And Schemas
+## 模板和 Schema
 
-Use when writing actual evidence:
+真正写证据时使用：
 
 ```text
 experiments/templates/
@@ -71,10 +71,10 @@ schemas/
 workflow/gtpj_workflow.py
 ```
 
-## Simplification Rule
+## 简化规则
 
-If a new workflow rule is important every day, put it in `WORKFLOW_KERNEL.md`.
+如果某条规则每天都要用，写进 `WORKFLOW_KERNEL.md`。
 
-If it is task-specific, put it in one playbook.
+如果规则只和某类任务有关，写进对应 playbook。
 
-If it is long explanation, evidence, or history, keep it as reference and point to it from a playbook.
+如果只是长解释、证据或历史，保留为参考文件，并从 playbook 指过去。
