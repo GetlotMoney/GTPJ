@@ -4,7 +4,7 @@ trial_id: TRIAL-001
 idea_id: IDEA-0003
 kind: module-trial-confirmation
 base_version: v5
-status: interface_precheck_passed
+status: running
 created_at: "2026-07-03T00:19:47+08:00"
 
 target:
@@ -21,6 +21,8 @@ target:
 
 run:
   run_id: RUN-20260703-0001-dr035-min3-confirm-2gpu
+  pre_run_freeze_commit: 4eb948c237ffc79a64f8cd4bed151c813a79bbcc
+  started_at: "2026-07-03T00:33:49+08:00"
   profile: dr035-min3-confirm
   jobs: 3
   gpus: [0, 1]
@@ -58,7 +60,7 @@ frozen_config:
   weight_s2v: 0.525
 
 evidence:
-  evidence_level: formal_pre_run
+  evidence_level: formal_running
   confirmation_status: pending
   confirmed_H: pending
   result_yaml: result.yaml
@@ -68,6 +70,7 @@ evidence:
   transitions: TRANSITIONS.jsonl
   evidence_routing: evidence_routing.yaml
   agent_activity: AGENT_ACTIVITY.md
+  monitor_automation_id: gtpj-dr035-min3-owner-visible-monitor
 
 artifact_policy:
   raw_logs_in_git: false

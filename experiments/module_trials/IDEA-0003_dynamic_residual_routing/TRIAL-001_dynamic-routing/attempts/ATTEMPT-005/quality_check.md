@@ -25,10 +25,10 @@ promotion_decision: blocked
 ## Required Before Runner
 
 - [x] `agent_runtime.yaml` records real right-sidebar temporary agent ids.
-- [ ] `validate-agent-runtime` passes.
-- [ ] Server repo syncs to the frozen commit.
-- [ ] GPU0/GPU1 are idle and no old dynamic runner is active.
-- [ ] Frozen batch plan is generated without overwriting any existing run dir.
+- [x] `validate-agent-runtime` passes.
+- [x] Server repo syncs to the frozen commit `4eb948c237ffc79a64f8cd4bed151c813a79bbcc`.
+- [x] GPU0/GPU1 were idle and no old dynamic runner was active before launch.
+- [x] Frozen batch plan is generated without overwriting any existing run dir.
 
 ## Required After Runner
 
