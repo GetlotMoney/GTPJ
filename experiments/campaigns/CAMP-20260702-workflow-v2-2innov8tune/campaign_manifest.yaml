@@ -1,0 +1,27 @@
+schema_version: gtpj-campaign/v1
+campaign_id: CAMP-20260702-workflow-v2-2innov8tune
+campaign_type: mixed_experiment_campaign
+owner_request: "10小时候验证整个工作流，2创新，8调参"
+base_version: v5
+branch: dev/v5-idea-0003-trial-001-dynamic-routing
+profile: workflow-v2-2innov-8tune
+requested_mix:
+  innovation_probe: 2
+  tune: 8
+subject:
+  subject_id: CAMP-20260702-workflow-v2-2innov8tune
+  subject_type: campaign
+evidence_state: planning
+formal_evidence: true
+agent_runtime_gate: agent_runtime.yaml
+planned_run:
+  run_id: RUN-20260702-0003-mixed2innov8tune-2gpu
+  runner: plan-dynamic-routing-batch
+  jobs: 10
+  gpus: "0,1"
+  max_runtime_note: "Owner requested 10-hour workflow validation window; runner has no hard wall-clock kill in v1."
+canonical_result_source: derived_index_only
+artifact_boundary:
+  warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
+  github_raw_artifacts: forbidden
+checkpoint_retention: keep_top3_checkpoints_after_run

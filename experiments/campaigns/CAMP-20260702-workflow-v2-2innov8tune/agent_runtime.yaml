@@ -1,0 +1,31 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: CAMP-20260702-workflow-v2-2innov8tune
+subject_type: campaign
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: temporary_subagent
+lifecycle: campaign_scoped
+ui_visibility: right_sidebar_temporary_agents
+tool_support_real_multi_agent_available: true
+spawn_tool: multi_agent_v1.spawn_agent
+single_agent_execution: false
+runner_start_allowed: true
+
+temporary_subagent_ids:
+  campaign_planner: 019f21fe-adc2-7932-bc69-58d8c384598a
+  runner_monitor: 019f21ad-89e5-72a1-b985-df3bf5ca8ca2
+  interface_checker: 019f21ff-27d7-7f60-b2aa-65a80fce0a48
+  evidence_quality_checker: 019f21ff-27d7-7f60-b2aa-65a80fce0a48
+
+pre_run_required_checks:
+  campaign_planner: allow
+  runner_monitor: allow
+  interface_checker: allow
+  evidence_quality_checker: allow
+
+authority_refs:
+  task_start_card: task_start_card.md
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  campaign_manifest: campaign_manifest.yaml
+  campaign_plan: campaign_plan.md

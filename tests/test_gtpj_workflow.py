@@ -1841,6 +1841,18 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("derived_index_only", stderr)
 
+    def test_validate_evidence_routing_accepts_derived_campaign_index(self) -> None:
+        self._write(
+            "experiments/campaigns/CAMP-001/RESULT_INDEX.md",
+            "# Result Index\n\nauthority: derived_index_only\nmetric_source: result_ref only\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-evidence-routing")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-evidence-routing-ok", stdout)
+
     def test_validate_evidence_routing_rejects_missing_agent_runtime_field(self) -> None:
         transition = self._transition_record(include_not_checked=False)
         self._write_evidence_routing_subject([transition])

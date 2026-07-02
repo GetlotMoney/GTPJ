@@ -4936,7 +4936,8 @@ def validate_campaign_result_indexes() -> list[str]:
     for result_index in sorted(campaigns_root.rglob("RESULT_INDEX.md")):
         text = read_text(result_index)
         for line_number, line in enumerate(text.splitlines(), start=1):
-            if re.search(r"\bauthority\s*:\s*(?!derived_index_only\b)", line):
+            authority_match = re.search(r"\bauthority\s*:\s*(\S+)", line)
+            if authority_match and authority_match.group(1) != "derived_index_only":
                 errors.append(f"{rel(result_index)}:{line_number} campaign index authority must be derived_index_only")
         if re.search(r"\bauthoritative\b", text, flags=re.IGNORECASE):
             errors.append(f"{rel(result_index)} must not claim authoritative campaign metrics")
