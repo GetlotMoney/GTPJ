@@ -19,9 +19,9 @@ schedule:
   seed: 5
   gpus: "0,1"
 run:
-  run_id: "RUN-20260702-0001-dr018-confirm-ablate50-2gpu"
+  run_id: "RUN-20260702-0002-dr018-confirm-ablate50-2gpu"
   profile: "dr018-confirm-ablate"
-  runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0001-dr018-confirm-ablate50-2gpu"
+  runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0002-dr018-confirm-ablate50-2gpu"
   jobs_total: 50
   jobs_completed: 0
   jobs_failed: 0
@@ -32,6 +32,11 @@ plan:
   ablation_jobs: 10
   narrow_tune_jobs: 22
   mechanism_probe_jobs: 6
+previous_launches:
+  - run_id: "RUN-20260702-0001-dr018-confirm-ablate50-2gpu"
+    status: "failed_before_training"
+    failure_type: "runner_environment"
+    reason: "runner attempted conda run in a non-interactive server environment where conda is not on PATH"
 artifacts:
   status: "pending_server_run"
 checkpoint_retention:

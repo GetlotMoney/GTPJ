@@ -1140,6 +1140,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("artifact_manifest.json", script)
         self.assertIn("link_runtime_resources", script)
         self.assertIn('plan.get("runtime_resource_links", ["data"])', script)
+        self.assertIn("os.path.isabs(python_cmd)", script)
         self.assertIn("prune_model_artifacts", script)
         self.assertIn("keep top 3 best_model_*.pth by H", script)
         self.assertIn("def load_json(path, retries=20, delay=0.05):", script)

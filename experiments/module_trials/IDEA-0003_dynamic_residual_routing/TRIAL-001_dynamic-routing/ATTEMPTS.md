@@ -134,7 +134,7 @@ Attempt-local records:
 ATTEMPT-004 is the workflow-v2 follow-up for ATTEMPT-003's best observed single:
 
 - Target: DR-018 `direction_sample_h48_w0.5_a0.003`.
-- Planned run: `RUN-20260702-0001-dr018-confirm-ablate50-2gpu`.
+- Planned formal run: `RUN-20260702-0002-dr018-confirm-ablate50-2gpu`.
 - Workflow profile: `dr018-confirm-ablate`.
 - Batch size: 64.
 - Config epochs field: 30.
@@ -157,6 +157,14 @@ The profile is designed to answer two formal questions:
 
 The tune and probe jobs may create `valid_single_run` or `tune_promising` evidence, but they
 cannot produce confirmed or promotion-grade evidence without later repeat and quality checks.
+
+Launch note:
+
+- `RUN-20260702-0001-dr018-confirm-ablate50-2gpu` failed before training because the runner
+  tried to call `conda` in the non-interactive server environment.
+- This is classified as `runner_environment`, not method evidence.
+- The runner was fixed to use an absolute Python path directly; the formal rerun id is
+  `RUN-20260702-0002-dr018-confirm-ablate50-2gpu`.
 
 Pre-run records:
 

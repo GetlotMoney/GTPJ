@@ -4,7 +4,7 @@
 
 - Trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
 - Subject id: ATTEMPT-004
-- Planned server run: RUN-20260702-0001-dr018-confirm-ablate50-2gpu
+- Planned server run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
 - Workflow profile: dr018-confirm-ablate
 - Base version: v5
 - Batch size: 64
@@ -42,6 +42,11 @@ ATTEMPT-003 produced a strong single result:
 This is `tune_promising`, not `min3_confirmed`. ATTEMPT-004 is designed to test whether
 DR-018 is reproducible and whether the dynamic direction gate contributes beyond fixed
 v5-like routing.
+
+The initial launch id `RUN-20260702-0001-dr018-confirm-ablate50-2gpu` failed before any
+training because the runner tried to call `conda` in a non-interactive server environment.
+That failure is classified as a runner environment issue, not method evidence. The formal
+rerun id after the runner fix is `RUN-20260702-0002-dr018-confirm-ablate50-2gpu`.
 
 ## Job Budget
 
@@ -158,7 +163,7 @@ python workflow/gtpj_workflow.py plan-dynamic-routing-batch \
   --trial-dir experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing \
   --base-config experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-004/config.yaml \
   --profile dr018-confirm-ablate \
-  --run-id RUN-20260702-0001-dr018-confirm-ablate50-2gpu \
+  --run-id RUN-20260702-0002-dr018-confirm-ablate50-2gpu \
   --jobs 50 \
   --gpus 0,1 \
   --base-version v5 \
@@ -167,9 +172,10 @@ python workflow/gtpj_workflow.py plan-dynamic-routing-batch \
   --controller-python /usr/bin/python3
 ```
 
-Then sync the frozen commit to `lab4090:/data/lby/projects/cv_project/GTPJ` and start:
+Then sync the frozen commit to `lab4090:/data/lby/projects/cv_project/GTPJ` and start the
+formal rerun path after the runner fix:
 
 ```bash
-cd /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0001-dr018-confirm-ablate50-2gpu
+cd /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0002-dr018-confirm-ablate50-2gpu
 bash start_batch.sh
 ```

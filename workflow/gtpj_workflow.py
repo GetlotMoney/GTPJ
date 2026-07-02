@@ -7394,12 +7394,14 @@ def run_job(run_dir, plan, job, gpu):
 
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = str(gpu)
-        if str(plan.get("conda_env", "")).lower() in {"", "direct", "none"}:
-            cmd = [plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config)]
+        python_cmd = str(plan.get("python", "python"))
+        conda_env = str(plan.get("conda_env", "")).lower()
+        if os.path.isabs(python_cmd) or conda_env in {"", "direct", "none"}:
+            cmd = [python_cmd, "train_GTPJ_CUB.py", "--config", str(runtime_config)]
         else:
             cmd = [
                 "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
-                plan["python"], "train_GTPJ_CUB.py", "--config", str(runtime_config),
+                python_cmd, "train_GTPJ_CUB.py", "--config", str(runtime_config),
             ]
         code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
         warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
