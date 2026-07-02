@@ -128,3 +128,42 @@ Attempt-local records:
 - `attempts/ATTEMPT-003/agent_summary.md`
 - `attempts/ATTEMPT-003/TRANSITIONS.jsonl`
 - `attempts/ATTEMPT-003/evidence_routing.yaml`
+
+## ATTEMPT-004 Pre-Run Notes
+
+ATTEMPT-004 is the workflow-v2 follow-up for ATTEMPT-003's best observed single:
+
+- Target: DR-018 `direction_sample_h48_w0.5_a0.003`.
+- Planned run: `RUN-20260702-0001-dr018-confirm-ablate50-2gpu`.
+- Workflow profile: `dr018-confirm-ablate`.
+- Batch size: 64.
+- Config epochs field: 30.
+- Planned train epochs: 50.
+- Epoch schedule source: `lr_stages`.
+- LR stages: 20 + 20 + 10.
+- GPUs: 0,1.
+
+Budget:
+
+- 12 repeat / confirmation jobs.
+- 10 ablation / control jobs.
+- 22 narrow direction tune jobs.
+- 6 trial-internal mechanism probes.
+
+The profile is designed to answer two formal questions:
+
+- Does DR-018 hold up under clean repeat?
+- Does the dynamic direction gate beat a one-factor fixed-direction ablation?
+
+The tune and probe jobs may create `valid_single_run` or `tune_promising` evidence, but they
+cannot produce confirmed or promotion-grade evidence without later repeat and quality checks.
+
+Pre-run records:
+
+- `attempts/ATTEMPT-004/config.yaml`
+- `attempts/ATTEMPT-004/pre_run_plan.md`
+- `attempts/ATTEMPT-004/manifest.yaml`
+- `attempts/ATTEMPT-004/quality_check.md`
+- `attempts/ATTEMPT-004/agent_summary.md`
+- `attempts/ATTEMPT-004/TRANSITIONS.jsonl`
+- `attempts/ATTEMPT-004/evidence_routing.yaml`

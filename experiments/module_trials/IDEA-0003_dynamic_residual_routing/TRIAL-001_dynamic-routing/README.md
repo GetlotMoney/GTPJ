@@ -12,17 +12,17 @@ version_score: 82.0
 applicability: direct
 code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
 run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
-trial_decision: revise
-promotion_decision: rejected
+trial_decision: keep
+promotion_decision: blocked
 promote_to:
-evidence_level: valid_single_batch
-best_observed_H: 74.40
+evidence_level: valid_single_run
+best_observed_H: 74.86
 best_dynamic_single_H: 74.39
 best_dynamic_repeat_mean_H: 74.23
-confirmed_H:
-confirmation_status: not_promoted
+confirmed_H: pending
+confirmation_status: needs_confirmation
 changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
-run_config: config.yaml
+run_config:
 attempts: ATTEMPTS.md
 manifest: manifest.yaml
 result_yaml: result.yaml
@@ -175,3 +175,9 @@ code_vs_intent: dynamic gates modulate existing v5 residual strengths; GZSL inte
 ```
 
 `framework_diagram.md` explains the four dynamic gate sites, their anchors, input/output tensors, baseline-off behavior, and why this trial remains revise rather than promote.
+
+## Results
+
+| Dataset | Seed | U | S | H | ZS | Best epoch | Log |
+|---|---:|---:|---:|---:|---:|---:|---|
+| CUB | - | 73.10 | 76.71 | 74.86 | 81.84 | 37 | `` |

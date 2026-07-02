@@ -1026,6 +1026,44 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any(update.get("local_weight") == 0.12 for update in updates))
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
 
+    def test_dynamic_routing_batch_plan_has_dr018_confirm_ablate_50_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=9, profile="dr018-confirm-ablate")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        names = Counter(job["name"].rsplit("_r", 1)[0] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual(phases["explore"], 50)
+        self.assertEqual(groups["confirm_dr018"], 4)
+        self.assertEqual(groups["neighbor_repeat"], 8)
+        self.assertEqual(groups["ablate_direction"], 10)
+        self.assertEqual(groups["direction_narrow_tune"], 22)
+        self.assertEqual(groups["innovation_combo_probe"], 6)
+        self.assertEqual(names["dr018_direction_sample_h48_w0.5_a0.003"], 4)
+        self.assertEqual(names["dr019_direction_sample_h48_w0.5_a0.005"], 3)
+        self.assertEqual(names["dr016_direction_sample_h48_w0.45_a0.003"], 2)
+        self.assertEqual(names["dr023_direction_sample_h48_a0.003"], 3)
+        self.assertEqual(names["fixed_direction_h48_w0.5_a0.003"], 3)
+        self.assertEqual(names["static_v5_control"], 3)
+        self.assertEqual(names["dynamic_fixed_all"], 2)
+        self.assertTrue(all(job["seed"] == 9 for job in jobs))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(
+            any(
+                update.get("dynamic_direction_mode") == "sample"
+                and update.get("dynamic_gate_hidden") == 48
+                and update.get("dynamic_gate_anchor_lambda") == 0.003
+                and update.get("weight_s2v") == 0.50
+                for update in updates
+            )
+        )
+        self.assertTrue(any(update.get("dynamic_direction_mode") == "fixed" for update in updates))
+        self.assertTrue(any(update.get("weight_s2v") == 0.475 for update in updates))
+        self.assertTrue(any(update.get("dynamic_gate_anchor_lambda") == 0.004 for update in updates))
+        self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
+        self.assertTrue(any(update.get("local_weight") == 0.06 for update in updates))
+
     def test_config_epoch_schedule_uses_lr_stages_total(self) -> None:
         config_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001/config.yaml"
         self._write(
@@ -1464,6 +1502,33 @@ No training result has been recorded.
         self.assertEqual("weakened", idea["status"])
         self.assertEqual("trialing", idea["version_scores"]["v1"]["stage"])
         self.assertIn(f"{trial_dir}/result.yaml", {item["ref"] for item in idea["evidence"]})
+
+    def test_attempt_sync_metrics_accepts_batch_best_single(self) -> None:
+        result_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-002/result.yaml"
+        self._write(
+            str(result_path.relative_to(self.repo)).replace("\\", "/"),
+            """schema_version: gtpj-attempt-result/v1
+metrics:
+  best_single:
+    job_id: "DR-018"
+    U: 73.10
+    S: 76.71
+    H: 74.86
+    ZS: 81.84
+    best_epoch: 37
+decision:
+  status: "tune_promising"
+""",
+        )
+        result = self.module.read_shallow_yaml(result_path)
+
+        metrics = self.module.attempt_sync_metrics(result, result_path)
+
+        self.assertEqual("74.86", metrics["H"])
+        self.assertEqual("73.10", metrics["U"])
+        self.assertEqual("76.71", metrics["S"])
+        self.assertEqual("81.84", metrics["ZS"])
+        self.assertEqual("37", metrics["best_epoch"])
 
     def test_audit_boundary_rejects_raw_experiment_log(self) -> None:
         self._write("experiments/v1/tune/TUNE-999_bad/logs/train.log", "raw log\n")

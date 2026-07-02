@@ -597,6 +597,48 @@ def yaml_section_value(data: dict[str, object], section: str, key: str, default:
     return default
 
 
+def yaml_nested_section_value(path: Path, section: str, subsection: str, key: str, default: str = "") -> str:
+    """Read one value from the helper ledger style nested YAML blocks.
+
+    This intentionally supports only the simple nested maps used by result.yaml
+    files, for example metrics.best_single.H. It is not a general YAML parser.
+    """
+    in_section = False
+    in_subsection = False
+    for raw_line in read_text(path).splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if not raw_line.startswith(" "):
+            in_section = raw_line == f"{section}:"
+            in_subsection = False
+            continue
+        if not in_section:
+            continue
+        if raw_line.startswith("  ") and not raw_line.startswith("    "):
+            match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if not match:
+                in_subsection = False
+                continue
+            in_subsection = match.group(1) == subsection and match.group(2).strip() == ""
+            continue
+        if in_subsection and raw_line.startswith("    ") and not raw_line.startswith("      "):
+            match = re.match(r"^\s{4}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if match and match.group(1) == key:
+                return yaml_unquote(match.group(2))
+    return default
+
+
+def attempt_sync_metrics(attempt_result: dict[str, object], attempt_result_path: Path) -> dict[str, str]:
+    metrics = {
+        name: yaml_section_value(attempt_result, "metrics", name)
+        for name in [*METRIC_NAMES, "best_epoch", "baseline_H", "delta_H", "seed"]
+    }
+    if not metrics.get("H"):
+        for name in [*METRIC_NAMES, "best_epoch"]:
+            metrics[name] = yaml_nested_section_value(attempt_result_path, "metrics", "best_single", name)
+    return metrics
+
+
 def read_yaml_artifacts(path: Path) -> dict[str, dict[str, str]]:
     artifacts: dict[str, dict[str, str]] = {}
     in_artifacts = False
@@ -3940,7 +3982,7 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
     attempt_manifest = read_shallow_yaml(attempt_manifest_path)
     attempt_result = read_shallow_yaml(attempt_result_path)
     artifacts = read_yaml_artifacts(attempt_manifest_path)
-    metrics = {name: yaml_section_value(attempt_result, "metrics", name) for name in [*METRIC_NAMES, "best_epoch", "baseline_H", "delta_H", "seed"]}
+    metrics = attempt_sync_metrics(attempt_result, attempt_result_path)
     if not metrics.get("H"):
         raise WorkflowError(f"{rel(attempt_result_path)} is missing metrics.H")
     metrics["baseline_H"] = metrics.get("baseline_H") or (
@@ -6667,6 +6709,146 @@ def _best_repro_tune_followup_specs() -> list[tuple[str, str, dict[str, object]]
     return specs
 
 
+def _dr018_confirm_ablate_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def add_repeats(count: int, group: str, name: str, updates: dict[str, object]) -> None:
+        for repeat_index in range(1, count + 1):
+            specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
+
+    add_repeats(
+        4,
+        "confirm_dr018",
+        "dr018_direction_sample_h48_w0.5_a0.003",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.003,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(
+        3,
+        "neighbor_repeat",
+        "dr019_direction_sample_h48_w0.5_a0.005",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.005,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(
+        2,
+        "neighbor_repeat",
+        "dr016_direction_sample_h48_w0.45_a0.003",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.003,
+            weight_s2v=0.45,
+        ),
+    )
+    add_repeats(
+        3,
+        "neighbor_repeat",
+        "dr023_direction_sample_h48_a0.003",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.003,
+        ),
+    )
+
+    add_repeats(3, "ablate_direction", "static_v5_control", {"use_dynamic_routing": False})
+    add_repeats(2, "ablate_direction", "dynamic_fixed_all", _dynamic_updates())
+    add_repeats(
+        3,
+        "ablate_direction",
+        "fixed_direction_h48_w0.5_a0.003",
+        _dynamic_updates(
+            dynamic_direction_mode="fixed",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.003,
+            weight_s2v=0.50,
+        ),
+    )
+    add_repeats(
+        2,
+        "ablate_direction",
+        "direction_sample_h48_w0.5_a0",
+        _dynamic_updates(
+            dynamic_direction_mode="sample",
+            dynamic_gate_hidden=48,
+            dynamic_gate_anchor_lambda=0.0,
+            weight_s2v=0.50,
+        ),
+    )
+
+    for hidden, weight_s2v, anchor in [
+        (48, 0.45, 0.001),
+        (48, 0.45, 0.003),
+        (48, 0.45, 0.005),
+        (48, 0.475, 0.001),
+        (48, 0.475, 0.003),
+        (48, 0.475, 0.005),
+        (48, 0.50, 0.001),
+        (48, 0.50, 0.002),
+        (48, 0.50, 0.004),
+        (48, 0.50, 0.005),
+        (48, 0.525, 0.001),
+        (48, 0.525, 0.003),
+        (48, 0.525, 0.005),
+        (48, 0.55, 0.001),
+        (48, 0.55, 0.003),
+        (48, 0.55, 0.005),
+        (40, 0.45, 0.003),
+        (40, 0.50, 0.003),
+        (40, 0.55, 0.003),
+        (56, 0.45, 0.003),
+        (56, 0.50, 0.003),
+        (56, 0.55, 0.003),
+    ]:
+        specs.append(
+            (
+                "direction_narrow_tune",
+                f"direction_sample_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    for name, local_mode, direction_mode, pse_mode, hidden, anchor, local_weight, weight_s2v, pse_outer_ratio in [
+        ("ld_sample_h48_l0.06_w0.50_a0.003", "sample", "sample", "fixed", 48, 0.003, 0.06, 0.50, None),
+        ("ld_classlocal_h48_l0.06_w0.50_a0.003", "class", "sample", "fixed", 48, 0.003, 0.06, 0.50, None),
+        ("dp_h48_w0.50_p0.55_a0.003", "fixed", "sample", "class", 48, 0.003, None, 0.50, 0.55),
+        ("dp_h48_w0.52_p0.55_a0.005", "fixed", "sample", "class", 48, 0.005, None, 0.52, 0.55),
+        ("ldp_sample_h48_l0.06_w0.50_p0.55_a0.003", "sample", "sample", "class", 48, 0.003, 0.06, 0.50, 0.55),
+        ("ldp_class_h48_l0.06_w0.50_p0.55_a0.003", "class", "sample", "class", 48, 0.003, 0.06, 0.50, 0.55),
+    ]:
+        updates = _dynamic_updates(
+            dynamic_local_mode=local_mode,
+            dynamic_direction_mode=direction_mode,
+            dynamic_pse_mode=pse_mode,
+            dynamic_gate_hidden=hidden,
+            dynamic_gate_anchor_lambda=anchor,
+            weight_s2v=weight_s2v,
+        )
+        if local_weight is not None:
+            updates["local_weight"] = local_weight
+        if pse_outer_ratio is not None:
+            updates["pse_outer_ratio"] = pse_outer_ratio
+        specs.append(("innovation_combo_probe", name, updates))
+
+    if len(specs) != 50:
+        raise WorkflowError(f"DR-018 confirm/ablate plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
 def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
     specs: list[tuple[str, str, dict[str, object]]] = [
         ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
@@ -6823,6 +7005,9 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         repeat_source_ranks = []
     elif profile == "best-repro-tune-followup":
         specs = _best_repro_tune_followup_specs()
+        repeat_source_ranks = []
+    elif profile == "dr018-confirm-ablate":
+        specs = _dr018_confirm_ablate_specs()
         repeat_source_ranks = []
     elif profile == "dynamic-bold-followup":
         specs = _dynamic_bold_followup_specs()

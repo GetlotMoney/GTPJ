@@ -3,76 +3,49 @@ experiment_id: "TRIAL-001"
 experiment_name: "TRIAL-001_dynamic-routing"
 kind: "module-trial"
 version: "v5"
-run:
-  run_id: "RUN-20260630-0005-dynroute50-2gpu"
-  batch_profile: "balanced-aggressive"
-  jobs_total: 50
-  jobs_completed: 50
-  jobs_failed: 0
-  seed: "5"
+attempt_id: "ATTEMPT-003"
 metrics:
-  best_single:
-    job_id: "DR-001"
-    group: "sanity_control"
-    name: "static_v5_control"
-    U: 71.70
-    S: 77.31
-    H: 74.40
-    ZS: 81.38
-    best_epoch: 45
-  best_dynamic_single:
-    job_id: "DR-008"
-    group: "local_gate"
-    name: "local_class_h24"
-    U: 67.94
-    S: 82.20
-    H: 74.39
-    ZS: 81.27
-    best_epoch: 26
-  best_direction_single:
-    job_id: "DR-023"
-    group: "direction_gate"
-    name: "direction_sample_h48_a0.003"
-    U: 72.26
-    S: 76.63
-    H: 74.38
-    ZS: 81.61
-    best_epoch: 48
-  dynamic_repeat_mean:
-    source_job_id: "DR-008"
-    n: 5
-    U: 68.54
-    S: 80.97
-    H: 74.23
-  static_repeat_mean:
-    source_job_id: "DR-001"
-    n: 5
-    U: 71.83
-    S: 77.02
-    H: 74.34
-baseline:
-  reference_confirmed_config_H: 74.47
-  reference_confirmed_config: "v3/CONFIRM-001 local-v3-054"
-  v5_repeat_mean_H: 74.44
+  U: "73.10"
+  S: "76.71"
+  H: "74.86"
+  ZS: "81.84"
+  best_epoch: "37"
+  baseline_H: "74.54"
+  baseline_reference: "best_observed_H"
+  delta_H: "+0.32"
+  seed: ""
+  source: "attempt_result_yaml"
   metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+baseline:
+  version: "v5"
+  H: "74.54"
+  reference_field: "best_observed_H"
+  reference_status: "owner_activated_provisional"
+  confirmed_H: "74.44"
+  confirmation_status: "owner_activated_provisional"
 delta:
-  best_dynamic_single_vs_confirmed_config_H: -0.06
-  best_dynamic_repeat_vs_v5_repeat_mean_H: -0.21
+  H: "+0.32"
+run:
+  seed: ""
+  pre_run_freeze_commit: ""
+  command: ""
 decision:
-  status: "revise"
-  result_status: "valid_single_batch"
-  promotion_decision: "rejected"
+  status: "keep"
+  result_status: "needs_confirmation"
+  promotion_decision: "blocked"
   promote_to: ""
-  reason: "No dynamic single or repeat mean exceeds v3/CONFIRM-001 local-v3-054 confirmed H=74.47 or v5 repeat mean H=74.44."
 evidence:
-  evidence_level: "valid_single_batch"
-  best_observed_H: 74.40
-  best_dynamic_single_H: 74.39
-  confirmed_H: ""
-  confirmation_status: "not_promoted"
-  log_artifact_id: "warehouse:v5:module_trial:TRIAL-001:RUN-20260630-0005:summary"
+  evidence_level: "valid_single_run"
+  best_observed_H: "74.86"
+  confirmed_H: "pending"
+  confirmation_status: "needs_confirmation"
+  runtime_summary_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:summary"
+  runtime_summary_jsonl_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:summary_jsonl"
+  batch_status_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:batch_status"
+  plan_json_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:plan"
+  events_jsonl_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:events"
   manifest: "manifest.yaml"
-  agent_summary: "agent_summary.md"
+  attempt_manifest: "attempts/ATTEMPT-003/manifest.yaml"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
   class_order_id: "standard_v1"
@@ -81,14 +54,4 @@ quality:
   boundary_audit_passed: "true"
   interface_contract_checked: "true"
   evaluation_semantics_verified: "true"
-  checkpoint_retention_applied: "true"
-follow_up_attempts:
-  ATTEMPT-002:
-    manifest: "attempts/ATTEMPT-002/manifest.yaml"
-    result: "attempts/ATTEMPT-002/result.yaml"
-    decision: "rejected"
-    best_H: 70.84
-    artifacts:
-      - "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary"
-      - "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary"
-recorded_at: "2026-06-30T20:41:26+08:00"
+recorded_at: "2026-07-02T14:35:00+08:00"

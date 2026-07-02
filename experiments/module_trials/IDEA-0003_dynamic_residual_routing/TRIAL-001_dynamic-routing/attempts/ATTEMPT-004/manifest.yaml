@@ -1,0 +1,45 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: "ATTEMPT-004"
+  trial_id: "TRIAL-001"
+  idea_id: "IDEA-0003"
+  name: "DR-018 confirmation, ablation, narrow tune, and mechanism probes"
+  status: "planned"
+  recorded_at: "2026-07-02T00:00:00+08:00"
+version:
+  base_version: "v5"
+  code_branch: "dev/v5-idea-0003-trial-001-dynamic-routing"
+  run_code_commit: "pre-run-freeze-commit-recorded-in-plan-json-after-commit"
+schedule:
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: "lr_stages"
+  lr_stage_epochs: [20, 20, 10]
+  seed: 5
+  gpus: "0,1"
+run:
+  run_id: "RUN-20260702-0001-dr018-confirm-ablate50-2gpu"
+  profile: "dr018-confirm-ablate"
+  runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0001-dr018-confirm-ablate50-2gpu"
+  jobs_total: 50
+  jobs_completed: 0
+  jobs_failed: 0
+  server_repo: "/data/lby/projects/cv_project/GTPJ"
+  warehouse_root: "/data/lby/projects/cv_project/GTPJ_Warehouse"
+plan:
+  repeat_confirmation_jobs: 12
+  ablation_jobs: 10
+  narrow_tune_jobs: 22
+  mechanism_probe_jobs: 6
+artifacts:
+  status: "pending_server_run"
+checkpoint_retention:
+  required: true
+  keep_count: 3
+  ranking_metric: "GZSL-H"
+quality:
+  gzsl_hard_rules_checked: true
+  interface_contract_checked: true
+  dynamic_pse_sample_forbidden: true
+  epoch_schedule_disclosed: true
