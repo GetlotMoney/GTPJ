@@ -17,6 +17,8 @@ ledger_source: dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly
 ledger_source_commit: f24a277
 code_source: v1 + TRIAL-001 CLIP-A-self text prototype adapter
 config: experiments/v2/config.yaml
+framework_diagram: experiments/v2/framework_diagram.md
+module_glossary: experiments/v2/MODULES.md
 baseline_evidence: experiments/v2/baseline/
 evidence_level: valid_single_run
 best_observed_H: 74.29
@@ -91,6 +93,16 @@ parent_version: v1
 children: none yet
 notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline；证据状态为 owner_activated_unconfirmed。
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+source_trial_framework: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/framework_diagram.md
+```
+
+The version-level diagram summarizes the activated v2 path. The source trial diagram records the trial-local implementation evidence.
 
 ## Version Flow
 

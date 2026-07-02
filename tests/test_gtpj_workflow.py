@@ -293,6 +293,56 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("docs/visible.md", scanned)
         self.assertNotIn(".gtpj_runtime/batches/old/summary.csv", scanned)
 
+    def test_framework_diagram_docs_reject_missing_version_docs(self) -> None:
+        self._write(
+            "experiments/v1/VERSION.md",
+            "# GTPJ-v1\n\n## Version Flow\n\n```mermaid\nflowchart TD\n  A --> B\n```\n",
+        )
+
+        errors = self.module.validate_framework_diagram_docs()
+
+        self.assertTrue(any("## Framework Diagram" in error for error in errors))
+        self.assertTrue(any("framework_diagram.md is required" in error for error in errors))
+        self.assertTrue(any("MODULES.md is required" in error for error in errors))
+
+    def test_framework_diagram_docs_accept_complete_version_docs(self) -> None:
+        self._write(
+            "experiments/v1/VERSION.md",
+            "# GTPJ-v1\n\n"
+            "```text\n"
+            "framework_diagram: experiments/v1/framework_diagram.md\n"
+            "module_glossary: experiments/v1/MODULES.md\n"
+            "```\n\n"
+            "## Framework Diagram\n\n"
+            "framework_diagram: framework_diagram.md\n"
+            "module_glossary: MODULES.md\n\n"
+            "## Version Flow\n\n"
+            "```mermaid\nflowchart TD\n  A --> B\n```\n",
+        )
+        self._write(
+            "experiments/v1/framework_diagram.md",
+            "# Diagram\n\n"
+            "## Main Forward Flow\n\n"
+            "## Variable Glossary\n\n"
+            "## Module Glossary\n\n"
+            "## Loss And Training Flow\n\n"
+            "## GZSL Hard Rules\n",
+        )
+        self._write(
+            "experiments/v1/MODULES.md",
+            "# Modules\n\n"
+            "## Module Table\n\n"
+            "| Module | Purpose | Input | Output | Config switch | Baseline-off behavior |\n"
+            "|---|---|---|---|---|---|\n"
+            "| A | test | x | y | switch | off |\n\n"
+            "## Config Switches\n\n"
+            "## Version Delta\n",
+        )
+
+        errors = self.module.validate_framework_diagram_docs()
+
+        self.assertEqual([], errors)
+
     def test_repro_status_marks_best_observed_as_unconfirmed(self) -> None:
         self.module.CANONICAL_BASELINES["v2"] = {
             "name": "GTPJ-v2",

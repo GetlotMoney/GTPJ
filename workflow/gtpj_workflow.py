@@ -386,6 +386,105 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+VERSION_FRAMEWORK_SECTIONS = [
+    "## Main Forward Flow",
+    "## Variable Glossary",
+    "## Module Glossary",
+    "## Loss And Training Flow",
+    "## GZSL Hard Rules",
+]
+VERSION_MODULE_SECTIONS = [
+    "## Module Table",
+    "## Config Switches",
+    "## Version Delta",
+]
+VERSION_MODULE_FIELD_MARKERS = [
+    "Purpose",
+    "Input",
+    "Output",
+    "Config switch",
+    "Baseline-off",
+]
+TRIAL_FRAMEWORK_CORE_MARKERS = [
+    "## Variable Glossary",
+    "## Method Glossary",
+]
+TRIAL_FORWARD_MARKERS = [
+    "## Diagram",
+    "## Main Forward",
+    "## Main Forward And Loss Flow",
+    "## 1. Main Forward Path",
+]
+TRIAL_LOSS_MARKERS = [
+    "## Loss Flow",
+    "## Loss",
+    "## 2. AG-JEPA Loss Path",
+    "## 3. Loss Attachments",
+    "Loss Flow",
+]
+
+
+def contains_any(text: str, markers: Iterable[str]) -> bool:
+    return any(marker in text for marker in markers)
+
+
+def validate_framework_diagram_docs() -> list[str]:
+    errors: list[str] = []
+    experiments_dir = REPO_ROOT / "experiments"
+
+    for version_dir in sorted(experiments_dir.glob("v[0-9]*")):
+        if not version_dir.is_dir():
+            continue
+        version_file = version_dir / "VERSION.md"
+        framework_file = version_dir / "framework_diagram.md"
+        modules_file = version_dir / "MODULES.md"
+
+        if not version_file.exists():
+            errors.append(f"{rel(version_dir)}/VERSION.md is required")
+            continue
+        version_text = read_text(version_file)
+        for marker in ["## Framework Diagram", "## Version Flow", "framework_diagram", "module_glossary"]:
+            if marker not in version_text:
+                errors.append(f"{rel(version_file)} missing version framework marker: {marker}")
+
+        if not framework_file.exists():
+            errors.append(f"{rel(framework_file)} is required for every formal version")
+        else:
+            framework_text = read_text(framework_file)
+            for marker in VERSION_FRAMEWORK_SECTIONS:
+                if marker not in framework_text:
+                    errors.append(f"{rel(framework_file)} missing section: {marker}")
+
+        if not modules_file.exists():
+            errors.append(f"{rel(modules_file)} is required for every formal version")
+        else:
+            modules_text = read_text(modules_file)
+            for marker in VERSION_MODULE_SECTIONS + VERSION_MODULE_FIELD_MARKERS:
+                if marker not in modules_text:
+                    errors.append(f"{rel(modules_file)} missing module explanation marker: {marker}")
+
+    for trial_readme in sorted((experiments_dir / "module_trials").glob("IDEA-*/TRIAL-*/README.md")):
+        readme_text = read_text(trial_readme)
+        for marker in ["## Trial Flow", "## Framework Diagram"]:
+            if marker not in readme_text:
+                errors.append(f"{rel(trial_readme)} must include {marker}")
+
+        framework_file = trial_readme.with_name("framework_diagram.md")
+        if not framework_file.exists():
+            errors.append(f"{rel(framework_file)} is required for every module trial")
+            continue
+        framework_text = read_text(framework_file)
+        for marker in TRIAL_FRAMEWORK_CORE_MARKERS:
+            if marker not in framework_text:
+                errors.append(f"{rel(framework_file)} missing section: {marker}")
+        if not contains_any(framework_text, TRIAL_FORWARD_MARKERS):
+            errors.append(f"{rel(framework_file)} must explain the main forward path")
+        if not contains_any(framework_text, TRIAL_LOSS_MARKERS):
+            errors.append(f"{rel(framework_file)} must explain the loss/training flow")
+
+    return errors
+
+
 def write_new(path: Path, content: str) -> None:
     if path.exists():
         raise WorkflowError(f"Refusing to overwrite existing file: {rel(path)}")
@@ -1175,8 +1274,13 @@ def cmd_validate(_: argparse.Namespace) -> int:
             raise WorkflowError(f"workflow_diagrams.md missing section: {marker}")
     version_template = read_text(REPO_ROOT / "experiments" / "templates" / "VERSION_template.md")
     trial_template = read_text(REPO_ROOT / "experiments" / "templates" / "TRIAL_README_template.md")
+    if "## Framework Diagram" not in version_template:
+        raise WorkflowError("VERSION_template.md must include ## Framework Diagram")
     if "## Version Flow" not in version_template:
         raise WorkflowError("VERSION_template.md must include ## Version Flow")
+    for marker in ["framework_diagram.md", "MODULES.md"]:
+        if marker not in version_template:
+            raise WorkflowError(f"VERSION_template.md missing version framework marker: {marker}")
     if "## Trial Flow" not in trial_template:
         raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
     if "## Framework Diagram" not in trial_template:
@@ -1209,15 +1313,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
     )
     if "Reviewer" not in promotion_agents:
         raise WorkflowError("promotion agents must include Reviewer")
-    for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
-        if not version_dir.is_dir():
-            continue
-        version_file = version_dir / "VERSION.md"
-        if version_file.exists() and "## Version Flow" not in read_text(version_file):
-            raise WorkflowError(f"{rel(version_file)} must include ## Version Flow")
-    for trial_readme in sorted((REPO_ROOT / "experiments" / "module_trials").glob("IDEA-*/TRIAL-*/README.md")):
-        if "## Trial Flow" not in read_text(trial_readme):
-            raise WorkflowError(f"{rel(trial_readme)} must include ## Trial Flow")
+    diagram_errors = validate_framework_diagram_docs()
+    if diagram_errors:
+        raise WorkflowError(
+            "Framework diagram documentation failed:\n" + "\n".join(diagram_errors)
+        )
     epoch_schedule_errors = validate_attempt_epoch_schedule_disclosure()
     if epoch_schedule_errors:
         raise WorkflowError(

@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ v4 Feature Flow</title>
+  <style>
+    :root {
+      --page: #f5f7fb;
+      --ink: #172033;
+      --muted: #5f6c7d;
+      --line: #ccd6e4;
+      --panel: #ffffff;
+      --visual: #2463c7;
+      --text: #0c7669;
+      --cond: #7a4ac8;
+      --fusion: #1f7a45;
+      --loss: #b35a13;
+      --note: #b91c1c;
+      --soft-visual: #eef5ff;
+      --soft-text: #eafaf5;
+      --soft-cond: #f4efff;
+      --soft-fusion: #ecf9f0;
+      --soft-loss: #fff5e8;
+      --soft-note: #fff1f2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 14px/1.55 "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    header {
+      background: #101827;
+      color: #f8fafc;
+      padding: 24px 32px 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 1180px;
+      margin: 0;
+      color: #cbd5e1;
+    }
+
+    main {
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 22px 26px 40px;
+    }
+
+    .panel {
+      margin: 0 0 18px;
+      padding: 18px 18px 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .panel p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .note {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: var(--soft-note);
+      border: 1px solid #fecdd3;
+      border-left: 5px solid var(--note);
+      border-radius: 8px;
+    }
+
+    .note strong {
+      color: var(--note);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin: 10px 0 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .swatch {
+      width: 24px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--line);
+    }
+
+    .swatch.visual { background: var(--visual); }
+    .swatch.text { background: var(--text); }
+    .swatch.cond { background: var(--cond); }
+    .swatch.fusion { background: var(--fusion); }
+    .swatch.loss { background: var(--loss); }
+    .swatch.dashed { border-top: 3px dashed var(--cond); background: transparent; }
+
+    .svg-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      height: auto;
+    }
+
+    .lane {
+      fill: #f8fafc;
+      stroke: #e5eaf2;
+      stroke-width: 1;
+    }
+
+    .lane-title {
+      fill: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .box {
+      fill: #ffffff;
+      stroke: #c8d4e2;
+      stroke-width: 1.5;
+      rx: 8;
+    }
+
+    .box.visual { fill: var(--soft-visual); stroke: #93b7ef; }
+    .box.text { fill: var(--soft-text); stroke: #8bd0c4; }
+    .box.cond { fill: var(--soft-cond); stroke: #bca5ef; }
+    .box.fusion { fill: var(--soft-fusion); stroke: #99d7ad; }
+    .box.loss { fill: var(--soft-loss); stroke: #f0b071; }
+    .box.note { fill: var(--soft-note); stroke: #fda4af; }
+    .bus {
+      fill: #fff;
+      stroke: #94a3b8;
+      stroke-dasharray: 5 4;
+      stroke-width: 1.3;
+      rx: 8;
+    }
+
+    text {
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      fill: var(--ink);
+      letter-spacing: 0;
+    }
+
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .small {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+
+    .tiny {
+      font-size: 11px;
+      fill: var(--muted);
+    }
+
+    .edge {
+      fill: none;
+      stroke: #64748b;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      marker-end: url(#arrow-gray);
+    }
+
+    .edge.visual { stroke: var(--visual); marker-end: url(#arrow-visual); }
+    .edge.text { stroke: var(--text); marker-end: url(#arrow-text); }
+    .edge.cond { stroke: var(--cond); marker-end: url(#arrow-cond); }
+    .edge.fusion { stroke: var(--fusion); marker-end: url(#arrow-fusion); }
+    .edge.loss { stroke: var(--loss); marker-end: url(#arrow-loss); }
+    .edge.dashed { stroke-dasharray: 6 5; }
+    .edge.thin { stroke-width: 1.5; }
+
+    .callout {
+      fill: #ffffff;
+      stroke: #e2e8f0;
+      stroke-width: 1;
+      rx: 8;
+    }
+
+    .status-ok {
+      fill: #dcfce7;
+      stroke: #86efac;
+      rx: 999;
+    }
+
+    .status-warn {
+      fill: #ffe4e6;
+      stroke: #fda4af;
+      rx: 999;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    code {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 0.96em;
+      color: #0f172a;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GTPJ v4 特征流与监督流</h1>
+    <p>把一张拥挤图拆成三个连接图：主 forward 链路、loss 输入依赖、当前 v4 与 TRIAL-003 的 BVSA 文本边界。</p>
+  </header>
+
+  <main>
+    <section class="note" aria-label="implementation boundary">
+      <strong>代码边界</strong>
+      <div>
+        当前 <code>main / GTPJ-v4</code> 的真实 forward 是 <code>BVSA(patches, all_text, cls_token)</code>；
+        <code>all_text_cond</code> 进入 <code>base_logits</code> 和 <code>SGMP</code>。配置里有
+        <code>bvsa_text_mode: conditional</code>，但直接把 <code>all_text_cond</code> 接入 BVSA 的实现属于
+        <code>TRIAL-003 conditional_bvsa_text</code> 分支意图，不在本图主线里混成已确认路径。
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>1. 主流程图：CLIP 输入到最终 logits</h2>
+      <p>这里只保留推理/训练 forward 的核心特征流。所有辅助 loss 的长距离依赖移到下一张图。</p>
+      <div class="legend" aria-label="legend">
+        <span><i class="swatch visual"></i>视觉特征流</span>
+        <span><i class="swatch text"></i>文本特征流</span>
+        <span><i class="swatch cond"></i>ICSA 条件文本</span>
+        <span><i class="swatch fusion"></i>分数融合输出</span>
+        <span><i class="swatch dashed"></i>分支/意图，不是当前已确认主线</span>
+      </div>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1320 650" role="img" aria-label="GTPJ v4 main feature flow">
+          <defs>
+            <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"></path>
+            </marker>
+            <marker id="arrow-visual" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2463c7"></path>
+            </marker>
+            <marker id="arrow-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#0c7669"></path>
+            </marker>
+            <marker id="arrow-cond" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a4ac8"></path>
+            </marker>
+            <marker id="arrow-fusion" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f7a45"></path>
+            </marker>
+            <marker id="arrow-loss" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#b35a13"></path>
+            </marker>
+          </defs>
+
+          <rect class="lane" x="22" y="36" width="1276" height="188"></rect>
+          <rect class="lane" x="22" y="244" width="1276" height="178"></rect>
+          <rect class="lane" x="22" y="442" width="1276" height="176"></rect>
+          <text class="lane-title" x="42" y="62">视觉链路 / Visual input-output</text>
+          <text class="lane-title" x="42" y="270">文本链路 / Text input-output</text>
+          <text class="lane-title" x="42" y="468">融合输出 / Score fusion output</text>
+
+          <!-- Edges behind nodes -->
+          <path class="edge visual" d="M 178 130 H 226"></path>
+          <path class="edge visual" d="M 382 130 H 426"></path>
+          <path class="edge visual" d="M 582 118 H 626"></path>
+          <path class="edge visual" d="M 786 118 H 826"></path>
+          <path class="edge visual" d="M 986 118 H 1030"></path>
+          <path class="edge fusion" d="M 1192 118 H 1240 V 503 H 1188"></path>
+
+          <path class="edge text" d="M 178 330 H 226"></path>
+          <path class="edge text" d="M 382 330 H 426"></path>
+          <path class="edge text" d="M 582 330 H 626"></path>
+          <path class="edge text" d="M 786 302 H 826"></path>
+          <path class="edge text" d="M 786 330 H 806 V 230 H 1040 V 174"></path>
+
+          <path class="edge cond" d="M 786 178 H 858 V 286"></path>
+          <path class="edge cond" d="M 986 330 H 1030"></path>
+          <path class="edge cond" d="M 1112 372 V 450 H 906 V 490"></path>
+          <path class="edge visual thin" d="M 706 214 V 236 H 812 V 500 H 826"></path>
+          <path class="edge fusion" d="M 986 532 H 1030"></path>
+          <path class="edge fusion" d="M 1188 532 H 1232"></path>
+
+          <!-- Visual nodes -->
+          <rect class="box visual" x="42" y="92" width="136" height="76"></rect>
+          <text class="title" x="110" y="118" text-anchor="middle">图像 batch</text>
+          <text class="small" x="110" y="141" text-anchor="middle">Input: image</text>
+          <text class="tiny" x="110" y="158" text-anchor="middle">输出到 CLIP visual</text>
+
+          <rect class="box visual" x="226" y="84" width="156" height="92"></rect>
+          <text class="title" x="304" y="110" text-anchor="middle">CLIP visual</text>
+          <text class="small" x="304" y="132" text-anchor="middle">输出 clip_features</text>
+          <text class="tiny" x="304" y="150" text-anchor="middle">B=图片数量；577=token数</text>
+          <text class="tiny" x="304" y="166" text-anchor="middle">768=特征维度</text>
+
+          <rect class="box visual" x="426" y="78" width="156" height="104"></rect>
+          <text class="title" x="504" y="103" text-anchor="middle">token split</text>
+          <text class="small" x="504" y="125" text-anchor="middle">cls_token</text>
+          <text class="small" x="504" y="145" text-anchor="middle">patches</text>
+          <text class="tiny" x="504" y="164" text-anchor="middle">输入 clip_features</text>
+
+          <rect class="box visual" x="626" y="66" width="160" height="104"></rect>
+          <text class="title" x="706" y="92" text-anchor="middle">patch tokens</text>
+          <text class="small" x="706" y="114" text-anchor="middle">输出 patches</text>
+          <text class="tiny" x="706" y="133" text-anchor="middle">[B（图片数量）, 576（patch数）,</text>
+          <text class="tiny" x="706" y="149" text-anchor="middle">768（特征维度）]</text>
+
+          <rect class="bus" x="626" y="174" width="160" height="40"></rect>
+          <text class="small" x="706" y="198" text-anchor="middle">cls_token bus</text>
+
+          <rect class="box visual" x="826" y="66" width="160" height="104"></rect>
+          <text class="title" x="906" y="92" text-anchor="middle">FGVD</text>
+          <text class="small" x="906" y="114" text-anchor="middle">选择关键 patch</text>
+          <text class="small" x="906" y="134" text-anchor="middle">+ 几何记忆 FAE</text>
+          <text class="tiny" x="906" y="153" text-anchor="middle">输出 selected_patches / memory</text>
+
+          <rect class="box visual" x="1030" y="58" width="162" height="120"></rect>
+          <text class="title" x="1111" y="86" text-anchor="middle">BVSA</text>
+          <text class="small" x="1111" y="109" text-anchor="middle">输入 FGVD memory</text>
+          <text class="small" x="1111" y="128" text-anchor="middle">+ all_text</text>
+          <text class="tiny" x="1111" y="148" text-anchor="middle">输出 score_s2v / score_v2s</text>
+          <text class="tiny" x="1111" y="164" text-anchor="middle">与 local_score</text>
+
+          <!-- Text nodes -->
+          <rect class="box text" x="42" y="292" width="136" height="76"></rect>
+          <text class="title" x="110" y="318" text-anchor="middle">类别文本</text>
+          <text class="small" x="110" y="341" text-anchor="middle">Input: prompts</text>
+          <text class="tiny" x="110" y="358" text-anchor="middle">200 类描述</text>
+
+          <rect class="box text" x="226" y="286" width="156" height="88"></rect>
+          <text class="title" x="304" y="312" text-anchor="middle">CLIP text</text>
+          <text class="small" x="304" y="334" text-anchor="middle">文本编码</text>
+          <text class="tiny" x="304" y="353" text-anchor="middle">输出 raw text features</text>
+
+          <rect class="box text" x="426" y="286" width="156" height="88"></rect>
+          <text class="title" x="504" y="312" text-anchor="middle">PSE</text>
+          <text class="small" x="504" y="334" text-anchor="middle">Adapter / self attention</text>
+          <text class="tiny" x="504" y="353" text-anchor="middle">输出 enhanced text</text>
+
+          <rect class="box text" x="626" y="274" width="160" height="112"></rect>
+          <text class="title" x="706" y="300" text-anchor="middle">all_text</text>
+          <text class="small" x="706" y="323" text-anchor="middle">PSE 后类别原型</text>
+          <text class="tiny" x="706" y="344" text-anchor="middle">[200（类别数）,</text>
+          <text class="tiny" x="706" y="360" text-anchor="middle">768（文本维度）]</text>
+          <text class="tiny" x="706" y="376" text-anchor="middle">当前 BVSA 文本源</text>
+
+          <rect class="box cond" x="826" y="274" width="160" height="112"></rect>
+          <text class="title" x="906" y="300" text-anchor="middle">ICSA</text>
+          <text class="small" x="906" y="323" text-anchor="middle">输入 cls_token + all_text</text>
+          <text class="small" x="906" y="343" text-anchor="middle">生成条件偏移 pi_x</text>
+          <text class="tiny" x="906" y="363" text-anchor="middle">输出条件文本</text>
+
+          <rect class="box cond" x="1030" y="286" width="164" height="88"></rect>
+          <text class="title" x="1112" y="312" text-anchor="middle">all_text_cond</text>
+          <text class="small" x="1112" y="334" text-anchor="middle">图片条件类别文本</text>
+          <text class="tiny" x="1112" y="350" text-anchor="middle">B=图片数量；200=类别数</text>
+          <text class="tiny" x="1112" y="366" text-anchor="middle">768=文本维度</text>
+
+          <!-- Fusion nodes -->
+          <rect class="box fusion" x="826" y="490" width="160" height="84"></rect>
+          <text class="title" x="906" y="516" text-anchor="middle">base_logits</text>
+          <text class="small" x="906" y="538" text-anchor="middle">cos(cls_token, text)</text>
+          <text class="tiny" x="906" y="557" text-anchor="middle">输出 200 类分数</text>
+
+          <rect class="box fusion" x="1030" y="490" width="158" height="84"></rect>
+          <text class="title" x="1109" y="516" text-anchor="middle">score fusion</text>
+          <text class="small" x="1109" y="538" text-anchor="middle">base + w * local</text>
+          <text class="tiny" x="1109" y="557" text-anchor="middle">输出 logits_200</text>
+
+          <rect class="box fusion" x="1232" y="490" width="64" height="84"></rect>
+          <text class="title" x="1264" y="517" text-anchor="middle">logits</text>
+          <text class="tiny" x="1264" y="540" text-anchor="middle">train:</text>
+          <text class="tiny" x="1264" y="556" text-anchor="middle">seen</text>
+          <text class="tiny" x="1264" y="572" text-anchor="middle">eval: all</text>
+
+          <rect class="callout" x="42" y="500" width="350" height="80"></rect>
+          <text class="title" x="58" y="526">读图规则</text>
+          <text class="small" x="58" y="549">主图只画 forward；loss 不跨图拉线。</text>
+          <text class="small" x="58" y="568">输入 / output 细节在下方 loss 图和变量表补齐。</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2. Loss 输入图：辅助监督只画输入依赖</h2>
+      <p>loss 函数本身没有新的推理特征输出，所以这里强调每个 loss 的 input 和 scalar output，再汇入总损失。</p>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1320 430" role="img" aria-label="GTPJ v4 loss input flow">
+          <defs>
+            <marker id="loss-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#b35a13"></path>
+            </marker>
+            <marker id="gray-arrow-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"></path>
+            </marker>
+          </defs>
+
+          <rect class="lane" x="24" y="28" width="1272" height="160"></rect>
+          <rect class="lane" x="24" y="210" width="1272" height="170"></rect>
+          <text class="lane-title" x="44" y="54">Loss input bundles</text>
+          <text class="lane-title" x="44" y="224">Scalar loss outputs</text>
+
+          <!-- vertical input arrows -->
+          <path class="edge loss" marker-end="url(#loss-arrow)" d="M 132 158 V 234"></path>
+          <path class="edge loss" marker-end="url(#loss-arrow)" d="M 372 158 V 234"></path>
+          <path class="edge loss" marker-end="url(#loss-arrow)" d="M 612 158 V 234"></path>
+          <path class="edge loss" marker-end="url(#loss-arrow)" d="M 852 158 V 234"></path>
+          <path class="edge loss" marker-end="url(#loss-arrow)" d="M 1092 158 V 234"></path>
+
+          <!-- weighted sum bus -->
+          <path class="edge thin" marker-end="url(#gray-arrow-2)" d="M 132 334 V 366 H 640"></path>
+          <path class="edge thin" marker-end="url(#gray-arrow-2)" d="M 372 334 V 366 H 640"></path>
+          <path class="edge thin" marker-end="url(#gray-arrow-2)" d="M 612 334 V 366 H 640"></path>
+          <path class="edge thin" marker-end="url(#gray-arrow-2)" d="M 852 334 V 366 H 700"></path>
+          <path class="edge thin" marker-end="url(#gray-arrow-2)" d="M 1092 334 V 366 H 700"></path>
+
+          <rect class="bus" x="52" y="78" width="160" height="80"></rect>
+          <text class="title" x="132" y="104" text-anchor="middle">CE input</text>
+          <text class="small" x="132" y="126" text-anchor="middle">train logits</text>
+          <text class="small" x="132" y="145" text-anchor="middle">+ seen labels</text>
+
+          <rect class="bus" x="292" y="78" width="160" height="80"></rect>
+          <text class="title" x="372" y="104" text-anchor="middle">Consistency input</text>
+          <text class="small" x="372" y="126" text-anchor="middle">base_logits.detach</text>
+          <text class="small" x="372" y="145" text-anchor="middle">+ local_score</text>
+
+          <rect class="bus" x="532" y="78" width="160" height="80"></rect>
+          <text class="title" x="612" y="104" text-anchor="middle">BMDD input</text>
+          <text class="small" x="612" y="126" text-anchor="middle">score_s2v</text>
+          <text class="small" x="612" y="145" text-anchor="middle">+ score_v2s</text>
+
+          <rect class="bus" x="772" y="66" width="160" height="104"></rect>
+          <text class="title" x="852" y="92" text-anchor="middle">SGMP input</text>
+          <text class="small" x="852" y="114" text-anchor="middle">selected patches</text>
+          <text class="small" x="852" y="134" text-anchor="middle">+ patch_z / memory</text>
+          <text class="small" x="852" y="153" text-anchor="middle">+ labels / text</text>
+
+          <rect class="bus" x="1012" y="78" width="160" height="80"></rect>
+          <text class="title" x="1092" y="104" text-anchor="middle">Topology input</text>
+          <text class="small" x="1092" y="126" text-anchor="middle">text_topology_features</text>
+          <text class="tiny" x="1092" y="145" text-anchor="middle">当前 forward 返回 None</text>
+
+          <rect class="box loss" x="52" y="234" width="160" height="100"></rect>
+          <text class="title" x="132" y="261" text-anchor="middle">loss_CE</text>
+          <text class="small" x="132" y="284" text-anchor="middle">交叉熵</text>
+          <text class="tiny" x="132" y="304" text-anchor="middle">output: scalar</text>
+
+          <rect class="box loss" x="292" y="234" width="160" height="100"></rect>
+          <text class="title" x="372" y="261" text-anchor="middle">loss_consist</text>
+          <text class="small" x="372" y="284" text-anchor="middle">base/local KL</text>
+          <text class="tiny" x="372" y="304" text-anchor="middle">output: scalar</text>
+
+          <rect class="box loss" x="532" y="234" width="160" height="100"></rect>
+          <text class="title" x="612" y="261" text-anchor="middle">loss_bmdd</text>
+          <text class="small" x="612" y="284" text-anchor="middle">旧名 loss_msdn</text>
+          <text class="tiny" x="612" y="304" text-anchor="middle">output: scalar</text>
+
+          <rect class="box loss" x="772" y="234" width="160" height="100"></rect>
+          <text class="title" x="852" y="261" text-anchor="middle">loss_mpp</text>
+          <text class="small" x="852" y="284" text-anchor="middle">+ loss_neg</text>
+          <text class="tiny" x="852" y="304" text-anchor="middle">SGMP / old AG-JEPA</text>
+
+          <rect class="box loss" x="1012" y="234" width="160" height="100"></rect>
+          <text class="title" x="1092" y="261" text-anchor="middle">loss_topo</text>
+          <text class="small" x="1092" y="284" text-anchor="middle">拓扑占位监督</text>
+          <text class="tiny" x="1092" y="304" text-anchor="middle">output: scalar</text>
+
+          <rect class="box fusion" x="640" y="346" width="60" height="58"></rect>
+          <text class="title" x="670" y="371" text-anchor="middle">Σ</text>
+          <text class="tiny" x="670" y="391" text-anchor="middle">loss</text>
+
+          <rect class="callout" x="1188" y="82" width="86" height="240"></rect>
+          <text class="tiny" x="1231" y="114" text-anchor="middle">这里不画</text>
+          <text class="tiny" x="1231" y="132" text-anchor="middle">跨主图长线</text>
+          <text class="tiny" x="1231" y="162" text-anchor="middle">避免 loss</text>
+          <text class="tiny" x="1231" y="180" text-anchor="middle">遮挡 forward</text>
+          <text class="tiny" x="1231" y="214" text-anchor="middle">每个 loss</text>
+          <text class="tiny" x="1231" y="232" text-anchor="middle">只连 input</text>
+          <text class="tiny" x="1231" y="250" text-anchor="middle">和 scalar</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3. BVSA 文本边界：当前 v4 与 TRIAL-003 分开画</h2>
+      <p>这个面板专门解决“all_text_cond 到底进不进 BVSA”的歧义。</p>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1320 410" role="img" aria-label="BVSA text boundary">
+          <defs>
+            <marker id="boundary-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"></path>
+            </marker>
+            <marker id="boundary-cond-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7a4ac8"></path>
+            </marker>
+          </defs>
+
+          <rect class="lane" x="32" y="36" width="602" height="326"></rect>
+          <rect class="lane" x="686" y="36" width="602" height="326"></rect>
+          <rect class="status-ok" x="56" y="58" width="158" height="30"></rect>
+          <text class="small" x="135" y="78" text-anchor="middle">当前 main / v4 证据</text>
+          <rect class="status-warn" x="710" y="58" width="184" height="30"></rect>
+          <text class="small" x="802" y="78" text-anchor="middle">TRIAL-003 分支意图</text>
+
+          <path class="edge text" marker-end="url(#boundary-arrow)" d="M 206 164 H 274"></path>
+          <path class="edge visual" marker-end="url(#boundary-arrow)" d="M 206 238 H 274"></path>
+          <path class="edge fusion" marker-end="url(#boundary-arrow)" d="M 434 202 H 524"></path>
+          <path class="edge cond" marker-end="url(#boundary-cond-arrow)" d="M 206 94 H 276 V 132"></path>
+          <path class="edge cond dashed" marker-end="url(#boundary-cond-arrow)" d="M 840 164 H 908"></path>
+          <path class="edge visual" marker-end="url(#boundary-arrow)" d="M 840 238 H 908"></path>
+          <path class="edge fusion" marker-end="url(#boundary-arrow)" d="M 1068 202 H 1156"></path>
+
+          <rect class="box cond" x="72" y="96" width="134" height="62"></rect>
+          <text class="title" x="139" y="121" text-anchor="middle">all_text_cond</text>
+          <text class="tiny" x="139" y="141" text-anchor="middle">进 base / SGMP</text>
+
+          <rect class="box text" x="72" y="164" width="134" height="62"></rect>
+          <text class="title" x="139" y="189" text-anchor="middle">all_text</text>
+          <text class="tiny" x="139" y="209" text-anchor="middle">当前 BVSA 文本</text>
+
+          <rect class="box visual" x="72" y="238" width="134" height="62"></rect>
+          <text class="title" x="139" y="263" text-anchor="middle">FGVD memory</text>
+          <text class="tiny" x="139" y="283" text-anchor="middle">视觉局部记忆</text>
+
+          <rect class="box visual" x="274" y="132" width="160" height="140"></rect>
+          <text class="title" x="354" y="164" text-anchor="middle">BVSA</text>
+          <text class="small" x="354" y="190" text-anchor="middle">patch memory</text>
+          <text class="small" x="354" y="210" text-anchor="middle">+ all_text</text>
+          <text class="tiny" x="354" y="234" text-anchor="middle">代码调用已确认</text>
+
+          <rect class="box fusion" x="524" y="162" width="86" height="82"></rect>
+          <text class="title" x="567" y="193" text-anchor="middle">local</text>
+          <text class="title" x="567" y="213" text-anchor="middle">score</text>
+          <text class="tiny" x="567" y="233" text-anchor="middle">output</text>
+
+          <rect class="box cond" x="706" y="132" width="134" height="62"></rect>
+          <text class="title" x="773" y="157" text-anchor="middle">all_text_cond</text>
+          <text class="tiny" x="773" y="177" text-anchor="middle">目标 BVSA 文本</text>
+
+          <rect class="box visual" x="706" y="238" width="134" height="62"></rect>
+          <text class="title" x="773" y="263" text-anchor="middle">FGVD memory</text>
+          <text class="tiny" x="773" y="283" text-anchor="middle">视觉局部记忆</text>
+
+          <rect class="box visual" x="908" y="132" width="160" height="140"></rect>
+          <text class="title" x="988" y="164" text-anchor="middle">BVSA</text>
+          <text class="small" x="988" y="190" text-anchor="middle">patch memory</text>
+          <text class="small" x="988" y="210" text-anchor="middle">+ all_text_cond</text>
+          <text class="tiny" x="988" y="234" text-anchor="middle">分支实现 / 待 promotion</text>
+
+          <rect class="box fusion" x="1156" y="162" width="86" height="82"></rect>
+          <text class="title" x="1199" y="193" text-anchor="middle">local</text>
+          <text class="title" x="1199" y="213" text-anchor="middle">score</text>
+          <text class="tiny" x="1199" y="233" text-anchor="middle">output</text>
+
+          <rect class="callout" x="48" y="318" width="570" height="30"></rect>
+          <text class="tiny" x="333" y="338" text-anchor="middle">结论：v4 主线按当前代码画；conditional BVSA 只作为 TRIAL-003 分支目标。</text>
+          <rect class="callout" x="702" y="318" width="570" height="30"></rect>
+          <text class="tiny" x="987" y="338" text-anchor="middle">后续 promotion 成正式版本后，右侧路径才应成为新版本主线。</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>变量索引</h2>
+      <p>保留这张表是为了避免把所有形状和说明塞进节点，导致流程图再次变脏。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>变量 / 模块</th>
+            <th>输入</th>
+            <th>输出</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>CLIP visual</code></td>
+            <td>图片 batch</td>
+            <td><code>clip_features</code>：[B（图片数量）, 577（token 数）, 768（特征维度）]</td>
+            <td>第 1 个 token 是 <code>cls_token</code>，其余 576 个是 patch。</td>
+          </tr>
+          <tr>
+            <td><code>PSE</code></td>
+            <td>CLIP 文本特征</td>
+            <td><code>all_text</code>：[200（类别数）, 768（文本维度）]</td>
+            <td>旧名 Adapter / CLIP-A-self。</td>
+          </tr>
+          <tr>
+            <td><code>ICSA</code></td>
+            <td><code>cls_token</code> + <code>all_text</code></td>
+            <td><code>all_text_cond</code>：[B（图片数量）, 200（类别数）, 768（文本维度）]</td>
+            <td>当前 v4 进入 <code>base_logits</code> 与 SGMP；TRIAL-003 目标是也进入 BVSA。</td>
+          </tr>
+          <tr>
+            <td><code>FGVD</code></td>
+            <td><code>patches</code></td>
+            <td><code>selected_patches</code>, <code>jepa_patch_z</code>, <code>jepa_memory</code></td>
+            <td>旧名 FAE / LastViT select；提供局部视觉记忆。</td>
+          </tr>
+          <tr>
+            <td><code>BVSA</code></td>
+            <td>当前 v4：<code>patches / jepa_memory</code> + <code>all_text</code> + <code>cls_token</code></td>
+            <td><code>score_s2v</code>, <code>score_v2s</code>, <code>local_score</code></td>
+            <td>旧名 CrossModalTransformer。</td>
+          </tr>
+          <tr>
+            <td><code>SGMP</code></td>
+            <td><code>selected_patches</code>, <code>jepa_patch_z</code>, <code>jepa_memory</code>, labels, text</td>
+            <td><code>loss_mpp</code>, <code>loss_neg</code></td>
+            <td>训练监督，不产生推理阶段的新 logits。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

@@ -78,6 +78,7 @@ does_not_inherit: v2
 每个正式版本的 `experiments/vX/VERSION.md` 必须包含：
 
 ```text
+## Framework Diagram
 ## Version Flow
 ```
 
@@ -96,6 +97,15 @@ does_not_inherit: v2
 ```text
 docs/workflow/workflow_diagrams.md
 ```
+
+每个正式版本目录还必须包含：
+
+```text
+experiments/vX/framework_diagram.md
+experiments/vX/MODULES.md
+```
+
+`framework_diagram.md` 负责说明 active version 的 forward path、关键张量、loss/training flow、GZSL hard rules 和 code-vs-intent；`MODULES.md` 负责解释每个模块的 purpose、input、output、config switch 和 baseline-off behavior。只列模块名不算完整版本文档。
 
 `parent_version` 表示代码父节点，不表示实验记录父节点。
 

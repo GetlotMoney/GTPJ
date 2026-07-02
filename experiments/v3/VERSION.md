@@ -17,6 +17,8 @@ ledger_source: dev/v2-idea-0002-trial-002-strict-conditional-jepa
 ledger_source_commit: 875cbb634325b2b94fcd09a4f337cd3e90d683f6
 code_source: v2 + TRIAL-002 strict main-path FAE-memory JEPA + conditional AG-JEPA text
 config: experiments/v3/config.yaml
+framework_diagram: experiments/v3/framework_diagram.md
+module_glossary: experiments/v3/MODULES.md
 baseline_evidence: experiments/v3/baseline/
 evidence_level: valid_single_run
 best_observed_H: 74.27
@@ -80,6 +82,16 @@ parent_version: v2
 children: none yet
 notes: v3 = v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA; owner accepted stochastic variance.
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+source_trial_framework: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa/framework_diagram.md
+```
+
+The version-level diagram summarizes the v3 active method state; the source trial diagram remains the detailed implementation artifact.
 
 ## Version Flow
 

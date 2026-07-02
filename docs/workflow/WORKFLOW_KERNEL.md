@@ -73,6 +73,7 @@ lifecycle: workflow_scoped
 - confirmation 默认跑 3 次。复现通过后，正式单值取 3 次中的最高 H，同时保留 mean/min/max 作为稳定性证据。
 - promotion 和 baseline claim 默认比较 `confirmed_H` / repeat mean，不能只凭 best repeat。
 - 不能把未确认的 `best_observed_H` 说成 confirmed baseline。
+- 每个正式版本 `experiments/vX/` 必须有版本级 `framework_diagram.md` 和 `MODULES.md`；`VERSION.md` 必须链接它们并包含 `## Framework Diagram`。模块说明不能只列名字，必须解释 purpose、input、output、config switch 和 baseline-off behavior。
 
 ## 5. 运行安全
 

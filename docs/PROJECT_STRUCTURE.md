@@ -367,6 +367,13 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v3/ablation/INDEX.md` | v3 消融实验索引。 |
 | `experiments/v3/confirmation/INDEX.md` | v3 确认实验索引。 |
 
+All formal version directories `experiments/vX/` must also include:
+
+| Path | Purpose |
+|---|---|
+| `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
+| `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
+
 这些 `experiments/vX/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
 dropout、seed，或做窄消融、clean confirmation，应写入该 trial 的 `ATTEMPTS.md` 和
 `attempts/ATTEMPT-xxx/`。

@@ -171,7 +171,10 @@ GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
 
 ```text
 docs/workflow/workflow_diagrams.md
+experiments/vX/VERSION.md 的 ## Framework Diagram
 experiments/vX/VERSION.md 的 ## Version Flow
+experiments/vX/framework_diagram.md
+experiments/vX/MODULES.md
 module trial README.md 的 ## Trial Flow
 module trial README.md 的 ## Framework Diagram
 module trial 目录下的 framework_diagram.md
@@ -180,7 +183,7 @@ module trial 目录下的 framework_diagram.md
 要求：
 
 ```text
-1. 正式版本必须有 Version Flow。
+1. 正式版本必须有 Framework Diagram、Version Flow、framework_diagram.md 和 MODULES.md。
 2. 新 module trial 必须有 Trial Flow 和 Framework Diagram。
 3. 图用 Mermaid 写在 Markdown 中，作为 GitHub 权威流程图。
 4. framework_diagram.md 必须解释图中每个变量、方法、shape、输入输出、loss 读取位置和 code-vs-intent。

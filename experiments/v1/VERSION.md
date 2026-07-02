@@ -15,6 +15,8 @@ ledger_source: initial
 ledger_source_commit: none
 code_source: initial
 config: experiments/v1/config.yaml
+framework_diagram: experiments/v1/framework_diagram.md
+module_glossary: experiments/v1/MODULES.md
 baseline_evidence: experiments/v1/baseline/
 ```
 
@@ -48,6 +50,15 @@ parent_version: none
 children: none yet
 notes: v1 是当前版本树根节点。
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+```
+
+The version-level framework diagram explains the v1 forward path, key tensors, loss branches, GZSL hard-rule boundary, and effective 50-epoch staged schedule.
 
 ## Version Flow
 

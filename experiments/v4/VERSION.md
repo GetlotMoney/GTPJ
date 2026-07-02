@@ -16,6 +16,8 @@ source_run_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
 ledger_source: promote/v3-to-v4-local-v3-054
 code_source: v3 model/training code + confirmed tuned config
 config: experiments/v4/config.yaml
+framework_diagram: experiments/v4/framework_diagram.md
+module_glossary: experiments/v4/MODULES.md
 baseline_evidence: experiments/v4/baseline/
 evidence_level: baseline_grade
 best_observed_H: 74.47
@@ -73,6 +75,16 @@ parent_version: v3
 children: none yet
 notes: v4 is a historical config-only tag for v3/CONFIRM-001 local-v3-054, not a formal framework version.
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+framework_status: legacy_config_only_not_framework_version
+```
+
+The diagram explicitly marks v4 as a historical config-only record, not a new framework version.
 
 ## Version Flow
 

@@ -164,3 +164,14 @@ flowchart TD
   Analyze --> Retain["keep top 3 checkpoints"]
   Retain --> Decision["revise / no promotion"]
 ```
+
+## Framework Diagram
+
+```text
+path: framework_diagram.md
+html_view:
+warehouse_artifact:
+code_vs_intent: dynamic gates modulate existing v5 residual strengths; GZSL interface is unchanged.
+```
+
+`framework_diagram.md` explains the four dynamic gate sites, their anchors, input/output tensors, baseline-off behavior, and why this trial remains revise rather than promote.

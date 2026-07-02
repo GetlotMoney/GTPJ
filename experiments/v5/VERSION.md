@@ -16,6 +16,8 @@ implementation_source: dev/v3-idea-0002-trial-003-conditional-bvsa-text@4b259379
 ledger_source: main owner activation on 2026-06-30
 code_source: TRIAL-003 conditional BVSA text implementation + trial003-main100-069 config
 config: experiments/v5/config.yaml
+framework_diagram: experiments/v5/framework_diagram.md
+module_glossary: experiments/v5/MODULES.md
 baseline_evidence: experiments/v5/baseline/
 evidence_level: confirmation_grade
 best_observed_H: 74.54
@@ -81,6 +83,17 @@ parent_version: v3
 children: none yet
 notes: v5 = v3 code parent + TRIAL-003 conditional BVSA text code + trial003-main100-069 tuned config; confirmed reference is v3/CONFIRM-001 local-v3-054.
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+html_view: framework_diagram.html
+module_glossary: MODULES.md
+source_trial_framework: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text/framework_diagram.md
+```
+
+The v5 framework diagram is the owner-facing active-version view. The TRIAL-003 diagram remains the trial-local implementation source.
 
 ## Version Flow
 
