@@ -45,3 +45,23 @@ decision: warn after old batch completion
 reason_summary: Old RUN-20260702-0002 is complete, both GPUs are free, and RUN-20260702-0003 is not occupied.
 blocking_issues: none for server/GPU; server commit sync must be verified before launch.
 ```
+
+## Campaign Result Comparator
+
+```text
+role: Campaign Result Comparator
+agent_instance_id: 019f21fe-adc2-7932-bc69-58d8c384598a
+decision: warn
+reason_summary: RUN-20260702-0003 completed 10/10 with 0 failures. DR-004 is the best campaign single, but the stronger related prior single is ATTEMPT-004 DR-035 at H=75.02. Route DR-035 to min3 repeat first; keep DR-004/DR-006/DR-010 as repeat or neighbor candidates.
+blocking_issues: promotion blocked until min3 repeat and quality checks.
+```
+
+## Evidence Quality Checker Post-Run
+
+```text
+role: Evidence Quality Checker
+agent_instance_id: 019f21ff-27d7-7f60-b2aa-65a80fce0a48
+decision: warn
+reason_summary: No observed summary row is confirmed. Single-run results can support tune_promising / repeat_candidate only. GZSL/interface hard failure is not visible from summary, but log audit, artifact identity, checkpoint retention, and min3 repeat are still required.
+blocking_issues: confirmed_H and promotion remain blocked.
+```

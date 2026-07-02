@@ -1,0 +1,33 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-004
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+base_version: v5
+run:
+  run_id: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  profile: dr018-confirm-ablate
+  status: completed
+  jobs_completed: 50
+  jobs_failed: 0
+  runtime_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+metrics:
+  best_job: DR-035
+  name: direction_sample_h48_w0.525_a0.005
+  group: direction_narrow_tune
+  seed: 5
+  U: "72.69"
+  S: "77.51"
+  H: "75.02"
+  ZS: "82.04"
+  best_epoch: "48"
+evidence:
+  evidence_level: valid_single_run
+  best_observed_H: "75.02"
+  confirmed_H: pending
+  confirmation_status: needs_confirmation
+  related_campaign_report: experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md
+decision:
+  status: keep
+  result_status: tune_promising
+  promotion_decision: blocked
+  next_action: min3_repeat_DR-035

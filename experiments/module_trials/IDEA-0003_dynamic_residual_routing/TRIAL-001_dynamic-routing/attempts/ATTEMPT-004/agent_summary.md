@@ -27,7 +27,7 @@ persistent_thread_id: not_used
 - Keep this as ATTEMPT-004, not a new `vX`.
 - Use `profile=dr018-confirm-ablate`.
 - Start from `interface_precheck_passed` after pre-run freeze.
-- Defer all result conclusions until server evidence exists.
+- Post-run result conclusion: keep as `tune_promising`; do not promote.
 
 ## Agent Output Contract
 
@@ -51,3 +51,16 @@ Codex memory and prior session summaries were used only to locate known dynamic-
 
 Each memory-derived point was checked against current repository files, helper validation, subagent
 read-only checks, or current server status before being used in the pre-run plan.
+
+## Post-Run Agent Decisions
+
+| Role | Agent instance | Decision | Output |
+|---|---|---|---|
+| Campaign Result Comparator | `019f21fe-adc2-7932-bc69-58d8c384598a` | warn | Repeat DR-035 first; keep DR-004/DR-006/DR-010 as neighbor candidates; stop innovation probes. |
+| Evidence Quality Checker | `019f21ff-27d7-7f60-b2aa-65a80fce0a48` | warn | No result is confirmed; promotion blocked until min3 repeat, artifact checks, log audit, and retention. |
+
+Post-run evidence used:
+
+- `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` summary/status/events.
+- `RUN-20260702-0003-mixed2innov8tune-2gpu` summary/status/events.
+- `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md`.

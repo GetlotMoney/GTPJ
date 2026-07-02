@@ -11,7 +11,7 @@ requested_mix:
 subject:
   subject_id: CAMP-20260702-workflow-v2-2innov8tune
   subject_type: campaign
-evidence_state: planning
+evidence_state: completed_needs_repeat
 formal_evidence: true
 agent_runtime_gate: agent_runtime.yaml
 planned_run:
@@ -21,6 +21,21 @@ planned_run:
   gpus: "0,1"
   max_runtime_note: "Owner requested 10-hour workflow validation window; runner has no hard wall-clock kill in v1."
 canonical_result_source: derived_index_only
+completed_run:
+  status: completed
+  jobs_completed: 10
+  jobs_failed: 0
+  best_job: DR-004
+  best_name: tune_direction_h48_w0.525_a0.003
+  best_H: "74.75"
+  confirmation_status: needs_confirmation
+  final_report: FINAL_REPORT.md
+related_prior_best:
+  run_id: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  job_id: DR-035
+  name: direction_sample_h48_w0.525_a0.005
+  H: "75.02"
+  next_action: min3_repeat
 artifact_boundary:
   warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
   github_raw_artifacts: forbidden

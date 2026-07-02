@@ -1,11 +1,12 @@
-# ATTEMPT-004 Pre-Run Quality Check
+# ATTEMPT-004 Quality Check
 
 ```text
 attempt_id: ATTEMPT-004
 subject_id: ATTEMPT-004
-quality_stage: pre_run
-quality_decision: allow_runner_after_freeze
-promotion_decision: blocked_until_results
+quality_stage: post_run
+quality_decision: warn_keep_needs_repeat
+promotion_decision: blocked
+evidence_level: valid_single_run
 ```
 
 ## Checks
@@ -22,6 +23,13 @@ promotion_decision: blocked_until_results
 - [x] Raw logs and checkpoints will stay outside GitHub.
 - [x] Top-3 checkpoint retention is required after completion.
 - [x] `RESULT_INDEX` or campaign summaries, if created, are derived indexes only.
+- [x] `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` completed 50 / 50 jobs with 0 failures.
+- [x] Best observed single is DR-035 H=75.02.
+- [x] Related workflow-v2 campaign completed 10 / 10 jobs with 0 failures.
+- [x] Artifact identities for summary/status/plan/events are recorded in the campaign final report.
+- [ ] Min3 repeat for DR-035 is not complete.
+- [ ] Full per-log traceback/missing-metric audit is not recorded yet.
+- [ ] Top-3 checkpoint retention is not recorded yet.
 
 ## Role Checks
 
@@ -34,7 +42,7 @@ promotion_decision: blocked_until_results
 
 ## Blocking Issues
 
-None after this pre-run plan is committed and the server is synced to the same commit.
+No summary-level hard blocker is visible. Confirmed result and promotion remain blocked.
 
 ## Non-Blocking Warnings
 
@@ -44,7 +52,13 @@ None after this pre-run plan is committed and the server is synced to the same c
 
 ## Not Checked Yet
 
-- Server batch runtime after launch.
-- Warehouse artifact hashes after completion.
+- Min3 repeat stability for DR-035.
+- Full log audit and Warehouse checkpoint retention.
 - Post-run U/S stability.
-- Post-run Top-3 checkpoint retention.
+
+## Post-Run Decision
+
+`keep / tune_promising`.
+
+DR-035 is the current best observed single for TRIAL-001, but it is not `confirmed_H`.
+The next valid action is min3 repeat for DR-035 before any promotion or baseline claim.

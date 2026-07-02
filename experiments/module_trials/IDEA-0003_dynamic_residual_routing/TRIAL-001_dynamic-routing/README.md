@@ -16,7 +16,7 @@ trial_decision: keep
 promotion_decision: blocked
 promote_to:
 evidence_level: valid_single_run
-best_observed_H: 74.86
+best_observed_H: 75.02
 best_dynamic_single_H: 74.39
 best_dynamic_repeat_mean_H: 74.23
 confirmed_H: pending
@@ -120,6 +120,27 @@ ATTEMPT-002 summary artifacts:
 - `runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary` -> `lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/summary.csv`
 - `runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary` -> `lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/summary.csv`
 
+## Integrated ATTEMPT-004 / Workflow-v2 Status
+
+ATTEMPT-004 and the workflow-v2 validation campaign refine the ATTEMPT-003 direction-gate signal.
+
+| Source | Run | Best job | Name | H | U | S | Decision |
+|---|---|---|---|---:|---:|---:|---|
+| ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-035 | `direction_sample_h48_w0.525_a0.005` | 75.02 | 72.69 | 77.51 | repeat first |
+| ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-009 | `dr016_direction_sample_h48_w0.45_a0.003_r02` | 75.00 | 72.93 | 77.19 | supporting single |
+| Workflow-v2 campaign | `RUN-20260702-0003-mixed2innov8tune-2gpu` | DR-004 | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | repeat candidate |
+
+Current interpretation:
+
+- Best observed single is ATTEMPT-004 DR-035 H=75.02.
+- The strongest family is `direction_sample`, hidden 48, anchor lambda around 0.003-0.005.
+- Workflow-v2 innovation probes did not help and are stopped for this campaign.
+- No result is confirmed; promotion remains blocked until min3 repeat and post-run quality closeout.
+
+Integrated report:
+
+- `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md`
+
 ## Checkpoint Retention
 
 The server Warehouse was pruned according to the workflow rule "keep only the best 3 model checkpoints after each experiment batch." The retained checkpoints are:
@@ -180,4 +201,4 @@ code_vs_intent: dynamic gates modulate existing v5 residual strengths; GZSL inte
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | - | 73.10 | 76.71 | 74.86 | 81.84 | 37 | `` |
+| CUB | 5 | 72.69 | 77.51 | 75.02 | 82.04 | 48 | `RUN-20260702-0002 / DR-035` |
