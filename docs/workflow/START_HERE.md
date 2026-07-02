@@ -22,6 +22,17 @@ lifecycle: workflow_scoped
 
 `persistent_thread` 只是可选的可见长期上下文，不是正式证据。
 
+正式 Runner 启动还必须通过：
+
+```text
+AGENT_RUNTIME_HARD_GATE.md
+agent_runtime.yaml
+python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+```
+
+没有右侧临时 agents、没有真实 agent id、没有 pre-run allow/check，就不能启动正式 Runner。
+这种情况只能降级为 debug/smoke 或候选线索。
+
 ## 2. 最小阅读顺序
 
 除非任务需要更多细节，否则只读这条链：
@@ -67,6 +78,7 @@ Research/Warehouse 写入：
 agents 模式：
 必须读的 playbook：
 硬门：
+agent_runtime_gate：
 当前阻塞：
 下一步最小动作：
 ```

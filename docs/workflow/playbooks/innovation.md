@@ -15,6 +15,7 @@ code_interface_contract.md
 innovation_code_review_protocol.md
 agent_orchestration.md
 agent_report_policy.md
+AGENT_RUNTIME_HARD_GATE.md
 ```
 
 ## 角色
@@ -36,6 +37,10 @@ agent_report_policy.md
 ```
 
 同一个代码路径只能有一个实现者 (Implementer)。
+
+正式 Runner 启动前必须先启动右侧临时 agents，写 `agent_runtime.yaml`，并通过
+`validate-agent-runtime`。如果只是 Coordinator 单窗口代办 Review 0-3，本轮不能作为
+正式 `real_multi_agent` 创新证据。
 
 ## 创新拆解
 
@@ -81,4 +86,5 @@ raw logs/checkpoints 写 GTPJ_Warehouse
 - 没有有效 idea id 或 owner 接受的 local heuristic。
 - interface semantics 不清楚。
 - attempt 改变了实现假设，应该新开 trial。
+- 没有真实右侧临时 agents、没有 `agent_runtime.yaml` 或 `validate-agent-runtime` 未通过。
 - 正式 multi-agent 支持不可用，且 owner 没有接受 debug-only 降级。

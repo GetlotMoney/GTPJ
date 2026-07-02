@@ -28,6 +28,9 @@ transition_id:
 - [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。
 - [ ] `current_state` 能由 `TRANSITIONS.jsonl` 的 chain head 派生。
 - [ ] `authority_refs` 指向现有 GitHub 轻量证据或合法 Warehouse/Research URI。
+- [ ] 正式 Runner 启动前已有 `agent_runtime.yaml`，并通过 `validate-agent-runtime`。
+- [ ] `activation_mode: real_multi_agent` 时已记录真实右侧临时 agent ids；没有用单窗口 Coordinator 冒充多 agents。
+- [ ] Runner start 之前 Interface/Quality/Runner Monitor 至少给出 allow/pass；缺失时本轮降级为 debug/smoke 或 blocked。
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
 - [ ] checkpoint retention 已记录：默认最多保留 Top-3 checkpoint；logs、receipts、configs、summaries、manifests、registries 和 artifact id 不随 checkpoint 删除。
 

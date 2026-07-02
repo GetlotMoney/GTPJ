@@ -56,6 +56,7 @@ GitHub campaign ledger 推荐：
 ```text
 experiments/campaigns/CAMP-YYYYMMDD-xxxx/
   campaign_manifest.yaml
+  agent_runtime.yaml
   campaign_plan.md
   WORKSTREAMS.md
   SCHEDULER_STATE.yaml
@@ -114,6 +115,15 @@ lifecycle: campaign_scoped | workstream_scoped | task_scoped | run_scoped
 
 `persistent_thread` 不是默认值。它只用于跨 workflow 可见追踪，不能作为正式证据源。
 
+正式 campaign runner start 前必须通过 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md`：
+
+```bash
+python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/campaigns/CAMP-xxx/agent_runtime.yaml
+```
+
+如果侧边栏没有真实临时 agents，或 `agent_runtime.yaml` 没有记录真实实例 id，本 campaign
+只能作为 debug/smoke 或候选计划，不能启动正式 Runner。
+
 ## 4. Agent 池
 
 组合 campaign 默认启用一个小型 agent 池：
@@ -147,14 +157,16 @@ Coordinator 必须按下面顺序处理任意组合命令：
 1. Parse owner phrase into requested_mix.
 2. Run baseline/status preflight.
 3. Build campaign_manifest and workstreams.
-4. Freeze campaign plan before real runs.
-5. For each workstream, generate candidates or select ready ideas.
-6. Convert candidates into batches with run_commit/config/artifact target.
-7. Runner executes only frozen batches.
-8. Log Metric Parser extracts metrics.
-9. Evidence Quality Checker validates artifacts and boundaries.
-10. Result Comparator updates ranking and next actions.
-11. Coordinator records decisions and schedules repeat/ablation/promotion only if gates pass.
+4. Spawn required right-sidebar temporary agents and write agent_runtime.yaml.
+5. Validate agent_runtime.yaml before any formal Runner start.
+6. Freeze campaign plan before real runs.
+7. For each workstream, generate candidates or select ready ideas.
+8. Convert candidates into batches with run_commit/config/artifact target.
+9. Runner executes only frozen batches.
+10. Log Metric Parser extracts metrics.
+11. Evidence Quality Checker validates artifacts and boundaries.
+12. Result Comparator updates ranking and next actions.
+13. Coordinator records decisions and schedules repeat/ablation/promotion only if gates pass.
 ```
 
 组合实验按证据成熟度路由，而不是按 run 数静态排队：

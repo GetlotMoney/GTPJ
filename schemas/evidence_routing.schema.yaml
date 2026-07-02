@@ -85,6 +85,7 @@ required_transition_fields:
   - agent_attribution.proposed_by
   - agent_attribution.checked_by
   - agent_attribution.applied_by
+  - agent_attribution.*.agent_instance_id
   - decision.blocking_issues
   - decision.non_blocking_warnings
   - decision.not_checked
@@ -105,3 +106,15 @@ authority_ref_policy:
     - research://
   repo_relative_paths_must_exist: true
   campaign_result_index_authority: derived_index_only
+
+agent_runtime_gate:
+  formal_runner_start_requires:
+    - docs/workflow/AGENT_RUNTIME_HARD_GATE.md
+    - agent_runtime.yaml
+    - validate-agent-runtime
+    - right_sidebar_temporary_agents
+  forbidden_placeholders:
+    - temporary_subagent
+    - not_recorded
+    - role_only
+    - current Codex session

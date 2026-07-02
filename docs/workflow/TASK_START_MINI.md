@@ -23,6 +23,7 @@ evidence_state:
 writes:
 agent_mode:
 agent_instance_mode:
+agent_runtime_gate:
 gates:
 next_action:
 ```
@@ -40,6 +41,7 @@ next_action:
 | `writes` | 本次会写哪里；只读任务写 `none`。 |
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
 | `agent_instance_mode` | `role_only`、`temporary_subagent` 或 `persistent_thread`；正式实验默认 workflow-scoped `temporary_subagent`，跨 workflow 连续追踪才启用 `persistent_thread`。 |
+| `agent_runtime_gate` | 正式 Runner 启动前的 `agent_runtime.yaml` 路径和 `validate-agent-runtime` 状态；纯只读或 debug/smoke 写 `not_required`。 |
 | `gates` | 本次真正相关的硬门，只列会影响开工的门。 |
 | `next_action` | 下一步最小动作；不能把完整流程丢给 owner 填。 |
 
@@ -74,6 +76,7 @@ evidence_state: hypothesis_ready
 writes: idea_tree + experiments/module_trials + Warehouse after run
 agent_mode: real_multi_agent，因为新模块代码改动需要 Review 0-3
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped
+agent_runtime_gate: required before Runner; must record right_sidebar_temporary_agents
 gates: source_status, interface_contract, innovation_code_review, artifact_boundary
 next_action: read active version idea view and select the highest-priority ready idea
 ```
@@ -90,6 +93,7 @@ evidence_state: single_run_valid or confirmation target state
 writes: none until owner confirms run and evidence level
 agent_mode: 正式运行用 real_multi_agent；Runner 启动前的准备可以 role_only
 agent_instance_mode: 正式运行用 temporary_subagent；跨 workflow 追踪才用 persistent_thread
+agent_runtime_gate: required before formal rerun; not required for read-only repro-status
 gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
 next_action: run repro-status, then decide quick_local vs formal confirmation target
 ```
@@ -106,6 +110,7 @@ evidence_state: hypothesis_ready if accepted for triage
 writes: Research/idea_tree only if owner asks to register; no code until ready
 agent_mode: 纯 triage 用 role_only；变成代码或正式证据后用 real_multi_agent
 agent_instance_mode: 纯 triage 用 role_only；进入正式证据后用 temporary_subagent
+agent_runtime_gate: not_required until code or Runner starts
 gates: source_status, interface_contract
 next_action: judge whether this is inbox idea, ready idea, or blocked by missing source/scope
 ```
@@ -122,6 +127,7 @@ evidence_state: hypothesis_ready for first accepted subjects
 writes: campaign ledger + idea_tree + experiments + Research + Warehouse
 agent_mode: real_multi_agent，因为 workflow 会调度多类实验并产出最终证据
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped; persistent_thread optional for cross-workflow coordinator/monitor
+agent_runtime_gate: required for every formal runner-start transition
 gates: source_status, baseline_repro_status, interface_contract, metric_semantics, artifact_boundary, quality_gate, promotion_gate
 next_action: create campaign brief from sources, evaluation standard, safety boundaries, experiment standard, budget, and deliverables
 ```
@@ -138,6 +144,7 @@ evidence_state: campaign planning, then per-task evidence_state
 writes: experiments/campaigns + each workstream's canonical experiment directory + Warehouse
 agent_mode: real_multi_agent，因为多个 workstream 需要隔离规划、运行、分析和质量检查
 agent_instance_mode: temporary_subagent, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
+agent_runtime_gate: required at campaign level and before each formal runner batch
 gates: baseline_repro_status, source_status, interface_contract, metric_semantics, artifact_boundary, quality_gate
 next_action: parse requested_mix, create campaign manifest, build workstreams, and freeze campaign plan before Runner starts
 ```

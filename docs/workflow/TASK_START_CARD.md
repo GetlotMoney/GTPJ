@@ -26,6 +26,16 @@ agents:
 
 如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断或显式降级为 debug/smoke；不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
 
+正式 Runner 启动前必须有 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md` 定义的
+`agent_runtime.yaml`，并通过：
+
+```bash
+python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+```
+
+如果没有真实右侧临时 agents、没有 `temporary_subagents.instances`、没有 pre-run allow/check，
+Runner 必须阻断；状态机账本和服务器离线训练都不能单独算完整 workflow。
+
 如果启用 persistent thread，启动卡必须列出 thread id 或可见 label。如果不启用，启动卡必须写明本轮 workflow-scoped agents 如何把状态写回 `agent_summary.md`、result、quality、Research、Warehouse 或 campaign ledger。
 
 本文件是每次 GTPJ 工作开始前由 Coordinator 自动生成的启动卡。它不替代
@@ -191,8 +201,22 @@ agents:
     allowed:
     reason:
     debug_only:
+    ui_visibility:
+    instances:
+      runner_monitor:
+      interface_checker:
+      evidence_quality_checker:
+      log_analyst:
+      result_analyst:
   single_agent_allowed:
   owner_override:
+  agent_runtime_gate:
+    path:
+    validated:
+    validator_command:
+    runner_start_allowed:
+    pre_run_required_checks:
+    blocking_issues:
   tool_support:
     real_multi_agent_available:
     fallback_mode:
@@ -220,6 +244,7 @@ agents:
 
 hard_gates:
   gzsl_hard_rules:
+  agent_runtime:
   interface_contract:
   innovation_code_review:
   source_status:

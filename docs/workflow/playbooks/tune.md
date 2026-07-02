@@ -8,6 +8,7 @@
 START_HERE.md
 WORKFLOW_KERNEL.md
 GZSL_HARD_RULES.md
+AGENT_RUNTIME_HARD_GATE.md
 experiment_protocol.md
 产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
 ```
@@ -30,6 +31,10 @@ module_trial_protocol.md
 证据质量检查 (Evidence Quality Checker)
 结果比较 (Result Comparator)
 ```
+
+正式 Runner 启动前必须写 `agent_runtime.yaml`，记录右侧临时 agents 的真实
+`agent_instance_id`，并通过 `validate-agent-runtime`。否则本轮 tune 只能是
+debug/smoke 或候选线索。
 
 ## 输出
 

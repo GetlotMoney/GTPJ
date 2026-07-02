@@ -1,9 +1,9 @@
 # Workflow Version
 
 ```yaml
-current_workflow_version: workflow-v1.5
+current_workflow_version: workflow-v2-runtime-gate
 next_target: workflow-v2
-workflow_v2_status: implementing
+workflow_v2_status: evidence_state_machine_plus_agent_runtime_gate
 model_version_scope: separate_from_v1_v2_v3_v4_v5
 ```
 
@@ -33,3 +33,15 @@ TRANSITIONS.jsonl
 evidence_routing.yaml
 validate-evidence-routing
 ```
+
+Runtime gate layer:
+
+```text
+AGENT_RUNTIME_HARD_GATE.md
+agent_runtime.yaml
+validate-agent-runtime
+right_sidebar_temporary_agents
+```
+
+The evidence state machine records state changes. The agent runtime gate decides whether
+a formal Runner is allowed to start.

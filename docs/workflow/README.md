@@ -21,6 +21,7 @@
 | `WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
 | `TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
 | `TASK_START_CARD.md` | 正式写入或运行前的完整 Coordinator 启动卡。 |
+| `AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的真实右侧临时 agents 硬门。 |
 | `WORKFLOW_FILE_MAP.md` | 说明哪些文件是有效入口、参考资料、历史记录或模板。 |
 
 ## 执行卡 Playbooks
@@ -58,3 +59,15 @@ TASK_START_CARD.md
 ```
 
 GitHub 仍然是工作流规范的权威来源。本地 Codex skill 只是执行镜像，工作流规则改变后必须同步。
+
+正式实验的最短硬门：
+
+```text
+START_HERE.md
+-> WORKFLOW_KERNEL.md
+-> 相关 playbook
+-> TASK_START_CARD.md
+-> AGENT_RUNTIME_HARD_GATE.md
+-> validate-agent-runtime
+-> Runner
+```

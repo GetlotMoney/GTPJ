@@ -25,6 +25,9 @@ promotion/version/tag 判断
 ```
 
 正式证据工作必须使用 `real_multi_agent`，除非 owner 明确降级为 debug/smoke。
+正式 Runner 启动前还必须满足 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md`。也就是说，
+状态机记录和服务器 runner 都不能替代真实右侧临时 agents；没有 `agent_runtime.yaml`
+和通过的 `validate-agent-runtime`，只能降级为 debug/smoke 或 candidate 线索。
 
 正式证据对象必须绑定 `subject_id` 和 `subject_type`。`evidence_state` 只能由
 tamper-evident append-only `TRANSITIONS.jsonl` 派生，`evidence_routing.yaml`
@@ -51,6 +54,7 @@ lifecycle: workflow_scoped
 含义：
 
 - 每个角色在当前 workflow 或 campaign 阶段拥有独立活上下文。
+- 正式运行必须记录真实 `agent_instance_id` 或可见 thread id；`temporary_subagent` 这类占位词不能冒充实例。
 - 需要长期保留的经验必须写回 `agent_summary.md`、角色 `memory.md`、workflow issues、result 文件或 campaign 账本。
 - `persistent_thread` 只是跨 workflow 可见追踪的可选上下文，不是 evidence。
 - 不要给每个实验 run 创建一个永久 agent/thread。
@@ -83,6 +87,7 @@ lifecycle: workflow_scoped
 branch 和 commit
 git dirty 状态
 冻结后的 config
+agent_runtime.yaml 及 validate-agent-runtime 结果
 dataset/split/label mapping 假设
 GPU 或 runner slot 锁
 result/artifact 写入位置
@@ -125,6 +130,7 @@ promotion 可以按协议创建本地文件、commit 和 tag，但不能 push，
 - 必要证据缺失。
 - 服务器/runtime 状态不清楚，可能污染结果。
 - workflow 要求正式多 agents，但当前没有真实 multi-agent 支持。
+- `activation_mode: real_multi_agent` 但没有真实右侧临时 agent 实例、pre-run allow/check 或 `agent_runtime.yaml`。
 - owner 改变范围。
 - 会跨越安全边界。
 

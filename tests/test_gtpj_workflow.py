@@ -277,11 +277,60 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         return subject_dir
 
+    def _write_agent_runtime_gate(
+        self,
+        *,
+        path: str = "experiments/v1/tune/TUNE-001_ok/agent_runtime.yaml",
+        runner_decision: str = "allow",
+        quality_decision: str = "allow",
+        include_agent_ids: bool = True,
+    ) -> Path:
+        gate_path = self.repo / path
+        self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
+        self._write(str((gate_path.parent / "agent_summary.md").relative_to(self.repo)).replace("\\", "/"), "# Agent Summary\n")
+        self._write(str((gate_path.parent / "quality_check.md").relative_to(self.repo)).replace("\\", "/"), "# Quality\n")
+        self._write(str((gate_path.parent / "TRANSITIONS.jsonl").relative_to(self.repo)).replace("\\", "/"), "")
+        agent_ids = (
+            "temporary_subagent_ids:\n"
+            "  runner_monitor: 019f1111-1111-7111-8111-111111111111\n"
+            "  interface_checker: 019f2222-2222-7222-8222-222222222222\n"
+            "  evidence_quality_checker: 019f3333-3333-7333-8333-333333333333\n"
+        )
+        if not include_agent_ids:
+            agent_ids = "temporary_subagent_ids:\n  runner_monitor: temporary_subagent\n"
+        self._write(
+            path,
+            "schema_version: gtpj.agent_runtime_gate.v0\n"
+            "subject_id: ATTEMPT-001\n"
+            "subject_type: attempt\n"
+            "formal_evidence: true\n"
+            "activation_mode: real_multi_agent\n"
+            "agent_instance_mode: temporary_subagent\n"
+            "lifecycle: workflow_scoped\n"
+            "ui_visibility: right_sidebar_temporary_agents\n"
+            "tool_support_real_multi_agent_available: true\n"
+            "spawn_tool: multi_agent_v1.spawn_agent\n"
+            "single_agent_execution: false\n"
+            "runner_start_allowed: true\n"
+            f"{agent_ids}"
+            "pre_run_required_checks:\n"
+            f"  runner_monitor: {runner_decision}\n"
+            "  interface_checker: allow\n"
+            f"  evidence_quality_checker: {quality_decision}\n"
+            "authority_refs:\n"
+            "  manifest: manifest.yaml\n"
+            "  agent_summary: agent_summary.md\n"
+            "  quality_check: quality_check.md\n"
+            "  transitions: TRANSITIONS.jsonl\n",
+        )
+        return gate_path
+
     def test_required_files_include_owner_facing_start_docs(self) -> None:
         required = self.module.required_repository_files()
 
         self.assertIn("docs/workflow/QUICK_START.md", required)
         self.assertIn("docs/workflow/TASK_START_MINI.md", required)
+        self.assertIn("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", required)
 
     def test_scan_ignores_runtime_state(self) -> None:
         legacy_marker = "TUNE" + "-024"
@@ -1064,6 +1113,89 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
         self.assertTrue(any(update.get("local_weight") == 0.06 for update in updates))
 
+    def test_plan_dynamic_routing_batch_rejects_formal_run_without_agent_runtime_gate(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-NO-GATE",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires --agent-runtime-gate", stderr)
+
+    def test_plan_dynamic_routing_batch_allows_explicit_debug_smoke_without_gate(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-DEBUG-SMOKE",
+            "--debug-smoke",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("dynamic-routing-plan-created", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-DEBUG-SMOKE/plan.json").read_text(encoding="utf-8"))
+        self.assertFalse(plan["formal_evidence"])
+        self.assertEqual("debug_smoke", plan["evidence_level"])
+
+    def test_plan_dynamic_routing_batch_accepts_valid_agent_runtime_gate(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-FORMAL-GATE",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("dynamic-routing-plan-created", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-FORMAL-GATE/plan.json").read_text(encoding="utf-8"))
+        self.assertTrue(plan["formal_evidence"])
+        self.assertEqual("experiments/module_trials/IDEA-0003_x/TRIAL-001_x/agent_runtime.yaml", plan["agent_runtime_gate"])
+
+    def test_plan_dynamic_routing_batch_accepts_workflow_v2_10_job_profile(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-WF2-10",
+            "--profile",
+            "workflow-v2-2innov-8tune",
+            "--jobs",
+            "10",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 10", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-WF2-10/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual("workflow-v2-2innov-8tune", plan["profile"])
+        self.assertEqual(10, len(plan["jobs"]))
+
     def test_config_epoch_schedule_uses_lr_stages_total(self) -> None:
         config_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001/config.yaml"
         self._write(
@@ -1129,6 +1261,20 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(
             all(float(update.get("icsa_ratio", 0.0)) <= 0.006 for update in updates if "icsa_ratio" in update)
         )
+
+    def test_dynamic_routing_batch_plan_has_workflow_v2_2innov_8tune_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="workflow-v2-2innov-8tune")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 10)
+        self.assertEqual(groups["innovation_probe"], 2)
+        self.assertEqual(groups["direction_tune"], 8)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(any(update.get("dynamic_local_mode") == "sample" for update in updates))
+        self.assertTrue(any(update.get("dynamic_pse_mode") == "class" for update in updates))
+        self.assertTrue(any(update.get("dynamic_direction_mode") == "class" for update in updates))
 
     def test_dynamic_routing_runner_records_failures_and_warehouse_artifacts(self) -> None:
         script = self.module._dynamic_runner_script()
@@ -1703,6 +1849,31 @@ decision:
 
         self.assertEqual(1, code)
         self.assertIn("decision missing not_checked", stderr)
+
+    def test_validate_agent_runtime_accepts_valid_gate(self) -> None:
+        gate_path = self._write_agent_runtime_gate()
+
+        code, stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-agent-runtime-ok gates=1", stdout)
+
+    def test_validate_agent_runtime_rejects_placeholder_agent_id(self) -> None:
+        gate_path = self._write_agent_runtime_gate(include_agent_ids=False)
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("not a real agent/thread id", stderr)
+
+    def test_validate_agent_runtime_rejects_missing_pre_run_allow(self) -> None:
+        gate_path = self._write_agent_runtime_gate(quality_decision="not_checked")
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("pre_run_required_checks.evidence_quality_checker must be allow/pass", stderr)
 
     def test_validate_remote_accepts_origin_refs_matching_local_v1_tag(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:

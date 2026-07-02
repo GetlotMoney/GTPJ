@@ -8,6 +8,7 @@
 START_HERE.md
 WORKFLOW_KERNEL.md
 GZSL_HARD_RULES.md
+AGENT_RUNTIME_HARD_GATE.md
 experiment_protocol.md
 code_interface_contract.md
 产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
@@ -34,6 +35,9 @@ module_trial_protocol.md
 ```
 
 只有需要改代码时才加入 `实现者 (Implementer)`。
+
+正式 Runner 启动前必须写 `agent_runtime.yaml` 并通过 `validate-agent-runtime`。
+Interface / Quality / Runner Monitor 没有独立 allow/pass 时，不得把消融结果作为正式证据。
 
 ## 阻断门
 

@@ -113,6 +113,21 @@ EVIDENCE_SUBJECT_TYPES = {
 }
 EVIDENCE_BAD_RULE_VERDICTS = {"fail", "failed", "block", "blocked"}
 EVIDENCE_ADVANCING_TRANSITIONS = {"advance", "promote"}
+AGENT_RUNTIME_ALLOW_DECISIONS = {"allow", "pass"}
+AGENT_RUNTIME_BLOCKING_DECISIONS = {"", "block", "blocked", "fail", "failed", "not_checked", "pending"}
+AGENT_RUNTIME_INVALID_INSTANCE_IDS = {
+    "",
+    "none",
+    "not_used",
+    "not_recorded",
+    "temporary_subagent",
+    "temporary_subagents",
+    "role_only",
+    "current codex session",
+    "current_thread",
+    "current session",
+    "workflow_helper",
+}
 SOURCE_STATUS_RANK = {
     "verified": 3,
     "local_heuristic": 2,
@@ -1172,6 +1187,7 @@ def required_repository_files() -> list[str]:
         "docs/workflow/agent_orchestration.md",
         "docs/workflow/agent_report_policy.md",
         "docs/workflow/evidence_routing_protocol.md",
+        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md",
         "docs/workflow/GZSL_HARD_RULES.md",
         "docs/workflow/innovation_decomposition_protocol.md",
         "docs/workflow/WORKFLOW_VERSION.md",
@@ -1278,19 +1294,25 @@ def cmd_validate(_: argparse.Namespace) -> int:
 
     marker_requirements = {
         "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl", "validate-agent-runtime"],
         "docs/workflow/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
+        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": [
+            "right_sidebar_temporary_agents",
+            "agent_runtime.yaml",
+            "validate-agent-runtime",
+            "single_agent_execution",
+        ],
         "docs/workflow/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
         "docs/workflow/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
         "docs/workflow/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
         "docs/workflow/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
         "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
         "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
-        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id"],
-        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs"],
+        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate"],
+        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate"],
         "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
-        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition"],
-        "docs/workflow/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state"],
+        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml"],
+        "docs/workflow/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml"],
         "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
         "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
         "docs/workflow/playbooks/tune.md": ["tune_promising", "stopped_no_gain"],
@@ -1336,6 +1358,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "lifecycle:",
         "persistent_thread_id:",
         "temporary_subagent_reason:",
+        "agent_instance_id:",
+        "agent_runtime_gate:",
+        "temporary_subagent_ids:",
+        "runner_start_gate:",
+        "pre_run_required_checks:",
         "output_locations:",
         "verified_against_current_repo:",
         "subject_id:",
@@ -1347,7 +1374,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in agent_template:
             raise WorkflowError(f"agent_summary_template.md missing agent evidence field: {marker}")
     quality_template = read_text(REPO_ROOT / "experiments" / "templates" / "quality_check_template.md")
-    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs"]:
+    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs", "validate-agent-runtime"]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
     promotion_agents = read_text(
@@ -4920,6 +4947,167 @@ def validate_campaign_result_indexes() -> list[str]:
     return errors
 
 
+def read_simple_yaml_maps(path: Path) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    scalars: dict[str, str] = {}
+    maps: dict[str, dict[str, str]] = {}
+    current_section = ""
+    for raw_line in read_text(path).splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if not raw_line.startswith(" "):
+            section_match = re.match(r"^([A-Za-z0-9_]+):\s*$", raw_line)
+            if section_match:
+                current_section = section_match.group(1)
+                maps[current_section] = {}
+                continue
+            value_match = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if value_match:
+                current_section = ""
+                scalars[value_match.group(1)] = yaml_unquote(value_match.group(2))
+                continue
+        if current_section and raw_line.startswith("  ") and not raw_line.startswith("    "):
+            value_match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if value_match:
+                maps.setdefault(current_section, {})[value_match.group(1)] = yaml_unquote(value_match.group(2))
+    return scalars, maps
+
+
+def truthy(value: str) -> bool:
+    return value.strip().lower() in {"true", "yes", "1", "y"}
+
+
+def falsey(value: str) -> bool:
+    return value.strip().lower() in {"false", "no", "0", "n"}
+
+
+def valid_runtime_agent_instance_id(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in AGENT_RUNTIME_INVALID_INSTANCE_IDS:
+        return False
+    if len(normalized) < 8:
+        return False
+    if not re.search(r"[0-9]", normalized):
+        return False
+    return True
+
+
+def has_any_role(mapping: dict[str, str], roles: set[str]) -> bool:
+    return any(role in mapping for role in roles)
+
+
+def validate_agent_runtime_ref(value: str, gate_path: Path) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    if text.startswith(("warehouse://", "research://", "agent://", "thread://", "subagent://")):
+        return True
+    candidates = [REPO_ROOT / text, gate_path.parent / text]
+    return any(path.exists() for path in candidates)
+
+
+def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
+    errors: list[str] = []
+    scalars, maps = read_simple_yaml_maps(gate_path)
+    gate_name = rel(gate_path)
+    required_scalars = [
+        "schema_version",
+        "subject_id",
+        "subject_type",
+        "formal_evidence",
+        "activation_mode",
+        "agent_instance_mode",
+        "lifecycle",
+        "ui_visibility",
+        "tool_support_real_multi_agent_available",
+        "spawn_tool",
+        "single_agent_execution",
+        "runner_start_allowed",
+    ]
+    for field in required_scalars:
+        if field not in scalars or scalars[field] == "":
+            errors.append(f"{gate_name} missing {field}")
+
+    formal = truthy(scalars.get("formal_evidence", ""))
+    if not formal:
+        evidence_level = scalars.get("evidence_level", "")
+        debug_smoke = truthy(scalars.get("debug_smoke", ""))
+        if evidence_level != "debug_smoke" and not debug_smoke:
+            errors.append(f"{gate_name} non-formal runtime gate must declare evidence_level: debug_smoke")
+        return errors
+
+    if scalars.get("activation_mode") != "real_multi_agent":
+        errors.append(f"{gate_name} formal evidence requires activation_mode: real_multi_agent")
+    if scalars.get("agent_instance_mode") not in {"temporary_subagent", "persistent_thread"}:
+        errors.append(f"{gate_name} formal evidence requires temporary_subagent or persistent_thread")
+    if "right_sidebar" not in scalars.get("ui_visibility", ""):
+        errors.append(f"{gate_name} must declare ui_visibility: right_sidebar_temporary_agents")
+    if not truthy(scalars.get("tool_support_real_multi_agent_available", "")):
+        errors.append(f"{gate_name} must confirm real multi-agent tool support")
+    if truthy(scalars.get("single_agent_execution", "")):
+        errors.append(f"{gate_name} single_agent_execution cannot be true for formal evidence")
+    if not truthy(scalars.get("runner_start_allowed", "")):
+        errors.append(f"{gate_name} runner_start_allowed must be true before formal Runner starts")
+    if scalars.get("spawn_tool") in {"", "role_only", "manual"}:
+        errors.append(f"{gate_name} spawn_tool must name the real sub-agent tool")
+
+    agent_ids = maps.get("temporary_subagent_ids", {})
+    if not agent_ids:
+        errors.append(f"{gate_name} missing temporary_subagent_ids")
+    for role, instance_id in agent_ids.items():
+        if not valid_runtime_agent_instance_id(instance_id):
+            errors.append(f"{gate_name} temporary_subagent_ids.{role} is not a real agent/thread id")
+
+    if not has_any_role(agent_ids, {"runner_monitor", "runner"}):
+        errors.append(f"{gate_name} missing Runner Monitor temporary subagent id")
+    if not has_any_role(agent_ids, {"evidence_quality_checker", "quality_checker"}):
+        errors.append(f"{gate_name} missing Quality Checker temporary subagent id")
+
+    pre_run_checks = maps.get("pre_run_required_checks", {})
+    if not pre_run_checks:
+        errors.append(f"{gate_name} missing pre_run_required_checks")
+    for role, decision in pre_run_checks.items():
+        normalized = decision.strip().lower()
+        if normalized not in AGENT_RUNTIME_ALLOW_DECISIONS:
+            errors.append(f"{gate_name} pre_run_required_checks.{role} must be allow/pass before Runner starts")
+        if role not in agent_ids:
+            errors.append(f"{gate_name} pre_run_required_checks.{role} has no matching temporary_subagent_ids entry")
+
+    if not has_any_role(pre_run_checks, {"runner_monitor", "runner"}):
+        errors.append(f"{gate_name} missing Runner Monitor pre-run allow")
+    if not has_any_role(pre_run_checks, {"evidence_quality_checker", "quality_checker"}):
+        errors.append(f"{gate_name} missing Quality Checker pre-run allow")
+
+    authority_refs = maps.get("authority_refs", {})
+    for key, value in authority_refs.items():
+        if not validate_agent_runtime_ref(value, gate_path):
+            errors.append(f"{gate_name} authority_refs.{key} points to missing authority ref: {value}")
+    return errors
+
+
+def resolve_agent_runtime_gate_path(path_text: str) -> Path:
+    gate_path = Path(path_text)
+    if not gate_path.is_absolute():
+        gate_path = REPO_ROOT / gate_path
+    return gate_path
+
+
+def cmd_validate_agent_runtime(args: argparse.Namespace) -> int:
+    if args.path:
+        gate_files = [resolve_agent_runtime_gate_path(args.path)]
+    else:
+        gate_files = sorted((REPO_ROOT / "experiments").rglob("agent_runtime.yaml"))
+    errors: list[str] = []
+    for gate_path in gate_files:
+        if not gate_path.exists():
+            errors.append(f"Missing agent runtime gate: {display_path(gate_path)}")
+            continue
+        errors.extend(validate_agent_runtime_gate_file(gate_path))
+    if errors:
+        raise WorkflowError("Agent runtime validation failed:\n" + "\n".join(errors))
+    print(f"validate-agent-runtime-ok gates={len(gate_files)}")
+    return 0
+
+
 def cmd_validate_evidence_routing(_: argparse.Namespace) -> int:
     errors: list[str] = []
     routing_files = sorted((REPO_ROOT / "experiments").rglob("evidence_routing.yaml"))
@@ -6990,6 +7178,56 @@ def _dynamic_bold_followup_specs() -> list[tuple[str, str, dict[str, object]]]:
     return specs
 
 
+def _workflow_v2_2innov_8tune_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    for name, local_mode, direction_mode, pse_mode, hidden, anchor, local_weight, weight_s2v, pse_outer_ratio in [
+        ("innov_local_direction_sample_h48_l0.06_w0.50_a0.003", "sample", "sample", "fixed", 48, 0.003, 0.06, 0.50, None),
+        ("innov_direction_pse_class_h48_w0.50_p0.55_a0.003", "fixed", "sample", "class", 48, 0.003, None, 0.50, 0.55),
+    ]:
+        updates = _dynamic_updates(
+            dynamic_local_mode=local_mode,
+            dynamic_icsa_mode="fixed",
+            dynamic_direction_mode=direction_mode,
+            dynamic_pse_mode=pse_mode,
+            dynamic_gate_hidden=hidden,
+            dynamic_gate_anchor_lambda=anchor,
+        )
+        if local_weight is not None:
+            updates["local_weight"] = local_weight
+        if weight_s2v is not None:
+            updates["weight_s2v"] = weight_s2v
+        if pse_outer_ratio is not None:
+            updates["pse_outer_ratio"] = pse_outer_ratio
+        specs.append(("innovation_probe", name, updates))
+
+    for name, hidden, weight_s2v, anchor, direction_mode in [
+        ("tune_direction_h48_w0.475_a0.003", 48, 0.475, 0.003, "sample"),
+        ("tune_direction_h48_w0.525_a0.003", 48, 0.525, 0.003, "sample"),
+        ("tune_direction_h48_w0.50_a0.001", 48, 0.50, 0.001, "sample"),
+        ("tune_direction_h48_w0.50_a0.005", 48, 0.50, 0.005, "sample"),
+        ("tune_direction_h40_w0.50_a0.003", 40, 0.50, 0.003, "sample"),
+        ("tune_direction_h56_w0.50_a0.003", 56, 0.50, 0.003, "sample"),
+        ("tune_direction_class_h48_w0.50_a0.003", 48, 0.50, 0.003, "class"),
+        ("tune_direction_h48_w0.45_a0.004", 48, 0.45, 0.004, "sample"),
+    ]:
+        specs.append(
+            (
+                "direction_tune",
+                name,
+                _dynamic_updates(
+                    dynamic_direction_mode=direction_mode,
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    if len(specs) != 10:
+        raise WorkflowError(f"Workflow-v2 2innov+8tune plan must contain 10 jobs, got {len(specs)}")
+    return specs
+
+
 def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
     if profile == "balanced-aggressive":
         specs = _balanced_aggressive_dynamic_routing_specs()
@@ -7011,6 +7249,9 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         repeat_source_ranks = []
     elif profile == "dynamic-bold-followup":
         specs = _dynamic_bold_followup_specs()
+        repeat_source_ranks = []
+    elif profile == "workflow-v2-2innov-8tune":
+        specs = _workflow_v2_2innov_8tune_specs()
         repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
@@ -7504,8 +7745,6 @@ if __name__ == "__main__":
 
 
 def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
-    if int(args.jobs) != 50:
-        raise WorkflowError("Dynamic routing batch currently supports exactly 50 jobs.")
     trial_dir = (REPO_ROOT / args.trial_dir).resolve() if not Path(args.trial_dir).is_absolute() else Path(args.trial_dir)
     if not trial_dir.exists():
         raise WorkflowError(f"Missing trial dir: {display_path(trial_dir)}")
@@ -7514,6 +7753,20 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         base_config = REPO_ROOT / base_config
     if not base_config.exists():
         raise WorkflowError(f"Missing base config: {display_path(base_config)}")
+    agent_runtime_gate = ""
+    if args.agent_runtime_gate:
+        gate_path = resolve_agent_runtime_gate_path(args.agent_runtime_gate)
+        gate_errors = validate_agent_runtime_gate_file(gate_path) if gate_path.exists() else [
+            f"Missing agent runtime gate: {display_path(gate_path)}"
+        ]
+        if gate_errors:
+            raise WorkflowError("Agent runtime validation failed:\n" + "\n".join(gate_errors))
+        agent_runtime_gate = display_path(gate_path)
+    elif not args.debug_smoke:
+        raise WorkflowError(
+            "Formal dynamic routing batch requires --agent-runtime-gate. "
+            "Use --debug-smoke only for non-formal runner probes."
+        )
 
     run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
@@ -7530,6 +7783,8 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     if not gpus:
         raise WorkflowError("At least one GPU id is required.")
     jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
+    if int(args.jobs) != len(jobs):
+        raise WorkflowError(f"Dynamic routing batch profile {args.profile!r} expects {len(jobs)} jobs, got --jobs {args.jobs}.")
     for index, job in enumerate(jobs):
         job["gpu_slot"] = index % len(gpus)
 
@@ -7541,6 +7796,9 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "run_id": run_id,
         "profile": args.profile,
         "created_at": utc_now(),
+        "formal_evidence": not bool(args.debug_smoke),
+        "evidence_level": "debug_smoke" if args.debug_smoke else "formal_pre_run",
+        "agent_runtime_gate": agent_runtime_gate,
         "trial_dir": display_path(trial_dir),
         "base_config": display_path(base_config),
         "base_version": base_version,
@@ -7606,6 +7864,8 @@ profile: {args.profile}
 trial_dir: {display_path(trial_dir)}
 branch: {branch}
 commit: {commit}
+formal_evidence: {str(not bool(args.debug_smoke)).lower()}
+agent_runtime_gate: {agent_runtime_gate or 'debug_smoke_not_required'}
 gpus: {','.join(str(gpu) for gpu in gpus)}
 
 Start on server:
@@ -7722,6 +7982,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_evidence = sub.add_parser("validate-evidence-routing", help="校验 workflow-v2 evidence routing 状态链")
     validate_evidence.set_defaults(func=cmd_validate_evidence_routing)
+
+    validate_agent_runtime = sub.add_parser("validate-agent-runtime", help="校验正式 Runner 启动前的 real multi-agent runtime gate")
+    validate_agent_runtime.add_argument("--path", default="")
+    validate_agent_runtime.set_defaults(func=cmd_validate_agent_runtime)
 
     validate_remote = sub.add_parser("validate-remote", help="校验远端 main/baseline tags 与本地治理事实")
     validate_remote.add_argument("--remote", default="origin")
@@ -7905,6 +8169,8 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--conda-env", default="dvsr_gpu")
     dyn_plan.add_argument("--python", default="python")
     dyn_plan.add_argument("--controller-python", default="python3")
+    dyn_plan.add_argument("--agent-runtime-gate", default="")
+    dyn_plan.add_argument("--debug-smoke", action="store_true")
     dyn_plan.set_defaults(func=cmd_plan_dynamic_routing_batch)
 
     dyn_status = sub.add_parser("dynamic-routing-status", help="读取 dynamic routing batch 状态")

@@ -18,6 +18,11 @@ activation_reason:
 required_roles:
 required_real_agents:
 agent_persistent_threads:
+agent_runtime_gate:
+temporary_subagent_ids:
+ui_visibility:
+runner_start_gate:
+pre_run_required_checks:
 agent_set:
 serial_agents:
 parallel_agents:
@@ -45,6 +50,7 @@ temporary_agents:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 lifecycle:
 checked_inputs:
 rule_checks:
@@ -63,6 +69,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -99,6 +106,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -135,6 +143,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -169,6 +178,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -203,6 +213,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -237,6 +248,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -273,6 +285,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -309,6 +322,7 @@ role:
 subject_id:
 transition_id:
 role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:
@@ -342,6 +356,10 @@ blocking_issues:
 
 ```text
 role:
+subject_id:
+transition_id:
+role_key:
+agent_instance_id:
 agent_instance_mode:
 agent_instance_type:
 lifecycle:

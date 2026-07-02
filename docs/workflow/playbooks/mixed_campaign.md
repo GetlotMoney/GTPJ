@@ -9,6 +9,7 @@ START_HERE.md
 WORKFLOW_KERNEL.md
 WORKFLOW_ROUTER.md
 mixed_experiment_campaign_protocol.md
+AGENT_RUNTIME_HARD_GATE.md
 每个 requested workstream 对应的 playbook
 ```
 
@@ -22,6 +23,10 @@ campaign
 ```
 
 不要给每个 run 创建一个永久 agent。
+
+但 campaign / workstream / task 级正式角色必须是真实右侧临时 agents，并在
+`agent_runtime.yaml` 中记录实例 id。没有通过 `validate-agent-runtime` 的 campaign
+不能启动正式 Runner。
 
 每个 campaign task 必须有：
 
