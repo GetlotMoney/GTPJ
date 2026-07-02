@@ -1,0 +1,87 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt_id: ATTEMPT-005
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+kind: module-trial-confirmation
+base_version: v5
+status: interface_precheck_passed
+created_at: "2026-07-03T00:19:47+08:00"
+
+target:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_H: 75.02
+  source_U: 72.69
+  source_S: 77.51
+  source_ZS: 82.04
+  source_best_epoch: 48
+  evidence_state: valid_single_run
+
+run:
+  run_id: RUN-20260703-0001-dr035-min3-confirm-2gpu
+  profile: dr035-min3-confirm
+  jobs: 3
+  gpus: [0, 1]
+  base_config: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-004/config.yaml
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: lr_stages
+  lr_stage_epochs: [20, 20, 10]
+  python: /data/lby/.conda/envs/dvsr_gpu/bin/python
+  controller_python: /usr/bin/python3
+
+jobs:
+  DR-001:
+    name: dr035_direction_sample_h48_w0.525_a0.005_s6
+    seed: 6
+    gpu_slot: 0
+  DR-002:
+    name: dr035_direction_sample_h48_w0.525_a0.005_s7
+    seed: 7
+    gpu_slot: 1
+  DR-003:
+    name: dr035_direction_sample_h48_w0.525_a0.005_s8
+    seed: 8
+    gpu_slot: 0
+
+frozen_config:
+  use_dynamic_routing: true
+  dynamic_local_mode: fixed
+  dynamic_icsa_mode: fixed
+  dynamic_direction_mode: sample
+  dynamic_pse_mode: fixed
+  dynamic_gate_hidden: 48
+  dynamic_gate_anchor_lambda: 0.005
+  weight_s2v: 0.525
+
+evidence:
+  evidence_level: formal_pre_run
+  confirmation_status: pending
+  confirmed_H: pending
+  result_yaml: result.yaml
+  result_md: result.md
+  quality_check: quality_check.md
+  agent_summary: agent_summary.md
+  transitions: TRANSITIONS.jsonl
+  evidence_routing: evidence_routing.yaml
+  agent_activity: AGENT_ACTIVITY.md
+
+artifact_policy:
+  raw_logs_in_git: false
+  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/
+  runtime_batch_dir: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0001-dr035-min3-confirm-2gpu
+  required_runtime_files:
+    - summary.csv
+    - summary.jsonl
+    - batch_status.json
+    - plan.json
+    - events.jsonl
+  checkpoint_retention: top3
+
+decision:
+  status: pending_run
+  promotion_decision: blocked
+  reason: DR-035 requires min3 confirmation and later direction ablation support before promotion.

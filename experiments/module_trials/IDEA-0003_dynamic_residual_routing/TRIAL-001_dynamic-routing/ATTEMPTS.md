@@ -6,6 +6,7 @@
 | `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | 94 completed / 6 failed, bs=128 | DR-014 H=70.84 | DR-014 direction_sample_h112_w0.5_a0.02 H=70.84 | no repeat; bs128 control H=69.70 | reject, restore bs=64 |
 | `ATTEMPT-003` | `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` aborted pre-evidence; `RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu` | 50 completed / 0 failed | DR-018 direction_sample_h48_w0.5_a0.003 H=74.86 | DR-018 direction_sample_h48_w0.5_a0.003 H=74.86 | static mean H=74.49; DR-008 mean H=74.28; DR-023 mean H=74.60 | tune_promising; needs min3 confirmation + direction ablation |
 | `ATTEMPT-004` | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu`; related campaign `RUN-20260702-0003-mixed2innov8tune-2gpu` | 50 completed / 0 failed; 10 completed / 0 failed | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-009 H=75.00 supporting single; workflow-v2 DR-004 H=74.75 | tune_promising; repeat DR-035 first; promotion blocked |
+| `ATTEMPT-005` | planned `RUN-20260703-0001-dr035-min3-confirm-2gpu` | planned 3-job min3 repeat | target DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | pending | pending DR-035 x3 seeds 6/7/8 | confirmation pending; promotion blocked |
 
 ## ATTEMPT-001 Notes
 

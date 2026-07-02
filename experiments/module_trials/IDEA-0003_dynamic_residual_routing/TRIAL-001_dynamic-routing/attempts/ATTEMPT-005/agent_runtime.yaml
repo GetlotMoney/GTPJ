@@ -1,0 +1,39 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: ATTEMPT-005
+subject_type: attempt
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: temporary_subagent
+lifecycle: workflow_scoped
+ui_visibility: right_sidebar_temporary_agents
+tool_support_real_multi_agent_available: true
+spawn_tool: multi_agent_v1.spawn_agent
+single_agent_execution: false
+runner_start_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+
+temporary_subagent_ids:
+  runner_monitor: 019f239f-6081-7d92-b347-047bb0503ea8
+  interface_checker: 019f239f-90e5-7fd3-94ac-3f10900ed1c8
+  evidence_quality_checker: 019f239f-c37c-75e3-8a2a-b5c6e0ffbe6b
+  result_comparator: 019f23a5-8c8a-7c50-a076-f1b93160a2e4
+
+pre_run_required_checks:
+  runner_monitor: pass
+  interface_checker: pass
+  evidence_quality_checker: pass
+  result_comparator: pass
+
+authority_refs:
+  task_start_card: pre_run_plan.md
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  manifest: manifest.yaml
+  transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md

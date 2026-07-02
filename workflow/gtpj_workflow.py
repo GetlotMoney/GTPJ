@@ -7255,6 +7255,28 @@ def _workflow_v2_2innov_8tune_specs() -> list[tuple[str, str, dict[str, object]]
     return specs
 
 
+def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    for repeat_seed in [6, 7, 8]:
+        specs.append(
+            (
+                "confirm_dr035",
+                f"dr035_direction_sample_h48_w0.525_a0.005_s{repeat_seed}",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=0.005,
+                    weight_s2v=0.525,
+                    random_seed=repeat_seed,
+                ),
+            )
+        )
+
+    if len(specs) != 3:
+        raise WorkflowError(f"DR-035 min3 confirmation plan must contain 3 jobs, got {len(specs)}")
+    return specs
+
+
 def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
     if profile == "balanced-aggressive":
         specs = _balanced_aggressive_dynamic_routing_specs()
@@ -7280,6 +7302,9 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     elif profile == "workflow-v2-2innov-8tune":
         specs = _workflow_v2_2innov_8tune_specs()
         repeat_source_ranks = []
+    elif profile == "dr035-min3-confirm":
+        specs = _dr035_min3_confirm_specs()
+        repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
     repeat_group = "top3_frozen_repeat"
@@ -7295,7 +7320,8 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
                 "Dynamic routing batch profiles must not emit "
                 f"unsupported dynamic_pse_mode={pse_mode!r}; use 'fixed' or 'class'."
             )
-        updates["random_seed"] = seed
+        job_seed = int(updates.get("random_seed", seed))
+        updates["random_seed"] = job_seed
         jobs.append(
             {
                 "job_id": f"DR-{index:03d}",
@@ -7303,7 +7329,7 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
                 "phase": "explore",
                 "group": group,
                 "name": name,
-                "seed": seed,
+                "seed": job_seed,
                 "source_rank": 0,
                 "gpu_slot": (index - 1) % 2,
                 "config_updates": updates,

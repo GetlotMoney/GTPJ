@@ -1128,6 +1128,31 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
         self.assertTrue(any(update.get("local_weight") == 0.06 for update in updates))
 
+    def test_dynamic_routing_batch_plan_has_dr035_min3_confirm_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="dr035-min3-confirm")
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 3)
+        self.assertEqual([job["job_id"] for job in jobs], ["DR-001", "DR-002", "DR-003"])
+        self.assertEqual([job["group"] for job in jobs], ["confirm_dr035"] * 3)
+        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 3)
+        self.assertEqual([job["seed"] for job in jobs], [6, 7, 8])
+        self.assertEqual([update["random_seed"] for update in updates], [6, 7, 8])
+        self.assertEqual(
+            [job["name"] for job in jobs],
+            [
+                "dr035_direction_sample_h48_w0.525_a0.005_s6",
+                "dr035_direction_sample_h48_w0.525_a0.005_s7",
+                "dr035_direction_sample_h48_w0.525_a0.005_s8",
+            ],
+        )
+        self.assertTrue(all(update["use_dynamic_routing"] for update in updates))
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+        self.assertTrue(all(update["dynamic_gate_anchor_lambda"] == 0.005 for update in updates))
+        self.assertTrue(all(update["weight_s2v"] == 0.525 for update in updates))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+
     def test_plan_dynamic_routing_batch_rejects_formal_run_without_agent_runtime_gate(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
