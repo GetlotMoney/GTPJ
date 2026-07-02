@@ -10,6 +10,13 @@ tool_support_real_multi_agent_available: true
 spawn_tool: multi_agent_v1.spawn_agent
 single_agent_execution: false
 runner_start_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
 
 temporary_subagent_ids:
   campaign_planner: 019f21fe-adc2-7932-bc69-58d8c384598a
@@ -29,3 +36,4 @@ authority_refs:
   quality_check: quality_check.md
   campaign_manifest: campaign_manifest.yaml
   campaign_plan: campaign_plan.md
+  agent_activity: AGENT_ACTIVITY.md

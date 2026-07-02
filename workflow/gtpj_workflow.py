@@ -5023,6 +5023,13 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         "spawn_tool",
         "single_agent_execution",
         "runner_start_allowed",
+        "owner_monitor_mode",
+        "owner_role",
+        "owner_visible_reporting",
+        "report_channel",
+        "report_interval_minutes",
+        "agent_activity_stream",
+        "monitor_handoff_on_pause",
     ]
     for field in required_scalars:
         if field not in scalars or scalars[field] == "":
@@ -5050,6 +5057,25 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} runner_start_allowed must be true before formal Runner starts")
     if scalars.get("spawn_tool") in {"", "role_only", "manual"}:
         errors.append(f"{gate_name} spawn_tool must name the real sub-agent tool")
+    if not truthy(scalars.get("owner_monitor_mode", "")):
+        errors.append(f"{gate_name} owner_monitor_mode must be true for formal Runner visibility")
+    if scalars.get("owner_role") != "monitor":
+        errors.append(f"{gate_name} owner_role must be monitor")
+    if not truthy(scalars.get("owner_visible_reporting", "")):
+        errors.append(f"{gate_name} owner_visible_reporting must be true")
+    if not scalars.get("report_channel"):
+        errors.append(f"{gate_name} report_channel must name the visible owner-facing channel")
+    try:
+        interval = int(scalars.get("report_interval_minutes", "0"))
+    except ValueError:
+        interval = 0
+    if interval <= 0 or interval > 60:
+        errors.append(f"{gate_name} report_interval_minutes must be between 1 and 60")
+    if scalars.get("monitor_handoff_on_pause") != "required":
+        errors.append(f"{gate_name} monitor_handoff_on_pause must be required")
+    activity_stream = scalars.get("agent_activity_stream", "")
+    if not validate_agent_runtime_ref(activity_stream, gate_path):
+        errors.append(f"{gate_name} agent_activity_stream points to missing activity log: {activity_stream}")
 
     agent_ids = maps.get("temporary_subagent_ids", {})
     if not agent_ids:

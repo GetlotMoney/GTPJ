@@ -124,6 +124,21 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/campa
 如果侧边栏没有真实临时 agents，或 `agent_runtime.yaml` 没有记录真实实例 id，本 campaign
 只能作为 debug/smoke 或候选计划，不能启动正式 Runner。
 
+Owner 是 campaign 的默认监控者。混合实验不能在启动 Runner 后静默等待结束；必须维护
+`AGENT_ACTIVITY.md`，并在当前对话或明确 Monitor 线程持续汇报：
+
+```text
+哪个智能体在做什么
+哪个 workstream / run 正在推进
+completed / running / pending / failed
+当前 best 只是 single 还是 confirmed
+证据写入位置
+下一步动作
+```
+
+如果 Coordinator 需要暂停当前主对话，必须先给出 `monitor_handoff`，包括下一次检查命令、
+活动流位置和跑完后接手的 Log / Result / Quality agents。
+
 ## 4. Agent 池
 
 组合 campaign 默认启用一个小型 agent 池：
@@ -167,6 +182,7 @@ Coordinator 必须按下面顺序处理任意组合命令：
 11. Evidence Quality Checker validates artifacts and boundaries.
 12. Result Comparator updates ranking and next actions.
 13. Coordinator records decisions and schedules repeat/ablation/promotion only if gates pass.
+14. Coordinator keeps owner-visible activity reports until closeout or handoff.
 ```
 
 组合实验按证据成熟度路由，而不是按 run 数静态排队：

@@ -24,6 +24,8 @@ writes:
 agent_mode:
 agent_instance_mode:
 agent_runtime_gate:
+owner_monitor_mode:
+agent_activity_stream:
 gates:
 next_action:
 ```
@@ -42,6 +44,8 @@ next_action:
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
 | `agent_instance_mode` | `role_only`、`temporary_subagent` 或 `persistent_thread`；正式实验默认 workflow-scoped `temporary_subagent`，跨 workflow 连续追踪才启用 `persistent_thread`。 |
 | `agent_runtime_gate` | 正式 Runner 启动前的 `agent_runtime.yaml` 路径和 `validate-agent-runtime` 状态；纯只读或 debug/smoke 写 `not_required`。 |
+| `owner_monitor_mode` | 正式 Runner 必须写 `true`；owner 是监控者，过程必须在当前对话或明确 Monitor 线程可见。 |
+| `agent_activity_stream` | 记录哪个智能体在做什么的活动流文件；纯只读或 debug/smoke 可写 `not_required`。 |
 | `gates` | 本次真正相关的硬门，只列会影响开工的门。 |
 | `next_action` | 下一步最小动作；不能把完整流程丢给 owner 填。 |
 
@@ -77,6 +81,8 @@ writes: idea_tree + experiments/module_trials + Warehouse after run
 agent_mode: real_multi_agent，因为新模块代码改动需要 Review 0-3
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped
 agent_runtime_gate: required before Runner; must record right_sidebar_temporary_agents
+owner_monitor_mode: true; visible reports must name active agents and actions
+agent_activity_stream: required before formal Runner
 gates: source_status, interface_contract, innovation_code_review, artifact_boundary
 next_action: read active version idea view and select the highest-priority ready idea
 ```
@@ -94,6 +100,8 @@ writes: none until owner confirms run and evidence level
 agent_mode: 正式运行用 real_multi_agent；Runner 启动前的准备可以 role_only
 agent_instance_mode: 正式运行用 temporary_subagent；跨 workflow 追踪才用 persistent_thread
 agent_runtime_gate: required before formal rerun; not required for read-only repro-status
+owner_monitor_mode: true for formal rerun
+agent_activity_stream: required before formal Runner
 gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
 next_action: run repro-status, then decide quick_local vs formal confirmation target
 ```
@@ -128,6 +136,8 @@ writes: campaign ledger + idea_tree + experiments + Research + Warehouse
 agent_mode: real_multi_agent，因为 workflow 会调度多类实验并产出最终证据
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped; persistent_thread optional for cross-workflow coordinator/monitor
 agent_runtime_gate: required for every formal runner-start transition
+owner_monitor_mode: true; owner watches the campaign, agents write activity updates
+agent_activity_stream: required at campaign level and per formal Runner batch
 gates: source_status, baseline_repro_status, interface_contract, metric_semantics, artifact_boundary, quality_gate, promotion_gate
 next_action: create campaign brief from sources, evaluation standard, safety boundaries, experiment standard, budget, and deliverables
 ```
@@ -145,6 +155,8 @@ writes: experiments/campaigns + each workstream's canonical experiment directory
 agent_mode: real_multi_agent，因为多个 workstream 需要隔离规划、运行、分析和质量检查
 agent_instance_mode: temporary_subagent, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
 agent_runtime_gate: required at campaign level and before each formal runner batch
+owner_monitor_mode: true; no silent server-only run
+agent_activity_stream: required; every report names role, action, evidence, next
 gates: baseline_repro_status, source_status, interface_contract, metric_semantics, artifact_boundary, quality_gate
 next_action: parse requested_mix, create campaign manifest, build workstreams, and freeze campaign plan before Runner starts
 ```

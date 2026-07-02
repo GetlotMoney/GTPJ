@@ -284,12 +284,14 @@ class WorkflowHelperTest(unittest.TestCase):
         runner_decision: str = "allow",
         quality_decision: str = "allow",
         include_agent_ids: bool = True,
+        include_owner_monitor: bool = True,
     ) -> Path:
         gate_path = self.repo / path
         self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
         self._write(str((gate_path.parent / "agent_summary.md").relative_to(self.repo)).replace("\\", "/"), "# Agent Summary\n")
         self._write(str((gate_path.parent / "quality_check.md").relative_to(self.repo)).replace("\\", "/"), "# Quality\n")
         self._write(str((gate_path.parent / "TRANSITIONS.jsonl").relative_to(self.repo)).replace("\\", "/"), "")
+        self._write(str((gate_path.parent / "AGENT_ACTIVITY.md").relative_to(self.repo)).replace("\\", "/"), "# Agent Activity\n")
         agent_ids = (
             "temporary_subagent_ids:\n"
             "  runner_monitor: 019f1111-1111-7111-8111-111111111111\n"
@@ -298,6 +300,17 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         if not include_agent_ids:
             agent_ids = "temporary_subagent_ids:\n  runner_monitor: temporary_subagent\n"
+        owner_monitor = (
+            "owner_monitor_mode: true\n"
+            "owner_role: monitor\n"
+            "owner_visible_reporting: true\n"
+            "report_channel: current_conversation\n"
+            "report_interval_minutes: 15\n"
+            "agent_activity_stream: AGENT_ACTIVITY.md\n"
+            "monitor_handoff_on_pause: required\n"
+        )
+        if not include_owner_monitor:
+            owner_monitor = ""
         self._write(
             path,
             "schema_version: gtpj.agent_runtime_gate.v0\n"
@@ -312,6 +325,7 @@ class WorkflowHelperTest(unittest.TestCase):
             "spawn_tool: multi_agent_v1.spawn_agent\n"
             "single_agent_execution: false\n"
             "runner_start_allowed: true\n"
+            f"{owner_monitor}"
             f"{agent_ids}"
             "pre_run_required_checks:\n"
             f"  runner_monitor: {runner_decision}\n"
@@ -321,7 +335,8 @@ class WorkflowHelperTest(unittest.TestCase):
             "  manifest: manifest.yaml\n"
             "  agent_summary: agent_summary.md\n"
             "  quality_check: quality_check.md\n"
-            "  transitions: TRANSITIONS.jsonl\n",
+            "  transitions: TRANSITIONS.jsonl\n"
+            "  agent_activity: AGENT_ACTIVITY.md\n",
         )
         return gate_path
 
@@ -1886,6 +1901,14 @@ decision:
 
         self.assertEqual(1, code)
         self.assertIn("pre_run_required_checks.evidence_quality_checker must be allow/pass", stderr)
+
+    def test_validate_agent_runtime_rejects_missing_owner_monitor_mode(self) -> None:
+        gate_path = self._write_agent_runtime_gate(include_owner_monitor=False)
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("missing owner_monitor_mode", stderr)
 
     def test_validate_remote_accepts_origin_refs_matching_local_v1_tag(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:

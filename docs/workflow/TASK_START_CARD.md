@@ -9,6 +9,8 @@ agents:
   activation_mode: real_multi_agent
   agent_instance_mode: temporary_subagent
   lifecycle: workflow_scoped
+  owner_monitor_mode: true
+  owner_role: monitor
 ```
 
 原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
@@ -35,6 +37,27 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 
 如果没有真实右侧临时 agents、没有 `temporary_subagents.instances`、没有 pre-run allow/check，
 Runner 必须阻断；状态机账本和服务器离线训练都不能单独算完整 workflow。
+
+Owner 是默认监控者。任何正式 Runner 启动后，Coordinator 必须持续提供 owner 可见汇报，
+不能把“服务器还在跑”当作 owner 已经看见 workflow 过程。每次汇报必须包含：
+
+```text
+当前阶段
+哪个智能体在做什么
+run/batch 状态
+证据写入位置
+下一步动作
+```
+
+如果当前主对话要暂停或结束，必须先给出监控交接：
+
+```text
+monitor_handoff_on_pause: required
+当前状态：
+下一次检查命令：
+可见活动流：
+跑完后接手 agents：
+```
 
 如果启用 persistent thread，启动卡必须列出 thread id 或可见 label。如果不启用，启动卡必须写明本轮 workflow-scoped agents 如何把状态写回 `agent_summary.md`、result、quality、Research、Warehouse 或 campaign ledger。
 
@@ -217,6 +240,19 @@ agents:
     runner_start_allowed:
     pre_run_required_checks:
     blocking_issues:
+  owner_monitor:
+    enabled:
+    owner_role: monitor
+    report_channel:
+    report_interval_minutes:
+    agent_activity_stream:
+    handoff_on_pause:
+    visible_report_fields:
+      - role
+      - agent_instance_id
+      - current_action
+      - evidence_ref
+      - next_action
   tool_support:
     real_multi_agent_available:
     fallback_mode:
@@ -543,6 +579,8 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 使用 `temporary_subagent` 却没有写 lifecycle、独立输出位置和本轮结束后的 agent_summary / memory / issues 写回规则；
 - 工具不可用但任务硬门要求 `real_multi_agent`，且没有阻断或明确标成 debug/smoke 降级；
 - `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
+- 正式 Runner 启动卡没有 `owner_monitor.enabled: true`、`agent_activity_stream`、
+  `report_channel` 或 `handoff_on_pause`；
 - 使用了 memory-derived fact，却没有说明 memory 来源和当前仓库 / artifact 验证方式；
 - 这是一个真实训练 / confirmation / tune / trial run，但工作区不是 clean；
 - 运行前新增了 attempt config、`ATTEMPTS.md`、启动卡或其他预跑账本，但还没有先提交成 `pre-run freeze commit`；
@@ -579,6 +617,9 @@ agents.decision_basis.fastest_valid_path：
 agents.required_roles：
 agents.required_real_agents：
 agents.tool_support：
+owner_monitor.enabled：
+owner_monitor.report_channel：
+owner_monitor.agent_activity_stream：
 evidence_routing.subject_id：
 evidence_routing.current_state：
 transition_permissions：

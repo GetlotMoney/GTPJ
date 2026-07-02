@@ -49,10 +49,17 @@ eligible_for_keep_best_promotion_confirmation: false
 activation_mode: real_multi_agent
 agent_instance_mode: temporary_subagent
 lifecycle: workflow_scoped
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
 ```
 
 含义：
 
+- Owner 是默认监控者。正式 Runner 启动后，工作流必须持续给 owner 可见汇报，
+  不能把服务器离线训练、状态机文件或 agent_summary 当作 owner 已经看见过程。
+- 每次可见汇报必须说明：哪个智能体在做什么、当前状态、证据位置、下一步动作。
+- 如果 Coordinator 需要结束当前主对话，必须先给出监控交接位置、下一次检查条件和恢复命令。
 - 每个角色在当前 workflow 或 campaign 阶段拥有独立活上下文。
 - 正式运行必须记录真实 `agent_instance_id` 或可见 thread id；`temporary_subagent` 这类占位词不能冒充实例。
 - 需要长期保留的经验必须写回 `agent_summary.md`、角色 `memory.md`、workflow issues、result 文件或 campaign 账本。
@@ -88,6 +95,7 @@ branch 和 commit
 git dirty 状态
 冻结后的 config
 agent_runtime.yaml 及 validate-agent-runtime 结果
+owner_monitor_mode、report_channel、agent_activity_stream
 dataset/split/label mapping 假设
 GPU 或 runner slot 锁
 result/artifact 写入位置

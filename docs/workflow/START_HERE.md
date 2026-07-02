@@ -18,9 +18,23 @@
 activation_mode: real_multi_agent
 agent_instance_mode: temporary_subagent
 lifecycle: workflow_scoped
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
 ```
 
 `persistent_thread` 只是可选的可见长期上下文，不是正式证据。
+
+Owner 是默认监控者。正式 Runner 启动后，Coordinator 不能只发一次 final 就结束可见流程；
+必须持续用当前对话或明确的 Monitor 线程汇报：
+
+```text
+哪个智能体在做什么
+当前 run/batch 状态
+证据写到哪里
+下一步动作
+如果主对话暂停，去哪里接着看
+```
 
 正式 Runner 启动还必须通过：
 
@@ -79,6 +93,8 @@ agents 模式：
 必须读的 playbook：
 硬门：
 agent_runtime_gate：
+owner_monitor_mode：
+agent_activity_stream：
 当前阻塞：
 下一步最小动作：
 ```

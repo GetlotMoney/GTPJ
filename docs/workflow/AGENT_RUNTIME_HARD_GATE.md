@@ -12,9 +12,11 @@ Coordinator 单窗口代办所有角色后直接启动 Runner。
 没有真实右侧临时 agents -> 不准启动正式 Runner。
 没有独立 agent 输出 -> 不准 apply advance transition。
 没有 pre-run allow/check -> 不准冻结并启动服务器 batch。
+没有 owner 可见监控流 -> 不准声称 workflow 全程接管。
 ```
 
 状态机只记录证据迁移，不能替代 agents。Runner 只执行训练，也不能替代 workflow。
+Owner 是默认监控者；正式 Runner 启动后必须持续显示“哪个智能体在做什么”。
 
 ## 2. 必需启动顺序
 
@@ -29,8 +31,9 @@ Coordinator 单窗口代办所有角色后直接启动 Runner。
 6. 运行 validate-agent-runtime，通过后才允许 pre-run freeze。
 7. Coordinator apply evidence transition。
 8. Runner 生成 frozen batch 并启动服务器。
-9. Log / Quality / Result agents 分别审查运行证据。
-10. Coordinator 写 result、quality、agent_summary 和下一条 transition。
+9. Coordinator 进入 owner-visible monitor loop，按间隔汇报 agent 活动、batch 状态、证据位置和下一步。
+10. Log / Quality / Result agents 分别审查运行证据。
+11. Coordinator 写 result、quality、agent_summary 和下一条 transition。
 ```
 
 如果第 3 步没有发生，本轮只能降级为 debug/smoke 或候选线索，不能作为正式 evidence。
@@ -65,6 +68,13 @@ tool_support_real_multi_agent_available: true
 spawn_tool: multi_agent_v1.spawn_agent
 single_agent_execution: false
 runner_start_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
 
 temporary_subagent_ids:
   runner_monitor: 019...
@@ -82,11 +92,32 @@ authority_refs:
   agent_summary: agent_summary.md
   quality_check: quality_check.md
   transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md
 ```
 
 `temporary_subagent_ids` 不能写成 `temporary_subagent`、`not_recorded`、`role_only`、
 `current Codex session` 这类占位文本。必须记录真实实例 id、可见 thread id 或明确的
 subagent id。
+
+`agent_activity_stream` 是 owner 可见流程账本。它必须记录：
+
+```text
+时间
+角色名
+agent_instance_id 或执行来源
+当前动作
+证据位置
+下一步
+```
+
+如果 Coordinator 要结束当前主对话，`monitor_handoff_on_pause: required` 表示必须先说明：
+
+```text
+当前状态
+下一次检查命令
+可见监控位置
+跑完后由哪些 agents 接手分析
+```
 
 ## 4. allow / block 语义
 
