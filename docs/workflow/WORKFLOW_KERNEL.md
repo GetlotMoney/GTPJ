@@ -24,10 +24,11 @@ promotion/version/tag 判断
 代码/配置/评估语义
 ```
 
-正式证据工作必须使用 `real_multi_agent`，除非 owner 明确降级为 debug/smoke。
+正式证据工作必须使用 `real_multi_agent`。
 正式 Runner 启动前还必须满足 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md`。也就是说，
 状态机记录和服务器 runner 都不能替代真实右侧临时 agents；没有 `agent_runtime.yaml`
-和通过的 `validate-agent-runtime`，只能降级为 debug/smoke 或 candidate 线索。
+和通过的 `validate-agent-runtime` / `multi-agent-preflight`，正式 Runner 必须阻断。
+owner 只能把本轮目标改成非正式 `debug_smoke` 排障；`debug_smoke` 不能回填为正式证据。
 
 正式证据对象必须绑定 `subject_id` 和 `subject_type`。`evidence_state` 只能由
 tamper-evident append-only `TRANSITIONS.jsonl` 派生，`evidence_routing.yaml`
@@ -65,6 +66,9 @@ owner_visible_reporting: true
 - 需要长期保留的经验必须写回 `agent_summary.md`、角色 `memory.md`、workflow issues、result 文件或 campaign 账本。
 - `persistent_thread` 只是跨 workflow 可见追踪的可选上下文，不是 evidence。
 - 不要给每个实验 run 创建一个永久 agent/thread。
+- 每轮 workflow 结束或阶段结束时，Coordinator 必须先确认已完成 agents 的结论写入
+  `agent_summary.md` / `AGENT_ACTIVITY.md` / result / quality / issues / memory 等正式位置，
+  然后关闭这些已完成 agents。右侧栏默认只保留当前阶段仍在工作的 active agents。
 - 角色名要清晰，例如 `运行监控 (Runner Monitor)`、`日志分析 (Log Analyst)`、`证据质量检查 (Evidence Quality Checker)`、`结果比较 (Result Comparator)`。
 - `Experiment Runner` 表示实际启动训练命令的运行角色；`Runner Monitor` 表示监控服务器、队列、GPU slot 和失败隔离的运行监控角色。小任务中二者可以由同一 Runner family 承担，但在启动卡和 `agent_summary.md` 里必须写清楚显示名和职责。
 
@@ -95,7 +99,11 @@ branch 和 commit
 git dirty 状态
 冻结后的 config
 agent_runtime.yaml 及 validate-agent-runtime 结果
+multi_agent_preflight 结果
+formal_runner_allowed、formal_evidence_allowed
+agent_instance_status、agent_status_refs、agent_output_refs
 owner_monitor_mode、report_channel、agent_activity_stream
+right_sidebar_retention_policy、close_completed_agents_on_stage_end、closed_agents_record
 dataset/split/label mapping 假设
 GPU 或 runner slot 锁
 result/artifact 写入位置
@@ -139,6 +147,7 @@ promotion 可以按协议创建本地文件、commit 和 tag，但不能 push，
 - 服务器/runtime 状态不清楚，可能污染结果。
 - workflow 要求正式多 agents，但当前没有真实 multi-agent 支持。
 - `activation_mode: real_multi_agent` 但没有真实右侧临时 agent 实例、pre-run allow/check 或 `agent_runtime.yaml`。
+- `multi_agent_preflight` 未通过，或 `formal_runner_allowed` / `formal_evidence_allowed` 不是 true。
 - owner 改变范围。
 - 会跨越安全边界。
 

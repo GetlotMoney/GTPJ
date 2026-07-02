@@ -14,15 +14,34 @@ transition_id:
 activation_mode:
 agent_instance_mode:
 lifecycle:
+runner_scope:
+formal_runner_allowed:
+formal_evidence_allowed:
 activation_reason:
 required_roles:
 required_real_agents:
 agent_persistent_threads:
 agent_runtime_gate:
 temporary_subagent_ids:
+agent_instance_status:
+agent_status_refs:
+agent_output_refs:
+multi_agent_preflight:
+  required_agents_spawned:
+  agent_instance_ids_present:
+  agent_status_refs_valid:
+  independent_outputs_present:
+  agent_output_refs_valid:
+  pre_run_allow_checks_passed:
+  agent_runtime_validated:
 ui_visibility:
 runner_start_gate:
 pre_run_required_checks:
+right_sidebar_retention_policy:
+close_completed_agents_on_stage_end:
+closed_agents_record:
+active_agents_after_closeout:
+closed_agents_after_closeout:
 agent_set:
 serial_agents:
 parallel_agents:

@@ -876,8 +876,9 @@ agents:
     fallback_mode: role_only_with_independent_sequential_review
 ```
 
-该 fallback 不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，
-除非 owner 明确接受它只作为 debug/smoke 证据。
+该 fallback 不能用于 promotion、正式 best 结论、正式 Runner、version/tag 或 owner
+已明确要求真实多 agents 的任务。owner 只能把目标改成非正式 debug/smoke 排障；该结果
+不能补签为正式证据。
 
 `required_real_agents` 是真实 sub-agent 硬需求角色列表；`real_multi_agent` 时填写必须独立执行的
 角色，`role_only` 时填写 `[]`。

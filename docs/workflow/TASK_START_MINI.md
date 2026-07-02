@@ -1,7 +1,7 @@
 # Task Start Mini Card
 
 本文件定义 owner 可见的极简启动卡。完整 `TASK_START_CARD.md` 仍然是正式审查模板，但默认由
-Coordinator 在后台展开；owner 日常只看本文件的 8 个字段。
+Coordinator 在后台展开；owner 日常只看这些最小字段。
 
 只读预览入口：
 
@@ -9,7 +9,7 @@ Coordinator 在后台展开；owner 日常只看本文件的 8 个字段。
 python workflow/gtpj_workflow.py start --phrase "开新模块"
 ```
 
-该命令只打印下面的 8 字段，不写文件、不建分支、不跑训练。
+该命令只打印下面的字段，不写文件、不建分支、不跑训练。
 
 ## 1. Mini 启动卡
 
@@ -23,10 +23,15 @@ evidence_state:
 writes:
 agent_mode:
 agent_instance_mode:
+runner_scope:
+formal_runner_allowed:
+formal_evidence_allowed:
 agent_runtime_gate:
+multi_agent_preflight:
 owner_monitor_mode:
 agent_activity_stream:
 gates:
+blocked_reason:
 next_action:
 ```
 
@@ -43,10 +48,15 @@ next_action:
 | `writes` | 本次会写哪里；只读任务写 `none`。 |
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
 | `agent_instance_mode` | `role_only`、`temporary_subagent` 或 `persistent_thread`；正式实验默认 workflow-scoped `temporary_subagent`，跨 workflow 连续追踪才启用 `persistent_thread`。 |
+| `runner_scope` | `none`、`debug_smoke` 或 `formal_runner`；只有 `formal_runner` 能产出正式实验证据。 |
+| `formal_runner_allowed` | 正式 Runner 是否允许启动；没有真实多 agent preflight 时必须是 `false`。 |
+| `formal_evidence_allowed` | 本轮输出是否允许进入 keep / best / confirmation / promotion / version 判断。 |
 | `agent_runtime_gate` | 正式 Runner 启动前的 `agent_runtime.yaml` 路径和 `validate-agent-runtime` 状态；纯只读或 debug/smoke 写 `not_required`。 |
+| `multi_agent_preflight` | 正式 Runner 启动前必须写 `pass`；缺真实 agent id、独立输出或 allow/pass 时写 `fail`。 |
 | `owner_monitor_mode` | 正式 Runner 必须写 `true`；owner 是监控者，过程必须在当前对话或明确 Monitor 线程可见。 |
 | `agent_activity_stream` | 记录哪个智能体在做什么的活动流文件；纯只读或 debug/smoke 可写 `not_required`。 |
 | `gates` | 本次真正相关的硬门，只列会影响开工的门。 |
+| `blocked_reason` | 如果不能开正式 Runner，写最小阻断原因；不能留空后继续跑正式实验。 |
 | `next_action` | 下一步最小动作；不能把完整流程丢给 owner 填。 |
 
 ## 2. 展开规则
@@ -80,10 +90,15 @@ evidence_state: hypothesis_ready
 writes: idea_tree + experiments/module_trials + Warehouse after run
 agent_mode: real_multi_agent，因为新模块代码改动需要 Review 0-3
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped
+runner_scope: formal_runner
+formal_runner_allowed: false until multi_agent_preflight pass
+formal_evidence_allowed: false until formal Runner completes with evidence chain
 agent_runtime_gate: required before Runner; must record right_sidebar_temporary_agents
+multi_agent_preflight: required before formal Runner
 owner_monitor_mode: true; visible reports must name active agents and actions
 agent_activity_stream: required before formal Runner
 gates: source_status, interface_contract, innovation_code_review, artifact_boundary
+blocked_reason: none after real_multi_agent gate passes; otherwise block formal run
 next_action: read active version idea view and select the highest-priority ready idea
 ```
 
@@ -99,10 +114,15 @@ evidence_state: single_run_valid or confirmation target state
 writes: none until owner confirms run and evidence level
 agent_mode: 正式运行用 real_multi_agent；Runner 启动前的准备可以 role_only
 agent_instance_mode: 正式运行用 temporary_subagent；跨 workflow 追踪才用 persistent_thread
+runner_scope: formal_runner if confirmation will enter evidence; none for read-only repro-status
+formal_runner_allowed: false until multi_agent_preflight pass
+formal_evidence_allowed: false until formal Runner and result review pass
 agent_runtime_gate: required before formal rerun; not required for read-only repro-status
+multi_agent_preflight: required before formal rerun
 owner_monitor_mode: true for formal rerun
 agent_activity_stream: required before formal Runner
 gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
+blocked_reason: none for read-only; missing real_multi_agent gate blocks formal rerun
 next_action: run repro-status, then decide quick_local vs formal confirmation target
 ```
 
@@ -118,8 +138,13 @@ evidence_state: hypothesis_ready if accepted for triage
 writes: Research/idea_tree only if owner asks to register; no code until ready
 agent_mode: 纯 triage 用 role_only；变成代码或正式证据后用 real_multi_agent
 agent_instance_mode: 纯 triage 用 role_only；进入正式证据后用 temporary_subagent
+runner_scope: none for triage; formal_runner only after gate passes
+formal_runner_allowed: false until real_multi_agent gate passes
+formal_evidence_allowed: false during triage
 agent_runtime_gate: not_required until code or Runner starts
+multi_agent_preflight: not_required during triage; required before formal Runner
 gates: source_status, interface_contract
+blocked_reason: formal run blocked until real_multi_agent gate exists
 next_action: judge whether this is inbox idea, ready idea, or blocked by missing source/scope
 ```
 
@@ -135,10 +160,15 @@ evidence_state: hypothesis_ready for first accepted subjects
 writes: campaign ledger + idea_tree + experiments + Research + Warehouse
 agent_mode: real_multi_agent，因为 workflow 会调度多类实验并产出最终证据
 agent_instance_mode: temporary_subagent, lifecycle workflow_scoped; persistent_thread optional for cross-workflow coordinator/monitor
+runner_scope: formal_runner per formal batch
+formal_runner_allowed: false until campaign/workstream/run preflight passes
+formal_evidence_allowed: false for any batch without real_multi_agent evidence chain
 agent_runtime_gate: required for every formal runner-start transition
+multi_agent_preflight: required at campaign level and before every formal Runner batch
 owner_monitor_mode: true; owner watches the campaign, agents write activity updates
 agent_activity_stream: required at campaign level and per formal Runner batch
 gates: source_status, baseline_repro_status, interface_contract, metric_semantics, artifact_boundary, quality_gate, promotion_gate
+blocked_reason: formal batches blocked when real_multi_agent support is absent
 next_action: create campaign brief from sources, evaluation standard, safety boundaries, experiment standard, budget, and deliverables
 ```
 
@@ -154,9 +184,14 @@ evidence_state: campaign planning, then per-task evidence_state
 writes: experiments/campaigns + each workstream's canonical experiment directory + Warehouse
 agent_mode: real_multi_agent，因为多个 workstream 需要隔离规划、运行、分析和质量检查
 agent_instance_mode: temporary_subagent, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
+runner_scope: formal_runner per formal batch
+formal_runner_allowed: false until campaign/workstream/run preflight passes
+formal_evidence_allowed: false for any batch without real_multi_agent evidence chain
 agent_runtime_gate: required at campaign level and before each formal runner batch
+multi_agent_preflight: required at campaign level and before each formal Runner batch
 owner_monitor_mode: true; no silent server-only run
 agent_activity_stream: required; every report names role, action, evidence, next
 gates: baseline_repro_status, source_status, interface_contract, metric_semantics, artifact_boundary, quality_gate
+blocked_reason: formal batches blocked when real_multi_agent support is absent
 next_action: parse requested_mix, create campaign manifest, build workstreams, and freeze campaign plan before Runner starts
 ```

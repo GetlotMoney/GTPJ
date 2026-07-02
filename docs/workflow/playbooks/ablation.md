@@ -36,7 +36,8 @@ module_trial_protocol.md
 
 只有需要改代码时才加入 `实现者 (Implementer)`。
 
-正式 Runner 启动前必须写 `agent_runtime.yaml` 并通过 `validate-agent-runtime`。
+正式 Runner 启动前必须写 `agent_runtime.yaml` 并通过 `validate-agent-runtime` 和
+`multi-agent-preflight`。
 Interface / Quality / Runner Monitor 没有独立 allow/pass 时，不得把消融结果作为正式证据。
 
 ## 阻断门

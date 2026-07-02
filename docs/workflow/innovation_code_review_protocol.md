@@ -28,7 +28,7 @@
 
 如果当前环境没有真实 sub-agent / multi-agent 工具，不能把顺序执行冒充为
 `real_multi_agent`。这类任务必须阻断正式 run、promotion 或 best 结论，除非 owner 明确接受
-本次只作为 debug/smoke 降级。
+本次只作为 debug/smoke 降级；debug/smoke 结果不能补签为正式 evidence。
 
 正式创新审查默认使用 workflow-scoped `temporary_subagent`。如果某个角色需要跨多个 workflow 连续追踪，才启用 `persistent_thread`，并在 task-start card 和 `agent_summary.md` 写明 thread id 或可见 label。无论使用哪种活上下文，正式结论必须写入 review 文件、`agent_summary.md`、result、quality 或 artifact evidence。
 

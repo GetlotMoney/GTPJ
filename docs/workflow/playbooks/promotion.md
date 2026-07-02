@@ -25,6 +25,10 @@ promotion 必须做正式独立检查：
 复核者 (Reviewer)
 ```
 
+promotion、baseline-grade、新版本、tag 和争议结果复核必须使用真实 `real_multi_agent`。
+如果不能证明各角色有独立 agent 实例、独立输入和独立输出，promotion 必须阻断；
+不能用 sequential review 或单窗口自查替代。
+
 ## 必要证据
 
 ```text

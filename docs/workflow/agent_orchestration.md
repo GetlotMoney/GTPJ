@@ -37,7 +37,10 @@ agents:
 
 `role_only` 只允许用于纯只读解释/状态检查、训练前候选 triage、不改变结论的机械账本格式整理，或明确不进入正式证据的 debug/smoke。
 
-如果当前工具环境不能提供真实 sub-agent，而任务又需要正式证据，Coordinator 必须阻断或把本轮显式降级为 debug/smoke。`role_only_with_independent_sequential_review` 只是 fallback 标签，不是 `real_multi_agent` 的替代品。
+如果当前工具环境不能提供真实 sub-agent，而任务又需要正式证据，Coordinator 必须阻断。
+只有 owner 明确把目标改成非正式 debug/smoke 排障时，才允许另走降级路径。
+`role_only_with_independent_sequential_review` 只是 fallback 标签，不是 `real_multi_agent`
+的替代品，也不能产生正式证据。
 
 正式 Runner 启动前必须同时遵守：
 
@@ -46,7 +49,8 @@ docs/workflow/AGENT_RUNTIME_HARD_GATE.md
 ```
 
 这条硬门要求真实右侧临时 agents 已经启动，并在 `agent_runtime.yaml` 中记录
-`agent_instance_id`、`ui_visibility`、`pre_run_required_checks` 和 `runner_start_allowed`。
+`agent_instance_id`、`ui_visibility`、`pre_run_required_checks`、`runner_start_allowed`、
+`formal_runner_allowed`、`formal_evidence_allowed` 和 `multi_agent_preflight`。
 Coordinator 单窗口按角色清单顺序执行，不等于 `real_multi_agent`。
 
 ## GitHub 权威目录
@@ -124,6 +128,29 @@ docs/workflow/issues/
 shared_roles/<role>/memory.md
 Research / Warehouse / campaign ledger
 ```
+
+## 右侧栏保留策略
+
+右侧栏不是历史档案柜，只显示当前正在工作的角色。每轮 workflow 结束、campaign 阶段结束、
+或某个角色完成本阶段职责时，Coordinator 必须执行 agent cleanup：
+
+1. 列出保留名单和关闭名单。
+2. 确认待关闭 agent 的结论已写入 `agent_summary.md`、`AGENT_ACTIVITY.md`、result、
+   quality、issues、memory、Research、Warehouse 或 campaign ledger。
+3. 关闭已完成且不再 active 的 temporary agents。
+4. 在 `AGENT_ACTIVITY.md` 或 closeout summary 中记录关闭时间、agent id、角色和输出位置。
+5. 右侧栏默认只保留当前阶段 active agents；历史结论靠文件和 artifact 查，不靠打开的旧窗口查。
+
+正式 `agent_runtime.yaml` 必须声明：
+
+```yaml
+right_sidebar_retention_policy: current_stage_active_only
+close_completed_agents_on_stage_end: true
+closed_agents_record: AGENT_ACTIVITY.md
+```
+
+如果 owner 明确要求跨阶段保留某个可见 agent，Coordinator 必须在启动卡和
+`agent_summary.md` 写明保留原因、预计结束条件和正式输出位置。
 
 ## Agent Runtime Protocol
 
@@ -221,10 +248,16 @@ agents:
   activation_mode: role_only | real_multi_agent
   agent_instance_mode: role_only | temporary_subagent | persistent_thread
   lifecycle: role_only | workflow_scoped | campaign_scoped | cross_workflow
+  runner_scope: none | debug_smoke | formal_runner
+  formal_runner_allowed:
+  formal_evidence_allowed:
   activation_reason:
   required_roles:
   disabled_roles:
   required_real_agents:
+  agent_instance_status:
+  agent_status_refs:
+  agent_output_refs:
   persistent_threads:
     required:
     thread_ids:
@@ -249,7 +282,20 @@ agents:
     validated:
     validator_command:
     runner_start_allowed:
+    formal_runner_allowed:
+    formal_evidence_allowed:
+    multi_agent_preflight:
+      required_agents_spawned:
+      agent_instance_ids_present:
+      agent_status_refs_valid:
+      independent_outputs_present:
+      agent_output_refs_valid:
+      pre_run_allow_checks_passed:
+      agent_runtime_validated:
     ui_visibility:
+    right_sidebar_retention_policy:
+    close_completed_agents_on_stage_end:
+    closed_agents_record:
     pre_run_required_checks:
   tool_support:
     real_multi_agent_available:
@@ -290,7 +336,8 @@ Coordinator 默认必须选择“满足上下文隔离的最小有效路径”�
 - 纯只读、状态检查、配置查看、pre-run triage、debug/smoke、机械账本整理，默认 `role_only`。
 - Runner 产出的结果会进入正式 evidence、best 选择、confirmation、promotion 或下一轮高成本实验决策，默认 `real_multi_agent`。
 - 正式 `real_multi_agent` 默认 workflow-scoped `temporary_subagent`。
-- 正式 Runner start 前必须运行 `validate-agent-runtime --path <agent_runtime.yaml>`。
+- 正式 Runner start 前必须运行 `validate-agent-runtime --path <agent_runtime.yaml>` 和
+  `multi-agent-preflight --path <agent_runtime.yaml>`。
 - 跨多天 campaign 可以让 `Workflow Coordinator`、`Runner Monitor`、`Result Comparator` 使用 `persistent_thread`，但这不是证据源。
 - Runner 永远串行并持有 GPU lock。
 - Implementer 对同一代码路径永远单 writer。

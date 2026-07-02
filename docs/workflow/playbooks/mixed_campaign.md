@@ -25,8 +25,9 @@ campaign
 不要给每个 run 创建一个永久 agent。
 
 但 campaign / workstream / task 级正式角色必须是真实右侧临时 agents，并在
-`agent_runtime.yaml` 中记录实例 id。没有通过 `validate-agent-runtime` 的 campaign
-不能启动正式 Runner。
+`agent_runtime.yaml` 中记录实例 id。没有通过 `validate-agent-runtime` 和
+`multi-agent-preflight` 的 campaign 不能启动正式 Runner；不能用 sequential review
+替代正式 campaign evidence。
 
 每个 campaign task 必须有：
 

@@ -9,6 +9,8 @@ agents:
   activation_mode: real_multi_agent
   agent_instance_mode: temporary_subagent
   lifecycle: workflow_scoped
+  formal_runner_allowed: true
+  formal_evidence_allowed: true
   owner_monitor_mode: true
   owner_role: monitor
 ```
@@ -26,13 +28,16 @@ agents:
 
 任何真实实验运行、attempt 证据登记、正式结果解释、best 选择、promotion 准备、版本判断或下一轮高成本实验决策，都必须使用 `real_multi_agent`。Runner 仍然串行；并行的是只读或复核角色。
 
-如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断或显式降级为 debug/smoke；不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
+如果真实 sub-agent 工具不可用，而任务需要正式证据，启动卡必须阻断。只有 owner
+明确把目标改成非正式 debug/smoke 排障时，才允许另走 `formal_evidence: false` 路径；
+不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
 
 正式 Runner 启动前必须有 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md` 定义的
 `agent_runtime.yaml`，并通过：
 
 ```bash
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
 ```
 
 如果没有真实右侧临时 agents、没有 `temporary_subagents.instances`、没有 pre-run allow/check，
@@ -200,6 +205,9 @@ agents:
   activation_mode:
   agent_instance_mode:
   lifecycle:
+  runner_scope:
+  formal_runner_allowed:
+  formal_evidence_allowed:
   activation_reason:
   decision_basis:
     fastest_valid_path:
@@ -215,6 +223,9 @@ agents:
   required_roles:
   disabled_roles:
   required_real_agents:
+  agent_instance_status:
+  agent_status_refs:
+  agent_output_refs:
   persistent_threads:
     required:
     thread_ids:
@@ -238,6 +249,16 @@ agents:
     validated:
     validator_command:
     runner_start_allowed:
+    formal_runner_allowed:
+    formal_evidence_allowed:
+    multi_agent_preflight:
+      required_agents_spawned:
+      agent_instance_ids_present:
+      agent_status_refs_valid:
+      independent_outputs_present:
+      agent_output_refs_valid:
+      pre_run_allow_checks_passed:
+      agent_runtime_validated:
     pre_run_required_checks:
     blocking_issues:
   owner_monitor:
@@ -386,8 +407,8 @@ agents:
 ```
 
 该 fallback 只能说明当前环境无法启动真实 sub-agent 后的顺序独立复核状态；不能用于
-promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受
-debug/smoke 降级。
+promotion、正式 best 结论、正式 Runner 或 owner 已明确要求真实多 agents 的任务。若
+owner 明确接受 debug/smoke 降级，必须同时写 `formal_evidence: false`。
 
 必须选择 `real_multi_agent` 的情况：
 
@@ -419,7 +440,8 @@ debug/smoke 降级。
 - `activation_mode: real_multi_agent` 时，填写必须独立执行的角色列表；
 - `activation_mode: role_only` 时，填写 `[]`；
 - 如果按规则应使用真实多 agents 但工具不可用，填写 `[]`，并在 `tool_support.fallback_mode` 写
-  `role_only_with_independent_sequential_review`，同时触发阻断或 debug-only 降级。
+  `role_only_with_independent_sequential_review`，同时触发正式阻断；只有 owner 改成
+  debug/smoke 时，才允许继续非正式排障。
 
 `agents.persistent_threads` 必须记录跨 workflow 线程状态：
 
@@ -577,7 +599,8 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
 - 正式 evidence、best、promotion 或 owner 明确要求多 agents，但启动卡没有写各角色独立输入、独立输出和持久化位置；
 - 使用 `temporary_subagent` 却没有写 lifecycle、独立输出位置和本轮结束后的 agent_summary / memory / issues 写回规则；
-- 工具不可用但任务硬门要求 `real_multi_agent`，且没有阻断或明确标成 debug/smoke 降级；
+- 工具不可用但任务硬门要求 `real_multi_agent`，却仍试图启动正式 Runner；debug/smoke 只能在 owner 改目标后另走非正式路径；
+- 正式 Runner 启动卡没有 `formal_runner_allowed: true`、`formal_evidence_allowed: true` 和通过的 `multi_agent_preflight`；
 - `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
 - 正式 Runner 启动卡没有 `owner_monitor.enabled: true`、`agent_activity_stream`、
   `report_channel` 或 `handoff_on_pause`；
@@ -599,6 +622,19 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - raw logs、checkpoint、generated figures 会写进 GitHub；
 - Runner 需要 GPU，但 lock 状态未知；
 - promotion 只看 H 提升，没有完整证据链。
+
+阻断时写成机器可读状态，不要只写一段自然语言：
+
+```yaml
+status: blocked
+blocked_reason: real_multi_agent_unavailable
+formal_runner_allowed: false
+formal_evidence_allowed: false
+next_action: >
+  use multi_agent_v1.spawn_agent for runner_monitor and evidence_quality_checker,
+  write agent_instance_status / agent_status_refs / agent_output_refs,
+  then run python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
+```
 
 ## 6. 最小开工输出
 

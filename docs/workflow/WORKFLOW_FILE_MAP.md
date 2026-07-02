@@ -71,6 +71,16 @@ schemas/
 workflow/gtpj_workflow.py
 ```
 
+常用 helper：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "开新模块"
+python workflow/gtpj_workflow.py start-card --type tune --version v5 --owner-request "调参"
+python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py validate-workflow-consistency
+```
+
 ## 简化规则
 
 如果某条规则每天都要用，写进 `WORKFLOW_KERNEL.md`。

@@ -28,15 +28,18 @@ Owner 是默认监控者；正式 Runner 启动后必须持续显示“哪个智
 3. Coordinator 启动右侧临时 agents，并记录 agent_instance_id。
 4. Planner / Interface / Quality / Runner Monitor 等角色独立输出 allow/block/propose。
 5. Coordinator 写 agent_runtime.yaml。
-6. 运行 validate-agent-runtime，通过后才允许 pre-run freeze。
+6. 运行 validate-agent-runtime 和 multi-agent-preflight，通过后才允许 pre-run freeze。
 7. Coordinator apply evidence transition。
 8. Runner 生成 frozen batch 并启动服务器。
 9. Coordinator 进入 owner-visible monitor loop，按间隔汇报 agent 活动、batch 状态、证据位置和下一步。
 10. Log / Quality / Result agents 分别审查运行证据。
 11. Coordinator 写 result、quality、agent_summary 和下一条 transition。
+12. Coordinator 关闭已完成且结论已入账的 agents；右侧栏只保留当前阶段 active agents。
 ```
 
-如果第 3 步没有发生，本轮只能降级为 debug/smoke 或候选线索，不能作为正式 evidence。
+如果第 3 步没有发生，本轮必须阻断正式 Runner。只有 owner 明确把目标改成非正式
+`debug_smoke` 排障时，才允许另走 debug 路径；该路径不能作为正式 evidence、candidate
+keep、best、confirmation、promotion 或 version 判断依据。
 
 ## 3. Runtime Gate 文件
 
@@ -68,6 +71,8 @@ tool_support_real_multi_agent_available: true
 spawn_tool: multi_agent_v1.spawn_agent
 single_agent_execution: false
 runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
 owner_monitor_mode: true
 owner_role: monitor
 owner_visible_reporting: true
@@ -75,6 +80,9 @@ report_channel: current_conversation
 report_interval_minutes: 15
 agent_activity_stream: AGENT_ACTIVITY.md
 monitor_handoff_on_pause: required
+right_sidebar_retention_policy: current_stage_active_only
+close_completed_agents_on_stage_end: true
+closed_agents_record: AGENT_ACTIVITY.md
 
 temporary_subagent_ids:
   runner_monitor: 019...
@@ -86,6 +94,30 @@ pre_run_required_checks:
   runner_monitor: allow
   interface_checker: allow
   evidence_quality_checker: allow
+
+agent_instance_status:
+  runner_monitor: running
+  interface_checker: completed
+  evidence_quality_checker: completed
+
+agent_status_refs:
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+
+multi_agent_preflight:
+  required_agents_spawned: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
 
 authority_refs:
   task_start_card: task_start_card.md
@@ -119,6 +151,12 @@ agent_instance_id 或执行来源
 跑完后由哪些 agents 接手分析
 ```
 
+`right_sidebar_retention_policy: current_stage_active_only` 表示右侧栏只保留当前阶段还在工作的
+temporary agents。阶段结束或 workflow 结束时，Coordinator 必须在关闭前列出保留/关闭名单，
+确认已完成 agent 的结论已经写入 `agent_summary.md` / `AGENT_ACTIVITY.md` / result /
+quality / issues / memory 等位置，然后关闭不再 active 的 agents。关闭记录写入
+`closed_agents_record`。
+
 ## 4. allow / block 语义
 
 `pre_run_required_checks` 只允许：
@@ -145,7 +183,33 @@ Interface Checker（涉及代码、配置、GZSL、评估语义或新模块时�
 Log Analyst 和 Result Analyst 可以在 run 后进入，但如果它们的结论影响 best、repeat、
 promotion 或下一轮实验，也必须是独立 agent 输出。
 
-## 5. 降级规则
+## 5. formal runner 判定
+
+正式 Runner 同时要求：
+
+```text
+formal_evidence: true
+activation_mode: real_multi_agent
+tool_support_real_multi_agent_available: true
+single_agent_execution: false
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+multi_agent_preflight 全部为 true
+validate-agent-runtime 通过
+```
+
+其中 `multi_agent_preflight` 是启动前的机器可读汇总，不替代角色输出。它必须由
+`temporary_subagent_ids`、`agent_instance_status`、`agent_status_refs`、`agent_output_refs`、
+`pre_run_required_checks`、`agent_summary.md`、`quality_check.md`、`AGENT_ACTIVITY.md`
+等文件支撑。
+
+Codex 当前可用的真实 sub-agent 工具名是 `multi_agent_v1.spawn_agent`。Python helper
+不能直接查询聊天工具内部的 sandbox 列表；Coordinator 必须把 `spawn_agent` /
+`wait_agent` 返回的 agent id、状态和角色输出写入上述 refs。helper 只承认可读取、
+非空、能关联 role 或 agent id 的本地证据文件。
+
+## 6. 降级规则
 
 如果真实右侧临时 agents 不可用，或者 owner 明确只要 debug/smoke，必须写：
 
@@ -155,18 +219,22 @@ evidence_level: debug_smoke
 activation_mode: role_only
 agent_instance_mode: role_only
 runner_start_allowed: true
+formal_runner_allowed: false
+formal_evidence_allowed: false
 eligible_for_keep_best_promotion_confirmation: false
 ```
 
 这种运行只能定位环境、脚本、shape 或速度问题，不能进入 keep / best / confirmation /
-promotion 证据。
+promotion 证据。debug/smoke 跑完后，如果 owner 要正式结论，必须重新建立
+`real_multi_agent` gate 并重跑正式 Runner，不能把 debug 结果补签为正式 evidence。
 
-## 6. Helper
+## 7. Helper
 
 正式 runner start 前必须运行：
 
 ```bash
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
 ```
 
 动态路由 batch 生成命令必须传入通过校验的 gate：
@@ -179,12 +247,12 @@ python workflow/gtpj_workflow.py plan-dynamic-routing-batch \
 
 只有显式 `--debug-smoke` 时可以不传 gate；该 run 自动标为非正式证据。
 
-## 7. 证据等级
+## 8. 证据等级
 
 | 情况 | 证据等级 |
 |---|---|
 | 右侧临时 agents 已启动，gate 通过，Runner 按 frozen config 执行 | formal evidence |
-| Coordinator 单窗口代办所有角色后启动 Runner | candidate/debug evidence only |
+| Coordinator 单窗口代办所有角色后启动 Runner | formal evidence blocked; debug_smoke only if owner changes scope |
 | 服务器离线训练但没有 pre-run agent gate | runner evidence only，不是 workflow evidence |
 | 事后补写 agent_summary，但没有原始 agent id 和 allow/check | audit note only |
 

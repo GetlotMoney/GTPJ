@@ -10,6 +10,8 @@ tool_support_real_multi_agent_available: true
 spawn_tool: multi_agent_v1.spawn_agent
 single_agent_execution: false
 runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
 owner_monitor_mode: true
 owner_role: monitor
 owner_visible_reporting: true
@@ -17,6 +19,9 @@ report_channel: current_conversation
 report_interval_minutes: 15
 agent_activity_stream: AGENT_ACTIVITY.md
 monitor_handoff_on_pause: required
+right_sidebar_retention_policy: current_stage_active_only
+close_completed_agents_on_stage_end: true
+closed_agents_record: AGENT_ACTIVITY.md
 
 temporary_subagent_ids:
   campaign_planner: 019f21fe-adc2-7932-bc69-58d8c384598a
@@ -24,11 +29,38 @@ temporary_subagent_ids:
   interface_checker: 019f21ff-27d7-7f60-b2aa-65a80fce0a48
   evidence_quality_checker: 019f21ff-27d7-7f60-b2aa-65a80fce0a48
 
+agent_instance_status:
+  campaign_planner: completed
+  runner_monitor: completed
+  interface_checker: completed
+  evidence_quality_checker: completed
+
+agent_status_refs:
+  campaign_planner: AGENT_ACTIVITY.md
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  campaign_planner: agent_outputs/campaign_planner.md
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+
 pre_run_required_checks:
   campaign_planner: allow
   runner_monitor: allow
   interface_checker: allow
   evidence_quality_checker: allow
+
+multi_agent_preflight:
+  required_agents_spawned: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
 
 authority_refs:
   task_start_card: task_start_card.md

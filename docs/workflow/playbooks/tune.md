@@ -33,8 +33,9 @@ module_trial_protocol.md
 ```
 
 正式 Runner 启动前必须写 `agent_runtime.yaml`，记录右侧临时 agents 的真实
-`agent_instance_id`，并通过 `validate-agent-runtime`。否则本轮 tune 只能是
-debug/smoke 或候选线索。
+`agent_instance_id`，并通过 `validate-agent-runtime` 和 `multi-agent-preflight`。
+否则正式 tune 必须阻断。只有 owner 明确把目标改成非正式 `debug_smoke` 排障时，
+才允许继续；该结果不能进入 keep / best / confirmation / promotion。
 
 ## 输出
 

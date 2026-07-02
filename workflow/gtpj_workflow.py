@@ -115,6 +115,33 @@ EVIDENCE_BAD_RULE_VERDICTS = {"fail", "failed", "block", "blocked"}
 EVIDENCE_ADVANCING_TRANSITIONS = {"advance", "promote"}
 AGENT_RUNTIME_ALLOW_DECISIONS = {"allow", "pass"}
 AGENT_RUNTIME_BLOCKING_DECISIONS = {"", "block", "blocked", "fail", "failed", "not_checked", "pending"}
+AGENT_RUNTIME_PREFLIGHT_KEYS = {
+    "required_agents_spawned",
+    "agent_instance_ids_present",
+    "agent_status_refs_valid",
+    "independent_outputs_present",
+    "agent_output_refs_valid",
+    "pre_run_allow_checks_passed",
+    "agent_runtime_validated",
+}
+AGENT_RUNTIME_ALLOWED_INSTANCE_STATUSES = {
+    "spawned",
+    "running",
+    "active",
+    "completed",
+    "complete",
+    "closed",
+}
+AGENT_RUNTIME_BLOCKED_INSTANCE_STATUSES = {
+    "",
+    "missing",
+    "failed",
+    "killed",
+    "cancelled",
+    "canceled",
+    "not_found",
+    "unknown",
+}
 AGENT_RUNTIME_INVALID_INSTANCE_IDS = {
     "",
     "none",
@@ -317,6 +344,7 @@ ALLOWED_EXPERIMENT_TEXT_FILES = {
     "experiment_README_template.md",
     "implementation_template.md",
     "agent_summary_template.md",
+    "run_receipt_template.yaml",
     "quality_check_template.md",
     "quality_check.md",
     "agent_summary.md",
@@ -1220,6 +1248,7 @@ def required_repository_files() -> list[str]:
         "experiments/templates/experiment_README_template.md",
         "experiments/templates/implementation_template.md",
         "experiments/templates/agent_summary_template.md",
+        "experiments/templates/run_receipt_template.yaml",
         "experiments/templates/quality_check_template.md",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
@@ -1293,14 +1322,17 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
 
     marker_requirements = {
-        "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl", "validate-agent-runtime"],
+        "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke", "multi_agent_preflight"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl", "validate-agent-runtime", "multi-agent-preflight"],
         "docs/workflow/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
         "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": [
             "right_sidebar_temporary_agents",
             "agent_runtime.yaml",
             "validate-agent-runtime",
+            "multi-agent-preflight",
             "single_agent_execution",
+            "formal_runner_allowed",
+            "agent_output_refs",
         ],
         "docs/workflow/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
         "docs/workflow/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
@@ -1308,10 +1340,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
         "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
         "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
-        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate"],
-        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate"],
+        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
+        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate", "multi_agent_preflight"],
         "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
-        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml"],
+        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml", "multi_agent_preflight"],
         "docs/workflow/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml"],
         "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
         "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
@@ -1360,6 +1392,13 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "temporary_subagent_reason:",
         "agent_instance_id:",
         "agent_runtime_gate:",
+        "runner_scope:",
+        "formal_runner_allowed:",
+        "formal_evidence_allowed:",
+        "multi_agent_preflight:",
+        "agent_instance_status:",
+        "agent_status_refs:",
+        "agent_output_refs:",
         "temporary_subagent_ids:",
         "runner_start_gate:",
         "pre_run_required_checks:",
@@ -1374,7 +1413,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in agent_template:
             raise WorkflowError(f"agent_summary_template.md missing agent evidence field: {marker}")
     quality_template = read_text(REPO_ROOT / "experiments" / "templates" / "quality_check_template.md")
-    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs", "validate-agent-runtime"]:
+    receipt_template = read_text(REPO_ROOT / "experiments" / "templates" / "run_receipt_template.yaml")
+    for marker in ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "formal_runner_allowed:", "formal_evidence_allowed:", "agent_output_refs:"]:
+        if marker not in receipt_template:
+            raise WorkflowError(f"run_receipt_template.yaml missing run receipt marker: {marker}")
+    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs", "validate-agent-runtime", "multi-agent-preflight", "agent_output_refs"]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
     promotion_agents = read_text(
@@ -5006,6 +5049,51 @@ def validate_agent_runtime_ref(value: str, gate_path: Path) -> bool:
     return any(path.exists() for path in candidates)
 
 
+def resolve_agent_runtime_local_ref(value: str, gate_path: Path) -> Path | None:
+    text = value.strip()
+    if not text or text.startswith(("warehouse://", "research://", "agent://", "thread://", "subagent://")):
+        return None
+    candidates = [REPO_ROOT / text, gate_path.parent / text]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
+def normalized_text_fingerprint(text: str) -> str:
+    return hashlib.sha256(" ".join(text.split()).encode("utf-8")).hexdigest()
+
+
+def validate_agent_runtime_role_ref(
+    *,
+    gate_name: str,
+    gate_path: Path,
+    role: str,
+    instance_id: str,
+    refs: dict[str, str],
+    ref_name: str,
+) -> tuple[list[str], Path | None, str]:
+    errors: list[str] = []
+    value = refs.get(role, "")
+    if not value:
+        errors.append(f"{gate_name} missing {ref_name}.{role}")
+        return errors, None, ""
+    path = resolve_agent_runtime_local_ref(value, gate_path)
+    if path is None:
+        errors.append(f"{gate_name} {ref_name}.{role} must point to a local evidence file: {value}")
+        return errors, None, ""
+    if not path.is_file():
+        errors.append(f"{gate_name} {ref_name}.{role} is not a file: {value}")
+        return errors, path, ""
+    text = read_text(path).strip()
+    if not text:
+        errors.append(f"{gate_name} {ref_name}.{role} points to an empty file: {value}")
+    role_label = role.replace("_", " ")
+    if instance_id not in text and role not in text and role_label not in text:
+        errors.append(f"{gate_name} {ref_name}.{role} does not mention role or agent id")
+    return errors, path, text
+
+
 def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     errors: list[str] = []
     scalars, maps = read_simple_yaml_maps(gate_path)
@@ -5023,6 +5111,8 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         "spawn_tool",
         "single_agent_execution",
         "runner_start_allowed",
+        "formal_runner_allowed",
+        "formal_evidence_allowed",
         "owner_monitor_mode",
         "owner_role",
         "owner_visible_reporting",
@@ -5030,6 +5120,9 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         "report_interval_minutes",
         "agent_activity_stream",
         "monitor_handoff_on_pause",
+        "right_sidebar_retention_policy",
+        "close_completed_agents_on_stage_end",
+        "closed_agents_record",
     ]
     for field in required_scalars:
         if field not in scalars or scalars[field] == "":
@@ -5055,6 +5148,10 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} single_agent_execution cannot be true for formal evidence")
     if not truthy(scalars.get("runner_start_allowed", "")):
         errors.append(f"{gate_name} runner_start_allowed must be true before formal Runner starts")
+    if not truthy(scalars.get("formal_runner_allowed", "")):
+        errors.append(f"{gate_name} formal_runner_allowed must be true before formal Runner starts")
+    if not truthy(scalars.get("formal_evidence_allowed", "")):
+        errors.append(f"{gate_name} formal_evidence_allowed must be true for formal evidence")
     if scalars.get("spawn_tool") in {"", "role_only", "manual"}:
         errors.append(f"{gate_name} spawn_tool must name the real sub-agent tool")
     if not truthy(scalars.get("owner_monitor_mode", "")):
@@ -5073,9 +5170,16 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} report_interval_minutes must be between 1 and 60")
     if scalars.get("monitor_handoff_on_pause") != "required":
         errors.append(f"{gate_name} monitor_handoff_on_pause must be required")
+    if scalars.get("right_sidebar_retention_policy") != "current_stage_active_only":
+        errors.append(f"{gate_name} right_sidebar_retention_policy must be current_stage_active_only")
+    if not truthy(scalars.get("close_completed_agents_on_stage_end", "")):
+        errors.append(f"{gate_name} close_completed_agents_on_stage_end must be true")
     activity_stream = scalars.get("agent_activity_stream", "")
     if not validate_agent_runtime_ref(activity_stream, gate_path):
         errors.append(f"{gate_name} agent_activity_stream points to missing activity log: {activity_stream}")
+    closed_agents_record = scalars.get("closed_agents_record", "")
+    if not validate_agent_runtime_ref(closed_agents_record, gate_path):
+        errors.append(f"{gate_name} closed_agents_record points to missing closeout log: {closed_agents_record}")
 
     agent_ids = maps.get("temporary_subagent_ids", {})
     if not agent_ids:
@@ -5088,6 +5192,57 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} missing Runner Monitor temporary subagent id")
     if not has_any_role(agent_ids, {"evidence_quality_checker", "quality_checker"}):
         errors.append(f"{gate_name} missing Quality Checker temporary subagent id")
+
+    instance_status = maps.get("agent_instance_status", {})
+    if not instance_status:
+        errors.append(f"{gate_name} missing agent_instance_status")
+    for role in agent_ids:
+        normalized_status = instance_status.get(role, "").strip().lower()
+        if normalized_status in AGENT_RUNTIME_BLOCKED_INSTANCE_STATUSES:
+            errors.append(f"{gate_name} agent_instance_status.{role} must be running/completed, not {normalized_status or 'missing'}")
+        elif normalized_status not in AGENT_RUNTIME_ALLOWED_INSTANCE_STATUSES:
+            errors.append(f"{gate_name} agent_instance_status.{role} has unsupported status: {normalized_status}")
+
+    status_refs = maps.get("agent_status_refs", {})
+    if not status_refs:
+        errors.append(f"{gate_name} missing agent_status_refs")
+    output_refs = maps.get("agent_output_refs", {})
+    if not output_refs:
+        errors.append(f"{gate_name} missing agent_output_refs")
+    output_paths: dict[str, Path] = {}
+    output_fingerprints: dict[str, str] = {}
+    for role, instance_id in agent_ids.items():
+        ref_errors, _status_path, _status_text = validate_agent_runtime_role_ref(
+            gate_name=gate_name,
+            gate_path=gate_path,
+            role=role,
+            instance_id=instance_id,
+            refs=status_refs,
+            ref_name="agent_status_refs",
+        )
+        errors.extend(ref_errors)
+        ref_errors, output_path, output_text = validate_agent_runtime_role_ref(
+            gate_name=gate_name,
+            gate_path=gate_path,
+            role=role,
+            instance_id=instance_id,
+            refs=output_refs,
+            ref_name="agent_output_refs",
+        )
+        errors.extend(ref_errors)
+        if output_path is not None:
+            output_paths[role] = output_path.resolve()
+        if output_text:
+            output_fingerprints[role] = normalized_text_fingerprint(output_text)
+    if len(set(output_paths.values())) < len(output_paths):
+        errors.append(f"{gate_name} agent_output_refs must use independent files per role")
+    seen_fingerprints: dict[str, str] = {}
+    for role, fingerprint in output_fingerprints.items():
+        other_role = seen_fingerprints.get(fingerprint)
+        if other_role and other_role != role:
+            errors.append(f"{gate_name} agent_output_refs.{role} duplicates output content from {other_role}")
+        else:
+            seen_fingerprints[fingerprint] = role
 
     pre_run_checks = maps.get("pre_run_required_checks", {})
     if not pre_run_checks:
@@ -5103,6 +5258,14 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} missing Runner Monitor pre-run allow")
     if not has_any_role(pre_run_checks, {"evidence_quality_checker", "quality_checker"}):
         errors.append(f"{gate_name} missing Quality Checker pre-run allow")
+
+    preflight = maps.get("multi_agent_preflight", {})
+    if not preflight:
+        errors.append(f"{gate_name} missing multi_agent_preflight")
+    for key in sorted(AGENT_RUNTIME_PREFLIGHT_KEYS):
+        value = preflight.get(key, "")
+        if not truthy(value):
+            errors.append(f"{gate_name} multi_agent_preflight.{key} must be true before formal Runner starts")
 
     authority_refs = maps.get("authority_refs", {})
     for key, value in authority_refs.items():
@@ -5132,6 +5295,62 @@ def cmd_validate_agent_runtime(args: argparse.Namespace) -> int:
     if errors:
         raise WorkflowError("Agent runtime validation failed:\n" + "\n".join(errors))
     print(f"validate-agent-runtime-ok gates={len(gate_files)}")
+    return 0
+
+
+def cmd_multi_agent_preflight(args: argparse.Namespace) -> int:
+    gate_path = resolve_agent_runtime_gate_path(args.path)
+    if not gate_path.exists():
+        raise WorkflowError(f"Missing agent runtime gate: {display_path(gate_path)}")
+    errors = validate_agent_runtime_gate_file(gate_path)
+    if errors:
+        raise WorkflowError("Multi-agent preflight failed:\n" + "\n".join(errors))
+    scalars, maps = read_simple_yaml_maps(gate_path)
+    agent_count = len(maps.get("temporary_subagent_ids", {}))
+    print(f"multi-agent-preflight-ok path={display_path(gate_path)} agents={agent_count}")
+    print(f"formal_runner_allowed={scalars.get('formal_runner_allowed', '')}")
+    print(f"formal_evidence_allowed={scalars.get('formal_evidence_allowed', '')}")
+    return 0
+
+
+def workflow_consistency_errors() -> list[str]:
+    errors: list[str] = []
+    required_markers = {
+        "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed"],
+        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": ["multi_agent_preflight", "formal_runner_allowed", "agent_output_refs"],
+        "docs/workflow/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
+        "docs/workflow/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
+        "docs/workflow/agent_orchestration.md": ["multi_agent_preflight", "formal_runner_allowed", "agent_output_refs"],
+        "docs/workflow/playbooks/innovation.md": ["探索 / 正式分界", "formal_evidence_allowed"],
+        "experiments/templates/agent_summary_template.md": ["multi_agent_preflight:", "formal_runner_allowed:", "agent_output_refs:"],
+        "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
+    }
+    for path_text, markers in required_markers.items():
+        path = REPO_ROOT / path_text
+        if not path.exists():
+            errors.append(f"missing workflow file: {path_text}")
+            continue
+        text = read_text(path)
+        for marker in markers:
+            if marker not in text:
+                errors.append(f"{path_text} missing marker: {marker}")
+
+    playbook_dir = REPO_ROOT / "docs" / "workflow" / "playbooks"
+    if playbook_dir.exists():
+        for playbook in sorted(playbook_dir.glob("*.md")):
+            text = read_text(playbook)
+            for marker in ["START_HERE.md", "WORKFLOW_KERNEL.md"]:
+                if marker not in text:
+                    errors.append(f"{rel(playbook)} missing required entrypoint ref: {marker}")
+    return errors
+
+
+def cmd_validate_workflow_consistency(_: argparse.Namespace) -> int:
+    errors = workflow_consistency_errors()
+    if errors:
+        raise WorkflowError("Workflow consistency validation failed:\n" + "\n".join(errors))
+    print("validate-workflow-consistency-ok")
     return 0
 
 
@@ -5505,19 +5724,160 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
     return card
 
 
+def fill_mini_card_defaults(card: dict[str, str]) -> dict[str, str]:
+    filled = dict(card)
+    agent_mode = filled.get("agent_mode", "")
+    read_only_real_multi_agent_later = "when code starts" in agent_mode or "准备" in agent_mode
+    formal_intent = "real_multi_agent" in agent_mode and not read_only_real_multi_agent_later
+    filled.setdefault("subject_id", "pending")
+    filled.setdefault("evidence_state", "not_applicable")
+    if formal_intent:
+        filled.setdefault("runner_scope", "formal_runner")
+        filled.setdefault("formal_runner_allowed", "false until multi_agent_preflight pass")
+        filled.setdefault("formal_evidence_allowed", "false until formal result review passes")
+        filled.setdefault("agent_runtime_gate", "required before formal Runner")
+        filled.setdefault("multi_agent_preflight", "required before formal Runner")
+        filled.setdefault("owner_monitor_mode", "true for formal Runner")
+        filled.setdefault("agent_activity_stream", "required before formal Runner")
+        filled.setdefault("blocked_reason", "formal run blocked until real_multi_agent gate passes")
+    else:
+        filled.setdefault("runner_scope", "none")
+        filled.setdefault("formal_runner_allowed", "false")
+        filled.setdefault("formal_evidence_allowed", "false")
+        filled.setdefault("agent_runtime_gate", "not_required")
+        filled.setdefault("multi_agent_preflight", "not_required")
+        filled.setdefault("owner_monitor_mode", "not_required")
+        filled.setdefault("agent_activity_stream", "not_required")
+        filled.setdefault("blocked_reason", "none")
+    filled.setdefault("agent_instance_mode", "temporary_subagent" if formal_intent else "role_only")
+    return filled
+
+
 def cmd_start(args: argparse.Namespace) -> int:
-    card = mini_card_for_phrase(args.phrase)
+    card = fill_mini_card_defaults(mini_card_for_phrase(args.phrase))
     for key in [
         "owner_phrase",
         "task_type",
         "base_version",
         "target",
+        "subject_id",
+        "evidence_state",
         "writes",
         "agent_mode",
+        "agent_instance_mode",
+        "runner_scope",
+        "formal_runner_allowed",
+        "formal_evidence_allowed",
+        "agent_runtime_gate",
+        "multi_agent_preflight",
+        "owner_monitor_mode",
+        "agent_activity_stream",
         "gates",
+        "blocked_reason",
         "next_action",
     ]:
         print(f"{key}: {card[key]}")
+    return 0
+
+
+def yaml_quote(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def build_start_card_skeleton(args: argparse.Namespace) -> str:
+    base_version = args.version
+    if not base_version:
+        try:
+            base_version = current_active_version(load_idea_tree())
+        except (FileNotFoundError, json.JSONDecodeError, WorkflowError):
+            base_version = "current"
+    runner_scope = args.runner_scope
+    formal = runner_scope == "formal_runner"
+    lines = [
+        "schema_version: gtpj.task_start_card.v0",
+        f"owner_request: {yaml_quote(args.owner_request)}",
+        f"task_type: {yaml_quote(args.task_type)}",
+        f"base_version: {yaml_quote(base_version)}",
+        f"idea_id: {yaml_quote(args.idea_id)}",
+        f"trial_id: {yaml_quote(args.trial_id)}",
+        f"attempt_id: {yaml_quote(args.attempt_id)}",
+        f"subject_id: {yaml_quote(args.subject_id)}",
+        f"runner_scope: {runner_scope}",
+        "formal_runner_allowed: false",
+        "formal_evidence_allowed: false",
+        "agents:",
+        f"  activation_mode: {'real_multi_agent' if formal else 'role_only'}",
+        f"  agent_instance_mode: {'temporary_subagent' if formal else 'role_only'}",
+        f"  lifecycle: {'workflow_scoped' if formal else 'role_only'}",
+    ]
+    if formal:
+        lines.extend(
+            [
+                "  required_real_agents:",
+                "    - runner_monitor",
+                "    - evidence_quality_checker",
+                "  agent_instance_status:",
+                "    runner_monitor:",
+                "    evidence_quality_checker:",
+                "  agent_status_refs:",
+                "    runner_monitor:",
+                "    evidence_quality_checker:",
+                "  agent_output_refs:",
+                "    runner_monitor:",
+                "    evidence_quality_checker:",
+                "  agent_runtime_gate:",
+                "    path:",
+                "    validated: false",
+                "    validator_command: python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>",
+                "    runner_start_allowed: false",
+                "    formal_runner_allowed: false",
+                "    formal_evidence_allowed: false",
+                "    multi_agent_preflight:",
+                "      required_agents_spawned: false",
+                "      agent_instance_ids_present: false",
+                "      agent_status_refs_valid: false",
+                "      independent_outputs_present: false",
+                "      agent_output_refs_valid: false",
+                "      pre_run_allow_checks_passed: false",
+                "      agent_runtime_validated: false",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "  required_real_agents: []",
+                "  agent_runtime_gate:",
+                "    path: not_required",
+                "    validated: not_required",
+            ]
+        )
+    lines.extend(
+        [
+            "hard_gates:",
+            "  agent_runtime:",
+            "  artifact_boundary:",
+            "expected_outputs:",
+            "  github:",
+            "  research:",
+            "  warehouse:",
+            "blocked_reason: formal Runner blocked until multi_agent_preflight pass" if formal else "blocked_reason: none",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def cmd_start_card(args: argparse.Namespace) -> int:
+    content = build_start_card_skeleton(args)
+    if args.output:
+        output_path = Path(args.output)
+        if not output_path.is_absolute():
+            output_path = REPO_ROOT / output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(content, encoding="utf-8")
+        print(f"start-card-written path={display_path(output_path)}")
+        return 0
+    print(content, end="")
     return 0
 
 
@@ -8040,6 +8400,13 @@ def build_parser() -> argparse.ArgumentParser:
     validate_agent_runtime.add_argument("--path", default="")
     validate_agent_runtime.set_defaults(func=cmd_validate_agent_runtime)
 
+    multi_agent_preflight = sub.add_parser("multi-agent-preflight", help="校验正式 Runner 启动前的 multi-agent preflight")
+    multi_agent_preflight.add_argument("--path", required=True)
+    multi_agent_preflight.set_defaults(func=cmd_multi_agent_preflight)
+
+    validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
+    validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
+
     validate_remote = sub.add_parser("validate-remote", help="校验远端 main/baseline tags 与本地治理事实")
     validate_remote.add_argument("--remote", default="origin")
     validate_remote.set_defaults(func=cmd_validate_remote)
@@ -8050,6 +8417,18 @@ def build_parser() -> argparse.ArgumentParser:
     start = sub.add_parser("start", help="按 owner 人话口令只读输出 mini 启动卡")
     start.add_argument("--phrase", required=True)
     start.set_defaults(func=cmd_start)
+
+    start_card = sub.add_parser("start-card", help="生成完整启动卡骨架")
+    start_card.add_argument("--type", dest="task_type", required=True)
+    start_card.add_argument("--version", default="")
+    start_card.add_argument("--owner-request", default="")
+    start_card.add_argument("--idea-id", default="")
+    start_card.add_argument("--trial-id", default="")
+    start_card.add_argument("--attempt-id", default="")
+    start_card.add_argument("--subject-id", default="")
+    start_card.add_argument("--runner-scope", choices=["none", "debug_smoke", "formal_runner"], default="formal_runner")
+    start_card.add_argument("--output", default="")
+    start_card.set_defaults(func=cmd_start_card)
 
     closeout = sub.add_parser("closeout-check", help="只读检查 module trial attempt 到 root/index/idea/Warehouse 闭环")
     closeout.add_argument("--trial-dir", required=True)

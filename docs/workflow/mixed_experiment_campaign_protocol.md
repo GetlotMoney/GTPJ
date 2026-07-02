@@ -119,10 +119,12 @@ lifecycle: campaign_scoped | workstream_scoped | task_scoped | run_scoped
 
 ```bash
 python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/campaigns/CAMP-xxx/agent_runtime.yaml
+python workflow/gtpj_workflow.py multi-agent-preflight --path experiments/campaigns/CAMP-xxx/agent_runtime.yaml
 ```
 
 如果侧边栏没有真实临时 agents，或 `agent_runtime.yaml` 没有记录真实实例 id，本 campaign
-只能作为 debug/smoke 或候选计划，不能启动正式 Runner。
+必须阻断正式 Runner。owner 只能把目标改成非正式 debug/smoke 或候选计划；不能把它们回填成
+正式 campaign evidence。
 
 Owner 是 campaign 的默认监控者。混合实验不能在启动 Runner 后静默等待结束；必须维护
 `AGENT_ACTIVITY.md`，并在当前对话或明确 Monitor 线程持续汇报：

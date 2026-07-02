@@ -25,6 +25,10 @@ quality_gate.md
 结果比较 (Result Comparator)
 ```
 
+正式 confirmation / rerun 启动 Runner 前，必须写 `agent_runtime.yaml`，记录真实
+右侧临时 agents，并通过 `validate-agent-runtime` 和 `multi-agent-preflight`。否则
+confirmation 必须阻断；不能用单窗口 sequential review 生成 confirmed evidence。
+
 ## Repeat 规则
 
 默认 confirmation 跑 3 次。

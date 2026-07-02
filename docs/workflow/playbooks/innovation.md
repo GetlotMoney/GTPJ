@@ -39,8 +39,53 @@ AGENT_RUNTIME_HARD_GATE.md
 同一个代码路径只能有一个实现者 (Implementer)。
 
 正式 Runner 启动前必须先启动右侧临时 agents，写 `agent_runtime.yaml`，并通过
-`validate-agent-runtime`。如果只是 Coordinator 单窗口代办 Review 0-3，本轮不能作为
-正式 `real_multi_agent` 创新证据。
+`validate-agent-runtime` 和 `multi-agent-preflight`。如果只是 Coordinator 单窗口代办
+Review 0-3，本轮不能作为正式 `real_multi_agent` 创新证据。
+
+## 探索 / 正式分界
+
+探索性 trial 只允许做这些事：
+
+```text
+idea triage
+接口草图
+debug_smoke
+本地 shape / script / speed probe
+```
+
+探索性输出必须写：
+
+```yaml
+formal_evidence: false
+evidence_level: debug_smoke
+formal_runner_allowed: false
+formal_evidence_allowed: false
+eligible_for_keep_best_promotion_confirmation: false
+```
+
+正式 module trial 才能登记 attempt/result、选择 best、影响下一轮高成本实验或进入
+promotion。正式路径必须通过真实 `real_multi_agent` gate；不能把探索性结果事后补签成
+正式证据。
+
+探索性结果如果看起来有价值，升级路径只能是重新跑正式证据：
+
+```yaml
+upgrade_path:
+  exploration_run:
+    kept_as: exploration_ref
+    evidence_level: debug_smoke
+    formal_evidence: false
+  formal_rerun_required:
+    - real_multi_agent
+    - agent_instance_status / agent_status_refs / agent_output_refs
+    - Review 1-3
+    - frozen config
+    - min3 confirmation when used for confirmed_H or promotion
+  forbidden:
+    - promote exploration run in place
+    - rewrite debug_smoke as valid_single_run
+    - use sequential review as formal audit
+```
 
 ## 创新拆解
 
@@ -87,4 +132,4 @@ raw logs/checkpoints 写 GTPJ_Warehouse
 - interface semantics 不清楚。
 - attempt 改变了实现假设，应该新开 trial。
 - 没有真实右侧临时 agents、没有 `agent_runtime.yaml` 或 `validate-agent-runtime` 未通过。
-- 正式 multi-agent 支持不可用，且 owner 没有接受 debug-only 降级。
+- 正式 multi-agent 支持不可用。owner 只能把本轮改成 debug-only 排障；不能继续正式 trial。

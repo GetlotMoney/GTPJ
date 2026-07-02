@@ -44,6 +44,10 @@ promotion proposal
 
 正式证据仍然以文件为准。
 
+如果真实 multi-agent 工具不可用，campaign 只能停在 paper intake、idea extraction、
+config 草案和 debug/smoke 排障层；不能启动正式 Runner、登记正式结果、promotion proposal
+或 baseline claim。
+
 ## 最终交付
 
 ```text

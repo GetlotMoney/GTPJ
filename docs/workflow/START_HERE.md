@@ -18,6 +18,8 @@
 activation_mode: real_multi_agent
 agent_instance_mode: temporary_subagent
 lifecycle: workflow_scoped
+formal_runner_allowed: true
+formal_evidence_allowed: true
 owner_monitor_mode: true
 owner_role: monitor
 owner_visible_reporting: true
@@ -45,7 +47,8 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 ```
 
 没有右侧临时 agents、没有真实 agent id、没有 pre-run allow/check，就不能启动正式 Runner。
-这种情况只能降级为 debug/smoke 或候选线索。
+这种情况必须阻断正式工作；只有 owner 明确接受非正式排障时，才可以另开 `debug_smoke`
+路径，且结果不能进入 keep / best / confirmation / promotion / version 判断。
 
 ## 2. 最小阅读顺序
 
@@ -90,9 +93,13 @@ comparison_reference：
 GitHub 写入：
 Research/Warehouse 写入：
 agents 模式：
+runner_scope：
+formal_runner_allowed：
+formal_evidence_allowed：
 必须读的 playbook：
 硬门：
 agent_runtime_gate：
+multi_agent_preflight：
 owner_monitor_mode：
 agent_activity_stream：
 当前阻塞：

@@ -15,7 +15,9 @@ idea_tree_protocol.md
 
 默认角色：`阅读/规划 (Reader/Planner)`、`来源复核 (Source Reviewer)`、`总控 (Coordinator)`。
 
-如果输出会影响正式 idea 选择、module trial、baseline 表述或论文实验规划，使用 `real_multi_agent`。
+如果输出会影响正式 idea 选择、module trial、baseline 表述或论文实验规划，使用
+`real_multi_agent`。如果真实 multi-agent 工具不可用，只能输出待复核来源笔记或 idea 草案，
+不能直接进入正式 trial / promotion 证据。
 
 ## 输出
 
