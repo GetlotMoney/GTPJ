@@ -976,6 +976,51 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any(update.get("local_weight") == 0.12 for update in updates))
         self.assertTrue(any(update.get("pse_outer_ratio") == 0.55 for update in updates))
 
+    def test_config_epoch_schedule_uses_lr_stages_total(self) -> None:
+        config_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001/config.yaml"
+        self._write(
+            str(config_path.relative_to(self.repo)).replace("\\", "/"),
+            "epochs:\n"
+            "  value: 30\n"
+            "lr_stages:\n"
+            "  value:\n"
+            "  - lr: 0.001\n"
+            "    epochs: 20\n"
+            "  - lr: 0.0001\n"
+            "    epochs: 20\n"
+            "  - lr: 1.0e-05\n"
+            "    epochs: 10\n",
+        )
+
+        schedule = self.module.config_epoch_schedule(config_path)
+
+        self.assertEqual(schedule["config_epochs_field"], 30)
+        self.assertEqual(schedule["planned_train_epochs"], 50)
+        self.assertEqual(schedule["epoch_schedule_source"], "lr_stages")
+        self.assertEqual(schedule["lr_stage_epochs"], [20, 20, 10])
+
+    def test_validate_rejects_ambiguous_pre_run_epochs_when_lr_stages_override(self) -> None:
+        attempt_dir = "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001"
+        self._write(
+            f"{attempt_dir}/config.yaml",
+            "epochs:\n"
+            "  value: 30\n"
+            "lr_stages:\n"
+            "  value:\n"
+            "  - lr: 0.001\n"
+            "    epochs: 20\n"
+            "  - lr: 0.0001\n"
+            "    epochs: 20\n"
+            "  - lr: 1.0e-05\n"
+            "    epochs: 10\n",
+        )
+        self._write(f"{attempt_dir}/pre_run_plan.md", "# Plan\n\n- Epochs: 30\n")
+
+        errors = self.module.validate_attempt_epoch_schedule_disclosure()
+
+        self.assertTrue(any("Planned train epochs: 50" in error for error in errors))
+        self.assertTrue(any("ambiguous '- Epochs:'" in error for error in errors))
+
     def test_dynamic_routing_batch_plan_has_dynamic_bold_followup_50_jobs(self) -> None:
         jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="dynamic-bold-followup")
         groups = Counter(job["group"] for job in jobs)

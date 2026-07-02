@@ -6,7 +6,10 @@
 - Server run: RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu
 - Workflow profile: best-repro-tune-followup
 - Batch size: 64
-- Epochs: 30
+- Config epochs field: 30
+- Planned train epochs: 50
+- Epoch schedule source: lr_stages
+- LR stages: 20 + 20 + 10
 - Seed: 5
 - GPUs: 0,1
 

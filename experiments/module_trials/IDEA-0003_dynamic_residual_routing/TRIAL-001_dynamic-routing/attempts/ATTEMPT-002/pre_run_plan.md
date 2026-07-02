@@ -8,6 +8,10 @@ run_ids:
 trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
 base_version: v5
 batch_size: 128
+config_epochs_field: 30
+planned_train_epochs: 50
+epoch_schedule_source: lr_stages
+lr_stages: 20 + 20 + 10
 profiles:
   - direction-exploit-followup
   - dynamic-bold-followup

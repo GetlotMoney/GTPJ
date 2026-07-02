@@ -521,6 +521,64 @@ def read_yaml_artifacts(path: Path) -> dict[str, dict[str, str]]:
     return artifacts
 
 
+def config_epoch_schedule(config_path: Path) -> dict[str, object]:
+    text = read_text(config_path)
+    config_epochs = None
+    match = re.search(r"(?ms)^epochs:\s*\n\s+value:\s*([0-9]+)\s*$", text)
+    if match:
+        config_epochs = int(match.group(1))
+    lr_stages_match = re.search(r"(?ms)^lr_stages:\s*\n\s+value:\s*\n(?P<body>(?:\s{2,}.+\n?)+)", text)
+    stage_epochs = [int(value) for value in re.findall(r"^\s{4}epochs:\s*([0-9]+)\s*$", lr_stages_match.group("body"), re.MULTILINE)] if lr_stages_match else []
+    if stage_epochs:
+        return {
+            "config_epochs_field": config_epochs,
+            "planned_train_epochs": sum(stage_epochs),
+            "epoch_schedule_source": "lr_stages",
+            "lr_stage_epochs": stage_epochs,
+        }
+    return {
+        "config_epochs_field": config_epochs,
+        "planned_train_epochs": config_epochs,
+        "epoch_schedule_source": "epochs",
+        "lr_stage_epochs": [],
+    }
+
+
+def validate_attempt_epoch_schedule_disclosure() -> list[str]:
+    errors: list[str] = []
+    attempts_root = REPO_ROOT / "experiments" / "module_trials"
+    if not attempts_root.exists():
+        return errors
+    for plan_path in sorted(attempts_root.glob("IDEA-*/TRIAL-*/attempts/ATTEMPT-*/pre_run_plan.md")):
+        config_path = plan_path.with_name("config.yaml")
+        if not config_path.exists():
+            continue
+        schedule = config_epoch_schedule(config_path)
+        if schedule["epoch_schedule_source"] != "lr_stages":
+            continue
+        config_epochs = schedule["config_epochs_field"]
+        planned_epochs = schedule["planned_train_epochs"]
+        if config_epochs == planned_epochs:
+            continue
+        plan_text = read_text(plan_path)
+        required_marker_groups = [
+            [f"Config epochs field: {config_epochs}", f"config_epochs_field: {config_epochs}"],
+            [f"Planned train epochs: {planned_epochs}", f"planned_train_epochs: {planned_epochs}"],
+            ["Epoch schedule source: lr_stages", "epoch_schedule_source: lr_stages"],
+        ]
+        missing = [markers[0] for markers in required_marker_groups if not any(marker in plan_text for marker in markers)]
+        if missing:
+            errors.append(
+                f"{rel(plan_path)} must disclose lr_stages epoch schedule; missing "
+                + ", ".join(missing)
+            )
+        if re.search(r"(?m)^-\s*Epochs:\s*[0-9]+\s*$", plan_text):
+            errors.append(
+                f"{rel(plan_path)} must not use ambiguous '- Epochs:' when lr_stages overrides epochs"
+            )
+    return errors
+
+
 def normalize_attempt_ids(value: str) -> tuple[str, str]:
     cleaned = value.strip()
     match = re.fullmatch(r"(?i)(?:attempt-)?([0-9]{3})", cleaned)
@@ -1160,6 +1218,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
     for trial_readme in sorted((REPO_ROOT / "experiments" / "module_trials").glob("IDEA-*/TRIAL-*/README.md")):
         if "## Trial Flow" not in read_text(trial_readme):
             raise WorkflowError(f"{rel(trial_readme)} must include ## Trial Flow")
+    epoch_schedule_errors = validate_attempt_epoch_schedule_disclosure()
+    if epoch_schedule_errors:
+        raise WorkflowError(
+            "Attempt epoch schedule disclosure failed:\n" + "\n".join(epoch_schedule_errors)
+        )
 
     idea_tree = json.loads(read_text(REPO_ROOT / "idea_tree" / "idea_tree.json"))
     current_version, ideas = validate_idea_tree_data(idea_tree)
