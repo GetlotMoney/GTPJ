@@ -77,6 +77,7 @@ python workflow/gtpj_workflow.py list-workflow-files
 |---|---|---|
 | `汇报`, `查状态`, `现在怎么样` | 只读状态检查 | 无，使用 `WORKFLOW_KERNEL.md` |
 | `读论文`, `找创新点` | 论文读取 / idea discovery | `playbooks/paper_intake.md` |
+| `从论文开始`, `论文到实验闭环`, `读论文并验证创新` | paper -> idea -> module trial 闭环 | `playbooks/paper_to_experiment.md` |
 | `调参` | 调参 Tune | `playbooks/tune.md` |
 | `消融` | 消融 Ablation | `playbooks/ablation.md` |
 | `复现`, `确认这个结果` | 复现确认 Confirmation | `playbooks/confirmation.md` |
@@ -127,6 +128,13 @@ agent_activity_stream：
 ```text
 人话路由 -> campaign/attempt 计划 -> agent_runtime -> preflight -> runner
 -> manifest/result/quality/agent_summary -> cleanup -> sync/closeout
+```
+
+从论文获得创新时，多一段前置闭环，但仍然只接入同一个实验闭环：
+
+```text
+paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue
+-> trial_preflight -> runner_evidence -> idea_feedback
 ```
 
 混合实验目录只做调度索引；正式结果必须写回各自归属的 attempt / version / trial。

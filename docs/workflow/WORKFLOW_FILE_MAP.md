@@ -29,6 +29,7 @@ helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有�
 | 文件 | 状态 |
 |---|---|
 | `playbooks/paper_intake.md` | 论文/来源/idea discovery 操作卡。 |
+| `playbooks/paper_to_experiment.md` | 论文来源到 idea_tree 再到 module trial 的桥接闭环操作卡。 |
 | `playbooks/tune.md` | 调参操作卡。 |
 | `playbooks/ablation.md` | 消融操作卡。 |
 | `playbooks/confirmation.md` | 复现/确认操作卡。 |
@@ -87,6 +88,7 @@ workflow/gtpj_workflow.py
 
 ```bash
 python workflow/gtpj_workflow.py start --phrase "开新模块"
+python workflow/gtpj_workflow.py start --phrase "从论文开始"
 python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
 python workflow/gtpj_workflow.py start-card --type tune --version v5 --owner-request "调参"
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>

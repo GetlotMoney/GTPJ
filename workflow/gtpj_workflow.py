@@ -5369,6 +5369,7 @@ WORKFLOW_MANIFEST_REQUIRED_IDS = {
     "playbook_promotion",
     "playbook_mixed_campaign",
     "playbook_paper_intake",
+    "playbook_paper_to_experiment",
 }
 
 
@@ -5886,6 +5887,52 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "closed_loop": "plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync",
             "gates": "campaign_manifest, work_items, agent_runtime, multi_agent_preflight, artifact_boundary, cleanup",
             "next_action": "create campaign manifest and agent_runtime.yaml after owner approval",
+        }
+    if normalized in {"读论文", "找创新点", "提取创新"}:
+        return {
+            "owner_phrase": normalized,
+            "task_type": "paper intake / idea discovery",
+            "base_version": base_version,
+            "target": "paper sources and candidate ideas",
+            "writes": "GTPJ_Research first; GitHub idea_tree only for stable lightweight source and idea facts; no experiments",
+            "agent_mode": "role_only for intake/triage; real_multi_agent only if the output will drive formal trial decisions",
+            "agent_instance_mode": "role_only",
+            "playbook": "docs/workflow/playbooks/paper_intake.md",
+            "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/paper_intake.md",
+            "closed_loop": "paper_inbox -> paper_index -> source_review -> extracted_ideas -> idea_tree_sync_check",
+            "runner_scope": "none",
+            "formal_runner_allowed": "false",
+            "formal_evidence_allowed": "false",
+            "agent_runtime_gate": "not_required for intake; required later before formal trial/Runner",
+            "multi_agent_preflight": "not_required for intake",
+            "owner_monitor_mode": "not_required for intake",
+            "agent_activity_stream": "not_required for intake",
+            "gates": "PAPERS_INDEX, source_status, source_ref, hypothesis, implementation_scope, risk, version_scores",
+            "blocked_reason": "paper intake cannot directly start training or create module trial",
+            "next_action": "scan GTPJ_Research/papers/_inbox and PAPERS_INDEX.md; do not run training",
+        }
+    if normalized in {"从论文开始", "论文到实验闭环", "读论文并验证创新", "从论文读取获得创新"}:
+        return {
+            "owner_phrase": normalized,
+            "task_type": "paper -> idea -> module trial closed loop",
+            "base_version": base_version,
+            "target": "paper-derived idea pipeline",
+            "writes": "Research first; GitHub idea_tree after source/mechanism gate; experiments only after selected idea and owner approval",
+            "agent_mode": "role_only for intake/triage; real_multi_agent when code starts or formal trial evidence is planned",
+            "agent_instance_mode": "role_only until formal trial uses temporary_subagent",
+            "playbook": "docs/workflow/playbooks/paper_to_experiment.md",
+            "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/paper_to_experiment.md",
+            "closed_loop": "paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue -> trial_preflight -> runner_evidence -> idea_feedback",
+            "runner_scope": "none until selected IDEA and owner approval",
+            "formal_runner_allowed": "false until agent_runtime and multi_agent_preflight pass",
+            "formal_evidence_allowed": "false until formal result review passes",
+            "agent_runtime_gate": "required before formal trial/Runner",
+            "multi_agent_preflight": "required before formal trial/Runner",
+            "owner_monitor_mode": "true for formal Runner",
+            "agent_activity_stream": "required before formal Runner",
+            "gates": "source_status, source_ref, hypothesis, implementation_scope, risk, version_scores, selected_queue, interface_contract, agent_runtime, multi_agent_preflight, cleanup",
+            "blocked_reason": "formal run blocked until a paper-derived IDEA is selected and real agents pass preflight",
+            "next_action": "read PAPERS_INDEX/_inbox and classify sources; do not create trial or run training until a selected idea passes gates",
         }
     if normalized in {"开新模块", "开下一个新模块"}:
         idea = next_ready_trial_idea(data, base_version)

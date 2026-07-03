@@ -413,6 +413,7 @@ class WorkflowHelperTest(unittest.TestCase):
             ("playbook_promotion", "docs/workflow/playbooks/promotion.md", "playbook", "active", False),
             ("playbook_mixed_campaign", "docs/workflow/playbooks/mixed_campaign.md", "playbook", "active", False),
             ("playbook_paper_intake", "docs/workflow/playbooks/paper_intake.md", "playbook", "active", False),
+            ("playbook_paper_to_experiment", "docs/workflow/playbooks/paper_to_experiment.md", "playbook", "active", False),
         ]
         lines = ["workflow_version: v2", "files:"]
         for logical_id, path, category, status, daily_read in entries:
@@ -574,6 +575,45 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("Review 0-3", stdout)
         self.assertIn("next_action: create dev/v1-idea-0001-trial-001-token-router branch and trial record after owner approval", stdout)
         self.assertFalse((self.repo / "experiments/module_trials/IDEA-0001_token_router").exists())
+        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
+
+    def test_start_routes_paper_intake_phrase_without_writing(self) -> None:
+        idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
+        version_before = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
+
+        code, stdout, stderr = self._run_main("start", "--phrase", "读论文")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 读论文", stdout)
+        self.assertIn("task_type: paper intake / idea discovery", stdout)
+        self.assertIn("playbook: docs/workflow/playbooks/paper_intake.md", stdout)
+        self.assertIn("closed_loop: paper_inbox -> paper_index -> source_review -> extracted_ideas -> idea_tree_sync_check", stdout)
+        self.assertIn("formal_runner_allowed: false", stdout)
+        self.assertIn("next_action: scan GTPJ_Research/papers/_inbox and PAPERS_INDEX.md; do not run training", stdout)
+        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
+
+    def test_start_routes_paper_to_experiment_closed_loop_without_writing(self) -> None:
+        idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
+        version_before = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
+
+        code, stdout, stderr = self._run_main("start", "--phrase", "从论文开始")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 从论文开始", stdout)
+        self.assertIn("task_type: paper -> idea -> module trial closed loop", stdout)
+        self.assertIn("playbook: docs/workflow/playbooks/paper_to_experiment.md", stdout)
+        self.assertIn(
+            "closed_loop: paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue -> trial_preflight -> runner_evidence -> idea_feedback",
+            stdout,
+        )
+        self.assertIn("agent_runtime_gate: required before formal trial/Runner", stdout)
+        self.assertIn("multi_agent_preflight: required before formal trial/Runner", stdout)
+        self.assertIn("formal_runner_allowed: false until agent_runtime and multi_agent_preflight pass", stdout)
+        self.assertIn("do not create trial or run training until a selected idea passes gates", stdout)
         self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
         self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
 
@@ -2127,6 +2167,7 @@ decision:
         self._write("docs/workflow/playbooks/promotion.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
 
@@ -2155,6 +2196,7 @@ decision:
             "playbooks/promotion.md",
             "playbooks/mixed_campaign.md",
             "playbooks/paper_intake.md",
+            "playbooks/paper_to_experiment.md",
         ]:
             self._write(f"docs/workflow/{rel_path}", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
 

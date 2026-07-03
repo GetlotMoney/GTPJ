@@ -40,6 +40,7 @@
 
 ```text
 docs/workflow/playbooks/paper_intake.md
+docs/workflow/playbooks/paper_to_experiment.md
 docs/workflow/playbooks/tune.md
 docs/workflow/playbooks/ablation.md
 docs/workflow/playbooks/confirmation.md
@@ -87,6 +88,12 @@ START_HERE.md
 
 ```bash
 python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+```
+
+论文到实验闭环用桥接执行卡，不直接从 paper intake 开训：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "从论文开始"
 ```
 
 最小闭环是：

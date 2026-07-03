@@ -75,6 +75,11 @@ files:
     category: playbook
     status: active
     daily_read: false
+  - logical_id: playbook_paper_to_experiment
+    canonical_path: docs/workflow/playbooks/paper_to_experiment.md
+    category: playbook
+    status: active
+    daily_read: false
   - logical_id: playbook_tune
     canonical_path: docs/workflow/playbooks/tune.md
     category: playbook
