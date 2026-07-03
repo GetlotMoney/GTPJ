@@ -697,7 +697,7 @@ audit:
             raw_evidence_level="quick_local",
             promotion_decision="not_applicable",
         )
-        preserved = self.module.preserve_trial_best_for_non_best_sync(
+        preserved = self.module.preserve_trial_best_observed_for_sync(
             defaults,
             {
                 "evidence_level": "valid_single_run",
@@ -1577,6 +1577,63 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(plan["formal_evidence"])
         self.assertEqual("experiments/module_trials/IDEA-0003_x/TRIAL-001_x/agent_runtime.yaml", plan["agent_runtime_gate"])
 
+    def test_plan_dynamic_routing_batch_uses_attempt_scoped_warehouse_from_gate(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/attempts/ATTEMPT-007/agent_runtime.yaml")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-ATTEMPT-WAREHOUSE",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("dynamic-routing-plan-created", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-ATTEMPT-WAREHOUSE"
+        plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
+        readme = (run_dir / "README.md").read_text(encoding="utf-8")
+        self.assertEqual("attempt_run", plan["warehouse_scope"])
+        self.assertEqual("ATTEMPT-007", plan["warehouse_attempt_id"])
+        self.assertIn("warehouse_scope: attempt_run", readme)
+        self.assertIn("warehouse_attempt_id: ATTEMPT-007", readme)
+
+    def test_plan_dynamic_routing_batch_accepts_explicit_attempt_id_for_warehouse(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-EXPLICIT-ATTEMPT-WAREHOUSE",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--attempt-id",
+            "attempt-009",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-EXPLICIT-ATTEMPT-WAREHOUSE/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual("attempt_run", plan["warehouse_scope"])
+        self.assertEqual("ATTEMPT-009", plan["warehouse_attempt_id"])
+
     def test_plan_dynamic_routing_batch_accepts_workflow_v2_10_job_profile(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
@@ -1700,6 +1757,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("keep top 3 best_model_*.pth by H", script)
         self.assertIn("def load_json(path, retries=20, delay=0.05):", script)
         self.assertIn("os.replace(tmp_path, path)", script)
+        self.assertIn("def refresh_batch_status(run_dir):", script)
+        self.assertIn("def inner():", script)
+        self.assertIn('status_path = run_dir / "batch_status.json"', script)
+        self.assertIn("write_json(status_path, status)", script)
+        self.assertIn("completed_with_failures", script)
+        self.assertIn('str(plan.get("warehouse_attempt_id", ""))', script)
+        self.assertIn('/ str(plan.get("run_id", "RUN-UNKNOWN"))', script)
 
     def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:
         code, stdout, stderr = self._run_main(
@@ -2058,6 +2122,135 @@ No training result has been recorded.
         self.assertEqual("weakened", idea["status"])
         self.assertEqual("trialing", idea["version_scores"]["v1"]["stage"])
         self.assertIn(f"{trial_dir}/result.yaml", {item["ref"] for item in idea["evidence"]})
+
+    def test_sync_trial_summary_confirmed_candidate_preserves_best_observed(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+        self._write(
+            f"{trial_dir}/README.md",
+            """# TRIAL-001_dynamic-routing
+
+```text
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+base_version: v5
+base_code_tag: v5
+branch_source: main
+idea_source_file: idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md
+idea_title: Dynamic Residual Routing
+code_branch: codex/dr035-exact-repeat-20260703
+code_tag: trial/v5/idea-0003/trial-001
+code_commit:
+trial_decision: pending
+promotion_decision: blocked
+promote_to:
+evidence_level: valid_single_run
+best_observed_H: 75.02
+confirmed_H: pending
+confirmation_status: needs_confirmation
+run_config: config.yaml
+log_artifact_id:
+log_uri:
+log_sha256:
+log_size_bytes:
+manifest: manifest.yaml
+result_yaml: result.yaml
+result_md: result.md
+```
+
+## Results
+
+| Dataset | Seed | U | S | H | ZS | Best epoch | Log |
+|---|---:|---:|---:|---:|---:|---:|---|
+""",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-007/manifest.yaml",
+            """schema_version: gtpj-manifest/v1
+experiment:
+  id: "TRIAL-001"
+  name: "TRIAL-001_dynamic-routing"
+  kind: "module-trial"
+  status: "completed"
+  attempt_id: "attempt-007"
+version:
+  base_version: "v5"
+  base_code_tag: "v5"
+  code_branch: "codex/dr035-exact-repeat-20260703"
+  code_commit: "abc123"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-007/config.yaml"
+  config_sha256: "sha-config"
+  pre_run_freeze_commit: "abc123"
+  command: "bash start_batch.sh"
+  seed: "5"
+idea:
+  idea_id: "IDEA-0003"
+  title: "Dynamic Residual Routing"
+  hypothesis: "Confirm DR-035."
+artifacts:
+  train_log:
+    artifact_id: "log:v5:module_trial:TRIAL-001:attempt-007"
+    role: "training_log"
+    uri: "warehouse://gtpj/runs/v5/module_trial/TRIAL-001/ATTEMPT-007/RUN-DR035/DR-001/logs/train.log"
+    sha256: "sha-log"
+    size_bytes: "123"
+    required_for: "audit"
+    status: "available"
+""",
+        )
+        self._write(
+            f"{trial_dir}/attempts/ATTEMPT-007/result.yaml",
+            """schema_version: gtpj-attempt-result/v1
+experiment_id: "TRIAL-001"
+kind: "module-trial"
+version: "v5"
+attempt_id: "attempt-007"
+metrics:
+  U: "73.38"
+  S: "75.88"
+  H: "74.61"
+  ZS: "81.84"
+  best_epoch: "37"
+  baseline_H: "74.44"
+  delta_H: "+0.17"
+  seed: "5"
+decision:
+  status: "confirmed_candidate"
+  promotion_decision: "blocked"
+evidence:
+  evidence_level: "confirmation_grade"
+""",
+        )
+
+        code, stdout, stderr = self._run_main(
+            "sync-trial-summary",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-007",
+            "--decision",
+            "confirmed_candidate",
+            "--evidence-level",
+            "confirmation_grade",
+            "--promotion-decision",
+            "blocked",
+            "--skip-idea-tree",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("sync-trial-summary-ok", stdout)
+        root_result = (self.repo / trial_dir / "result.yaml").read_text(encoding="utf-8")
+        root_readme = (self.repo / trial_dir / "README.md").read_text(encoding="utf-8")
+        self.assertIn('result_status: "confirmed_candidate"', root_result)
+        self.assertIn('best_observed_H: "75.02"', root_result)
+        self.assertIn('confirmed_H: "74.61"', root_result)
+        self.assertIn('confirmation_status: "confirmed_candidate"', root_result)
+        self.assertIn("trial_decision: confirmed_candidate", root_readme)
+        self.assertIn("best_observed_H: 75.02", root_readme)
+        self.assertIn("confirmed_H: 74.61", root_readme)
+        self.assertIn("confirmation_status: confirmed_candidate", root_readme)
 
     def test_attempt_sync_metrics_accepts_batch_best_single(self) -> None:
         result_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-002/result.yaml"

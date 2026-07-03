@@ -3432,6 +3432,7 @@ def sync_evidence_defaults(
     promotion_decision: str,
 ) -> dict[str, str]:
     h_value = metrics.get("H", "")
+    confirmed_decisions = {"confirmed_candidate", "promote", "keep", "best"}
     if decision in {"blocked", "debug", "rerun"}:
         evidence_level = raw_evidence_level or "quick_local"
         result_status = decision
@@ -3444,15 +3445,20 @@ def sync_evidence_defaults(
         best_observed_h = ""
         confirmation_status = "needs_confirmation"
         default_promotion = "blocked"
-    elif decision in {"promote", "keep", "best"}:
+    elif decision in confirmed_decisions:
         evidence_level = raw_evidence_level if raw_evidence_level in EVIDENCE_LEVELS else "valid_single_run"
         best_observed_h = h_value
         if evidence_level in {"confirmation_grade", "baseline_grade"}:
-            result_status = "confirmed" if decision in {"keep", "best"} else "promotion_candidate"
+            if decision == "promote":
+                result_status = "promotion_candidate"
+            elif decision == "confirmed_candidate":
+                result_status = "confirmed_candidate"
+            else:
+                result_status = "confirmed"
             confirmed_h = h_value
-            confirmation_status = "confirmed"
+            confirmation_status = "confirmed_candidate" if decision == "confirmed_candidate" else "confirmed"
         else:
-            result_status = "needs_confirmation" if decision in {"keep", "best"} else "promotion_candidate"
+            result_status = "needs_confirmation" if decision != "promote" else "promotion_candidate"
             confirmed_h = "pending"
             confirmation_status = "needs_confirmation"
         default_promotion = "promote" if decision == "promote" else "blocked"
@@ -3473,21 +3479,32 @@ def sync_evidence_defaults(
         "evidence_level": evidence_level,
         "result_status": result_status,
         "best_observed_H": best_observed_h,
-        "confirmed_H": confirmed_h if decision in {"promote", "keep", "best"} else "pending",
+        "confirmed_H": confirmed_h if decision in confirmed_decisions else "pending",
         "confirmation_status": confirmation_status,
         "promotion_decision": promotion_decision or default_promotion,
         "promote_to": "",
     }
 
 
-def preserve_trial_best_for_non_best_sync(
+def numeric_greater(left: str, right: str) -> bool:
+    try:
+        return float(left) > float(right)
+    except (TypeError, ValueError):
+        return False
+
+
+def preserve_trial_best_observed_for_sync(
     evidence_defaults: dict[str, str],
     trial_fields: dict[str, str],
     decision: str,
 ) -> dict[str, str]:
-    if decision not in {"not_confirmed", "blocked", "debug", "rerun"}:
-        return evidence_defaults
     preserved = dict(evidence_defaults)
+    existing_best = trial_fields.get("best_observed_H", "")
+    new_best = preserved.get("best_observed_H", "")
+    if existing_best and (not new_best or numeric_greater(existing_best, new_best)):
+        preserved["best_observed_H"] = existing_best
+    if decision not in {"not_confirmed", "blocked", "debug", "rerun"}:
+        return preserved
     for key in ["best_observed_H", "confirmed_H", "confirmation_status"]:
         value = trial_fields.get(key, "")
         if value:
@@ -4368,7 +4385,7 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
         raw_evidence_level=raw_evidence_level,
         promotion_decision=promotion_decision if promotion_decision != "not_applicable" or decision == "promote" else "",
     )
-    evidence_defaults = preserve_trial_best_for_non_best_sync(
+    evidence_defaults = preserve_trial_best_observed_for_sync(
         evidence_defaults,
         trial_fields,
         decision,
@@ -9362,6 +9379,38 @@ def all_explore_finished(run_dir, plan):
     return all(jobs.get(job["job_id"], {}).get("status") in {"completed", "failed", "skipped"} for job in explore)
 
 
+def refresh_batch_status(run_dir):
+    def inner():
+        status_path = run_dir / "batch_status.json"
+        status = load_json(status_path)
+        jobs = status.get("jobs", {})
+        states = [str(job.get("status", "unknown")) for job in jobs.values()]
+        counts = {state: states.count(state) for state in sorted(set(states))}
+        status["summary"] = {
+            "total": str(len(states)),
+            "completed": str(counts.get("completed", 0)),
+            "failed": str(counts.get("failed", 0)),
+            "skipped": str(counts.get("skipped", 0)),
+            "running": str(counts.get("running", 0)),
+            "pending": str(counts.get("pending", 0)),
+        }
+        if states and all(state in {"completed", "failed", "skipped"} for state in states):
+            if counts.get("failed", 0):
+                status["status"] = "completed_with_failures"
+            elif counts.get("skipped", 0):
+                status["status"] = "completed_with_skips"
+            else:
+                status["status"] = "completed"
+            status["completed_at"] = utc_now()
+        elif counts.get("running", 0):
+            status["status"] = "running"
+        else:
+            status["status"] = "planned"
+        status["updated_at"] = utc_now()
+        write_json(status_path, status)
+    locked(run_dir, inner)
+
+
 def top_job_for_rank(run_dir, rank):
     rows = completed_explore_rows(run_dir)
     rows.sort(key=lambda row: float(row.get("H") or "-inf"), reverse=True)
@@ -9401,6 +9450,18 @@ def ensure_worktree(plan, gpu):
 
 
 def warehouse_attempt_dir(plan, job):
+    attempt_id = str(plan.get("warehouse_attempt_id", "")).strip()
+    if attempt_id:
+        return (
+            Path(plan["warehouse_root"])
+            / "runs"
+            / str(plan.get("base_version", "v5"))
+            / "module_trial"
+            / str(plan.get("trial_id", "TRIAL-001"))
+            / attempt_id
+            / str(plan.get("run_id", "RUN-UNKNOWN"))
+            / str(job["job_id"])
+        )
     attempt_lower = str(job["attempt_id"]).lower()
     return (
         Path(plan["warehouse_root"])
@@ -9479,6 +9540,9 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
     manifest = {
         "job_id": job["job_id"],
         "attempt_id": job["attempt_id"],
+        "warehouse_scope": str(plan.get("warehouse_scope", "legacy_job_attempt")),
+        "warehouse_attempt_id": str(plan.get("warehouse_attempt_id", "")),
+        "run_id": str(plan.get("run_id", "")),
         "warehouse_dir": str(attempt_dir),
         "copied_files": copied,
         "kept_model_files": kept_models,
@@ -9578,6 +9642,9 @@ def run_job(run_dir, plan, job, gpu):
                     {
                         "job_id": job["job_id"],
                         "attempt_id": job["attempt_id"],
+                        "warehouse_scope": str(plan.get("warehouse_scope", "legacy_job_attempt")),
+                        "warehouse_attempt_id": str(plan.get("warehouse_attempt_id", "")),
+                        "run_id": str(plan.get("run_id", "")),
                         "warehouse_dir": str(attempt_dir),
                         "copied_files": [str(dst)],
                         "error": str(exc),
@@ -9620,8 +9687,10 @@ def main():
         if status in {"completed", "failed", "skipped", "running"}:
             continue
         run_job(run_dir, plan, job, args.gpu)
+        refresh_batch_status(run_dir)
 
     while not all_explore_finished(run_dir, plan):
+        refresh_batch_status(run_dir)
         time.sleep(30)
 
     for job in assigned:
@@ -9631,11 +9700,20 @@ def main():
         if status in {"completed", "failed", "skipped", "running"}:
             continue
         run_job(run_dir, plan, job, args.gpu)
+        refresh_batch_status(run_dir)
+    refresh_batch_status(run_dir)
 
 
 if __name__ == "__main__":
     main()
 '''
+
+
+def infer_attempt_id_from_path(path: Path) -> str:
+    for candidate in (path, *path.parents):
+        if re.fullmatch(r"attempt-[0-9]{3}", candidate.name, re.IGNORECASE):
+            return candidate.name.upper()
+    return ""
 
 
 def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
@@ -9648,6 +9726,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     if not base_config.exists():
         raise WorkflowError(f"Missing base config: {display_path(base_config)}")
     agent_runtime_gate = ""
+    gate_path: Path | None = None
     if args.agent_runtime_gate:
         gate_path = resolve_agent_runtime_gate_path(args.agent_runtime_gate)
         gate_errors = validate_agent_runtime_gate_file(gate_path) if gate_path.exists() else [
@@ -9661,6 +9740,11 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             "Formal dynamic routing batch requires --agent-runtime-gate. "
             "Use --debug-smoke only for non-formal runner probes."
         )
+    warehouse_attempt_id = ""
+    if args.attempt_id:
+        warehouse_attempt_id, _attempt_lower = normalize_attempt_ids(args.attempt_id)
+    elif gate_path is not None:
+        warehouse_attempt_id = infer_attempt_id_from_path(gate_path)
 
     run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
@@ -9704,6 +9788,8 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "server_repo": args.server_repo,
         "worktree_root": args.worktree_root,
         "warehouse_root": args.warehouse_root,
+        "warehouse_scope": "attempt_run" if warehouse_attempt_id else "legacy_job_attempt",
+        "warehouse_attempt_id": warehouse_attempt_id,
         "runtime_resource_links": ["data"],
         "conda_env": args.conda_env,
         "python": args.python,
@@ -9760,6 +9846,8 @@ branch: {branch}
 commit: {commit}
 formal_evidence: {str(not bool(args.debug_smoke)).lower()}
 agent_runtime_gate: {agent_runtime_gate or 'debug_smoke_not_required'}
+warehouse_scope: {'attempt_run' if warehouse_attempt_id else 'legacy_job_attempt'}
+warehouse_attempt_id: {warehouse_attempt_id or 'not_set'}
 gpus: {','.join(str(gpu) for gpu in gpus)}
 
 Start on server:
@@ -9810,6 +9898,7 @@ def cmd_dynamic_routing_status(args: argparse.Namespace) -> int:
     completed = [row for row in rows if row.get("status") == "completed" and row.get("H")]
     best = max(completed, key=lambda row: float(row["H"])) if completed else None
     print(f"run_id: {status.get('run_id', run_dir.name)}")
+    print(f"batch_status: {status.get('status', 'unknown')}")
     print("counts: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items())))
     print(f"summary_rows: {len(rows)}")
     if best:
@@ -10048,6 +10137,7 @@ def build_parser() -> argparse.ArgumentParser:
             "revise",
             "combine",
             "promote",
+            "confirmed_candidate",
             "rerun",
             "not_confirmed",
             "blocked",
@@ -10105,6 +10195,7 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--trial-dir", required=True)
     dyn_plan.add_argument("--base-config", default="")
     dyn_plan.add_argument("--run-id", default="")
+    dyn_plan.add_argument("--attempt-id", default="")
     dyn_plan.add_argument("--jobs", type=int, default=50)
     dyn_plan.add_argument("--profile", default="balanced-aggressive")
     dyn_plan.add_argument("--base-version", default="v5")
