@@ -2,6 +2,12 @@
 
 用于 `跑10创新+100调参` 这类任意组合实验命令。
 
+先用 helper 自动路由，不要手工拆任务：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+```
+
 ## 必读
 
 ```text

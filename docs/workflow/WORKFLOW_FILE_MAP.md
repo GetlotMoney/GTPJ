@@ -75,6 +75,7 @@ workflow/gtpj_workflow.py
 
 ```bash
 python workflow/gtpj_workflow.py start --phrase "开新模块"
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
 python workflow/gtpj_workflow.py start-card --type tune --version v5 --owner-request "调参"
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
 python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
@@ -88,3 +89,5 @@ python workflow/gtpj_workflow.py validate-workflow-consistency
 如果规则只和某类任务有关，写进对应 playbook。
 
 如果只是长解释、证据或历史，保留为参考文件，并从 playbook 指过去。
+
+混合实验 campaign 只负责调度和索引；正式事实仍写回对应 attempt / version / trial。

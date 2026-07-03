@@ -7,9 +7,8 @@
 ```text
 先读 START_HERE.md
 再读 WORKFLOW_KERNEL.md
-只有路由不清楚时才读 WORKFLOW_ROUTER.md
-每次只读一个相关执行卡 playbook
-只有 playbook 明确要求时，才深读旧的长协议文件
+再读一个相关 playbook
+只有路由不清楚或 playbook 明确要求时，才读长文件
 ```
 
 ## 当前有效入口
@@ -72,3 +71,17 @@ START_HERE.md
 -> multi-agent-preflight
 -> Runner
 ```
+
+组合实验用同一个入口自动路由：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+```
+
+最小闭环是：
+
+```text
+plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync
+```
+
+不要为了“完整”默认搬运或阅读整个 `docs/workflow/`。

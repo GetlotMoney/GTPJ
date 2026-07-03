@@ -543,6 +543,19 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
         self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
 
+    def test_start_auto_routes_mixed_experiment_phrase_to_closed_loop_campaign(self) -> None:
+        code, stdout, stderr = self._run_main("start", "--phrase", "跑2创新+8调参")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 跑2创新+8调参", stdout)
+        self.assertIn("task_type: mixed experiment campaign", stdout)
+        self.assertIn("requested_mix: innovation=2, tune=8", stdout)
+        self.assertIn("playbook: docs/workflow/playbooks/mixed_campaign.md", stdout)
+        self.assertIn("daily_read_chain: START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/mixed_campaign.md", stdout)
+        self.assertIn("closed_loop: plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync", stdout)
+        self.assertIn("next_action: create campaign manifest and agent_runtime.yaml after owner approval", stdout)
+
     def test_closeout_check_accepts_synced_module_trial_loop_without_writing(self) -> None:
         idea = self._write_selected_idea_files()
         trial_dir = "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router"

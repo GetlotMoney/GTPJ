@@ -58,9 +58,9 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 1. START_HERE.md
 2. WORKFLOW_KERNEL.md
 3. docs/workflow/playbooks/ 下的相关 playbook
-4. 只有路由模糊或混合任务时才读 WORKFLOW_ROUTER.md
-5. 汇报启动摘要前读 TASK_START_MINI.md
-6. 正式写入或运行前读 TASK_START_CARD.md
+4. 只有路由模糊时才读 WORKFLOW_ROUTER.md
+5. 正式写入或运行前读 TASK_START_CARD.md
+6. 正式 Runner 前读 AGENT_RUNTIME_HARD_GATE.md
 ```
 
 不要默认深读所有旧协议。
@@ -78,6 +78,12 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 | `升版本` | 升版 Promotion | `playbooks/promotion.md` |
 | `跑10创新+100调参` 或任意数量组合 | 混合实验 campaign | `playbooks/mixed_campaign.md` |
 | `全自动研究campaign`, `从论文到最终结果都接管` | 全自动研究 campaign | `playbooks/autonomous_campaign.md` |
+
+helper 会自动解析 `跑2创新+8调参` 这类组合短语：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+```
 
 ## 4. 启动摘要
 
@@ -108,7 +114,18 @@ agent_activity_stream：
 
 如果只是状态汇报，保持简短即可。
 
-## 5. 证据优先
+## 5. 最小闭环
+
+不要把简单任务做成大工程。正式实验只要求这条闭环：
+
+```text
+人话路由 -> campaign/attempt 计划 -> agent_runtime -> preflight -> runner
+-> manifest/result/quality/agent_summary -> cleanup -> sync/closeout
+```
+
+混合实验目录只做调度索引；正式结果必须写回各自归属的 attempt / version / trial。
+
+## 6. 证据优先
 
 不要让聊天记忆变成正式证据。
 

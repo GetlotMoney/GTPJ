@@ -5690,10 +5690,56 @@ def next_ready_trial_idea(data: dict, version: str) -> dict | None:
     )[0]
 
 
+MIXED_EXPERIMENT_LABELS = {
+    "创新": "innovation",
+    "新模块": "innovation",
+    "调参": "tune",
+    "消融": "ablation",
+    "复现": "confirmation",
+    "确认": "confirmation",
+    "debug": "debug",
+    "smoke": "debug",
+}
+
+
+def parse_mixed_experiment_phrase(phrase: str) -> dict[str, int]:
+    normalized = phrase.strip().lower().replace("，", "+").replace(",", "+").replace("、", "+")
+    if not normalized.startswith("跑"):
+        return {}
+    requested: dict[str, int] = {}
+    for count_text, label in re.findall(r"(\d+)\s*([a-zA-Z]+|[\u4e00-\u9fff]+)", normalized):
+        kind = MIXED_EXPERIMENT_LABELS.get(label)
+        if not kind:
+            continue
+        requested[kind] = requested.get(kind, 0) + int(count_text)
+    return requested
+
+
+def format_requested_mix(requested: dict[str, int]) -> str:
+    order = ["innovation", "tune", "ablation", "confirmation", "debug"]
+    return ", ".join(f"{kind}={requested[kind]}" for kind in order if requested.get(kind))
+
+
 def mini_card_for_phrase(phrase: str) -> dict[str, str]:
     data = load_idea_tree()
     base_version = current_active_version(data)
     normalized = phrase.strip().rstrip("。")
+    requested_mix = parse_mixed_experiment_phrase(normalized)
+    if len(requested_mix) >= 2:
+        return {
+            "owner_phrase": normalized,
+            "task_type": "mixed experiment campaign",
+            "base_version": base_version,
+            "target": "multiple workstreams under one campaign router",
+            "requested_mix": format_requested_mix(requested_mix),
+            "writes": "none until campaign manifest, work item map, and agent_runtime.yaml are approved",
+            "agent_mode": "real_multi_agent for formal campaign evidence",
+            "playbook": "docs/workflow/playbooks/mixed_campaign.md",
+            "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/mixed_campaign.md",
+            "closed_loop": "plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync",
+            "gates": "campaign_manifest, work_items, agent_runtime, multi_agent_preflight, artifact_boundary, cleanup",
+            "next_action": "create campaign manifest and agent_runtime.yaml after owner approval",
+        }
     if normalized in {"开新模块", "开下一个新模块"}:
         idea = next_ready_trial_idea(data, base_version)
         if idea is None:
@@ -5834,6 +5880,10 @@ def fill_mini_card_defaults(card: dict[str, str]) -> dict[str, str]:
         filled.setdefault("agent_activity_stream", "not_required")
         filled.setdefault("blocked_reason", "none")
     filled.setdefault("agent_instance_mode", "temporary_subagent" if formal_intent else "role_only")
+    filled.setdefault("requested_mix", "not_applicable")
+    filled.setdefault("playbook", "not_applicable")
+    filled.setdefault("daily_read_chain", "START_HERE.md -> WORKFLOW_KERNEL.md")
+    filled.setdefault("closed_loop", "not_applicable")
     return filled
 
 
@@ -5847,8 +5897,12 @@ def cmd_start(args: argparse.Namespace) -> int:
         "subject_id",
         "evidence_state",
         "writes",
+        "requested_mix",
         "agent_mode",
         "agent_instance_mode",
+        "playbook",
+        "daily_read_chain",
+        "closed_loop",
         "runner_scope",
         "formal_runner_allowed",
         "formal_evidence_allowed",
