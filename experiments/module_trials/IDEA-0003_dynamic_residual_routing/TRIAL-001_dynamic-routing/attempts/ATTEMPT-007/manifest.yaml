@@ -1,0 +1,77 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-007
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: DR-035 same-seed min3 exact repeat
+  status: pre_run_blocked_until_agent_gate_and_gpu_cleanup
+  recorded_at: "2026-07-03T23:55:00+08:00"
+version:
+  base_version: v5
+  base_code_tag: v5
+  code_branch: codex/dr035-exact-repeat-20260703
+  run_code_commit: pending_pre_run_freeze_commit
+source:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
+  source_U: "72.69"
+  source_S: "77.51"
+  source_H: "75.02"
+  source_ZS: "82.04"
+  source_best_epoch: "48"
+schedule:
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: lr_stages
+  lr_stage_epochs: [20, 20, 10]
+  seed: 5
+  gpus: "0,1"
+run:
+  run_id: RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
+  profile: dr035-min3-confirm
+  repeat_type: same_seed_min3_exact_repeat
+  runtime_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
+  jobs_total: 3
+  jobs_completed: pending
+  jobs_failed: pending
+  server_repo: /data/lby/projects/cv_project/GTPJ
+  warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
+frozen_config:
+  use_dynamic_routing: true
+  dynamic_local_mode: fixed
+  dynamic_icsa_mode: fixed
+  dynamic_direction_mode: sample
+  dynamic_pse_mode: fixed
+  dynamic_gate_hidden: 48
+  dynamic_gate_anchor_lambda: 0.005
+  weight_s2v: 0.525
+  random_seed: 5
+expected_jobs:
+  - job_id: DR-001
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r1
+    seed: 5
+  - job_id: DR-002
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r2
+    seed: 5
+  - job_id: DR-003
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r3
+    seed: 5
+evidence:
+  evidence_state: hypothesis_ready
+  agent_runtime_gate: agent_runtime.yaml
+  transitions: TRANSITIONS.jsonl
+  evidence_routing: evidence_routing.yaml
+  formal_runner_allowed: blocked_until_runtime_gate_passes
+result:
+  status: pending_runner
+  confirmation_status: pending
+  confirmed_H: pending
+  promotion_decision: blocked
+checkpoint_retention:
+  required: true
+  keep_count: 3
+  ranking_metric: GZSL-H

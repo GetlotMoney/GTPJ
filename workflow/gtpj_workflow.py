@@ -9070,17 +9070,18 @@ def _workflow_v2_2innov_8tune_specs() -> list[tuple[str, str, dict[str, object]]
 
 def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
     specs: list[tuple[str, str, dict[str, object]]] = []
-    for repeat_seed in [6, 7, 8]:
+    source_seed = 5
+    for repeat_index in [1, 2, 3]:
         specs.append(
             (
                 "confirm_dr035",
-                f"dr035_direction_sample_h48_w0.525_a0.005_s{repeat_seed}",
+                f"dr035_direction_sample_h48_w0.525_a0.005_s{source_seed}_r{repeat_index}",
                 _dynamic_updates(
                     dynamic_direction_mode="sample",
                     dynamic_gate_hidden=48,
                     dynamic_gate_anchor_lambda=0.005,
                     weight_s2v=0.525,
-                    random_seed=repeat_seed,
+                    random_seed=source_seed,
                 ),
             )
         )

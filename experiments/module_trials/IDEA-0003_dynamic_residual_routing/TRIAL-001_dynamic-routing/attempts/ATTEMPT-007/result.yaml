@@ -1,0 +1,70 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-007
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+base_version: v5
+run_id: RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
+result_type: same_seed_min3_exact_repeat
+exact_repeat: true
+confirmation_status: pending_runner
+confirmed_H: pending
+promotion_decision: blocked
+
+target:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
+  source_H: "75.02"
+  source_U: "72.69"
+  source_S: "77.51"
+  source_ZS: "82.04"
+  source_best_epoch: "48"
+
+runs:
+  - job_id: DR-001
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r1
+    seed: 5
+    status: pending
+  - job_id: DR-002
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r2
+    seed: 5
+    status: pending
+  - job_id: DR-003
+    name: dr035_direction_sample_h48_w0.525_a0.005_s5_r3
+    seed: 5
+    status: pending
+
+summary:
+  completed: pending
+  failed: pending
+  best_single_job: pending
+  best_single_H: pending
+  mean_H: pending
+  min_H: pending
+  max_H: pending
+  range_H: pending
+
+gate_thresholds:
+  mean_H_ge: "74.60"
+  min_H_ge: "74.45"
+  range_H_le: "0.50"
+
+gate_result:
+  mean_H_ge_74_60: pending
+  min_H_ge_74_45: pending
+  range_H_le_0_50: pending
+  no_obvious_U_S_collapse: pending
+  decision: pending_runner
+  evidence_state: hypothesis_ready
+
+artifacts:
+  runtime_batch_dir: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
+  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/
+  files: pending_post_run
+
+decision:
+  state: pending_runner
+  reason: Formal Runner has not started. The v5 strict-template run is still active and DR035 agent gate is not closed.
+  next_action: Pass live agent gate, wait for v5 GPU cleanup, sync frozen commit, then start exact repeat.

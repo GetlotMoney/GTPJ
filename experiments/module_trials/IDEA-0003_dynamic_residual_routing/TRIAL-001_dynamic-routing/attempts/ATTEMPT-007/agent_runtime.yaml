@@ -1,0 +1,83 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: ATTEMPT-007
+subject_type: attempt
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: temporary_subagent
+lifecycle: workflow_scoped
+ui_visibility: right_sidebar_temporary_agents
+tool_support_real_multi_agent_available: true
+spawn_tool: multi_agent_v1.send_input_existing_agents
+single_agent_execution: false
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+right_sidebar_retention_policy: current_stage_active_only
+close_completed_agents_on_stage_end: true
+closed_agents_record: AGENT_ACTIVITY.md
+
+temporary_subagent_ids:
+  runner_monitor: 019f287c-a108-7031-ba5c-6e1ae6c1c91d
+  interface_checker: 019f287c-65c3-74b3-b01b-84a8d3d83d38
+  evidence_quality_checker: 019f287c-7aee-7b72-9152-9cbba1b97bb3
+  result_comparator: 019f287c-c9b8-7b81-97bd-c362025460b8
+
+temporary_subagent_display_names:
+  runner_monitor: "Pauli / shared Runner Monitor"
+  interface_checker: "Singer / DR035 Interface Checker"
+  evidence_quality_checker: "Kierkegaard / DR035 Evidence Quality Checker"
+  result_comparator: "Sagan / Result Comparator"
+
+agent_cleanup:
+  retention_policy: current_stage_active_only
+  close_completed_agents_on_stage_end: true
+  close_command: multi_agent_v1.close_agent
+  close_results_record: AGENT_ACTIVITY.md
+
+agent_instance_status:
+  runner_monitor: running
+  interface_checker: closed
+  evidence_quality_checker: closed
+  result_comparator: closed
+
+agent_status_refs:
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+  result_comparator: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+  result_comparator: agent_outputs/result_comparator.md
+
+pre_run_required_checks:
+  runner_monitor: block
+  interface_checker: allow
+  evidence_quality_checker: block
+  result_comparator: allow
+
+multi_agent_preflight:
+  required_agents_spawned: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: false
+  agent_runtime_validated: false
+
+authority_refs:
+  task_start_card: task_start_card.md
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  manifest: manifest.yaml
+  transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md

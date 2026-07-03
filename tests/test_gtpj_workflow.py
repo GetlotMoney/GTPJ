@@ -1484,14 +1484,14 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual([job["job_id"] for job in jobs], ["DR-001", "DR-002", "DR-003"])
         self.assertEqual([job["group"] for job in jobs], ["confirm_dr035"] * 3)
         self.assertEqual([job["phase"] for job in jobs], ["explore"] * 3)
-        self.assertEqual([job["seed"] for job in jobs], [6, 7, 8])
-        self.assertEqual([update["random_seed"] for update in updates], [6, 7, 8])
+        self.assertEqual([job["seed"] for job in jobs], [5, 5, 5])
+        self.assertEqual([update["random_seed"] for update in updates], [5, 5, 5])
         self.assertEqual(
             [job["name"] for job in jobs],
             [
-                "dr035_direction_sample_h48_w0.525_a0.005_s6",
-                "dr035_direction_sample_h48_w0.525_a0.005_s7",
-                "dr035_direction_sample_h48_w0.525_a0.005_s8",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r1",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r2",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r3",
             ],
         )
         self.assertTrue(all(update["use_dynamic_routing"] for update in updates))

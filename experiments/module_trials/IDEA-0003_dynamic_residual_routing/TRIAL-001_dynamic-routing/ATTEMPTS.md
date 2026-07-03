@@ -8,6 +8,7 @@
 | `ATTEMPT-004` | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | 50 completed / 0 failed | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-009 H=75.00 supporting single | tune_promising; repeat DR-035 first; promotion blocked |
 | `ATTEMPT-005` | `RUN-20260703-0001-dr035-min3-confirm-2gpu` | 3 completed / 0 failed | DR-002 seed7 H=74.39 | DR-002 seed7 H=74.39 | seeds 6/7/8 H=73.91/74.39/74.15; mean H=74.15; exact_repeat not run | seed_sweep only; not_confirmed; promotion blocked |
 | `ATTEMPT-006` | `RUN-20260702-0003-mixed2innov8tune-2gpu` | 10 completed / 0 failed | TUNE-002 / DR-004 direction_sample_h48_w0.525_a0.003 H=74.75 | TUNE-002 / DR-004 H=74.75 | no exact repeat; campaign is routing index only | tune_promising; formal ledger for workflow-v2 2-probe + 8-tune batch |
+| `ATTEMPT-007` | `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` | planned / blocked until v5 GPU cleanup and agent gate | pending | pending | planned same-seed min3 exact repeat: seed 5 x3 | formal Runner blocked until live agents allow, runtime gate passes, and server syncs clean commit |
 
 ## ATTEMPT-001 Notes
 
