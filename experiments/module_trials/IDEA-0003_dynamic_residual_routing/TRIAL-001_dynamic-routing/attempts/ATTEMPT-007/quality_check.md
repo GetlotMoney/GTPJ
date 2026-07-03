@@ -32,14 +32,14 @@ exact_repeat: true
 - [x] Live Interface Checker output says allow/pass.
 - [x] Live Evidence Quality Checker output exists.
 - [x] Live Result Comparator output says allow/pass.
-- [ ] Live Runner Monitor output says allow/pass. Current decision: block until v5 cleanup.
-- [ ] Live Evidence Quality Checker output says allow/pass. Current decision: block until runtime gate and v5 cleanup.
-- [ ] `agent_runtime.yaml` records real right-sidebar temporary agent ids.
-- [ ] `validate-agent-runtime --path agent_runtime.yaml` passes.
-- [ ] `multi-agent-preflight --path agent_runtime.yaml` passes.
-- [ ] `agent-cleanup-plan --path agent_runtime.yaml` is reviewed.
-- [ ] v5 strict-template run has completed or released the GPU slots.
-- [ ] Server repo syncs to the frozen DR035 commit.
+- [x] Live Runner Monitor output says allow/pass.
+- [x] Live Evidence Quality Checker output says allow/pass.
+- [x] `agent_runtime.yaml` records real right-sidebar temporary agent ids.
+- [x] v5 strict-template run has completed and released the GPU slots.
+- [x] Server repo syncs to the frozen DR035 commit.
+- [ ] `validate-agent-runtime --path agent_runtime.yaml` passes after final ledger refresh.
+- [ ] `multi-agent-preflight --path agent_runtime.yaml` passes after final ledger refresh.
+- [ ] `agent-cleanup-plan --path agent_runtime.yaml` is reviewed after final ledger refresh.
 - [ ] Frozen batch plan is generated without overwriting any existing run dir.
 - [x] Helper now writes `start_batch.sh` with LF newlines to avoid `batch_status.json\\r` status-file pollution.
 

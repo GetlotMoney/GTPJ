@@ -4,10 +4,10 @@ subject:
   subject_type: "attempt"
   hypothesis_id: "IDEA-0003/TRIAL-001"
 current_state:
-  evidence_state: "hypothesis_ready"
-  derived_from_transition_id: "ER-20260703-ATTEMPT007-001"
-  derived_from_transition_hash: "sha256:0468dde93e5cf4d88f590ae269cec980fc18bb96d5181357f2ad510fb3de3de1"
+  evidence_state: "interface_precheck_passed"
+  derived_from_transition_id: "ER-20260704-ATTEMPT007-002"
+  derived_from_transition_hash: "sha256:a869e1274c0adeab7dd5cd9e2d333a77dd1839e13a1214a819896a55c454e71f"
 transitions:
   file: "TRANSITIONS.jsonl"
-  chain_head_transition_id: "ER-20260703-ATTEMPT007-001"
-  chain_head_hash: "sha256:0468dde93e5cf4d88f590ae269cec980fc18bb96d5181357f2ad510fb3de3de1"
+  chain_head_transition_id: "ER-20260704-ATTEMPT007-002"
+  chain_head_hash: "sha256:a869e1274c0adeab7dd5cd9e2d333a77dd1839e13a1214a819896a55c454e71f"

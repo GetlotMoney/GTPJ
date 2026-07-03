@@ -18,6 +18,9 @@ report_interval_minutes: 15
 | 2026-07-04T00:00:00+08:00 | Result Comparator | `019f287c-c9b8-7b81-97bd-c362025460b8` | Returned `allow`: ATTEMPT-004 is valid_single_run, ATTEMPT-005 is seed_sweep, ATTEMPT-007 thresholds are correct. | `agent_outputs/result_comparator.md` | Post-run must report mean/min/max/range and no auto-promotion. |
 | 2026-07-04T00:02:00+08:00 | Coordinator | current Codex conversation | Closed completed DR035 review agents after writing outputs. | `agent_runtime.yaml`, `agent_outputs/` | Keep only Pauli active for v5/Runner monitoring until DR035 gate can refresh. |
 | 2026-07-04T00:04:00+08:00 | Coordinator | current Codex conversation | Found v5 temporary runner script CRLF/BOM issue that wrote `batch_status.json\\r`; added helper LF-only script writer and regression test before DR035. | `workflow/gtpj_workflow.py`, `tests/test_gtpj_workflow.py` | Regenerate DR035 batch with the fixed helper after runtime gate passes. |
+| 2026-07-04T00:16:00+08:00 | Evidence Quality Checker | `019f287c-7aee-7b72-9152-9cbba1b97bb3` | Refreshed to `allow`: v5 closeout complete, GPU idle, server on DR035 commit, package does not pre-fill results, artifact boundary is clean. | `agent_outputs/evidence_quality_checker.md` | Refresh runner monitor allow and rerun runtime gates. |
+| 2026-07-04T00:22:00+08:00 | Runner Monitor | `019f287c-a108-7031-ba5c-6e1ae6c1c91d` | Refreshed to `allow`: server branch/commit clean, GPU idle, no old processes, no lock, target run dir absent. | `agent_outputs/runner_monitor.md` | Run validate-agent-runtime, multi-agent-preflight, and agent-cleanup-plan. |
+| 2026-07-04T00:23:00+08:00 | Coordinator | current Codex conversation | Closed refreshed Evidence Quality Checker after writing allow output. | `agent_runtime.yaml`, `agent_outputs/evidence_quality_checker.md` | Keep only Pauli active for Runner monitor. |
 
 ## Cleanup Ledger
 
@@ -35,4 +38,5 @@ close_result:
   - interface_checker: closed; previous_status=completed
   - evidence_quality_checker: closed; previous_status=completed
   - result_comparator: closed; previous_status=completed
+  - evidence_quality_checker_final_refresh: closed; previous_status=completed
 ```

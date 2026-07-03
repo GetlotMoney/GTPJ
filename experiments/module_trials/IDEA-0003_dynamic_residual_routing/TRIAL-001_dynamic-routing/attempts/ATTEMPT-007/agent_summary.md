@@ -5,9 +5,9 @@
 | Role | Lifecycle | Agent instance | Responsibility | Pre-run decision |
 |---|---|---|---|---|
 | Coordinator | workflow_scoped | current Codex conversation | Final ledger writer, transition applier, owner-visible reporting | allow to prepare package |
-| Runner Monitor | workflow_scoped | `019f287c-a108-7031-ba5c-6e1ae6c1c91d` | Monitor v5 completion, server sync readiness, GPU lock, and DR035 runner state | block until v5 cleanup |
+| Runner Monitor | workflow_scoped | `019f287c-a108-7031-ba5c-6e1ae6c1c91d` | Monitor v5 completion, server sync readiness, GPU lock, and DR035 runner state | allow |
 | Interface Checker | task_scoped | `019f287c-65c3-74b3-b01b-84a8d3d83d38` | GZSL hard rules, seed exact-repeat boundary, tensor contract, config legality, epoch disclosure | allow |
-| Evidence Quality Checker | task_scoped | `019f287c-7aee-7b72-9152-9cbba1b97bb3` | Artifact boundary, runtime gate, hash/size evidence, checkpoint retention | block until gate and v5 cleanup |
+| Evidence Quality Checker | task_scoped | `019f287c-7aee-7b72-9152-9cbba1b97bb3` | Artifact boundary, runtime gate, hash/size evidence, checkpoint retention | allow |
 | Result Comparator | task_scoped | `019f287c-c9b8-7b81-97bd-c362025460b8` | Compare ATTEMPT-004, ATTEMPT-005, and ATTEMPT-007 criteria; report mean/min/max/range | allow |
 
 ## Coordinator Notes
@@ -22,16 +22,16 @@
 
 ```text
 Runner Monitor:
-  decision: block
-  blocker: v5 strict-template run is active on lab4090 and the server branch must not switch yet.
+  decision: allow
+  note: v5 is complete, GPU is idle, server is synced to DR035 commit, target run dir is absent.
 
 Interface Checker:
   decision: allow
   note: exact-repeat seed and GZSL interface invariants are correct; inspect generated per-job configs before launch.
 
 Evidence Quality Checker:
-  decision: block
-  blocker: runtime gate and GPU/server cleanup are not closed; pre-run package structure is otherwise acceptable.
+  decision: allow
+  note: pre-run package structure, artifact boundary, cleanup ledger, and LF runner-script fix are acceptable.
 
 Result Comparator:
   decision: allow
