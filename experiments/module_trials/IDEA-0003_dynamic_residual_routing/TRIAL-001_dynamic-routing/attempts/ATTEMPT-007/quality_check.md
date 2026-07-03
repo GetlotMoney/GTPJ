@@ -41,6 +41,7 @@ exact_repeat: true
 - [ ] v5 strict-template run has completed or released the GPU slots.
 - [ ] Server repo syncs to the frozen DR035 commit.
 - [ ] Frozen batch plan is generated without overwriting any existing run dir.
+- [x] Helper now writes `start_batch.sh` with LF newlines to avoid `batch_status.json\\r` status-file pollution.
 
 ## Required After Runner
 

@@ -1536,6 +1536,25 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertFalse(plan["formal_evidence"])
         self.assertEqual("debug_smoke", plan["evidence_level"])
 
+    def test_plan_dynamic_routing_batch_writes_start_script_with_lf_newlines(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-LF-SCRIPT",
+            "--debug-smoke",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        script_bytes = (self.repo / ".gtpj_runtime/batches/RUN-TEST-LF-SCRIPT/start_batch.sh").read_bytes()
+        self.assertTrue(script_bytes.startswith(b"#!/usr/bin/env bash\n"))
+        self.assertNotIn(b"\r", script_bytes)
+
     def test_plan_dynamic_routing_batch_accepts_valid_agent_runtime_gate(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")

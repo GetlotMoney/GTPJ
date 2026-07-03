@@ -580,6 +580,14 @@ def write_new(path: Path, content: str) -> None:
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
 
 
+def write_new_lf(path: Path, content: str) -> None:
+    if path.exists():
+        raise WorkflowError(f"Refusing to overwrite existing file: {rel(path)}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content.rstrip() + "\n")
+
+
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
@@ -9737,7 +9745,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
                 f"echo $! > pids/gpu{gpu}.pid",
             ]
         )
-    write_new(
+    write_new_lf(
         run_dir / "start_batch.sh",
         "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\nmkdir -p logs pids runtime_configs\n"
         + "\n".join(gpu_lines),

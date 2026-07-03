@@ -17,6 +17,7 @@ report_interval_minutes: 15
 | 2026-07-04T00:00:00+08:00 | Evidence Quality Checker | `019f287c-7aee-7b72-9152-9cbba1b97bb3` | Returned `block`: pre-run package is structurally acceptable, but runtime gate and v5 cleanup are not closed. | `agent_outputs/evidence_quality_checker.md` | Refresh decision after all pre-run checks can pass. |
 | 2026-07-04T00:00:00+08:00 | Result Comparator | `019f287c-c9b8-7b81-97bd-c362025460b8` | Returned `allow`: ATTEMPT-004 is valid_single_run, ATTEMPT-005 is seed_sweep, ATTEMPT-007 thresholds are correct. | `agent_outputs/result_comparator.md` | Post-run must report mean/min/max/range and no auto-promotion. |
 | 2026-07-04T00:02:00+08:00 | Coordinator | current Codex conversation | Closed completed DR035 review agents after writing outputs. | `agent_runtime.yaml`, `agent_outputs/` | Keep only Pauli active for v5/Runner monitoring until DR035 gate can refresh. |
+| 2026-07-04T00:04:00+08:00 | Coordinator | current Codex conversation | Found v5 temporary runner script CRLF/BOM issue that wrote `batch_status.json\\r`; added helper LF-only script writer and regression test before DR035. | `workflow/gtpj_workflow.py`, `tests/test_gtpj_workflow.py` | Regenerate DR035 batch with the fixed helper after runtime gate passes. |
 
 ## Cleanup Ledger
 
