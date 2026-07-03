@@ -6,6 +6,7 @@ trial_id:
 module_name:
 template_family:
 module_scope:
+trial_meta: trial_meta.yaml
 base_version:
 base_code_tag:
 dataset: CUB xlsa17 att_splits
@@ -55,6 +56,12 @@ components:
     attachment_point:
     enabled_key:
 composition_mode: none | sequential | parallel | gated | residual
+affects:
+  forward_main_flow:
+  class_scoring:
+  train_data_view:
+  eval_input_output:
+  split_or_label_mapping:
 attachment_point:
 input_tensors:
 output_tensors:

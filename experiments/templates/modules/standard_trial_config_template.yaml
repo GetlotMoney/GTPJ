@@ -19,8 +19,10 @@ module_name:
   value: TODO_MODULE
 module_source:
   value: module_source.md
+trial_meta:
+  value: trial_meta.yaml
 module_template_family:
-  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite
+  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite | architecture_change
 training_template:
   value: experiments/templates/modules/standard_gzsl_training_template.py
 module_scope:
@@ -35,6 +37,14 @@ components:
       enabled_key: use_TODO_COMPONENT
 use_trial_module:
   value: false
+
+affects:
+  value:
+    forward_main_flow: false
+    class_scoring: false
+    train_data_view: false
+    eval_input_output: false
+    split_or_label_mapping: false
 
 epochs:
   value: 0

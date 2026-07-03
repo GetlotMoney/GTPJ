@@ -14,8 +14,9 @@ Protected semantics:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -34,6 +35,8 @@ ALLOWED_COMPOSITION_MODES = {
     "gated",
     "residual",
 }
+
+STANDARD_TRIAL_OUTPUT_KEYS = {"features", "logits", "losses", "debug"}
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,15 @@ class TrialCompositeModule(nn.Module):
             return True
         return all(not bool(getattr(component, "enabled", True)) for component in self.components.values())
 
+    def has_enabled_family(self, template_family: str) -> bool:
+        if self.all_components_disabled():
+            return False
+        return any(
+            getattr(component, "template_family", "") == template_family
+            and bool(getattr(component, "enabled", True))
+            for component in self.components.values()
+        )
+
     @staticmethod
     def assert_same_shape(name: str, before: torch.Tensor, after: torch.Tensor) -> None:
         if tuple(before.shape) != tuple(after.shape):
@@ -150,10 +162,73 @@ class TrialCompositeModule(nn.Module):
                 loss_pack[f"{name}.{key}"] = value
         return loss_pack
 
+    def forward(
+        self,
+        features: torch.Tensor,
+        logits: torch.Tensor | None = None,
+        context: Mapping[str, Any] | None = None,
+        candidate_scores: Mapping[str, torch.Tensor] | None = None,
+    ) -> dict[str, object]:
+        """Standard composite slot visible to the training framework.
+
+        The caller should only consume `features`, `logits`, `losses`, and
+        `debug`, regardless of how many components are active internally.
+        """
+        ctx: Mapping[str, Any] = context or {}
+        debug: dict[str, object] = {
+            "module_scope": "composite",
+            "composition_mode": self.composition_mode,
+            "all_components_disabled": self.all_components_disabled(),
+        }
+
+        adapted_features = self.apply_feature_components(features)
+        debug["feature_components_enabled"] = self.has_enabled_family("feature_adapter")
+
+        final_logits = logits
+        if final_logits is None and self.has_enabled_family("fusion_gate"):
+            raise ValueError("fusion components require base logits")
+        if final_logits is not None:
+            score_candidates = candidate_scores or ctx.get("candidate_scores", {})
+            if not isinstance(score_candidates, Mapping):
+                raise ValueError("candidate_scores must be a mapping")
+            sample_feature = ctx.get("sample_feature")
+            if sample_feature is None:
+                sample_feature = adapted_features
+            final_logits = self.apply_score_components(
+                final_logits,
+                score_candidates,
+                sample_feature=sample_feature,
+            )
+        debug["fusion_components_enabled"] = self.has_enabled_family("fusion_gate")
+
+        tensor_context = {key: value for key, value in ctx.items() if isinstance(value, torch.Tensor)}
+        losses = self.auxiliary_losses(tensor_context)
+        debug["auxiliary_components_enabled"] = self.has_enabled_family("auxiliary_loss")
+
+        output: dict[str, object] = {
+            "features": adapted_features,
+            "logits": final_logits,
+            "losses": losses,
+            "debug": debug,
+        }
+        assert_standard_trial_output(output)
+        return output
+
+
+def assert_standard_trial_output(output: Mapping[str, object]) -> None:
+    missing = STANDARD_TRIAL_OUTPUT_KEYS.difference(output.keys())
+    if missing:
+        raise ValueError(f"trial output missing standard keys: {sorted(missing)}")
+    if output["losses"] is not None and not isinstance(output["losses"], Mapping):
+        raise ValueError("trial output losses must be a mapping")
+    if output["debug"] is not None and not isinstance(output["debug"], Mapping):
+        raise ValueError("trial output debug must be a mapping")
+
 
 def composition_note() -> str:
     return (
         "Use composite only when the mechanism cannot be split into separate trials. "
-        "The main training code should call one composite slot, and component switches "
-        "must make the all-off path equivalent to the recorded base_version."
+        "The main training code should call one composite slot returning features, "
+        "logits, losses, and debug, and component switches must make the all-off "
+        "path equivalent to the recorded base_version."
     )

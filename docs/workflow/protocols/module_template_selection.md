@@ -5,6 +5,12 @@
 目标不是让 agent 自由发挥，而是把创新压进少数可审查的代码框架，保证标准数据集、
 标准评估和 GZSL 语义不被静默改变。
 
+工程原则：
+
+```text
+创新内部可以复杂，但主训练框架只能感知一个标准 trial 插槽。
+```
+
 ## 硬前置
 
 正式 module trial 必须先明确：
@@ -30,7 +36,7 @@ evaluation: standard GZSL U/S/H/ZS
 | 只新增正则或辅助 loss | `auxiliary_loss_template.py` | `compute_loss` 内，读取已有 tensor | 中低 |
 | 改采样、cache view、patch/view 选择 | `sampler_or_data_view_template.py` | batch / feature cache / view selector | 高 |
 | 两个或更多模块必须一起才构成机制 | `composite_module_template.py` | 一个 composite slot 统一调 feature/fusion/loss/view 子模块 | 高 |
-| 改 evaluation、split、label map 或 metric | 禁止作为普通 module trial | eval script / dataset split | 极高；不可与 baseline 直接比较 |
+| 改 forward、class scoring、data view、evaluation、split、label map 或 metric | `architecture_change_template.md` | 单独高风险主干流程 | 极高；不可与普通 trial 直接比较 |
 
 选择算法：
 
@@ -70,6 +76,39 @@ baseline_off_explanation:
 ```
 
 如果两个子模块可以独立验证，仍然拆成多个 Trial；只有一起才成立的机制才用 composite。
+
+## Trial Meta 分流
+
+每个正式 Trial 必须有 trial-local `trial_meta.yaml`，从
+`trial_meta_template.yaml` 复制，至少记录：
+
+```yaml
+module_scope: single_module | composite | architecture_change
+template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite | architecture_change
+affects:
+  forward_main_flow: false
+  class_scoring: false
+  train_data_view: false
+  eval_input_output: false
+  split_or_label_mapping: false
+baseline_off:
+  supported: true
+audit:
+  shape_audit: required
+  switch_off_equivalence: required
+  standard_gzsl_eval_audit: required
+```
+
+判定逻辑：
+
+```text
+一个创新点能拆开验证 -> 拆成多个 single_module trials
+两个模块必须一起才有意义 -> composite trial
+只要影响主流程、class scoring、eval、split -> architecture_change trial
+```
+
+如果 `module_scope: single_module` 或 `module_scope: composite` 但 `affects.*`
+任一高风险项为 true，必须升级为 `module_scope: architecture_change`。
 
 ## 标准 GZSL 边界
 
@@ -139,6 +178,7 @@ config -> seed -> dataset/split -> frozen backbone -> model/module -> train loop
 
 - `base_version` / `base_code_tag`；
 - `module_source.md`；
+- `trial_meta.yaml`；
 - `module_template_family`；
 - CUB xlsa17 split 或显式 high-risk dataset adaptation note；
 - standard GZSL U/S/H/ZS evaluation；
@@ -155,6 +195,7 @@ CUB xlsa17 baseline 互相比。
 
 - 缺少 `base_version` 或 `base_code_tag`。
 - 缺少 `module_source.md`。
+- 缺少 `trial_meta.yaml` 或 `validate-trial-meta` 不通过。
 - 未选择 `template_family`。
 - 缺少 `standard_gzsl_training_template.py` 对照或等价训练入口说明。
 - 模板选择理由不能解释 mechanism 到 attachment point 的映射。

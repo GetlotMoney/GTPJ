@@ -13,6 +13,7 @@ Hard gate: if interface, label mapping, seen/unseen split, class order, logits s
 
 ```text
 module_source: module_source.md
+trial_meta: trial_meta.yaml
 template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite
 module_scope: single_module | composite | architecture_change
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
@@ -44,6 +45,12 @@ why_not_narrower_template:
 module_scope:
 components:
 composition_mode:
+affects:
+  forward_main_flow:
+  class_scoring:
+  train_data_view:
+  eval_input_output:
+  split_or_label_mapping:
 high_risk_reason:
 ```
 

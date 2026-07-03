@@ -27,6 +27,7 @@ transition_id:
 - [ ] class order、seen/unseen split、label mapping、logits shape、metric calculation 未改变或已按高风险记录。
 - [ ] 标准 GZSL 数据集、split、class order、label mapping、U/S/H/ZS 语义未被模板实现改变。
 - [ ] `module_source.md` 记录了 paper/source、template family、attachment point 和 baseline-off 解释。
+- [ ] `trial_meta.yaml` 已通过 `validate-trial-meta`，`module_scope` 与 `affects` 没有非法组合。
 - [ ] 训练入口已对照 `standard_gzsl_training_template.py`，并记录 config、seed、dataset/split、eval function、checkpoint policy 和 artifact refs。
 - [ ] 如果 `module_scope: composite`，每个 component 的 template family、attachment point、enabled key、composition mode 和 all-off baseline path 已记录。
 - [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。

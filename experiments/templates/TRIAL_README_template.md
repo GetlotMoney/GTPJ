@@ -12,6 +12,7 @@ code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:
 module_source: module_source.md
+trial_meta: trial_meta.yaml
 module_template_family:
 module_scope:
 composition_mode:
@@ -54,6 +55,7 @@ confirmation_status:
 
 ```text
 path: module_source.md
+trial_meta: trial_meta.yaml
 source_type:
 paper_id:
 source_ref:
@@ -64,6 +66,7 @@ template_family:
 module_scope:
 components:
 composition_mode:
+affects:
 attachment_point:
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
 baseline_off_explanation:

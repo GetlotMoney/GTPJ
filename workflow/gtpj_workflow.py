@@ -45,6 +45,31 @@ TRIAL_ALLOWED_SOURCE_STATUSES = {"verified", "local_heuristic"}
 APPLICABILITIES = {"direct", "needs_adaptation", "unclear", "not_applicable"}
 TRIAL_ALLOWED_APPLICABILITIES = {"direct", "needs_adaptation"}
 TRIAL_READY_STATUSES = {"selected", "ready"}
+TRIAL_MODULE_SCOPES = {"single_module", "composite", "architecture_change"}
+TRIAL_TEMPLATE_FAMILIES = {
+    "feature_adapter",
+    "fusion_gate",
+    "auxiliary_loss",
+    "sampler_or_data_view",
+    "composite",
+    "architecture_change",
+}
+TRIAL_ARCHITECTURE_AFFECT_FLAGS = {
+    "forward_main_flow",
+    "class_scoring",
+    "train_data_view",
+    "eval_input_output",
+    "split_or_label_mapping",
+}
+TRIAL_REQUIRED_AUDITS = {
+    "shape_audit",
+    "switch_off_equivalence",
+    "standard_gzsl_eval_audit",
+}
+TRIAL_ARCHITECTURE_REQUIRED_AUDITS = TRIAL_REQUIRED_AUDITS | {
+    "split_integrity_audit",
+    "class_order_audit",
+}
 IDEA_STATUSES = {
     "candidate",
     "ready",
@@ -643,6 +668,81 @@ def yaml_section_value(data: dict[str, object], section: str, key: str, default:
         value = section_data.get(key)
         return "" if value is None else str(value)
     return default
+
+
+def yaml_bool_value(value: object) -> bool:
+    return str(value).strip().lower() in {"true", "yes", "1", "on"}
+
+
+def validate_trial_meta_data(data: dict[str, object], raw_text: str = "") -> list[str]:
+    errors: list[str] = []
+    scope = str(data.get("module_scope", "")).strip()
+    family = str(data.get("template_family", "")).strip()
+    risk = str(data.get("risk", "")).strip()
+
+    if scope not in TRIAL_MODULE_SCOPES:
+        errors.append(f"module_scope must be one of {sorted(TRIAL_MODULE_SCOPES)}, got {scope!r}")
+    if family not in TRIAL_TEMPLATE_FAMILIES:
+        errors.append(f"template_family must be one of {sorted(TRIAL_TEMPLATE_FAMILIES)}, got {family!r}")
+
+    if scope == "single_module" and family in {"composite", "architecture_change"}:
+        errors.append("single_module cannot use composite or architecture_change template_family")
+    if scope == "composite" and family != "composite":
+        errors.append("module_scope=composite requires template_family=composite")
+    if scope == "architecture_change" and family != "architecture_change":
+        errors.append("module_scope=architecture_change requires template_family=architecture_change")
+
+    affects = data.get("affects")
+    if not isinstance(affects, dict):
+        errors.append("affects section is required")
+        affects = {}
+    risky_affects = [
+        name for name in sorted(TRIAL_ARCHITECTURE_AFFECT_FLAGS)
+        if yaml_bool_value(affects.get(name, "false"))
+    ]
+    if scope in {"single_module", "composite"} and risky_affects:
+        errors.append(
+            "module_scope must be architecture_change when affects are true: "
+            + ", ".join(risky_affects)
+        )
+    if scope == "architecture_change" and risk != "high":
+        errors.append("architecture_change trials must set risk: high")
+
+    baseline_off = data.get("baseline_off")
+    if not isinstance(baseline_off, dict):
+        errors.append("baseline_off section is required")
+        baseline_off = {}
+    if scope in {"single_module", "composite"} and not yaml_bool_value(baseline_off.get("supported", "false")):
+        errors.append("single_module/composite trials require baseline_off.supported: true")
+    if scope == "composite" and not yaml_bool_value(
+        baseline_off.get("all_switches_false_equals_base", "false")
+    ):
+        errors.append("composite trials require baseline_off.all_switches_false_equals_base: true")
+
+    audit = data.get("audit")
+    if not isinstance(audit, dict):
+        errors.append("audit section is required")
+        audit = {}
+    required_audits = (
+        TRIAL_ARCHITECTURE_REQUIRED_AUDITS
+        if scope == "architecture_change"
+        else TRIAL_REQUIRED_AUDITS
+    )
+    missing_audits = [
+        name for name in sorted(required_audits)
+        if str(audit.get(name, "")).strip() != "required"
+    ]
+    if missing_audits:
+        errors.append("audit missing required gates: " + ", ".join(missing_audits))
+
+    if scope == "composite" and "- name:" not in raw_text:
+        errors.append("composite trials must list components with name/template_family/attachment_point/enabled_key")
+    return errors
+
+
+def validate_trial_meta_file(path: Path) -> list[str]:
+    text = read_text(path)
+    return validate_trial_meta_data(read_shallow_yaml(path), text)
 
 
 def yaml_nested_section_value(path: Path, section: str, subsection: str, key: str, default: str = "") -> str:
@@ -1260,6 +1360,7 @@ def required_repository_files() -> list[str]:
         "experiments/templates/quality_check_template.md",
         "experiments/templates/modules/README.md",
         "experiments/templates/modules/module_source_template.md",
+        "experiments/templates/modules/trial_meta_template.yaml",
         "experiments/templates/modules/standard_trial_config_template.yaml",
         "experiments/templates/modules/standard_gzsl_module_framework_template.py",
         "experiments/templates/modules/standard_gzsl_training_template.py",
@@ -1268,6 +1369,7 @@ def required_repository_files() -> list[str]:
         "experiments/templates/modules/auxiliary_loss_template.py",
         "experiments/templates/modules/sampler_or_data_view_template.py",
         "experiments/templates/modules/composite_module_template.py",
+        "experiments/templates/modules/architecture_change_template.md",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
         "experiments/v1/result.md",
@@ -1401,6 +1503,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("TRIAL_README_template.md must include ## Framework Diagram")
     for marker in [
         "module_source:",
+        "trial_meta:",
         "module_template_family:",
         "module_scope:",
         "standard_gzsl_framework",
@@ -1455,6 +1558,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "agent_output_refs",
         "标准 GZSL",
         "module_source.md",
+        "trial_meta.yaml",
+        "validate-trial-meta",
         "standard_gzsl_training_template.py",
         "module_scope: composite",
     ]:
@@ -1469,6 +1574,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "auxiliary_loss_template.py",
         "sampler_or_data_view_template.py",
         "composite_module_template.py",
+        "architecture_change_template.md",
+        "trial_meta_template.yaml",
+        "validate-trial-meta",
         "standard_gzsl_module_framework_template.py",
         "standard_gzsl_training_template.py",
         "base_version",
@@ -1490,11 +1598,21 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "source_ref:",
             "template_family:",
             "module_scope:",
+            "trial_meta.yaml",
             "paper_writing_note:",
+        ],
+        "experiments/templates/modules/trial_meta_template.yaml": [
+            "schema_version: gtpj.trial_meta.v0",
+            "module_scope",
+            "affects:",
+            "baseline_off:",
+            "audit:",
         ],
         "experiments/templates/modules/standard_trial_config_template.yaml": [
             "base_code_tag",
+            "trial_meta",
             "training_template",
+            "affects",
             "composition_mode",
             "standard_gzsl_u_s_h_zs",
             "protect_seen_unseen_split",
@@ -1520,6 +1638,16 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "CompositePlan",
             "composition_mode",
             "all_components_disabled",
+            "assert_standard_trial_output",
+            "features",
+            "logits",
+            "losses",
+            "debug",
+        ],
+        "experiments/templates/modules/architecture_change_template.md": [
+            "module_scope: architecture_change",
+            "affects.forward_main_flow",
+            "standard_gzsl_eval_audit",
         ],
     }
     for path_text, markers in module_template_markers.items():
@@ -1775,8 +1903,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Template Selection",
         "Training Entry",
         "template_family",
+        "trial_meta",
         "module_scope",
         "composition_mode",
+        "affects",
         "standard_gzsl_training_template.py",
         "standard GZSL U/S/H/ZS",
         "module_template_selection.md",
@@ -5661,6 +5791,8 @@ def workflow_consistency_errors() -> list[str]:
         "docs/workflow/protocols/module_template_selection.md": [
             "feature_adapter_template.py",
             "composite_module_template.py",
+            "architecture_change_template.md",
+            "validate-trial-meta",
             "standard GZSL U/S/H/ZS",
             "base_code_tag",
             "standard_gzsl_training_template.py",
@@ -5670,6 +5802,7 @@ def workflow_consistency_errors() -> list[str]:
             "formal_evidence_allowed",
             "module_template_selection.md",
             "module_source.md",
+            "validate-trial-meta",
         ],
         "docs/workflow/playbooks/paper_to_experiment.md": [
             "base_code_tag",
@@ -5687,6 +5820,7 @@ def workflow_consistency_errors() -> list[str]:
             "standard_gzsl_module_framework_template.py",
             "standard_gzsl_training_template.py",
             "composite_module_template.py",
+            "architecture_change_template.md",
             "U, S, H, ZS",
         ],
     }
@@ -5715,6 +5849,17 @@ def cmd_validate_workflow_consistency(_: argparse.Namespace) -> int:
     if errors:
         raise WorkflowError("Workflow consistency validation failed:\n" + "\n".join(errors))
     print("validate-workflow-consistency-ok")
+    return 0
+
+
+def cmd_validate_trial_meta(args: argparse.Namespace) -> int:
+    path = (REPO_ROOT / args.path).resolve() if args.path else REPO_ROOT / "trial_meta.yaml"
+    if not path.exists():
+        raise WorkflowError(f"trial meta file not found: {rel(path)}")
+    errors = validate_trial_meta_file(path)
+    if errors:
+        raise WorkflowError("Trial meta validation failed:\n" + "\n".join(errors))
+    print("validate-trial-meta-ok")
     return 0
 
 
@@ -6801,6 +6946,8 @@ trial_folder: {rel(idea_dir)}
         or version_entry.get("composition_mode")
         or ("pending" if module_scope == "composite" else "none")
     ).strip()
+    risk_level = "high" if module_scope == "architecture_change" else "normal"
+    split_audit = "required" if module_scope == "architecture_change" else "not_required"
     write_new(
         trial_dir / "module_source.md",
         f"""# Module Source
@@ -6811,6 +6958,7 @@ trial_id: {trial_id}
 module_name: {slug}
 template_family: {template_family}
 module_scope: {module_scope}
+trial_meta: trial_meta.yaml
 base_version: {base_version}
 base_code_tag: {base_version}
 dataset: CUB xlsa17 att_splits
@@ -6858,6 +7006,12 @@ components:
     attachment_point:
     enabled_key:
 composition_mode: {composition_mode}
+affects:
+  forward_main_flow:
+  class_scoring:
+  train_data_view:
+  eval_input_output:
+  split_or_label_mapping:
 attachment_point:
 input_tensors:
 output_tensors:
@@ -6875,6 +7029,37 @@ ablation_needed:
 limitations:
 paper_writing_note:
 ```
+""",
+    )
+    write_new(
+        trial_dir / "trial_meta.yaml",
+        f"""schema_version: gtpj.trial_meta.v0
+trial_id: {trial_id}
+module_scope: {module_scope}
+template_family: {template_family}
+risk: {risk_level}
+
+attachment_points:
+  - TODO_ATTACHMENT
+
+affects:
+  forward_main_flow: false
+  class_scoring: false
+  train_data_view: false
+  eval_input_output: false
+  split_or_label_mapping: false
+
+baseline_off:
+  supported: true
+  expected_equivalence: {base_version}
+  all_switches_false_equals_base: true
+
+audit:
+  shape_audit: required
+  switch_off_equivalence: required
+  standard_gzsl_eval_audit: required
+  split_integrity_audit: {split_audit}
+  class_order_audit: {split_audit}
 """,
     )
     write_new(
@@ -6975,6 +7160,7 @@ module_source: module_source.md
 module_template_family: {template_family}
 module_scope: {module_scope}
 composition_mode: {composition_mode}
+trial_meta: trial_meta.yaml
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
 trial_decision: pending
@@ -7012,6 +7198,8 @@ template_family: {template_family}
 module_scope: {module_scope}
 components:
 composition_mode: {composition_mode}
+affects:
+trial_meta: trial_meta.yaml
 attachment_point:
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
 baseline_off_explanation:
@@ -7105,6 +7293,7 @@ docs/workflow/protocols/module_template_selection.md
 
 ```text
 module_source: module_source.md
+trial_meta: trial_meta.yaml
 template_family: {template_family}
 module_scope: {module_scope}
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
@@ -7136,6 +7325,12 @@ why_not_narrower_template:
 module_scope:
 components:
 composition_mode:
+affects:
+  forward_main_flow:
+  class_scoring:
+  train_data_view:
+  eval_input_output:
+  split_or_label_mapping:
 high_risk_reason:
 ```
 
@@ -9107,6 +9302,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
+
+    validate_trial_meta = sub.add_parser("validate-trial-meta", help="校验 module trial meta 的 scope/affects 分流")
+    validate_trial_meta.add_argument("--path", default="")
+    validate_trial_meta.set_defaults(func=cmd_validate_trial_meta)
 
     list_workflow_files = sub.add_parser("list-workflow-files", help="按 manifest 列出 workflow 文档层级和瘦身状态")
     list_workflow_files.set_defaults(func=cmd_list_workflow_files)

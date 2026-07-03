@@ -1,0 +1,27 @@
+schema_version: gtpj.trial_meta.v0
+trial_id: TRIAL-xxx
+module_scope: single_module
+template_family: feature_adapter
+risk: normal
+
+attachment_points:
+  - visual_feature_after_clip
+
+affects:
+  forward_main_flow: false
+  class_scoring: false
+  train_data_view: false
+  eval_input_output: false
+  split_or_label_mapping: false
+
+baseline_off:
+  supported: true
+  expected_equivalence: base_version
+  all_switches_false_equals_base: true
+
+audit:
+  shape_audit: required
+  switch_off_equivalence: required
+  standard_gzsl_eval_audit: required
+  split_integrity_audit: not_required
+  class_order_audit: not_required

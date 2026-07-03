@@ -125,6 +125,8 @@ composite
 
 每个新模块必须写 trial-local `module_source.md`，说明模块来源、论文机制、GTPJ 适配方式、
 模板族、接入点、baseline-off 解释和之后写论文可用的表述。
+每个正式 Trial 还必须写 `trial_meta.yaml` 并通过 `validate-trial-meta`，用于硬判定
+`single_module`、`composite` 或 `architecture_change`。
 
 ## 代码流程图
 
