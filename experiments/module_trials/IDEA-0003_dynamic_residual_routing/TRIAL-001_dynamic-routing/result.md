@@ -4,28 +4,23 @@
 
 | Attempt ID | Base version | Dataset | Seed | U | S | H | ZS | Best epoch | delta_H |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| ATTEMPT-004 | v5 | CUB | 5 | 72.69 | 77.51 | 75.02 | 82.04 | 48 | +0.48 |
+| ATTEMPT-007 | v5 | CUB | 5 | 72.58 | 76.75 | 74.61 | 81.82 | min3_mean | +0.07 |
 
 ## Evidence
 
 ```text
 trial_id: TRIAL-001
-attempt_id: ATTEMPT-004
-evidence_level: valid_single_run
-result_status: needs_confirmation
+attempt_id: ATTEMPT-007
+evidence_level: confirmation_grade
+result_status: confirmed
 promotion_decision: blocked
-confirmed_H: pending
-confirmation_status: needs_confirmation
-runtime_summary_artifact_id: runtime:v5:module_trial:TRIAL-001:RUN-20260702-0002:summary
-runtime_summary_jsonl_artifact_id: runtime:v5:module_trial:TRIAL-001:RUN-20260702-0002:summary_jsonl
-batch_status_artifact_id: runtime:v5:module_trial:TRIAL-001:RUN-20260702-0002:batch_status
-plan_json_artifact_id: runtime:v5:module_trial:TRIAL-001:RUN-20260702-0002:plan
-events_jsonl_artifact_id: runtime:v5:module_trial:TRIAL-001:RUN-20260702-0002:events
-campaign_report: experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md
+confirmed_H: 74.61
+confirmation_status: confirmed
+attempt007_warehouse_manifest_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-007:dr035-exact-repeat
 ```
 
 ## Decision
 
 `keep`
 
-ATTEMPT-004 DR-035 is recorded as the current best observed single with confirmed_H=pending and confirmation_status=needs_confirmation. Promotion/tag remains blocked because this result still needs min3 repeat, log audit, artifact checks, and direction-gate quality evidence.
+ATTEMPT-007 is recorded as `confirmation_grade` with confirmed_H=74.61 and confirmation_status=confirmed. Promotion/tag remains blocked because active v5 comparison reference is unconfirmed: v5 best_observed_H=74.54 (unconfirmed), confirmed_H=74.44.

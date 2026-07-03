@@ -4,13 +4,13 @@ attempt:
   trial_id: TRIAL-001
   idea_id: IDEA-0003
   name: DR-035 same-seed min3 exact repeat
-  status: pre_run_blocked_until_agent_gate_and_gpu_cleanup
-  recorded_at: "2026-07-03T23:55:00+08:00"
+  status: completed_confirmed_candidate
+  recorded_at: "2026-07-04T00:42:00+08:00"
 version:
   base_version: v5
   base_code_tag: v5
   code_branch: codex/dr035-exact-repeat-20260703
-  run_code_commit: pending_pre_run_freeze_commit
+  run_code_commit: 197ed758ed46112373b11de4ea8de5e4b138dba5
 source:
   source_attempt: ATTEMPT-004
   source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
@@ -36,10 +36,13 @@ run:
   repeat_type: same_seed_min3_exact_repeat
   runtime_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
   jobs_total: 3
-  jobs_completed: pending
-  jobs_failed: pending
+  jobs_completed: 3
+  jobs_failed: 0
   server_repo: /data/lby/projects/cv_project/GTPJ
+  server_branch: codex/dr035-exact-repeat-20260703
+  server_commit: 197ed758ed46112373b11de4ea8de5e4b138dba5
   warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
+  dedicated_warehouse: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-007/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
 frozen_config:
   use_dynamic_routing: true
   dynamic_local_mode: fixed
@@ -50,28 +53,48 @@ frozen_config:
   dynamic_gate_anchor_lambda: 0.005
   weight_s2v: 0.525
   random_seed: 5
-expected_jobs:
+completed_jobs:
   - job_id: DR-001
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r1
     seed: 5
+    H: "74.58"
+    U: "72.02"
+    S: "77.32"
+    ZS: "81.78"
   - job_id: DR-002
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r2
     seed: 5
+    H: "74.62"
+    U: "73.27"
+    S: "76.01"
+    ZS: "81.92"
   - job_id: DR-003
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r3
     seed: 5
+    H: "74.62"
+    U: "72.46"
+    S: "76.92"
+    ZS: "81.75"
 evidence:
-  evidence_state: hypothesis_ready
+  evidence_state: min3_confirmed
   agent_runtime_gate: agent_runtime.yaml
   transitions: TRANSITIONS.jsonl
   evidence_routing: evidence_routing.yaml
-  formal_runner_allowed: blocked_until_runtime_gate_passes
+  formal_runner_allowed: completed
+  hash_manifest: SHA256SUMS.txt
+artifacts:
+  attempt007_warehouse_manifest:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-007:dr035-exact-repeat
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-007/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu/SHA256SUMS.txt
+    sha256: ""
+    size_bytes: ""
 result:
-  status: pending_runner
-  confirmation_status: pending
-  confirmed_H: pending
+  status: confirmed_candidate
+  confirmation_status: confirmed_candidate
+  confirmed_H: "74.61"
   promotion_decision: blocked
 checkpoint_retention:
   required: true
-  keep_count: 3
+  dedicated_attempt007_checkpoints_retained: 3
   ranking_metric: GZSL-H
+  note: Default runner shared warehouse retention removed or mixed some current-run checkpoints in historical attempt-001/002/003 directories; current ATTEMPT-007 checkpoints were copied to a dedicated warehouse directory and retained there.

@@ -4,27 +4,30 @@ role: runner_monitor
 agent_instance_id: 019f287c-a108-7031-ba5c-6e1ae6c1c91d
 display_name: Pauli / shared Runner Monitor
 decision: allow
+post_run_close_allowed: true
 
 ## Checked Scope
 
 - ATTEMPT-007 / `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu`
-- server branch `codex/dr035-exact-repeat-20260703` at `aba7ff83f8aa8cad35d73ac93a4cafeb96fd5871`
-- server clean worktree, GPU/process/lock, target run dir, and structural gates
-- local refreshed Evidence Quality allow and resolved runner self-block
+- server branch `codex/dr035-exact-repeat-20260703` at `197ed758ed46112373b11de4ea8de5e4b138dba5`
+- runtime files: `batch_status.json`, `summary.csv`, `summary.jsonl`, `events.jsonl`
+- dedicated ATTEMPT-007 warehouse evidence directory
+- GPU/process state after Runner completion
 
 ## Findings
 
-- Runner Monitor external risks are cleared: server branch/commit is synced and clean.
-- GPU0/GPU1 are idle: 6 MiB, 0% utilization, and no compute apps.
-- No old v5/DR035 runner process and no `gpu_runner.lock`.
-- Target run dir is absent and can be generated safely.
-- Server structural gates passed; server pytest is missing and recorded as a warning because local tests passed with 95 tests.
-- From Runner Monitor perspective, Coordinator may set `runner_monitor: allow` and proceed to machine gates.
-- This is not permission to skip machine gates; launch still depends on `validate-agent-runtime`, `multi-agent-preflight`, `agent-cleanup-plan`, config inspection, and final GPU check.
+- Runner completed 3 / 3 jobs with 0 failures.
+- H values: 74.58 / 74.62 / 74.62.
+- mean H=74.61, min H=74.58, range H=0.04.
+- Gate passes: mean H >= 74.60, min H >= 74.45, range H <= 0.50.
+- GPU0/GPU1 returned to idle: 6 MiB, 0% utilization, no compute apps.
+- Dedicated warehouse exists and contains 3 logs, 6 config YAML files, 3 best checkpoints, and `SHA256SUMS.txt`.
 
-## Required Before Runner
+## Warnings
 
-- Write this runner allow output and update `agent_runtime.yaml`.
-- Re-run `validate-agent-runtime`, `multi-agent-preflight`, and `agent-cleanup-plan` on server and local.
-- Generate batch, then inspect every job config: seed=5, direction sample, hidden=48, anchor=0.005, `weight_s2v=0.525`, PSE fixed, batch size 64.
-- Launch only after final `nvidia-smi` / no compute apps / no lock / target run dir check.
+- Runtime `batch_status.json` top-level `status` remains `planned`, while all three job statuses are `completed`.
+- Runtime `warehouse_dir` values still point to shared historical `attempt-001/002/003` folders; dedicated ATTEMPT-007 warehouse evidence is complete and should be used for this attempt.
+
+## Close Result
+
+Runner Monitor can be closed after Coordinator records post-run result, quality, artifact identity, and cleanup.

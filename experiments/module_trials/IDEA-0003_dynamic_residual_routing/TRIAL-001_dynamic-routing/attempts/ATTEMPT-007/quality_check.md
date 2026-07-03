@@ -3,8 +3,8 @@
 ```yaml
 attempt_id: ATTEMPT-007
 run_id: RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
-decision: pending_runner
-evidence_state: hypothesis_ready
+decision: confirmed_candidate
+evidence_state: min3_confirmed
 formal_evidence: true
 promotion_decision: blocked
 repeat_type: same_seed_min3_exact_repeat
@@ -24,44 +24,48 @@ exact_repeat: true
 - [x] `batch_size=64`.
 - [x] Epoch schedule is explicit: config `epochs=30`, planned train epochs = `lr_stages` sum = 50.
 - [x] Raw logs/checkpoints stay outside GitHub.
-- [x] Checkpoint retention rule is Top-3 after closeout.
+- [x] Helper writes `start_batch.sh` with LF newlines to avoid `batch_status.json\r` status-file pollution.
 
-## Required Before Runner
+## Runtime Gate
 
-- [x] Live Runner Monitor output exists.
+- [x] Live Runner Monitor output exists and returned allow.
 - [x] Live Interface Checker output says allow/pass.
-- [x] Live Evidence Quality Checker output exists.
-- [x] Live Result Comparator output says allow/pass.
-- [x] Live Runner Monitor output says allow/pass.
 - [x] Live Evidence Quality Checker output says allow/pass.
+- [x] Live Result Comparator output says allow/pass.
 - [x] `agent_runtime.yaml` records real right-sidebar temporary agent ids.
-- [x] v5 strict-template run has completed and released the GPU slots.
-- [x] Server repo syncs to the frozen DR035 commit.
-- [ ] `validate-agent-runtime --path agent_runtime.yaml` passes after final ledger refresh.
-- [ ] `multi-agent-preflight --path agent_runtime.yaml` passes after final ledger refresh.
-- [ ] `agent-cleanup-plan --path agent_runtime.yaml` is reviewed after final ledger refresh.
-- [ ] Frozen batch plan is generated without overwriting any existing run dir.
-- [x] Helper now writes `start_batch.sh` with LF newlines to avoid `batch_status.json\\r` status-file pollution.
+- [x] v5 strict-template run completed and released GPU slots before launch.
+- [x] Server repo synced to frozen DR035 commit `197ed758ed46112373b11de4ea8de5e4b138dba5`.
+- [x] `validate-agent-runtime --path agent_runtime.yaml` passed before launch.
+- [x] `multi-agent-preflight --path agent_runtime.yaml` passed before launch.
+- [x] `agent-cleanup-plan --path agent_runtime.yaml` was reviewed before launch.
+- [x] Frozen batch plan was generated without overwriting an existing run dir.
+- [x] Generated per-job configs matched seed=5, batch size 64, direction sample, hidden 48, anchor 0.005, `weight_s2v=0.525`, PSE fixed.
 
-## Required After Runner
+## Post-Run Checks
 
-- [ ] 3 / 3 jobs completed, 0 failed.
-- [ ] `summary.csv`, `summary.jsonl`, `batch_status.json`, `plan.json`, and `events.jsonl` are available.
-- [ ] Runtime artifact hash and size are recorded in `result.yaml`.
-- [ ] Result table reports H/U/S/ZS for all three runs.
-- [ ] Stability reports mean/min/max/range.
-- [ ] Warehouse paths are recorded in runtime summaries.
-- [ ] Only Top-3 model checkpoints are retained, or an explicit exception is documented.
+- [x] 3 / 3 jobs completed, 0 failed.
+- [x] `summary.csv`, `summary.jsonl`, `batch_status.json`, `plan.json`, and `events.jsonl` are available.
+- [x] Runtime artifact hash and size are recorded in `result.yaml`.
+- [x] Result table reports H/U/S/ZS for all three runs.
+- [x] Stability reports mean/min/max/range.
+- [x] Dedicated ATTEMPT-007 warehouse path contains 3 logs, 6 config YAML files, 3 best checkpoints, `FILES.txt`, and `SHA256SUMS.txt`.
+- [x] GPU0/GPU1 returned to idle after the run.
+- [x] Promotion remains blocked.
 
 ## Confirmation Gate
 
-Pass only if:
+| Check | Threshold | Observed | Verdict |
+|---|---:|---:|---|
+| mean H | >= 74.60 | 74.61 | pass |
+| min H | >= 74.45 | 74.58 | pass |
+| range H | <= 0.50 | 0.04 | pass |
+| U/S collapse | none obvious | U mean 72.58, S mean 76.75 | pass |
 
-```text
-mean H >= 74.60
-min H >= 74.45
-max H - min H <= 0.50
-no obvious U/S collapse
-```
+## Warnings
 
-If these fail, the correct state is `not_confirmed`, not promotion.
+- Server pytest is unavailable in both checked server Python interpreters; local `python -m pytest tests/test_gtpj_workflow.py -q -p no:cacheprovider` passed 95 tests before launch.
+- The generated dynamic runner top-level `batch_status.status` remains `planned`, but all job-level statuses are `completed`; `summary.csv/jsonl` and `events.jsonl` agree on 3/3 completed.
+- Runtime `warehouse_dir` fields still point to shared historical `attempt-001/002/003` folders. Current ATTEMPT-007 logs/configs/checkpoints were copied to a dedicated warehouse directory to preserve evidence identity.
+- Default shared warehouse retention had already removed the current DR-001 checkpoint from `attempt-001`; it was recovered from the runner worktree and copied to the dedicated ATTEMPT-007 warehouse.
+
+Decision: `confirmed_candidate`; promotion remains blocked.

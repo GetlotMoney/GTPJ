@@ -6,8 +6,8 @@ base_version: v5
 run_id: RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
 result_type: same_seed_min3_exact_repeat
 exact_repeat: true
-confirmation_status: pending_runner
-confirmed_H: pending
+confirmation_status: confirmed_candidate
+confirmed_H: "74.61"
 promotion_decision: blocked
 
 target:
@@ -26,25 +26,69 @@ runs:
   - job_id: DR-001
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r1
     seed: 5
-    status: pending
+    status: completed
+    gpu: 0
+    U: "72.02"
+    S: "77.32"
+    H: "74.58"
+    ZS: "81.78"
+    best_epoch: "48"
+    runtime_log_sha256: 94750a3e0b2e5ca369d397c94dc8ced18a1ae648232f2c55b735f157fefb4af2
+    checkpoint_sha256: 23d6ddab748068a98c73cdde05fe123be84987605f9b8191393f3b1ab42fe386
   - job_id: DR-002
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r2
     seed: 5
-    status: pending
+    status: completed
+    gpu: 1
+    U: "73.27"
+    S: "76.01"
+    H: "74.62"
+    ZS: "81.92"
+    best_epoch: "37"
+    runtime_log_sha256: 97b66caa60117281083681124f6af293a309359c7cd433aa01e629f128c72834
+    checkpoint_sha256: 487d0999892ccb830f86bf286d1fa799634414076871f5c9c102667db483fd10
   - job_id: DR-003
     name: dr035_direction_sample_h48_w0.525_a0.005_s5_r3
     seed: 5
-    status: pending
+    status: completed
+    gpu: 0
+    U: "72.46"
+    S: "76.92"
+    H: "74.62"
+    ZS: "81.75"
+    best_epoch: "48"
+    runtime_log_sha256: 71f42727cfc593d393db2f8775faf4331b3bc11c12c393198b59e396ca2ec2cb
+    checkpoint_sha256: 5a15a863028a79e850e76bbd9fce38bc36f0c0c89a8fc7ebe427640e59420c4f
+
+metrics:
+  U: "72.58"
+  S: "76.75"
+  H: "74.61"
+  ZS: "81.82"
+  seed: "5"
+  best_epoch: "min3_mean"
+  best_single:
+    job_id: DR-002
+    U: "73.27"
+    S: "76.01"
+    H: "74.62"
+    ZS: "81.92"
+    best_epoch: "37"
 
 summary:
-  completed: pending
-  failed: pending
-  best_single_job: pending
-  best_single_H: pending
-  mean_H: pending
-  min_H: pending
-  max_H: pending
-  range_H: pending
+  completed: 3
+  failed: 0
+  best_single_job: DR-002
+  best_single_H: "74.62"
+  mean_H: "74.61"
+  min_H: "74.58"
+  max_H: "74.62"
+  range_H: "0.04"
+  mean_U: "72.58"
+  mean_S: "76.75"
+  mean_ZS: "81.82"
+  mean_H_delta_vs_source_H: "-0.41"
+  best_H_delta_vs_source_H: "-0.40"
 
 gate_thresholds:
   mean_H_ge: "74.60"
@@ -52,19 +96,39 @@ gate_thresholds:
   range_H_le: "0.50"
 
 gate_result:
-  mean_H_ge_74_60: pending
-  min_H_ge_74_45: pending
-  range_H_le_0_50: pending
-  no_obvious_U_S_collapse: pending
-  decision: pending_runner
-  evidence_state: hypothesis_ready
+  mean_H_ge_74_60: true
+  min_H_ge_74_45: true
+  range_H_le_0_50: true
+  no_obvious_U_S_collapse: true
+  decision: confirmed_candidate
+  evidence_state: min3_confirmed
 
 artifacts:
+  server_repo: lab4090:/data/lby/projects/cv_project/GTPJ
+  server_branch: codex/dr035-exact-repeat-20260703
+  run_code_commit: 197ed758ed46112373b11de4ea8de5e4b138dba5
   runtime_batch_dir: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
-  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/
-  files: pending_post_run
+  dedicated_warehouse_dir: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-007/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu
+  dedicated_warehouse_size_bytes: 308806238
+  sha256sums_file: SHA256SUMS.txt
+  control_files:
+    batch_status_json:
+      sha256: 3abfb479d4b28a49c0aa806f03c8a22470edb9c6e5651f4dfd7d7ccbef00567c
+    events_jsonl:
+      sha256: f145ff26bc63de8a2a5c2a470df497e97654cea02a5a6fa33627fbdd28e5b1d4
+    plan_json:
+      sha256: d13c1dbc21fa523b3e85ee2bceaf485e64d8ed14a8f804eff05adeef5b53e0fa
+    start_batch_sh:
+      sha256: 3e2c2a8dbecccdc26678fa88ca1cf440e803235e551d8577f97463c8b9fa3849
+    summary_csv:
+      sha256: 06243e868665e863fbc5d37c425534c62286a60ea9ba38463b790ec5da417077
+    summary_jsonl:
+      sha256: bb9adacc1aaa1c9b35cdbbddc25eaab8cd9792b3f6e295648fd3a540df232961
+  warnings:
+    - Generated dynamic runner top-level batch_status.status remains planned although all jobs are completed; job-level statuses, summary.csv/jsonl, and events.jsonl are authoritative.
+    - Runtime summary warehouse_dir values point to shared historical attempt-001/002/003 directories; ATTEMPT-007 evidence was copied to the dedicated warehouse path above.
 
 decision:
-  state: pending_runner
-  reason: Formal Runner has not started. The v5 strict-template run is still active and DR035 agent gate is not closed.
-  next_action: Pass live agent gate, wait for v5 GPU cleanup, sync frozen commit, then start exact repeat.
+  state: confirmed_candidate
+  reason: Same-seed min3 exact repeat passed all configured thresholds with 3 completed jobs, 0 failures, mean H=74.61, min H=74.58, and range H=0.04.
+  next_action: Keep as confirmed candidate evidence for DR-035; do not auto-promote and do not create a new vX without separate promotion evidence.

@@ -42,7 +42,7 @@ agent_cleanup:
   close_results_record: AGENT_ACTIVITY.md
 
 agent_instance_status:
-  runner_monitor: running
+  runner_monitor: closed
   interface_checker: closed
   evidence_quality_checker: closed
   result_comparator: closed

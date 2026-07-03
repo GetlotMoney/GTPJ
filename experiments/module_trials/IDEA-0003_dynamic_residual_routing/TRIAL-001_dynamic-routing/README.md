@@ -15,12 +15,12 @@ run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
 trial_decision: keep
 promotion_decision: blocked
 promote_to:
-evidence_level: valid_single_run
+evidence_level: confirmation_grade
 best_observed_H: 75.02
-best_dynamic_single_H: 74.39
-best_dynamic_repeat_mean_H: 74.23
-confirmed_H: pending
-confirmation_status: needs_confirmation
+best_dynamic_single_H: 75.02
+best_dynamic_repeat_mean_H: 74.61
+confirmed_H: 74.61
+confirmation_status: confirmed_candidate
 changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
 run_config:
 attempts: ATTEMPTS.md
@@ -233,4 +233,4 @@ remain unchanged.
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 72.69 | 77.51 | 75.02 | 82.04 | 48 | `RUN-20260702-0002 / DR-035` |
+| CUB | 5 | 72.58 | 76.75 | 74.61 | 81.82 | min3_mean | `RUN-20260703-0002 / ATTEMPT-007 exact repeat` |

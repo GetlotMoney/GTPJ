@@ -8,7 +8,7 @@
 | `ATTEMPT-004` | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | 50 completed / 0 failed | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-009 H=75.00 supporting single | tune_promising; repeat DR-035 first; promotion blocked |
 | `ATTEMPT-005` | `RUN-20260703-0001-dr035-min3-confirm-2gpu` | 3 completed / 0 failed | DR-002 seed7 H=74.39 | DR-002 seed7 H=74.39 | seeds 6/7/8 H=73.91/74.39/74.15; mean H=74.15; exact_repeat not run | seed_sweep only; not_confirmed; promotion blocked |
 | `ATTEMPT-006` | `RUN-20260702-0003-mixed2innov8tune-2gpu` | 10 completed / 0 failed | TUNE-002 / DR-004 direction_sample_h48_w0.525_a0.003 H=74.75 | TUNE-002 / DR-004 H=74.75 | no exact repeat; campaign is routing index only | tune_promising; formal ledger for workflow-v2 2-probe + 8-tune batch |
-| `ATTEMPT-007` | `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` | planned / blocked until v5 GPU cleanup and agent gate | pending | pending | planned same-seed min3 exact repeat: seed 5 x3 | formal Runner blocked until live agents allow, runtime gate passes, and server syncs clean commit |
+| `ATTEMPT-007` | `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` | 3 completed / 0 failed | DR-002/DR-003 H=74.62 | DR-002/DR-003 H=74.62 | same-seed exact repeat seed 5 x3: 74.58/74.62/74.62; mean H=74.61; min H=74.58; range H=0.04 | confirmed_candidate; promotion blocked |
 
 ## ATTEMPT-001 Notes
 
@@ -234,3 +234,34 @@ Campaign routing-index records:
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/RESULT_INDEX.md`
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/quality_check.md`
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/agent_summary.md`
+
+## ATTEMPT-007 Post-Run Notes
+
+`RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` completed 3 / 3 jobs with 0 failures.
+
+Main observations:
+
+- Exact-repeat scope is correct: all three jobs used source seed 5, not seeds 6/7/8.
+- Results were H=74.58 / 74.62 / 74.62; mean H=74.61, min H=74.58, max H=74.62, range H=0.04.
+- The configured confirmation gate passed: mean H >= 74.60, min H >= 74.45, range H <= 0.50.
+- Evidence state is `min3_confirmed` and result state is `confirmed_candidate`.
+- Promotion remains blocked; this repeat does not create a new `vX` and does not replace the need for separate promotion evidence.
+
+Evidence boundary:
+
+- Runtime batch evidence remains on lab4090 under `.gtpj_runtime/batches/RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu`.
+- Current logs/configs/checkpoints were copied to a dedicated ATTEMPT-007 warehouse directory because the runner's default `attempt-001/002/003` warehouse paths are shared with historical runs.
+- The generated runner top-level `batch_status.status` remains `planned`; job-level statuses, `summary.csv/jsonl`, and `events.jsonl` are authoritative and show 3/3 completed.
+
+Attempt-local records:
+
+- `attempts/ATTEMPT-007/config.yaml`
+- `attempts/ATTEMPT-007/pre_run_plan.md`
+- `attempts/ATTEMPT-007/manifest.yaml`
+- `attempts/ATTEMPT-007/result.yaml`
+- `attempts/ATTEMPT-007/result.md`
+- `attempts/ATTEMPT-007/quality_check.md`
+- `attempts/ATTEMPT-007/agent_summary.md`
+- `attempts/ATTEMPT-007/AGENT_ACTIVITY.md`
+- `attempts/ATTEMPT-007/TRANSITIONS.jsonl`
+- `attempts/ATTEMPT-007/evidence_routing.yaml`
