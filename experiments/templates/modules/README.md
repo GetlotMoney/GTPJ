@@ -18,6 +18,7 @@
 ```text
 module_source_template.md
 standard_trial_config_template.yaml
+standard_gzsl_training_template.py
 implementation.md
 interface_precheck.md
 quality_check.md
@@ -30,3 +31,8 @@ logits: [B（图片/样本数量）, C（类别数量）]
 metrics: U, S, H, ZS
 dataset default: CUB xlsa17 att_splits
 ```
+
+`standard_gzsl_training_template.py` is the full training-entry scaffold for
+formal module trials. The other files are module-level templates. Together they
+are reusable for GTPJ standard GZSL trials, but they are not universal templates
+for every model, dataset, split, or evaluation protocol.

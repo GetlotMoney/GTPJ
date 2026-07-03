@@ -1,6 +1,13 @@
 # Trial-local config template for paper-derived GTPJ modules.
 # Defaults must preserve the selected base version.
 
+trial_id:
+  value: TRIAL-xxx
+base_version:
+  value: vX
+base_code_tag:
+  value: vX
+
 dataset:
   value: CUB
 dataset_split:
@@ -10,10 +17,21 @@ evaluation_protocol:
 
 module_name:
   value: TODO_MODULE
+module_source:
+  value: module_source.md
 module_template_family:
   value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+training_template:
+  value: experiments/templates/modules/standard_gzsl_training_template.py
 use_trial_module:
   value: false
+
+epochs:
+  value: 0
+eval_every_epochs:
+  value: 1
+top_k_checkpoints:
+  value: 3
 
 # Keep lambda at zero until the module is explicitly enabled for an attempt.
 lambda_trial_loss:

@@ -436,6 +436,7 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("docs/workflow/WORKFLOW_MANIFEST.yaml", required)
         self.assertIn("docs/workflow/core/TASK_START_MINI.md", required)
         self.assertIn("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", required)
+        self.assertIn("experiments/templates/modules/standard_gzsl_training_template.py", required)
 
     def test_scan_ignores_runtime_state(self) -> None:
         legacy_marker = "TUNE" + "-024"
@@ -999,10 +1000,12 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("module_source: module_source.md", readme)
         self.assertIn("module_template_family:", readme)
         self.assertIn("standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py", readme)
+        self.assertIn("standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py", readme)
         self.assertIn("template_family:", module_source)
         self.assertIn("paper_writing_note:", module_source)
         self.assertIn("standard GZSL U/S/H/ZS", module_source)
         self.assertIn("Template Selection", implementation)
+        self.assertIn("standard_gzsl_training_template.py", implementation)
         self.assertIn("module_template_selection.md", implementation)
         self.assertIn("framework_diagram: framework_diagram.md", readme)
         self.assertIn("## Framework Diagram", readme)
@@ -2187,7 +2190,7 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
-            "feature_adapter_template.py\nstandard GZSL U/S/H/ZS\nbase_code_tag\n",
+            "feature_adapter_template.py\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\n",
         )
         self._write(
             "docs/workflow/playbooks/innovation.md",
@@ -2202,7 +2205,7 @@ decision:
         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nU, S, H, ZS\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\nU, S, H, ZS\n")
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")
 

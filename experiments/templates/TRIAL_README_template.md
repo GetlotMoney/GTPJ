@@ -14,6 +14,7 @@ changed_files:
 module_source: module_source.md
 module_template_family:
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
+standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
 attempts_table: ATTEMPTS.md
 best_attempt_id:
 best_attempt_dir:
@@ -59,6 +60,7 @@ official_code_path:
 mechanism_claim:
 template_family:
 attachment_point:
+training_template: experiments/templates/modules/standard_gzsl_training_template.py
 baseline_off_explanation:
 paper_writing_note:
 ```

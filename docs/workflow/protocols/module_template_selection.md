@@ -108,6 +108,30 @@ paper_writing_note:
 - 新 loss 的 `lambda=0` 不改变 total loss；
 - protected metadata 必须从 dataloader/model 读取，不手写重排。
 
+## 标准训练入口
+
+正式 module trial 还必须继承或对照
+`standard_gzsl_training_template.py` 的完整训练入口结构：
+
+```text
+config -> seed -> dataset/split -> frozen backbone -> model/module -> train loop -> standard GZSL eval -> checkpoint/artifact refs -> result/quality summary
+```
+
+已有 `train_GTPJ_CUB.py` 可以作为等价实现继续使用，但 trial-local
+`implementation.md` 必须说明它与训练模板的对应关系。新训练入口不得跳过：
+
+- `base_version` / `base_code_tag`；
+- `module_source.md`；
+- `module_template_family`；
+- CUB xlsa17 split 或显式 high-risk dataset adaptation note；
+- standard GZSL U/S/H/ZS evaluation；
+- `best_H` 只作为 observed result，不能自动写成 confirmed；
+- checkpoint / log / result artifact refs。
+
+这些模板只在 GTPJ 标准 GZSL module trial 范围内通用。若改成 AWA2/SUN、
+非 xlsa17 split、非 GZSL 任务或新评估指标，必须单独记录适配边界，不能直接与
+CUB xlsa17 baseline 互相比。
+
 ## 阻断规则
 
 以下情况必须阻断正式 trial：
@@ -115,6 +139,7 @@ paper_writing_note:
 - 缺少 `base_version` 或 `base_code_tag`。
 - 缺少 `module_source.md`。
 - 未选择 `template_family`。
+- 缺少 `standard_gzsl_training_template.py` 对照或等价训练入口说明。
 - 模板选择理由不能解释 mechanism 到 attachment point 的映射。
 - 任何代码路径会静默改变 split、class order、label mapping、logits shape 或 U/S/H/ZS 语义。
 - 采样或数据视图模板没有单独高风险质量检查。

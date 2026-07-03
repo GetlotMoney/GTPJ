@@ -1262,6 +1262,7 @@ def required_repository_files() -> list[str]:
         "experiments/templates/modules/module_source_template.md",
         "experiments/templates/modules/standard_trial_config_template.yaml",
         "experiments/templates/modules/standard_gzsl_module_framework_template.py",
+        "experiments/templates/modules/standard_gzsl_training_template.py",
         "experiments/templates/modules/feature_adapter_template.py",
         "experiments/templates/modules/fusion_gate_template.py",
         "experiments/templates/modules/auxiliary_loss_template.py",
@@ -1397,7 +1398,12 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
     if "## Framework Diagram" not in trial_template:
         raise WorkflowError("TRIAL_README_template.md must include ## Framework Diagram")
-    for marker in ["module_source:", "module_template_family:", "standard_gzsl_framework"]:
+    for marker in [
+        "module_source:",
+        "module_template_family:",
+        "standard_gzsl_framework",
+        "standard_gzsl_training_template",
+    ]:
         if marker not in trial_template:
             raise WorkflowError(f"TRIAL_README_template.md missing module template marker: {marker}")
     artifact_schema = read_text(REPO_ROOT / "schemas" / "artifact_ref.schema.json")
@@ -1447,6 +1453,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "agent_output_refs",
         "标准 GZSL",
         "module_source.md",
+        "standard_gzsl_training_template.py",
     ]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
@@ -1459,6 +1466,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "auxiliary_loss_template.py",
         "sampler_or_data_view_template.py",
         "standard_gzsl_module_framework_template.py",
+        "standard_gzsl_training_template.py",
         "base_version",
         "base_code_tag",
         "standard GZSL U/S/H/ZS",
@@ -1479,6 +1487,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "paper_writing_note:",
         ],
         "experiments/templates/modules/standard_trial_config_template.yaml": [
+            "base_code_tag",
+            "training_template",
             "standard_gzsl_u_s_h_zs",
             "protect_seen_unseen_split",
             "protect_label_mapping",
@@ -1486,6 +1496,12 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/templates/modules/standard_gzsl_module_framework_template.py": [
             "GZSLProtectedState",
             "assert_logits_shape",
+            "standard_gzsl_u_s_h_zs",
+        ],
+        "experiments/templates/modules/standard_gzsl_training_template.py": [
+            "StandardGZSLTrainingRun",
+            "assert_standard_gzsl_eval",
+            "best_H",
             "standard_gzsl_u_s_h_zs",
         ],
         "experiments/templates/modules/feature_adapter_template.py": ["TrialFeatureAdapter", "template_family"],
@@ -1744,7 +1760,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Baseline-Off Path",
         "Minimum Verification",
         "Template Selection",
+        "Training Entry",
         "template_family",
+        "standard_gzsl_training_template.py",
         "standard GZSL U/S/H/ZS",
         "module_template_selection.md",
     ]:
@@ -5629,6 +5647,7 @@ def workflow_consistency_errors() -> list[str]:
             "feature_adapter_template.py",
             "standard GZSL U/S/H/ZS",
             "base_code_tag",
+            "standard_gzsl_training_template.py",
         ],
         "docs/workflow/playbooks/innovation.md": [
             "探索 / 正式分界",
@@ -5648,7 +5667,11 @@ def workflow_consistency_errors() -> list[str]:
             "agent_cleanup:",
         ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
-        "experiments/templates/modules/README.md": ["standard_gzsl_module_framework_template.py", "U, S, H, ZS"],
+        "experiments/templates/modules/README.md": [
+            "standard_gzsl_module_framework_template.py",
+            "standard_gzsl_training_template.py",
+            "U, S, H, ZS",
+        ],
     }
     for path_text, markers in required_markers.items():
         path = REPO_ROOT / path_text
@@ -6916,6 +6939,7 @@ code_commit:
 module_source: module_source.md
 module_template_family: {template_family}
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
+standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
@@ -6949,6 +6973,7 @@ source_ref: {idea.get('source_ref', '')}
 mechanism_claim: {idea.get('hypothesis', '')}
 template_family: {template_family}
 attachment_point:
+training_template: experiments/templates/modules/standard_gzsl_training_template.py
 baseline_off_explanation:
 paper_writing_note:
 ```
@@ -7041,6 +7066,7 @@ docs/workflow/protocols/module_template_selection.md
 ```text
 module_source: module_source.md
 template_family: {template_family}
+training_template: experiments/templates/modules/standard_gzsl_training_template.py
 base_version: {base_version}
 base_code_tag: {base_version}
 dataset: CUB xlsa17 att_splits
@@ -7068,6 +7094,24 @@ mechanism_claim: {idea.get('hypothesis', '')}
 why_not_narrower_template:
 high_risk_reason:
 ```
+
+## Training Entry（训练入口）
+
+```text
+selected_training_entry:
+standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+equivalence_note:
+config_path:
+seed:
+dataset_loader:
+eval_function:
+checkpoint_policy:
+artifact_refs:
+```
+
+说明本 Trial 是复制标准训练模板，还是沿用 `train_GTPJ_CUB.py` 等等价入口。
+必须覆盖 config、seed、dataset/split、frozen backbone、model/module、
+train loop、standard GZSL eval、checkpoint/log retention、result/quality summary。
 
 ## Input Contract（输入契约）
 

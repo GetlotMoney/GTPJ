@@ -14,6 +14,7 @@ Hard gate: if interface, label mapping, seen/unseen split, class order, logits s
 ```text
 module_source: module_source.md
 template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+training_template: experiments/templates/modules/standard_gzsl_training_template.py
 base_version:
 base_code_tag:
 dataset: CUB xlsa17 att_splits
@@ -45,6 +46,25 @@ high_risk_reason:
 Implementation must follow `docs/workflow/protocols/module_template_selection.md`.
 If the trial changes evaluation, split, class order, label mapping, or metric semantics,
 it is not a normal comparable module trial.
+
+## Training Entry
+
+```text
+selected_training_entry:
+standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+equivalence_note:
+config_path:
+seed:
+dataset_loader:
+eval_function:
+checkpoint_policy:
+artifact_refs:
+```
+
+Explain whether the run uses a copied training template or an existing entry
+such as `train_GTPJ_CUB.py`. The explanation must map config, seed,
+dataset/split, frozen backbone, model/module, train loop, standard GZSL eval,
+checkpoint/log retention, and result/quality summaries.
 
 ## Input Contract
 
