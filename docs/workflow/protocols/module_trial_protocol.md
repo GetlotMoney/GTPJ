@@ -15,8 +15,8 @@ idea_tree/ideas/IDEA-xxxx_short_name/IDEA.md
 模块代码改动必须遵守：
 
 ```text
-docs/workflow/code_interface_contract.md
-docs/workflow/innovation_code_review_protocol.md
+docs/workflow/protocols/code_interface_contract.md
+docs/workflow/protocols/innovation_code_review_protocol.md
 ```
 
 分支和 tag 命名必须带 base version：
@@ -128,7 +128,7 @@ Before any real attempt run, trial-internal bookkeeping follows the same two-sta
 ## Innovation code review gate
 
 如果 module trial 会把 idea、论文机制、官方代码或本地创新改成实际代码，必须先通过
-`docs/workflow/innovation_code_review_protocol.md`：
+`docs/workflow/protocols/innovation_code_review_protocol.md`：
 
 ```text
 Review 0 -> idea_intent_check.md
@@ -241,7 +241,7 @@ not_applicable / promote / blocked / rejected
 ```
 
 只有 `trial_decision: promote` 且 `promotion_decision: promote` 时，trial 才会进入
-`docs/workflow/promotion.md` 的自动 promotion gate。
+`docs/workflow/protocols/promotion.md` 的自动 promotion gate。
 `H` 提升但证据不完整时，必须写 `revise`、`blocked` 或 `rejected`，不能写 `promote`。
 单次最高 attempt 必须记录为 `best_observed_H`；只有 clean confirmation 或质量门要求的
 多 run 稳定性通过后，才能升级为 `confirmed_H` 或 `baseline_grade`。

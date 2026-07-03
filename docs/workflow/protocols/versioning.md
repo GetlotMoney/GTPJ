@@ -95,7 +95,7 @@ does_not_inherit: v2
 通用要求见：
 
 ```text
-docs/workflow/workflow_diagrams.md
+docs/workflow/archive/diagrams/workflow_diagrams.md
 ```
 
 每个正式版本目录还必须包含：
@@ -181,7 +181,7 @@ based_on_trial:
 版本。完整硬门见：
 
 ```text
-docs/workflow/promotion.md
+docs/workflow/protocols/promotion.md
 ```
 
 ```text

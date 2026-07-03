@@ -16,7 +16,7 @@ Hard gate: if the interface, label mapping, seen/unseen split, class order, logi
 如果代码改动来自 idea、创新机制、论文模块、官方代码复刻或 module trial，必须同时遵守：
 
 ```text
-docs/workflow/innovation_code_review_protocol.md
+docs/workflow/protocols/innovation_code_review_protocol.md
 ```
 
 Interface Checker 的职责分成两次：
@@ -202,4 +202,4 @@ lambda_new_loss > 0 -> 新 loss 只按该权重贡献到 total loss
 - trial 已记录结果证据；
 - baseline-off path 仍然有效；
 - 新版本 config 与旧 base version config 分开创建；
-- `docs/workflow/promotion.md` 的硬门通过。
+- `docs/workflow/protocols/promotion.md` 的硬门通过。

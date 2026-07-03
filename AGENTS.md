@@ -38,7 +38,7 @@
 
 - `main` 是唯一长期分支。
 - `v1`、`v2`、`v3`、`v4`、`v5` 是永久版本 tags；当前正式确定版本以 `README.md`、`docs/PROJECT_STATUS.md` 和 `experiments/VERSION_TREE.md` 为准。`v4` 是历史 config-only tag，不作为以后“只调参也能开新 vX”的模板。
-- min3 复现实验中，同一候选至少 3 次 clean completed/ok 且有 H 指标时，即可按 `docs/workflow/promotion.md` 自动 promotion；多个 min3-confirmed 候选同时存在时，按 `confirmed_H` 最高者确定为正式版本，`best_observed_H` 只作平局辅助。promotion 表示确定正式版本/tag，不等于自动执行 `activate-version` 或切换 active runtime alias。
+- min3 复现实验中，同一候选至少 3 次 clean completed/ok 且有 H 指标时，即可按 `docs/workflow/protocols/promotion.md` 自动 promotion；多个 min3-confirmed 候选同时存在时，按 `confirmed_H` 最高者确定为正式版本，`best_observed_H` 只作平局辅助。promotion 表示确定正式版本/tag，不等于自动执行 `activate-version` 或切换 active runtime alias。
 - 训练产生的 checkpoint 不进 GitHub。一次 campaign 收口后，只保留 H 排名前 3 的 `model_best`/best-model checkpoint；其余训练 checkpoint 可在写入 retention manifest 后删除。日志、receipt、summary、manifest、registry 和配置证据不能随 checkpoint 清理一起删除。
 - Trial 代码快照使用类似 `trial/idea-0001/trial-001` 的 tag。
 - 当前阶段已经强制执行 GTPJ 核心 workflow：任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、agent 凭证和 promotion gate 都必须遵守。

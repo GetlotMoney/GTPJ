@@ -141,7 +141,7 @@ lifecycle: campaign_scoped | workstream_scoped | task_scoped | run_scoped
 
 `persistent_thread` 不是默认值。它只用于跨 workflow 可见追踪，不能作为正式证据源。
 
-正式 campaign runner start 前必须通过 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md`：
+正式 campaign runner start 前必须通过 `docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md`：
 
 ```bash
 python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/campaigns/CAMP-xxx/agent_runtime.yaml

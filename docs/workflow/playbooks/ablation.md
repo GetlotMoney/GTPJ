@@ -7,17 +7,17 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-GZSL_HARD_RULES.md
-AGENT_RUNTIME_HARD_GATE.md
-experiment_protocol.md
-code_interface_contract.md
-产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
+docs/workflow/reference/GZSL_HARD_RULES.md
+docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
+docs/workflow/protocols/experiment_protocol.md
+docs/workflow/protocols/code_interface_contract.md
+产生 raw artifact 时读 docs/workflow/protocols/ARTIFACT_REGISTRATION.md
 ```
 
 如果消融发生在 module trial 内部，还要读：
 
 ```text
-module_trial_protocol.md
+docs/workflow/protocols/module_trial_protocol.md
 ```
 
 ## 角色

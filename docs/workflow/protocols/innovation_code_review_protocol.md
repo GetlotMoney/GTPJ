@@ -142,7 +142,7 @@ agent_summary.md
 ```text
 agent_summary.md
 review_round_*.md
-docs/workflow/issues/YYYY-MM-DD-*.md
+docs/workflow/archive/issues/YYYY-MM-DD-*.md
 shared_roles/<role>/memory.md
 workflow/gtpj_workflow.py helper 或 sync check
 ```

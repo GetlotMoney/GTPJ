@@ -92,4 +92,4 @@ Priority docs:
 - `experiments/VERSION_TREE.md`
 - `experiments/EXPERIMENT_REGISTRY.md`
 - `docs/workflow/README.md`
-- `docs/workflow/runbook.md`
+- `docs/workflow/archive/runbooks/runbook.md`

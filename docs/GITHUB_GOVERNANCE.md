@@ -157,7 +157,7 @@ GitHub 使用 `warehouse://`、`research://` URI 和 sha256/size 引用它们。
 
 联动更新原则：
 
-- GitHub 和本地不是机械每次同时写；是否联动由 `docs/workflow/WORKFLOW_ROUTER.md` 分类决定。
+- GitHub 和本地不是机械每次同时写；是否联动由 `docs/workflow/core/WORKFLOW_ROUTER.md` 分类决定。
 - 论文阅读、来源复核、新 idea 和长推理先写 `GTPJ_Research`，再把轻量事实和 `research://` 引用写入 GitHub。
 - 训练日志、checkpoint 和大文件先写 `GTPJ_Warehouse`，再把 `warehouse://`、sha256、size、指标摘要写入 GitHub。
 - 如果某次结果改变 idea 状态、version score、trial 结论、promotion 判断或 next_action，必须同步更新
@@ -438,7 +438,7 @@ Promotion 硬门：
 - evaluation 口径没有改变，包括 class order、seen/unseen split、logits shape 和 metric calculation。
 - 模块开关关闭时可以回到 `parent_version` 行为。
 - `quality_check.md` 的 `promotion_decision` 必须是 `promote`，并通过
-  `docs/workflow/promotion.md` 的自动 promotion gate。
+  `docs/workflow/protocols/promotion.md` 的自动 promotion gate。
 - `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`EXPERIMENT_REGISTRY.md`
   都已经更新。
 
@@ -483,18 +483,18 @@ GitHub 远端应设置保护规则：
 | 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 改稳定入口、目录类型、关键文件或职责时更新；动态实例只更新对应索引。 |
 | 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
 | 版本树账本 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变父节点关系或主版本时更新。 |
-| 创意树细则 | `docs/workflow/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
-| 论文 intake / idea discovery | `docs/workflow/paper_intake.md` | 改论文投递、阅读状态、来源复核、候选 idea 提取或 GitHub 轻量创意同步流程时更新。 |
+| 创意树细则 | `docs/workflow/protocols/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
+| 论文 intake / idea discovery | `docs/workflow/protocols/paper_intake.md` | 改论文投递、阅读状态、来源复核、候选 idea 提取或 GitHub 轻量创意同步流程时更新。 |
 | 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |
 | 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |
-| 代码接口契约 | `docs/workflow/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
-| 创新代码审查 | `docs/workflow/innovation_code_review_protocol.md` | 改 idea/创新/module trial 落成代码、多 agents 多轮审查、临时 agents 或 review 轮次规则时更新。 |
-| Git 规则 | `docs/workflow/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
-| 普通实验协议 | `docs/workflow/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
-| 自动 promotion | `docs/workflow/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料、账本回流、main active code 或不自动 push 边界时更新。 |
-| agent 编排 | `docs/workflow/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
+| 代码接口契约 | `docs/workflow/protocols/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
+| 创新代码审查 | `docs/workflow/protocols/innovation_code_review_protocol.md` | 改 idea/创新/module trial 落成代码、多 agents 多轮审查、临时 agents 或 review 轮次规则时更新。 |
+| Git 规则 | `docs/workflow/protocols/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
+| 普通实验协议 | `docs/workflow/protocols/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
+| 自动 promotion | `docs/workflow/protocols/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料、账本回流、main active code 或不自动 push 边界时更新。 |
+| agent 编排 | `docs/workflow/protocols/agent_orchestration.md` | 改长期 agent 角色、文件夹结构、多 agent 编排、GPU 串行或 skill 同步规则时更新。 |
 | 长期 agent 记忆 | `docs/workflow/agents/long_term_memory.md` | 改长期 agent 身份、角色记忆、实例加载、记忆写回或复用经验规则时更新。 |
-| 进度看板协议 | `docs/workflow/progress_dashboard.md` | 改本地网页看板、`.gtpj_runtime/` 状态文件、agent 进度、GPU/Runner 展示或只读边界时更新。 |
+| 进度看板协议 | `docs/workflow/protocols/progress_dashboard.md` | 改本地网页看板、`.gtpj_runtime/` 状态文件、agent 进度、GPU/Runner 展示或只读边界时更新。 |
 
 ## 本地 skill 和 GitHub 的同步
 
@@ -517,7 +517,7 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow
 你刚才说的“不同版本的创意权重不一样”属于创意树细则，所以主更新位置是：
 
 ```text
-docs/workflow/idea_tree_protocol.md
+docs/workflow/protocols/idea_tree_protocol.md
 idea_tree/README.md
 idea_tree/schema.json
 ```
@@ -562,7 +562,7 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 - 如果是模块 trial，关闭开关后能不能回到 baseline？
 
 但 baseline promotion 是强制门。任何 trial、ablation 或 tuned configuration 想成为正式
-`vX`，必须通过 `docs/workflow/promotion.md` 的自动 promotion gate，不能只看一次 `H` 提升。
+`vX`，必须通过 `docs/workflow/protocols/promotion.md` 的自动 promotion gate，不能只看一次 `H` 提升。
 单次最高结果只能写成 `best_observed_H`；没有 clean confirmation 或多 run 稳定性证据时，
 只能由 owner 选择 provisional/owner-activated 主线，不能写 confirmed baseline。
 
@@ -585,7 +585,7 @@ Coordinator 可以自动创建本地新版本材料和本地 tag，
 - 最终决策引用了哪些 artifact、commit 和质量检查。
 
 长报告、完整日志分析和 runner 细节放 Warehouse；GitHub 只保存摘要和 artifact id。具体规则见
-`docs/workflow/agent_report_policy.md`。
+`docs/workflow/protocols/agent_report_policy.md`。
 
 ## 从旧 cv 实验工作流可以学习什么
 

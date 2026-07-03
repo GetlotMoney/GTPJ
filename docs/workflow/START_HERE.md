@@ -41,7 +41,7 @@ Owner 是默认监控者。正式 Runner 启动后，Coordinator 不能只发一
 正式 Runner 启动还必须通过：
 
 ```text
-AGENT_RUNTIME_HARD_GATE.md
+docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 agent_runtime.yaml
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
 ```
@@ -58,9 +58,9 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 1. START_HERE.md
 2. WORKFLOW_KERNEL.md
 3. docs/workflow/playbooks/ 下的相关 playbook
-4. 只有路由模糊时才读 WORKFLOW_ROUTER.md
-5. 正式写入或运行前读 TASK_START_CARD.md
-6. 正式 Runner 前读 AGENT_RUNTIME_HARD_GATE.md
+4. 只有路由模糊时才读 docs/workflow/core/WORKFLOW_ROUTER.md
+5. 正式写入或运行前读 docs/workflow/core/TASK_START_CARD.md
+6. 正式 Runner 前读 docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 ```
 
 不要默认深读所有旧协议。

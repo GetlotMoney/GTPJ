@@ -262,7 +262,7 @@ workflow-v2 闭环。
 
 ## 9. Agent Cleanup
 
-阶段结束或 workflow 结束前必须按 `docs/workflow/agent_cleanup_protocol.md` 执行 cleanup。
+阶段结束或 workflow 结束前必须按 `docs/workflow/protocols/agent_cleanup_protocol.md` 执行 cleanup。
 
 `agent-cleanup-plan` 只读列出 keep / close / unknown；真正关闭由 Coordinator 按名单调用可用的 close-agent 工具，并把 `closed`、`not_found`、`retained_by_owner` 或 `unknown_ui_agent` 写入 `closed_agents_record`。
 

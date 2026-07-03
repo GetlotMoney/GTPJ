@@ -109,7 +109,7 @@ authority_ref_policy:
 
 agent_runtime_gate:
   formal_runner_start_requires:
-    - docs/workflow/AGENT_RUNTIME_HARD_GATE.md
+    - docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
     - agent_runtime.yaml
     - validate-agent-runtime
     - right_sidebar_temporary_agents

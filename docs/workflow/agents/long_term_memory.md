@@ -14,7 +14,7 @@ shared_roles/<role>/memory.md
 by_experiment/<task_type>/agents/README.md
 agent_summary.md
 review_round_*.md
-docs/workflow/issues/YYYY-MM-DD-*.md
+docs/workflow/archive/issues/YYYY-MM-DD-*.md
 ```
 
 运行期 agent 实例可以是：
@@ -83,7 +83,7 @@ Coordinator 激活某个角色时，必须让该角色读取或显式接收：
 1. shared_roles/<role>/profile.md
 2. shared_roles/<role>/memory.md
 3. by_experiment/<task_type>/agents/README.md
-4. docs/workflow/issues/README.md 和最近相关问题文档
+4. docs/workflow/archive/issues/README.md 和最近相关问题文档
 5. 当前 task start card
 6. 如启用 persistent_thread，则提供 thread id / visible label
 ```
@@ -107,9 +107,9 @@ output_locations:
 
 | 触发 | 写入位置 |
 |---|---|
-| 本次具体问题、失败、修复 | `docs/workflow/issues/YYYY-MM-DD-*.md` |
+| 本次具体问题、失败、修复 | `docs/workflow/archive/issues/YYYY-MM-DD-*.md` |
 | 某角色反复犯同类错误 | `shared_roles/<role>/memory.md` |
-| 多角色共同边界问题 | `docs/workflow/agent_orchestration.md` 或 `agent_report_policy.md` |
+| 多角色共同边界问题 | `docs/workflow/protocols/agent_orchestration.md` 或 `agent_report_policy.md` |
 | 重复后处理动作 | `workflow/gtpj_workflow.py` helper 或 sync check |
 
 规则：

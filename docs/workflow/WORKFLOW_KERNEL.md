@@ -25,7 +25,7 @@ promotion/version/tag 判断
 ```
 
 正式证据工作必须使用 `real_multi_agent`。
-正式 Runner 启动前还必须满足 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md`。也就是说，
+正式 Runner 启动前还必须满足 `docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md`。也就是说，
 状态机记录和服务器 runner 都不能替代真实右侧临时 agents；没有 `agent_runtime.yaml`
 和通过的 `validate-agent-runtime` / `multi-agent-preflight`，正式 Runner 必须阻断。
 owner 只能把本轮目标改成非正式 `debug_smoke` 排障；`debug_smoke` 不能回填为正式证据。
@@ -117,7 +117,7 @@ checkpoint retention 规则
 ```
 
 如果 label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚，必须硬阻断。
-所有正式实验必须满足 `docs/workflow/GZSL_HARD_RULES.md`。
+所有正式实验必须满足 `docs/workflow/reference/GZSL_HARD_RULES.md`。
 
 ## 6. Checkpoint 保留规范
 

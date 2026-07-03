@@ -6,9 +6,9 @@
 当前主规范：
 
 ```text
-docs/workflow/GTPJ_WORKFLOW_SPEC.md
-docs/workflow/WORKFLOW_ROUTER.md
-docs/workflow/TASK_START_CARD.md
+docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md
+docs/workflow/core/WORKFLOW_ROUTER.md
+docs/workflow/core/TASK_START_CARD.md
 docs/GITHUB_GOVERNANCE.md
 docs/PROJECT_STRUCTURE.md
 ```
@@ -21,13 +21,13 @@ docs/PROJECT_STRUCTURE.md
 AGENTS.md
 NEXT_ACTIONS.md
 docs/workflow/README.md
-docs/workflow/git_policy.md
-docs/workflow/versioning.md
-docs/workflow/idea_tree_protocol.md
-docs/workflow/module_trial_protocol.md
-docs/workflow/experiment_protocol.md
-docs/workflow/quality_gate.md
-docs/workflow/runbook.md
+docs/workflow/protocols/git_policy.md
+docs/workflow/protocols/versioning.md
+docs/workflow/protocols/idea_tree_protocol.md
+docs/workflow/protocols/module_trial_protocol.md
+docs/workflow/protocols/experiment_protocol.md
+docs/workflow/protocols/quality_gate.md
+docs/workflow/archive/runbooks/runbook.md
 workflow/openclaw/agent_roles.md
 ```
 

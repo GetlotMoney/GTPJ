@@ -25,7 +25,7 @@
 - GitHub ledger。
 - Warehouse artifacts。
 - Git status。
-- `docs/workflow/code_interface_contract.md`。
+- `docs/workflow/protocols/code_interface_contract.md`。
 
 ## Allowed Writes
 

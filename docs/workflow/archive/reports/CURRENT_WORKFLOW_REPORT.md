@@ -5,14 +5,14 @@
 它不是新的规则源。真正的规则仍以这些文件为准：
 
 ```text
-docs/workflow/WORKFLOW_ROUTER.md
-docs/workflow/TASK_START_CARD.md
-docs/workflow/GTPJ_WORKFLOW_SPEC.md
-docs/workflow/agent_contracts.md
-docs/workflow/agent_orchestration.md
-docs/workflow/code_interface_contract.md
-docs/workflow/quality_gate.md
-docs/workflow/promotion.md
+docs/workflow/core/WORKFLOW_ROUTER.md
+docs/workflow/core/TASK_START_CARD.md
+docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md
+docs/workflow/reference/agent_contracts.md
+docs/workflow/protocols/agent_orchestration.md
+docs/workflow/protocols/code_interface_contract.md
+docs/workflow/protocols/quality_gate.md
+docs/workflow/protocols/promotion.md
 ```
 
 ## 1. 当前结论
@@ -44,8 +44,8 @@ docs/workflow/promotion.md
 Owner 不需要说“开启动卡”，也不需要自己判断任务类型。日常入口已经收敛到：
 
 ```text
-docs/workflow/QUICK_START.md
-docs/workflow/TASK_START_MINI.md
+docs/workflow/core/QUICK_START.md
+docs/workflow/core/TASK_START_MINI.md
 ```
 
 Owner 可以直接说 `查状态`、`复现`、`调参`、`消融`、`开新模块`、
@@ -464,14 +464,14 @@ base_version
 最重要入口：
 
 ```text
-docs/workflow/CURRENT_WORKFLOW_REPORT.md   # 本汇报
-docs/workflow/QUICK_START.md               # owner 人话入口
-docs/workflow/TASK_START_MINI.md           # owner 可见 mini 启动卡
-docs/workflow/WORKFLOW_ROUTER.md           # 总教官
-docs/workflow/TASK_START_CARD.md           # 启动卡
-docs/workflow/GTPJ_WORKFLOW_SPEC.md        # 总规范
-docs/workflow/IMPLEMENTATION_STATUS.md     # 落地状态
-docs/workflow/workflow_diagrams.md         # 流程图标准
+docs/workflow/archive/reports/CURRENT_WORKFLOW_REPORT.md   # 本汇报
+docs/workflow/core/QUICK_START.md               # owner 人话入口
+docs/workflow/core/TASK_START_MINI.md           # owner 可见 mini 启动卡
+docs/workflow/core/WORKFLOW_ROUTER.md           # 总教官
+docs/workflow/core/TASK_START_CARD.md           # 启动卡
+docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md        # 总规范
+docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md     # 落地状态
+docs/workflow/archive/diagrams/workflow_diagrams.md         # 流程图标准
 docs/PROJECT_STRUCTURE.md                  # 项目结构总账本
 docs/GITHUB_GOVERNANCE.md                  # GitHub 治理规范
 ```
@@ -479,20 +479,20 @@ docs/GITHUB_GOVERNANCE.md                  # GitHub 治理规范
 agents 入口：
 
 ```text
-docs/workflow/agent_contracts.md
-docs/workflow/agent_report_policy.md
-docs/workflow/agent_orchestration.md
+docs/workflow/reference/agent_contracts.md
+docs/workflow/protocols/agent_report_policy.md
+docs/workflow/protocols/agent_orchestration.md
 docs/workflow/agents/
 ```
 
 实验入口：
 
 ```text
-docs/workflow/experiment_protocol.md
-docs/workflow/module_trial_protocol.md
-docs/workflow/result_index_protocol.md
-docs/workflow/quality_gate.md
-docs/workflow/promotion.md
+docs/workflow/protocols/experiment_protocol.md
+docs/workflow/protocols/module_trial_protocol.md
+docs/workflow/reference/result_index_protocol.md
+docs/workflow/protocols/quality_gate.md
+docs/workflow/protocols/promotion.md
 ```
 
 工具入口：

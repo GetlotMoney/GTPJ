@@ -106,7 +106,7 @@ Root Cause:
 
 Resolution:
 
-- Added `docs/workflow/workflow_diagrams.md`.
+- Added `docs/workflow/archive/diagrams/workflow_diagrams.md`.
 - Added `## Version Flow` to `experiments/v1/VERSION.md` and `experiments/v2/VERSION.md`.
 - Added Mermaid flow templates to:
 

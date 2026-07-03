@@ -13,9 +13,9 @@ python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-WORKFLOW_ROUTER.md
-mixed_experiment_campaign_protocol.md
-AGENT_RUNTIME_HARD_GATE.md
+docs/workflow/core/WORKFLOW_ROUTER.md
+docs/workflow/protocols/mixed_experiment_campaign_protocol.md
+docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 每个 requested workstream 对应的 playbook
 ```
 

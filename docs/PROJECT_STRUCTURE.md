@@ -124,36 +124,36 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `docs/workflow/README.md` | workflow 入口，说明 owner 薄入口、核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
-| `docs/workflow/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
-| `docs/workflow/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
-| `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
-| `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
-| `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
-| `docs/workflow/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
-| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
-| `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
-| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
-| `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
-| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
-| `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
-| `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
-| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
-| `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
-| `docs/workflow/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
-| `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
-| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
-| `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
-| `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
-| `docs/workflow/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
-| `docs/workflow/agent_report_policy.md` | agent 工作凭证保存规范，规定 `agent_summary.md`、长报告 Warehouse 引用和不保存完整聊天流水。 |
-| `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
-| `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
+| `docs/workflow/core/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
+| `docs/workflow/core/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
+| `docs/workflow/core/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| `docs/workflow/core/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
+| `docs/workflow/core/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
+| `docs/workflow/archive/reports/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
+| `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
+| `docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
+| `docs/workflow/archive/diagrams/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
+| `docs/workflow/protocols/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
+| `docs/workflow/protocols/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
+| `docs/workflow/protocols/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
+| `docs/workflow/protocols/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
+| `docs/workflow/protocols/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
+| `docs/workflow/protocols/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
+| `docs/workflow/protocols/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
+| `docs/workflow/protocols/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
+| `docs/workflow/reference/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
+| `docs/workflow/protocols/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
+| `docs/workflow/reference/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
+| `docs/workflow/reference/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
+| `docs/workflow/protocols/agent_report_policy.md` | agent 工作凭证保存规范，规定 `agent_summary.md`、长报告 Warehouse 引用和不保存完整聊天流水。 |
+| `docs/workflow/protocols/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
+| `docs/workflow/protocols/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
 | `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
 | `docs/workflow/agents/long_term_memory.md` | 长期 agent 记忆协议，规定 `profile.md`、`memory.md`、实例加载和记忆写回。 |
-| `docs/workflow/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
-| `docs/workflow/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
-| `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
-| `docs/workflow/issues/` | 日期化实验问题知识库；新对话默认先读 `issues/README.md` 和最近日期文档，不全量读取历史问题。 |
+| `docs/workflow/protocols/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
+| `docs/workflow/protocols/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
+| `docs/workflow/archive/runbooks/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
+| `docs/workflow/archive/issues/` | 日期化实验问题知识库；新对话默认先读 `issues/README.md` 和最近日期文档，不全量读取历史问题。 |
 
 ## `workflow/`
 
@@ -165,7 +165,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
 | `workflow/codex/README.md` | Codex workflow 入口，说明 Codex 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
 | `workflow/openclaw/README.md` | OpenClaw workflow 入口，说明 OpenClaw 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
-| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/agent_orchestration.md` 为准。 |
+| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/protocols/agent_orchestration.md` 为准。 |
 
 `workflow/gtpj_workflow.py` 的职责：
 
@@ -196,8 +196,8 @@ idea_tree/                 # 创意来源、评分、排序
 
 代码接口要求：
 
-- 新模块必须遵守 `docs/workflow/code_interface_contract.md`。
-- idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/innovation_code_review_protocol.md`。
+- 新模块必须遵守 `docs/workflow/protocols/code_interface_contract.md`。
+- idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/protocols/innovation_code_review_protocol.md`。
 - 开关关闭时必须回到选定 base version 行为。
 - 不得静默改变 logits shape、class order、loss 语义或 eval 语义。
 
@@ -215,7 +215,7 @@ idea_tree/                 # 创意来源、评分、排序
 注意：
 
 - `data/`、`data/cache/`、原始数据、特征缓存和 checkpoint 不纳入 Git。
-- 如果工具脚本改变评估语义，必须同步更新 `docs/workflow/code_interface_contract.md` 和本文件。
+- 如果工具脚本改变评估语义，必须同步更新 `docs/workflow/protocols/code_interface_contract.md` 和本文件。
 
 ## `idea_tree/`
 

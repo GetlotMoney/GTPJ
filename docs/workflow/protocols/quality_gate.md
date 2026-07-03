@@ -1,7 +1,7 @@
 # 质量门
 
 普通实验的 `quality_check.md` 是证据完整性检查；baseline promotion 的
-`quality_check.md` 是强制门。自动 promotion 的完整规则见 `docs/workflow/promotion.md`。
+`quality_check.md` 是强制门。自动 promotion 的完整规则见 `docs/workflow/protocols/promotion.md`。
 
 换句话说：
 
@@ -38,7 +38,7 @@ baseline-grade 证据，也不能让 agent 靠记忆把 `best_observed_H` 写成
    module trial 和 promotion 分支仍从当前 `main` 切出，必要时只恢复代码层到目标 tag。
 3. 确认 config 改动只作用于当前实验。
 4. 确认模块改动由 off switch 控制。
-5. 如果有模块代码改动，确认满足 `docs/workflow/code_interface_contract.md`。
+5. 如果有模块代码改动，确认满足 `docs/workflow/protocols/code_interface_contract.md`。
 6. 确认外部日志 artifact URI、hash、size 和结果路径已经准备好。
 7. 确认 raw logs、checkpoint、generated figures 不会写入 GitHub。
 8. 确认实验结束后的 checkpoint retention 计划：模型 checkpoint 最多保留 3 个；若需要例外，
@@ -66,10 +66,10 @@ promotion_decision: promote
 promote_to: vX
 ```
 
-随后自动执行 `docs/workflow/promotion.md` 的硬门。必须满足：
+随后自动执行 `docs/workflow/protocols/promotion.md` 的硬门。必须满足：
 
 - [ ] 父版本明确：`parent_version`、`parent_tag`、`base_code_tag` 已记录；普通实验可按
-  `docs/workflow/experiment_protocol.md` 的 promotion 字段映射读取。
+  `docs/workflow/protocols/experiment_protocol.md` 的 promotion 字段映射读取。
 - [ ] 来源 commit/tag 明确：module trial 的 trial tag 指向 README 中记录的 `code_commit`；
   普通实验或 tuned configuration 必须记录 `run_commit`，并可映射为 `code_commit`。
 - [ ] 指标明确：父版本 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。

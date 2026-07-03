@@ -1205,34 +1205,34 @@ def required_repository_files() -> list[str]:
         "docs/PROJECT_STATUS.md",
         "docs/DATA_SETUP.md",
         "docs/workflow/README.md",
-        "docs/workflow/QUICK_START.md",
+        "docs/workflow/core/QUICK_START.md",
         "docs/workflow/WORKFLOW_MANIFEST.yaml",
-        "docs/workflow/TASK_START_MINI.md",
-        "docs/workflow/git_policy.md",
-        "docs/workflow/versioning.md",
-        "docs/workflow/module_trial_protocol.md",
-        "docs/workflow/code_interface_contract.md",
-        "docs/workflow/innovation_code_review_protocol.md",
-        "docs/workflow/code_interface.md",
-        "docs/workflow/experiment_protocol.md",
-        "docs/workflow/artifact_policy.md",
-        "docs/workflow/result_index_protocol.md",
-        "docs/workflow/agent_contracts.md",
-        "docs/workflow/agent_orchestration.md",
-        "docs/workflow/agent_cleanup_protocol.md",
-        "docs/workflow/agent_report_policy.md",
-        "docs/workflow/evidence_routing_protocol.md",
-        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md",
-        "docs/workflow/GZSL_HARD_RULES.md",
-        "docs/workflow/innovation_decomposition_protocol.md",
-        "docs/workflow/WORKFLOW_VERSION.md",
-        "docs/workflow/CHANGELOG.md",
+        "docs/workflow/core/TASK_START_MINI.md",
+        "docs/workflow/protocols/git_policy.md",
+        "docs/workflow/protocols/versioning.md",
+        "docs/workflow/protocols/module_trial_protocol.md",
+        "docs/workflow/protocols/code_interface_contract.md",
+        "docs/workflow/protocols/innovation_code_review_protocol.md",
+        "docs/workflow/reference/code_interface.md",
+        "docs/workflow/protocols/experiment_protocol.md",
+        "docs/workflow/reference/artifact_policy.md",
+        "docs/workflow/reference/result_index_protocol.md",
+        "docs/workflow/reference/agent_contracts.md",
+        "docs/workflow/protocols/agent_orchestration.md",
+        "docs/workflow/protocols/agent_cleanup_protocol.md",
+        "docs/workflow/protocols/agent_report_policy.md",
+        "docs/workflow/protocols/evidence_routing_protocol.md",
+        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md",
+        "docs/workflow/reference/GZSL_HARD_RULES.md",
+        "docs/workflow/reference/innovation_decomposition_protocol.md",
+        "docs/workflow/core/WORKFLOW_VERSION.md",
+        "docs/workflow/core/CHANGELOG.md",
         "docs/workflow/agents/README.md",
         "docs/workflow/agents/long_term_memory.md",
-        "docs/workflow/idea_tree_protocol.md",
-        "docs/workflow/quality_gate.md",
-        "docs/workflow/workflow_diagrams.md",
-        "docs/workflow/runbook.md",
+        "docs/workflow/protocols/idea_tree_protocol.md",
+        "docs/workflow/protocols/quality_gate.md",
+        "docs/workflow/archive/diagrams/workflow_diagrams.md",
+        "docs/workflow/archive/runbooks/runbook.md",
         "workflow/README.md",
         "workflow/openclaw/README.md",
         "workflow/codex/README.md",
@@ -1331,8 +1331,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
     marker_requirements = {
         "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke", "multi_agent_preflight"],
         "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl", "validate-agent-runtime", "multi-agent-preflight"],
-        "docs/workflow/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
-        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": [
+        "docs/workflow/protocols/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
+        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
             "right_sidebar_temporary_agents",
             "agent_runtime.yaml",
             "validate-agent-runtime",
@@ -1341,28 +1341,28 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "formal_runner_allowed",
             "agent_output_refs",
         ],
-        "docs/workflow/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
-        "docs/workflow/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
-        "docs/workflow/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
-        "docs/workflow/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
-        "docs/workflow/QUICK_START.md": ["repro-status", "baseline_repro_status"],
-        "docs/workflow/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
-        "docs/workflow/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
-        "docs/workflow/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate", "multi_agent_preflight"],
+        "docs/workflow/reference/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
+        "docs/workflow/reference/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
+        "docs/workflow/core/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
+        "docs/workflow/core/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
+        "docs/workflow/core/QUICK_START.md": ["repro-status", "baseline_repro_status"],
+        "docs/workflow/core/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
+        "docs/workflow/core/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
+        "docs/workflow/core/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate", "multi_agent_preflight"],
         "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
-        "docs/workflow/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml", "multi_agent_preflight"],
-        "docs/workflow/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml"],
+        "docs/workflow/protocols/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml", "multi_agent_preflight"],
+        "docs/workflow/protocols/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml"],
         "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
         "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
         "docs/workflow/playbooks/tune.md": ["tune_promising", "stopped_no_gain"],
         "docs/workflow/playbooks/ablation.md": ["ablation_supported", "stopped_ablation_not_supported"],
         "docs/workflow/playbooks/confirmation.md": ["promotion_compare_metric", "confirmed_H"],
-        "docs/workflow/artifact_policy.md": ["Top-3", "pruned"],
-        "docs/workflow/promotion.md": ["must not push", "explicitly asks"],
-        "docs/workflow/experiment_protocol.md": ["mixed_confirmation", "strict_determinism"],
-        "docs/workflow/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng"],
-        "docs/workflow/runbook.md": ["mixed_confirmation", "batch_sampling_seed"],
-        "docs/workflow/issues/README.md": ["ISSUE-20260628-014"],
+        "docs/workflow/reference/artifact_policy.md": ["Top-3", "pruned"],
+        "docs/workflow/protocols/promotion.md": ["must not push", "explicitly asks"],
+        "docs/workflow/protocols/experiment_protocol.md": ["mixed_confirmation", "strict_determinism"],
+        "docs/workflow/protocols/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng"],
+        "docs/workflow/archive/runbooks/runbook.md": ["mixed_confirmation", "batch_sampling_seed"],
+        "docs/workflow/archive/issues/README.md": ["ISSUE-20260628-014"],
         "workflow/README.md": ["repro-status", "confirmed_H"],
     }
     for path_text, markers in marker_requirements.items():
@@ -1371,7 +1371,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
             if marker not in text:
                 raise WorkflowError(f"{path_text} missing reproducibility marker: {marker}")
 
-    workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "workflow_diagrams.md")
+    workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "archive" / "diagrams" / "workflow_diagrams.md")
     for marker in ["## Version Flow", "## Trial Flow", "## Framework Diagram", "## 总流程框架", "## Module Trial 流程框架"]:
         if marker not in workflow_diagrams:
             raise WorkflowError(f"workflow_diagrams.md missing section: {marker}")
@@ -1571,7 +1571,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in project_structure:
             raise WorkflowError(f"docs/PROJECT_STRUCTURE.md missing section: {marker}")
 
-    contract = read_text(REPO_ROOT / "docs" / "workflow" / "code_interface_contract.md")
+    contract = read_text(REPO_ROOT / "docs" / "workflow" / "protocols" / "code_interface_contract.md")
     for marker in [
         "Baseline-Off Equivalence",
         "Input Contract",
@@ -1586,7 +1586,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in contract:
             raise WorkflowError(f"code_interface_contract.md missing section: {marker}")
 
-    innovation_review = read_text(REPO_ROOT / "docs" / "workflow" / "innovation_code_review_protocol.md")
+    innovation_review = read_text(REPO_ROOT / "docs" / "workflow" / "protocols" / "innovation_code_review_protocol.md")
     for marker in [
         "Review 0",
         "Review 1",
@@ -1598,7 +1598,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in innovation_review:
             raise WorkflowError(f"innovation_code_review_protocol.md missing section: {marker}")
 
-    agent_report_policy = read_text(REPO_ROOT / "docs" / "workflow" / "agent_report_policy.md")
+    agent_report_policy = read_text(REPO_ROOT / "docs" / "workflow" / "protocols" / "agent_report_policy.md")
     for marker in [
         "idea_intent_check.md",
         "interface_precheck.md",
@@ -1610,7 +1610,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in agent_report_policy:
             raise WorkflowError(f"agent_report_policy.md missing field: {marker}")
 
-    artifact_policy = read_text(REPO_ROOT / "docs" / "workflow" / "artifact_policy.md")
+    artifact_policy = read_text(REPO_ROOT / "docs" / "workflow" / "reference" / "artifact_policy.md")
     for marker in [
         "GitHub Boundary",
         "External Stores",
@@ -1620,7 +1620,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         if marker not in artifact_policy:
             raise WorkflowError(f"artifact_policy.md missing section: {marker}")
 
-    agent_contracts = read_text(REPO_ROOT / "docs" / "workflow" / "agent_contracts.md")
+    agent_contracts = read_text(REPO_ROOT / "docs" / "workflow" / "reference" / "agent_contracts.md")
     for marker in [
         "Coordinator",
         "Runner",
@@ -1677,7 +1677,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
             raise WorkflowError(f"implementation_template.md missing section: {marker}")
 
     evidence_docs = {
-        "docs/workflow/experiment_protocol.md": [
+        "docs/workflow/protocols/experiment_protocol.md": [
             "quick_local",
             "valid_single_run",
             "confirmation_grade",
@@ -1685,23 +1685,23 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "best_observed_H",
             "confirmed_H",
         ],
-        "docs/workflow/quality_gate.md": [
+        "docs/workflow/protocols/quality_gate.md": [
             "evidence_level",
             "baseline_grade",
             "owner_activated_unconfirmed",
         ],
-        "docs/workflow/promotion.md": [
+        "docs/workflow/protocols/promotion.md": [
             "evidence_level: baseline_grade",
             "confirmation_status: confirmed",
             "owner_activated_unconfirmed",
         ],
-        "docs/workflow/runbook.md": [
+        "docs/workflow/archive/runbooks/runbook.md": [
             "quick_local",
             "valid_single_run",
             "confirmation_grade",
             "baseline_grade",
         ],
-        "docs/workflow/TASK_START_CARD.md": [
+        "docs/workflow/core/TASK_START_CARD.md": [
             "best_observed_H",
             "confirmed_H",
             "confirmation_grade",
@@ -5356,10 +5356,12 @@ WORKFLOW_MANIFEST_REQUIRED_IDS = {
     "manifest",
     "start_here",
     "kernel",
+    "quick_start",
     "router",
     "task_start_mini",
     "task_start_card",
     "agent_runtime_hard_gate",
+    "agent_cleanup_protocol",
     "playbook_tune",
     "playbook_ablation",
     "playbook_confirmation",
@@ -5532,15 +5534,15 @@ def workflow_consistency_errors() -> list[str]:
     required_markers = {
         "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight"],
         "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed"],
-        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": [
+        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
             "agent_output_refs",
             "agent-cleanup-plan",
         ],
-        "docs/workflow/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
-        "docs/workflow/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
-        "docs/workflow/agent_orchestration.md": [
+        "docs/workflow/core/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
+        "docs/workflow/core/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
+        "docs/workflow/protocols/agent_orchestration.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
             "agent_output_refs",
@@ -5608,7 +5610,7 @@ def cmd_audit_boundary(_: argparse.Namespace) -> int:
             continue
         legacy_field = "copied" + "_log:"
         if legacy_field in text and path_text not in {
-            "docs/workflow/experiment_protocol.md",
+            "docs/workflow/protocols/experiment_protocol.md",
             "workflow/gtpj_workflow.py",
         }:
             copied_log_refs.append(path_text)
@@ -6751,8 +6753,8 @@ activation_mode: real_multi_agent
 参考契约：
 
 ```text
-docs/workflow/code_interface_contract.md
-docs/workflow/innovation_code_review_protocol.md
+docs/workflow/protocols/code_interface_contract.md
+docs/workflow/protocols/innovation_code_review_protocol.md
 ```
 
 ## 新模块

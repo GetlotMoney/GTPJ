@@ -117,7 +117,7 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 
 | 用户请求 | 任务类型 | 是否进 `idea_tree/` | GitHub 写入 | 本地外部写入 | 必读协议 | 必需 agents/gates |
 |---|---|---:|---|---|---|---|
-| 读一篇论文，找创新点 | paper intake / idea discovery | 候选成熟后才进 | `idea_tree/sources/`、必要时 `idea_tree/inbox.md` 或 `idea_tree/ideas/` | `GTPJ_Research/papers/`、`notes/`、`source_reviews/`、`ideas/` | `docs/workflow/paper_intake.md`, `docs/workflow/idea_tree_protocol.md` | Reader/Planner，source review |
+| 读一篇论文，找创新点 | paper intake / idea discovery | 候选成熟后才进 | `idea_tree/sources/`、必要时 `idea_tree/inbox.md` 或 `idea_tree/ideas/` | `GTPJ_Research/papers/`、`notes/`、`source_reviews/`、`ideas/` | `docs/workflow/protocols/paper_intake.md`, `docs/workflow/protocols/idea_tree_protocol.md` | Reader/Planner，source review |
 | 给论文来源、评估标准、安全边界和实验标准，让 workflow 全部接管 | autonomous research campaign | 由子任务决定 | campaign ledger、`idea_tree/`、`experiments/` 各子目录 | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `autonomous_research_campaign.md` 加各子任务协议 | Coordinator、Source Reader、Idea Planner、Runner Monitor、Log Metric Parser、Result Comparator、Evidence Quality Checker，按阶段加 Implementer/Interface/Reviewer/Promotion |
 | 任意组合实验，例如 `跑10创新+100调参` | mixed experiment campaign | 由 workstream 决定 | `experiments/campaigns/` + 各实验归属目录 | `GTPJ_Warehouse`、必要时 `GTPJ_Research`、服务器 runner 状态 | `mixed_experiment_campaign_protocol.md` 加各子任务协议 | Workflow Coordinator、Campaign Planner、Runner Monitor、Result Comparator、Evidence Quality Checker；按 workstream 加专用角色 |
 | 自己想到一个新机制 | local heuristic idea | 是，但先写来源和假设 | `idea_tree/inbox.md` 或 `idea_tree/ideas/IDEA-xxxx/` | `GTPJ_Research/ideas/` | `idea_tree_protocol.md` | Reader/Planner，Interface Checker 预审 |
@@ -126,9 +126,9 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 复现 baseline 或确认某个版本级结果 | confirmation | 否 | `experiments/vX/confirmation/` | Warehouse logs/runs | `experiment_protocol.md` | Runner、Log Analyst、Quality Checker |
 | 调某个 module trial 的参数、头数、ratio、dropout、seed | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
 | 对某个 module trial 做窄消融或 clean confirmation | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
-| debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，必须转为对应实验目录并标明 `evidence_level: debug_smoke`、`formal_evidence: false` | 可写临时本地输出；长期证据进 Warehouse | `docs/workflow/experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality 并重新按正式证据运行 |
+| debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，必须转为对应实验目录并标明 `evidence_level: debug_smoke`、`formal_evidence: false` | 可写临时本地输出；长期证据进 Warehouse | `docs/workflow/protocols/experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality 并重新按正式证据运行 |
 | 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | innovation / module trial | 是 | `idea_tree/` + `experiments/module_trials/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `module_trial_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；强制 `real_multi_agent` 多轮审查 |
-| 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`experiments/VERSION_TREE.md` | Warehouse 证据引用 | `docs/workflow/promotion.md`, `docs/workflow/quality_gate.md`, `docs/workflow/versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
+| 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`experiments/VERSION_TREE.md` | Warehouse 证据引用 | `docs/workflow/protocols/promotion.md`, `docs/workflow/protocols/quality_gate.md`, `docs/workflow/protocols/versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
 | 只切换创意树当前视图 | set-current-version | 使用已有 idea_tree | `idea_tree/idea_tree.json`、`idea_tree/versions/vX.md` | 不写 | `idea_tree_protocol.md` | 不切 main active code |
 | 切换 main 当前运行代码到某版本 | activate-version | 否 | `config/GTPJ_*.yaml` 等 active code/config | 不写 | `versioning.md`, `git_policy.md` | 必须 owner 明确要求 |
 | 创建或查看运行看板状态 | progress dashboard | 否 | 不写长期 GitHub 账本 | `.gtpj_runtime/` | `progress_dashboard.md` | 只读看板，不启动训练 |
@@ -261,7 +261,7 @@ Warehouse 写了什么：
 哪些内容没有联动，为什么：
 ```
 
-Paper intake 的细化流程见 `docs/workflow/paper_intake.md`。论文是否读过、读到哪一步，以
+Paper intake 的细化流程见 `docs/workflow/protocols/paper_intake.md`。论文是否读过、读到哪一步，以
 `GTPJ_Research/papers/PAPERS_INDEX.md` 为准，不以 PDF 是否存在为准。
 
 ## 7. Agent 路由

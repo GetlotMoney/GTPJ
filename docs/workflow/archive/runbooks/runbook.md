@@ -86,7 +86,7 @@ repro-status 明确区分 best_observed_H 和 confirmed_H
 对真实训练、confirmation、tune、ablation、module trial 的正式 run，再额外执行下面的冻结规则：
 
 如果 module trial 或 ablation 来自 idea / 创新 / 代码语义改动，先完成
-`docs/workflow/innovation_code_review_protocol.md` 要求的 Review 0-3；没有 Review 2 通过不得进入 Runner。
+`docs/workflow/protocols/innovation_code_review_protocol.md` 要求的 Review 0-3；没有 Review 2 通过不得进入 Runner。
 
 ```text
 1. 先写本次 run 需要的 config 副本、ATTEMPTS 计划行或启动卡
@@ -118,12 +118,12 @@ repro-status 明确区分 best_observed_H 和 confirmed_H
    否则最高 H 只能写 best_observed_H。
 ```
 
-Owner 日常只需要使用 `docs/workflow/QUICK_START.md` 中的人话口令。检查通过后，
-Coordinator 先按 `docs/workflow/TASK_START_MINI.md` 输出 mini 启动卡，再在后台展开
-`docs/workflow/TASK_START_CARD.md`。只有启动卡说明任务类型、写入边界、agents、
+Owner 日常只需要使用 `docs/workflow/core/QUICK_START.md` 中的人话口令。检查通过后，
+Coordinator 先按 `docs/workflow/core/TASK_START_MINI.md` 输出 mini 启动卡，再在后台展开
+`docs/workflow/core/TASK_START_CARD.md`。只有启动卡说明任务类型、写入边界、agents、
 hard gates 和当前阻断后，才进入具体实验命令。
 
-第一次开跑完整工作流时，先读 `docs/workflow/FIRST_CLOSED_LOOP.md`，用 readiness check
+第一次开跑完整工作流时，先读 `docs/workflow/core/FIRST_CLOSED_LOOP.md`，用 readiness check
 和低风险任务验证通路，不要直接从复杂 module trial 开始。
 
 ## 实验后处理为什么会慢
@@ -153,10 +153,10 @@ hard gates 和当前阻断后，才进入具体实验命令。
 项目内记忆分层：
 
 ```text
-docs/workflow/runbook.md: 操作经验和反复踩坑的处理方法。
-docs/workflow/issues/README.md: 具体实验执行问题索引，默认只读最近日期的问题文档。
-docs/workflow/issues/YYYY-MM-DD-*.md: 按日期沉淀的问题、解决方案和预防规则。
-docs/workflow/EXPERIMENT_ISSUES.md: 兼容入口，指向新的日期化问题库。
+docs/workflow/archive/runbooks/runbook.md: 操作经验和反复踩坑的处理方法。
+docs/workflow/archive/issues/README.md: 具体实验执行问题索引，默认只读最近日期的问题文档。
+docs/workflow/archive/issues/YYYY-MM-DD-*.md: 按日期沉淀的问题、解决方案和预防规则。
+docs/workflow/archive/issues/EXPERIMENT_ISSUES.md: 兼容入口，指向新的日期化问题库。
 docs/workflow/*.md: 长期规范和硬门。
 experiments/**/ATTEMPTS.md: 某个 trial 内部每次尝试的账本。
 experiments/**/result.yaml / quality_check.md: 可引用的正式证据。
@@ -170,7 +170,7 @@ GTPJ_Warehouse: 原始日志、checkpoint 和 receipt。
 如果 owner 追问“流程到底是什么”或“每个版本有没有流程图”，先检查：
 
 ```text
-docs/workflow/workflow_diagrams.md
+docs/workflow/archive/diagrams/workflow_diagrams.md
 experiments/vX/VERSION.md 的 ## Framework Diagram
 experiments/vX/VERSION.md 的 ## Version Flow
 experiments/vX/framework_diagram.md
@@ -257,7 +257,7 @@ python workflow/gtpj_workflow.py closeout-check --trial-dir ... --attempt-id ...
 
 确认实验用于复验当前 baseline。当当前 `main` 代码就是 `v2` 时，临时分支从 `main` 开，
 `base_code_tag: v2` 记录代码来源；如果未来当前 `main` 不是 `v2` 代码，则按
-`docs/workflow/experiment_protocol.md` 的历史版本 confirmation 规则从 `v2` tag 开只运行分支。
+`docs/workflow/protocols/experiment_protocol.md` 的历史版本 confirmation 规则从 `v2` tag 开只运行分支。
 
 ```bash
 git switch main
@@ -281,7 +281,7 @@ experiments/v3/confirmation/INDEX.md
 日志原始位置如果在 `train_log/`，必须登记或复制到外部 `GTPJ_Warehouse`，GitHub 只记录
 `log_artifact_id`、`warehouse://` URI、sha256、size 和指标摘要。
 具体 artifact id、Warehouse URI、hash、size、manifest/result 回填步骤见
-`docs/workflow/ARTIFACT_REGISTRATION.md`。
+`docs/workflow/protocols/ARTIFACT_REGISTRATION.md`。
 
 确认实验记录完成后，当前版本实验可以把记录合并回 `main`，然后删除 `exp/...` 临时分支。
 历史版本只运行分支不合并回 `main`，只回到当前 `main` 写账本。
@@ -349,7 +349,7 @@ python workflow/gtpj_workflow.py start --phrase "开新模块"
 ```
 
 这个命令只输出 mini 启动卡，不写文件、不建分支、不跑训练。`开新模块` 的默认展开、
-ready idea 条件和 owner 不需要说的内部词，以 `docs/workflow/QUICK_START.md` 为准。
+ready idea 条件和 owner 不需要说的内部词，以 `docs/workflow/core/QUICK_START.md` 为准。
 
 只有当当前版本没有可直接开工的 ready idea，或 owner 明确提供新想法时，才走手工登记 fallback：
 

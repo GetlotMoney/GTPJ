@@ -33,7 +33,7 @@ Coordinator
 - 只读取 `idea_tree/versions/<base_version>.md` 中已选中的 idea。
 - 不从总创意表直接启动 trial。
 - 只要 idea / 创新 / module trial 会落成代码改动，必须遵守
-  `docs/workflow/innovation_code_review_protocol.md`。
+  `docs/workflow/protocols/innovation_code_review_protocol.md`。
 - 本类任务默认 `activation_mode: real_multi_agent`，不得用单 agent 顺序执行冒充真实多 agents。
 - 本类任务默认 `agent_instance_mode: temporary_subagent`、`lifecycle: workflow_scoped`；Reader/Planner、Interface Checker、Quality Checker、Result Analyst、Reviewer 等角色必须保留独立上下文。
 - 临时 sub-agent 必须加载对应长期角色的 `profile.md`、`memory.md` 和本文件，并把结论写入 review 文件、`agent_summary.md`、issues 或 memory。跨 workflow 连续追踪时才启用 `persistent_thread`。

@@ -12,9 +12,17 @@ helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有�
 | `START_HERE.md` | 每个 GTPJ 工作流任务从这里开始。 |
 | `WORKFLOW_KERNEL.md` | 硬规则层。必须短而权威。 |
 | `WORKFLOW_MANIFEST.yaml` | 机器可读瘦身索引，标记 daily/core/playbook/protocol/archive。 |
-| `WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
-| `TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
-| `TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |
+| `WORKFLOW_FILE_MAP.md` | 人读路径地图。 |
+
+## Core 文件
+
+| 文件 | 状态 |
+|---|---|
+| `core/QUICK_START.md` | owner 短口令备忘。 |
+| `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
+| `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
+| `core/TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动硬门。 |
 
 ## 有效执行卡
 
@@ -34,20 +42,20 @@ helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有�
 只有被当前 playbook 要求时才读：
 
 ```text
-paper_intake.md
-idea_tree_protocol.md
-experiment_protocol.md
-module_trial_protocol.md
-code_interface_contract.md
-innovation_code_review_protocol.md
-quality_gate.md
-promotion.md
-ARTIFACT_REGISTRATION.md
-agent_orchestration.md
-agent_report_policy.md
+protocols/paper_intake.md
+protocols/idea_tree_protocol.md
+protocols/experiment_protocol.md
+protocols/module_trial_protocol.md
+protocols/code_interface_contract.md
+protocols/innovation_code_review_protocol.md
+protocols/quality_gate.md
+protocols/promotion.md
+protocols/ARTIFACT_REGISTRATION.md
+protocols/agent_orchestration.md
+protocols/agent_report_policy.md
 agents/
-mixed_experiment_campaign_protocol.md
-autonomous_research_campaign.md
+protocols/mixed_experiment_campaign_protocol.md
+protocols/autonomous_research_campaign.md
 ```
 
 ## 历史或状态文件
@@ -55,14 +63,14 @@ autonomous_research_campaign.md
 这些文件保存决策、历史、图示或实现状态，不作为第一阅读入口：
 
 ```text
-GTPJ_WORKFLOW_SPEC.md
-CURRENT_WORKFLOW_REPORT.md
-FIRST_CLOSED_LOOP.md
-IMPLEMENTATION_STATUS.md
-workflow_diagrams.md
-runbook.md
-progress_dashboard.md
-issues/
+archive/specs/GTPJ_WORKFLOW_SPEC.md
+archive/reports/CURRENT_WORKFLOW_REPORT.md
+core/FIRST_CLOSED_LOOP.md
+archive/reports/IMPLEMENTATION_STATUS.md
+archive/diagrams/workflow_diagrams.md
+archive/runbooks/runbook.md
+protocols/progress_dashboard.md
+archive/issues/
 ```
 
 ## 模板和 Schema

@@ -2,7 +2,7 @@
 
 OpenClaw agent 必须遵循 GTPJ 核心 workflow。以下角色分工是 OpenClaw runtime 接入
 `docs/workflow/agents/` 长期角色体系时的实现参考；如有冲突，以 GitHub workflow 规范和
-`docs/workflow/agent_orchestration.md` 为准。
+`docs/workflow/protocols/agent_orchestration.md` 为准。
 
 ## Coordinator
 
@@ -24,7 +24,7 @@ OpenClaw agent 必须遵循 GTPJ 核心 workflow。以下角色分工是 OpenCla
 
 ## 质量检查者
 
-- 按 `docs/workflow/quality_gate.md` 执行质量检查。
+- 按 `docs/workflow/protocols/quality_gate.md` 执行质量检查。
 - 可以继续使用 `ACCEPTED` 或 `REJECTED` 作为运行时结论标签，但必须映射到 GitHub 账本中的正式决策。
 - 把发现写入 `quality_check.md`。
 

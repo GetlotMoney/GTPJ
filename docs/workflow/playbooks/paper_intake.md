@@ -7,8 +7,8 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-paper_intake.md
-idea_tree_protocol.md
+docs/workflow/protocols/paper_intake.md
+docs/workflow/protocols/idea_tree_protocol.md
 ```
 
 ## 角色

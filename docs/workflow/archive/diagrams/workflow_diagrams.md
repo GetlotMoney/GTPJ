@@ -8,7 +8,7 @@
 
 ```text
 experiments/VERSION_TREE.md
-docs/workflow/versioning.md
+docs/workflow/protocols/versioning.md
 ```
 
 以后不要只靠文字描述版本和实验链路。每个正式版本、每个会改变代码语义的 module trial，都必须有轻量流程图。
@@ -27,7 +27,7 @@ GitHub 中的权威流程图优先使用 Markdown + Mermaid，原因是：
 ```text
 experiments/vX/VERSION.md
 experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/README.md
-docs/workflow/workflow_diagrams.md
+docs/workflow/archive/diagrams/workflow_diagrams.md
 ```
 
 复杂图可以单独放：

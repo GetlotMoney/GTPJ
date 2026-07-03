@@ -13,7 +13,7 @@ GTPJ 的真实实验 workflow 默认 `real_multi_agent`，并默认使用 workfl
 长期目标见：
 
 ```text
-docs/workflow/autonomous_research_campaign.md
+docs/workflow/protocols/autonomous_research_campaign.md
 ```
 
 最终形态是 owner 只给论文来源、评估标准、安全边界和实验标准，workflow 从 0 到最终结果与代码交付接管所有实验类型和长周期服务器运行。
@@ -21,7 +21,7 @@ docs/workflow/autonomous_research_campaign.md
 任意组合实验命令，例如 `跑10创新+100调参`，按以下协议拆分 workstreams、agents 生命周期和证据：
 
 ```text
-docs/workflow/mixed_experiment_campaign_protocol.md
+docs/workflow/protocols/mixed_experiment_campaign_protocol.md
 ```
 
 本文是 GTPJ 实验创新工作流总规范。它默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
@@ -52,26 +52,26 @@ docs/workflow/mixed_experiment_campaign_protocol.md
 落地状态不要靠口述判断。每次需要确认哪些文件已经实体化、哪些仍是设计时，读取：
 
 ```text
-docs/workflow/IMPLEMENTATION_STATUS.md
+docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md
 ```
 
 Owner 日常入口不要靠临场解释。每次 GTPJ 任务开始前，先读取 owner-facing 入口：
 
 ```text
-docs/workflow/QUICK_START.md
-docs/workflow/TASK_START_MINI.md
+docs/workflow/core/QUICK_START.md
+docs/workflow/core/TASK_START_MINI.md
 ```
 
 任务类型不要靠临场推理。Owner 口令进入后台后，再读取总教官/总路由文件：
 
 ```text
-docs/workflow/WORKFLOW_ROUTER.md
+docs/workflow/core/WORKFLOW_ROUTER.md
 ```
 
 Router 判断后，用完整启动卡记录后台执行边界：
 
 ```text
-docs/workflow/TASK_START_CARD.md
+docs/workflow/core/TASK_START_CARD.md
 ```
 
 Owner 不需要主动要求启动卡，也不需要说 `module trial`、`real_multi_agent`、
@@ -83,7 +83,7 @@ Owner 不需要主动要求启动卡，也不需要说 `module trial`、`real_mu
 第一次开跑工作流时，先用首条闭环指南做 readiness check：
 
 ```text
-docs/workflow/FIRST_CLOSED_LOOP.md
+docs/workflow/core/FIRST_CLOSED_LOOP.md
 ```
 
 核心判断：
@@ -181,37 +181,37 @@ D:\backup\Documents\Myself\GTPJ
 | `docs/PROJECT_STATUS.md` | 当前项目状态、当前 baseline、启用模块和参考结果。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 治理主规范，说明 branch、tag、版本树、配置快照、实验索引和合并边界。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存和大文件不入 GitHub 的说明。 |
-| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | 本文件，供 owner 审阅的完整工作流总规范。 |
-| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
+| `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md` | 本文件，供 owner 审阅的完整工作流总规范。 |
+| `docs/workflow/archive/diagrams/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
 
 ### 2.5 工作流规范层 `docs/workflow/`
 
 | 路径 | 作用 |
 |---|---|
 | `docs/workflow/README.md` | workflow 文档入口和推荐阅读顺序。 |
-| `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
-| `docs/workflow/TASK_START_CARD.md` | 任务启动卡模板，记录 Router 分类、base version、写入位置、agents、硬门和阻断条件。 |
-| `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，先验证 readiness、tune-suggest 和低风险 confirmation 通路。 |
-| `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照和命名规则。 |
-| `docs/workflow/versioning.md` | baseline 版本、父节点、版本树和提升规则。 |
-| `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序。 |
-| `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
-| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录、分支、tag、必填记录和决策类型。 |
-| `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新模块输入输出、shape、loss、eval、开关和最低验证。 |
-| `docs/workflow/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
-| `docs/workflow/code_interface.md` | 代码接口补充说明，用于承接更具体的接口约束。 |
-| `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
-| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和外部资产职责。 |
-| `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 登记动作规范，规定 Warehouse 路径、artifact id、URI、hash、size 和 manifest/result 引用。 |
-| `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的结果索引协议。 |
-| `docs/workflow/agent_contracts.md` | agents 的长期 IO 契约、自我介绍、读写边界和失败条件。 |
-| `docs/workflow/agent_report_policy.md` | agent 工作凭证保存规范，保留审计摘要，不保存完整聊天流水。 |
-| `docs/workflow/agent_orchestration.md` | 多 agents 编排、GPU 串行、实验类型分工和本地 skill 同步规则。 |
-| `docs/workflow/quality_gate.md` | 普通实验证据检查和 baseline promotion 强制门。 |
-| `docs/workflow/promotion.md` | 从 trial/result 到新版本 tag 的提升规范。 |
-| `docs/workflow/progress_dashboard.md` | 未来本地只读看板协议。 |
-| `docs/workflow/runbook.md` | 常见操作手册。 |
-| `docs/workflow/issues/` | 日期化实验问题知识库，保存具体问题、解决方案和预防规则。 |
+| `docs/workflow/core/WORKFLOW_ROUTER.md` | 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| `docs/workflow/core/TASK_START_CARD.md` | 任务启动卡模板，记录 Router 分类、base version、写入位置、agents、硬门和阻断条件。 |
+| `docs/workflow/core/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，先验证 readiness、tune-suggest 和低风险 confirmation 通路。 |
+| `docs/workflow/protocols/git_policy.md` | Git 分支、tag、push、trial 快照和命名规则。 |
+| `docs/workflow/protocols/versioning.md` | baseline 版本、父节点、版本树和提升规则。 |
+| `docs/workflow/protocols/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序。 |
+| `docs/workflow/protocols/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
+| `docs/workflow/protocols/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录、分支、tag、必填记录和决策类型。 |
+| `docs/workflow/protocols/code_interface_contract.md` | 代码接口契约，规定新模块输入输出、shape、loss、eval、开关和最低验证。 |
+| `docs/workflow/protocols/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
+| `docs/workflow/reference/code_interface.md` | 代码接口补充说明，用于承接更具体的接口约束。 |
+| `docs/workflow/protocols/experiment_protocol.md` | tune、ablation、confirmation 实验协议。 |
+| `docs/workflow/reference/artifact_policy.md` | GitHub 轻量边界和外部资产职责。 |
+| `docs/workflow/protocols/ARTIFACT_REGISTRATION.md` | 外部 artifact 登记动作规范，规定 Warehouse 路径、artifact id、URI、hash、size 和 manifest/result 引用。 |
+| `docs/workflow/reference/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的结果索引协议。 |
+| `docs/workflow/reference/agent_contracts.md` | agents 的长期 IO 契约、自我介绍、读写边界和失败条件。 |
+| `docs/workflow/protocols/agent_report_policy.md` | agent 工作凭证保存规范，保留审计摘要，不保存完整聊天流水。 |
+| `docs/workflow/protocols/agent_orchestration.md` | 多 agents 编排、GPU 串行、实验类型分工和本地 skill 同步规则。 |
+| `docs/workflow/protocols/quality_gate.md` | 普通实验证据检查和 baseline promotion 强制门。 |
+| `docs/workflow/protocols/promotion.md` | 从 trial/result 到新版本 tag 的提升规范。 |
+| `docs/workflow/protocols/progress_dashboard.md` | 未来本地只读看板协议。 |
+| `docs/workflow/archive/runbooks/runbook.md` | 常见操作手册。 |
+| `docs/workflow/archive/issues/` | 日期化实验问题知识库，保存具体问题、解决方案和预防规则。 |
 
 ### 2.6 agents 目录
 
@@ -976,7 +976,7 @@ label mapping、seen/unseen split、class order、logits shape 或 metric semant
 ## 10. 标准命令入口
 
 以下命令只作为结构辅助，不能替代 owner 判断。完整命令索引见 `workflow/README.md`；
-owner 人话入口见 `docs/workflow/QUICK_START.md`。
+owner 人话入口见 `docs/workflow/core/QUICK_START.md`。
 
 日常开工前可先用只读 mini 卡确认路由：
 

@@ -7,10 +7,10 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-promotion.md
-quality_gate.md
-versioning.md
-git_policy.md
+docs/workflow/protocols/promotion.md
+docs/workflow/protocols/quality_gate.md
+docs/workflow/protocols/versioning.md
+docs/workflow/protocols/git_policy.md
 ```
 
 ## 角色

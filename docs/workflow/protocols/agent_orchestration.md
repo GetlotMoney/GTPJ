@@ -45,7 +45,7 @@ agents:
 正式 Runner 启动前必须同时遵守：
 
 ```text
-docs/workflow/AGENT_RUNTIME_HARD_GATE.md
+docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 ```
 
 这条硬门要求真实右侧临时 agents 已经启动，并在 `agent_runtime.yaml` 中记录
@@ -124,7 +124,7 @@ persistent_thread
 agent_summary.md
 result.yaml / result.md
 quality_check.md
-docs/workflow/issues/
+docs/workflow/archive/issues/
 shared_roles/<role>/memory.md
 Research / Warehouse / campaign ledger
 ```
@@ -155,7 +155,7 @@ closed_agents_record: AGENT_ACTIVITY.md
 python workflow/gtpj_workflow.py agent-cleanup-plan --path <agent_runtime.yaml>
 ```
 
-然后 Coordinator 按 `docs/workflow/agent_cleanup_protocol.md` 汇报 keep / close / unknown。重复 agent id
+然后 Coordinator 按 `docs/workflow/protocols/agent_cleanup_protocol.md` 汇报 keep / close / unknown。重复 agent id
 不能算独立角色；如果历史记录中一个 id 同时承担多个正式角色，该 runtime gate 必须标记为限制或降级，不能冒充完整
 `real_multi_agent` 证据。
 
@@ -421,7 +421,7 @@ Agent 不能把隐藏聊天记忆当作实验事实源。GTPJ 的可审计事实
 shared_roles/<role>/profile.md
 shared_roles/<role>/memory.md
 by_experiment/<task_type>/agents/README.md
-docs/workflow/issues/README.md 和最近相关问题文档
+docs/workflow/archive/issues/README.md 和最近相关问题文档
 当前 task start card
 ```
 
@@ -449,7 +449,7 @@ docs/workflow/issues/README.md 和最近相关问题文档
 凡是 idea、创新机制或 module trial 会改变模型、forward、loss、eval、data flow、scoring 或配置语义，必须同时遵守：
 
 ```text
-docs/workflow/innovation_code_review_protocol.md
+docs/workflow/protocols/innovation_code_review_protocol.md
 ```
 
 最低审查顺序：
@@ -463,7 +463,7 @@ Review 3: Log Analyst + Quality Checker + Result Analyst + Reviewer 在 run 后�
 
 临时 workflow-scoped agents 可以承担这些独立审查；它们必须加载对应长期角色的 `profile.md`、
 `memory.md` 和 by-experiment 规则，并把发现写入 `review_round_*.md`、`agent_summary.md`、
-`docs/workflow/issues/` 或对应 role memory。
+`docs/workflow/archive/issues/` 或对应 role memory。
 
 Implementer 是同一代码路径唯一 writer。Reader/Planner、Interface Checker、Quality Checker、
 Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须重跑相关 review，不得沿用旧通过结论。
@@ -480,7 +480,7 @@ Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须�
 
 ## 进度看板联动
 
-真实实验运行时，Coordinator 负责按 `docs/workflow/progress_dashboard.md` 创建和更新：
+真实实验运行时，Coordinator 负责按 `docs/workflow/protocols/progress_dashboard.md` 创建和更新：
 
 ```text
 .gtpj_runtime/runs/<run_id>/status.json
@@ -494,7 +494,7 @@ Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须�
 修改 workflow agent 规范时：
 
 1. 先更新 `docs/workflow/agents/` 和本文件。
-2. 如果影响 agent 工作凭证，同步更新 `docs/workflow/agent_report_policy.md` 和模板。
+2. 如果影响 agent 工作凭证，同步更新 `docs/workflow/protocols/agent_report_policy.md` 和模板。
 3. 同步更新本地 `gtpj-workflow` skill 的 `references/agents/` 与相关 reference 文件。
 4. 运行仓库验证。
 5. 提交 GitHub 文档；只有 owner 明确要求时才 push。

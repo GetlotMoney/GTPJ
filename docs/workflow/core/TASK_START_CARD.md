@@ -32,7 +32,7 @@ agents:
 明确把目标改成非正式 debug/smoke 排障时，才允许另走 `formal_evidence: false` 路径；
 不能用 `role_only_with_independent_sequential_review` 冒充 `real_multi_agent`。
 
-正式 Runner 启动前必须有 `docs/workflow/AGENT_RUNTIME_HARD_GATE.md` 定义的
+正式 Runner 启动前必须有 `docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md` 定义的
 `agent_runtime.yaml`，并通过：
 
 ```bash

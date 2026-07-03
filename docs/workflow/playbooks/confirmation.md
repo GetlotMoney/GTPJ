@@ -7,10 +7,10 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-GZSL_HARD_RULES.md
-experiment_protocol.md
-quality_gate.md
-产生 raw artifact 时读 ARTIFACT_REGISTRATION.md
+docs/workflow/reference/GZSL_HARD_RULES.md
+docs/workflow/protocols/experiment_protocol.md
+docs/workflow/protocols/quality_gate.md
+产生 raw artifact 时读 docs/workflow/protocols/ARTIFACT_REGISTRATION.md
 ```
 
 ## 角色

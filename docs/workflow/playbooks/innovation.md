@@ -7,15 +7,15 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-GZSL_HARD_RULES.md
-innovation_decomposition_protocol.md
-idea_tree_protocol.md
-module_trial_protocol.md
-code_interface_contract.md
-innovation_code_review_protocol.md
-agent_orchestration.md
-agent_report_policy.md
-AGENT_RUNTIME_HARD_GATE.md
+docs/workflow/reference/GZSL_HARD_RULES.md
+docs/workflow/reference/innovation_decomposition_protocol.md
+docs/workflow/protocols/idea_tree_protocol.md
+docs/workflow/protocols/module_trial_protocol.md
+docs/workflow/protocols/code_interface_contract.md
+docs/workflow/protocols/innovation_code_review_protocol.md
+docs/workflow/protocols/agent_orchestration.md
+docs/workflow/protocols/agent_report_policy.md
+docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 ```
 
 ## 角色

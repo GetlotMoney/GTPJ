@@ -7,7 +7,7 @@
 
 核心原则：创意全局共用一个总库，但选择清单必须按 baseline 版本分开。
 
-总判断规则见 `docs/workflow/WORKFLOW_ROUTER.md`。最重要的是：
+总判断规则见 `docs/workflow/core/WORKFLOW_ROUTER.md`。最重要的是：
 
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
@@ -116,7 +116,7 @@ GTPJ_Research/
 `idea_tree/` 中创建轻量 idea 索引。
 
 论文投递、阅读状态、`PAPERS_INDEX.md` 登记和 `_inbox/` 处理细则见
-`docs/workflow/paper_intake.md`。`idea_tree/` 只接收 paper intake 之后的轻量来源和成熟 idea。
+`docs/workflow/protocols/paper_intake.md`。`idea_tree/` 只接收 paper intake 之后的轻量来源和成熟 idea。
 
 ```text
 同一个 idea

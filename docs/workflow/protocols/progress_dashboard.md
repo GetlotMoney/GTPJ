@@ -246,7 +246,7 @@ evidence_level: baseline_grade
 confirmation_status: confirmed
 ```
 
-Coordinator 进入 `promotion_gate` 阶段，并按 `docs/workflow/promotion.md` 检查硬门。
+Coordinator 进入 `promotion_gate` 阶段，并按 `docs/workflow/protocols/promotion.md` 检查硬门。
 
 看板只展示 gate 状态和阻塞项；不能由网页直接创建 tag、合并分支或 push。
 

@@ -8,10 +8,10 @@
 docs/GITHUB_GOVERNANCE.md
 docs/PROJECT_STRUCTURE.md
 docs/PROJECT_STATUS.md
-docs/workflow/artifact_policy.md
-docs/workflow/result_index_protocol.md
-docs/workflow/quality_gate.md
-docs/workflow/agent_contracts.md
+docs/workflow/reference/artifact_policy.md
+docs/workflow/reference/result_index_protocol.md
+docs/workflow/protocols/quality_gate.md
+docs/workflow/reference/agent_contracts.md
 ```
 
 当前 active mainline code 是 `GTPJ-v3 / tag v3`。`H=74.27` 记录为
@@ -44,7 +44,7 @@ owner 日常可以直接说人话口令，Coordinator 负责映射到下面的�
 | `升版本` | 检查 promotion gate。 |
 | `切版本` | 区分 set-current-version 和 activate-version；后者必须 owner 明确授权。 |
 
-这些口令的正式定义见 `docs/workflow/QUICK_START.md` 和 `docs/workflow/TASK_START_MINI.md`。
+这些口令的正式定义见 `docs/workflow/core/QUICK_START.md` 和 `docs/workflow/core/TASK_START_MINI.md`。
 
 ## Commands
 
@@ -97,7 +97,7 @@ python workflow/gtpj_workflow.py closeout-check --trial-dir experiments/module_t
 
 ## Interface And Evaluation Rules
 
-Experiments that change code, data flow, scoring, loss, or evaluation must satisfy `docs/workflow/code_interface_contract.md`.
+Experiments that change code, data flow, scoring, loss, or evaluation must satisfy `docs/workflow/protocols/code_interface_contract.md`.
 
 If interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence. Runner must refuse to run it; already produced results must be marked `blocked`, `rerun`, or `rejected`, not `keep` or `promote`.
 

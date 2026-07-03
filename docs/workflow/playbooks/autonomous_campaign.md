@@ -7,9 +7,9 @@
 ```text
 START_HERE.md
 WORKFLOW_KERNEL.md
-WORKFLOW_ROUTER.md
-autonomous_research_campaign.md
-如果请求包含多种实验类型，再读 mixed_experiment_campaign_protocol.md
+docs/workflow/core/WORKFLOW_ROUTER.md
+docs/workflow/protocols/autonomous_research_campaign.md
+如果请求包含多种实验类型，再读 docs/workflow/protocols/mixed_experiment_campaign_protocol.md
 ```
 
 ## 用户输入

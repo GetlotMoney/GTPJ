@@ -23,28 +23,28 @@
 
 | 模块 | 状态 | 已有文件 | 说明 |
 |---|---|---|---|
-| Workflow Router | 已落地 | `docs/workflow/WORKFLOW_ROUTER.md` | 总教官/总路由文件，任何 GTPJ 任务先用它判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
-| Task Start Card | 已落地 | `docs/workflow/TASK_START_CARD.md` | 每次改文件、跑实验或登记结果前填写，记录 Router 分类、写入边界、agents、硬门和阻断条件。 |
-| Owner 薄入口 | 已落地 | `docs/workflow/QUICK_START.md`, `docs/workflow/TASK_START_MINI.md` | owner 日常使用 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令；Coordinator 展开完整 Router 和启动卡。 |
-| 复现状态快速判定 | 已落地 | `workflow/gtpj_workflow.py`, `docs/workflow/QUICK_START.md`, `docs/workflow/WORKFLOW_ROUTER.md` | `repro-status --version <vX>` 只读输出 `best_observed_H`、`confirmed_H` 和 `confirmation_status`；状态/比较/promotion/tag 前必须检查 `baseline_repro_status`。 |
-| First Closed Loop | 已落地 | `docs/workflow/FIRST_CLOSED_LOOP.md` | 第一次开跑工作流时使用，先用 readiness check / tune-suggest / confirmation 验证闭环，不直接从复杂 module trial 开始。 |
-| 总工作流规范 | 已落地 | `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
+| Workflow Router | 已落地 | `docs/workflow/core/WORKFLOW_ROUTER.md` | 总教官/总路由文件，任何 GTPJ 任务先用它判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| Task Start Card | 已落地 | `docs/workflow/core/TASK_START_CARD.md` | 每次改文件、跑实验或登记结果前填写，记录 Router 分类、写入边界、agents、硬门和阻断条件。 |
+| Owner 薄入口 | 已落地 | `docs/workflow/core/QUICK_START.md`, `docs/workflow/core/TASK_START_MINI.md` | owner 日常使用 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令；Coordinator 展开完整 Router 和启动卡。 |
+| 复现状态快速判定 | 已落地 | `workflow/gtpj_workflow.py`, `docs/workflow/core/QUICK_START.md`, `docs/workflow/core/WORKFLOW_ROUTER.md` | `repro-status --version <vX>` 只读输出 `best_observed_H`、`confirmed_H` 和 `confirmation_status`；状态/比较/promotion/tag 前必须检查 `baseline_repro_status`。 |
+| First Closed Loop | 已落地 | `docs/workflow/core/FIRST_CLOSED_LOOP.md` | 第一次开跑工作流时使用，先用 readiness check / tune-suggest / confirmation 验证闭环，不直接从复杂 module trial 开始。 |
+| 总工作流规范 | 已落地 | `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md` | owner 审阅入口，解释 GitHub、本地、创意树、实验、tag、agents 和闭环。 |
 | workflow 入口 | 已落地 | `docs/workflow/README.md` | 记录阅读顺序。 |
 | 仓库结构总账本 | 已落地 | `docs/PROJECT_STRUCTURE.md` | 记录稳定目录和文件职责。 |
 | GitHub 治理 | 已落地 | `docs/GITHUB_GOVERNANCE.md` | 记录 main/tag/版本树/轻量边界。 |
-| agent 规范 | 已落地 | `docs/workflow/agent_contracts.md`, `docs/workflow/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；正式 `real_multi_agent` 默认使用 workflow-scoped temporary agents，persistent thread 只作为跨 workflow 可选活上下文。 |
+| agent 规范 | 已落地 | `docs/workflow/reference/agent_contracts.md`, `docs/workflow/protocols/agent_orchestration.md`, `docs/workflow/agents/` | 文件级角色边界已落地；正式 `real_multi_agent` 默认使用 workflow-scoped temporary agents，persistent thread 只作为跨 workflow 可选活上下文。 |
 | 长期 agent 记忆 | 已落地 | `docs/workflow/agents/long_term_memory.md`, `docs/workflow/agents/shared_roles/*/memory.md` | 每个共享角色已有长期 `memory.md`；长期 agent 由 profile/memory/call protocol/history evidence 构成，临时实例承担本轮活上下文。 |
-| 全自动研究 campaign 规范 | 已落地 | `docs/workflow/autonomous_research_campaign.md` | 定义 owner 只给来源、评估标准、安全边界和实验标准时，workflow 从 0 到最终结果与代码交付的长周期接管目标；自动 runtime 仍按需产品化。 |
-| 任意组合实验 campaign 规范 | 已落地 | `docs/workflow/mixed_experiment_campaign_protocol.md` | 定义 `跑10创新+100调参` 这类组合命令的解析、workstream 拆分、agent 生命周期、调度、证据、失败隔离和汇报规则。 |
-| agent 工作凭证 | 已落地 | `docs/workflow/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；凭证记录 `agent_instance_mode`、persistent thread id、临时 fallback 原因和 memory 验证。 |
-| 代码接口硬门 | 已落地 | `docs/workflow/code_interface_contract.md`, `docs/workflow/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
-| 实验结果索引 | 已落地 | `docs/workflow/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
-| Module trial attempt ledger | 已落地 | `docs/workflow/module_trial_protocol.md`, `experiments/templates/TRIAL_ATTEMPTS_template.md`, `experiments/templates/TRIAL_README_template.md` | module trial 已明确支持 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/` 多次尝试账本；正式 baseline 的 tune 表仍留在 `experiments/vX/tune/INDEX.md`。 |
-| 创新代码多 agents 多轮审查 | 已落地 | `docs/workflow/innovation_code_review_protocol.md`, `docs/workflow/agents/by_experiment/innovation/agents/README.md`, `experiments/templates/agent_summary_template.md` | idea / 创新 / module trial 只要落成代码改动，就强制 `real_multi_agent`，并保存 Review 0-3 的轻量审查凭证。 |
-| Artifact 登记动作 | 已落地 | `docs/workflow/ARTIFACT_REGISTRATION.md` | 规定 raw artifact 从本地文件到 Warehouse registry、manifest、result 的登记步骤。 |
-| 质量门 | 已落地 | `docs/workflow/quality_gate.md` | 普通实验和 promotion gate 的检查规则。 |
-| promotion | 已落地 | `docs/workflow/promotion.md` | promotion 规则已写；只有实验记录明确 `promotion_decision: promote` 才触发。 |
-| 看板 runtime | 设计中 | `docs/workflow/progress_dashboard.md` | `.gtpj_runtime/` 只在真实运行时创建，纯规划不创建。 |
+| 全自动研究 campaign 规范 | 已落地 | `docs/workflow/protocols/autonomous_research_campaign.md` | 定义 owner 只给来源、评估标准、安全边界和实验标准时，workflow 从 0 到最终结果与代码交付的长周期接管目标；自动 runtime 仍按需产品化。 |
+| 任意组合实验 campaign 规范 | 已落地 | `docs/workflow/protocols/mixed_experiment_campaign_protocol.md` | 定义 `跑10创新+100调参` 这类组合命令的解析、workstream 拆分、agent 生命周期、调度、证据、失败隔离和汇报规则。 |
+| agent 工作凭证 | 已落地 | `docs/workflow/protocols/agent_report_policy.md`, `experiments/templates/agent_summary_template.md` | 真实实验保存 agent 审计凭证，不保存完整聊天流水；凭证记录 `agent_instance_mode`、persistent thread id、临时 fallback 原因和 memory 验证。 |
+| 代码接口硬门 | 已落地 | `docs/workflow/protocols/code_interface_contract.md`, `docs/workflow/reference/code_interface.md` | 评估标注、label mapping、split、class order、metric semantics 不清楚时必须阻断。 |
+| 实验结果索引 | 已落地 | `docs/workflow/reference/result_index_protocol.md`, `schemas/manifest.schema.json`, `schemas/result.schema.json`, `schemas/artifact_ref.schema.json` | 规范和 schema 已有；每个新实验仍需实际填写。 |
+| Module trial attempt ledger | 已落地 | `docs/workflow/protocols/module_trial_protocol.md`, `experiments/templates/TRIAL_ATTEMPTS_template.md`, `experiments/templates/TRIAL_README_template.md` | module trial 已明确支持 `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/` 多次尝试账本；正式 baseline 的 tune 表仍留在 `experiments/vX/tune/INDEX.md`。 |
+| 创新代码多 agents 多轮审查 | 已落地 | `docs/workflow/protocols/innovation_code_review_protocol.md`, `docs/workflow/agents/by_experiment/innovation/agents/README.md`, `experiments/templates/agent_summary_template.md` | idea / 创新 / module trial 只要落成代码改动，就强制 `real_multi_agent`，并保存 Review 0-3 的轻量审查凭证。 |
+| Artifact 登记动作 | 已落地 | `docs/workflow/protocols/ARTIFACT_REGISTRATION.md` | 规定 raw artifact 从本地文件到 Warehouse registry、manifest、result 的登记步骤。 |
+| 质量门 | 已落地 | `docs/workflow/protocols/quality_gate.md` | 普通实验和 promotion gate 的检查规则。 |
+| promotion | 已落地 | `docs/workflow/protocols/promotion.md` | promotion 规则已写；只有实验记录明确 `promotion_decision: promote` 才触发。 |
+| 看板 runtime | 设计中 | `docs/workflow/protocols/progress_dashboard.md` | `.gtpj_runtime/` 只在真实运行时创建，纯规划不创建。 |
 
 ## 2. GitHub 轻量创意树
 
@@ -119,14 +119,14 @@ D:\backup\Documents\Myself\GTPJ_Warehouse
 
 GTPJ 任务开始前，优先读取：
 
-1. `docs/workflow/WORKFLOW_ROUTER.md`
-2. `docs/workflow/TASK_START_CARD.md`
-3. `docs/workflow/FIRST_CLOSED_LOOP.md`
-4. `docs/workflow/GTPJ_WORKFLOW_SPEC.md`
-5. `docs/workflow/IMPLEMENTATION_STATUS.md`
+1. `docs/workflow/core/WORKFLOW_ROUTER.md`
+2. `docs/workflow/core/TASK_START_CARD.md`
+3. `docs/workflow/core/FIRST_CLOSED_LOOP.md`
+4. `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md`
+5. `docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md`
 6. `docs/workflow/README.md`
 7. 与任务类型相关的具体协议文件
-8. `docs/workflow/ARTIFACT_REGISTRATION.md`
+8. `docs/workflow/protocols/ARTIFACT_REGISTRATION.md`
 9. `.gtpj/local_paths.yaml`
 10. 需要时再读本地 Research/Warehouse 对应 README
 

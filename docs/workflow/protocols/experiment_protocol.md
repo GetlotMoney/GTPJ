@@ -10,7 +10,7 @@ baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt�
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 3 次复现通过，也只能成为该
 `vX` 下面的 confirmed config / confirmed tune record。
 
-只有存在框架/代码语义变化，且满足 `docs/workflow/promotion.md` 的自动 promotion gate，
+只有存在框架/代码语义变化，且满足 `docs/workflow/protocols/promotion.md` 的自动 promotion gate，
 才会生成新的正式 `vY`。
 
 模块 trial 内部也可以、也应该做参数尝试、窄消融和 clean confirmation。那类运行写在：
@@ -20,7 +20,7 @@ experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/ATTEMPTS.md
 experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/attempts/ATTEMPT-xxx/
 ```
 
-并遵守 `docs/workflow/module_trial_protocol.md`。不要因为 trial 内部有 `param_tune` 或
+并遵守 `docs/workflow/protocols/module_trial_protocol.md`。不要因为 trial 内部有 `param_tune` 或
 `ablation` 字样，就把它误放到 `experiments/vX/tune/` 或 `experiments/vX/ablation/`。
 
 示例：
@@ -63,7 +63,7 @@ interface_check.md
 
 每次真实实验都必须留下 agent 工作凭证。默认保存 `agent_summary.md`，记录参与角色、
 检查范围、发现、结论和证据引用。不要把完整聊天流水写入 GitHub；长报告放 Warehouse，
-GitHub 只记录 artifact id。具体规则见 `docs/workflow/agent_report_policy.md`。
+GitHub 只记录 artifact id。具体规则见 `docs/workflow/protocols/agent_report_policy.md`。
 
 ## 共同记录字段
 
@@ -187,7 +187,7 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 
 ## Promotion 字段映射
 
-普通实验使用上面的轻量字段记录证据。进入 `docs/workflow/promotion.md` 时，Coordinator 按下面规则读取：
+普通实验使用上面的轻量字段记录证据。进入 `docs/workflow/protocols/promotion.md` 时，Coordinator 按下面规则读取：
 
 ```text
 base_version     = version
@@ -352,7 +352,7 @@ Coordinator -> Reader -> 用户选择 -> Runner -> Log Analyst + Quality Checker
 ```
 
 如果消融发现“去掉某模块更好”，也不能直接变成新版本。必须记录证据，然后通过
-`docs/workflow/promotion.md` 自动 promotion gate，把干净代码重新整理成正式 baseline。
+`docs/workflow/protocols/promotion.md` 自动 promotion gate，把干净代码重新整理成正式 baseline。
 
 消融多 agent 编排：
 

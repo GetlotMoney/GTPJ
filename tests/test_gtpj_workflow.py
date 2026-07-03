@@ -400,10 +400,12 @@ class WorkflowHelperTest(unittest.TestCase):
             ("manifest", "docs/workflow/WORKFLOW_MANIFEST.yaml", "daily_entry", "active", False),
             ("start_here", "docs/workflow/START_HERE.md", "daily_entry", "active", True),
             ("kernel", "docs/workflow/WORKFLOW_KERNEL.md", "daily_entry", "active", True),
-            ("router", "docs/workflow/WORKFLOW_ROUTER.md", "core", "active", False),
-            ("task_start_mini", "docs/workflow/TASK_START_MINI.md", "core", "active", False),
-            ("task_start_card", "docs/workflow/TASK_START_CARD.md", "core", "active", False),
-            ("agent_runtime_hard_gate", "docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
+            ("quick_start", "docs/workflow/core/QUICK_START.md", "core", "active", False),
+            ("router", "docs/workflow/core/WORKFLOW_ROUTER.md", "core", "active", False),
+            ("task_start_mini", "docs/workflow/core/TASK_START_MINI.md", "core", "active", False),
+            ("task_start_card", "docs/workflow/core/TASK_START_CARD.md", "core", "active", False),
+            ("agent_runtime_hard_gate", "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
+            ("agent_cleanup_protocol", "docs/workflow/protocols/agent_cleanup_protocol.md", "protocol", "active_reference", False),
             ("playbook_tune", "docs/workflow/playbooks/tune.md", "playbook", "active", False),
             ("playbook_ablation", "docs/workflow/playbooks/ablation.md", "playbook", "active", False),
             ("playbook_confirmation", "docs/workflow/playbooks/confirmation.md", "playbook", "active", False),
@@ -428,10 +430,10 @@ class WorkflowHelperTest(unittest.TestCase):
     def test_required_files_include_owner_facing_start_docs(self) -> None:
         required = self.module.required_repository_files()
 
-        self.assertIn("docs/workflow/QUICK_START.md", required)
+        self.assertIn("docs/workflow/core/QUICK_START.md", required)
         self.assertIn("docs/workflow/WORKFLOW_MANIFEST.yaml", required)
-        self.assertIn("docs/workflow/TASK_START_MINI.md", required)
-        self.assertIn("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", required)
+        self.assertIn("docs/workflow/core/TASK_START_MINI.md", required)
+        self.assertIn("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", required)
 
     def test_scan_ignores_runtime_state(self) -> None:
         legacy_marker = "TUNE" + "-024"
@@ -2108,11 +2110,13 @@ decision:
         self._write("docs/workflow/README.md", "# Workflow\n")
         self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\n")
         self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\n")
-        self._write("docs/workflow/WORKFLOW_ROUTER.md", "# Router\n")
-        self._write("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
-        self._write("docs/workflow/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
-        self._write("docs/workflow/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
-        self._write("docs/workflow/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
+        self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/playbooks/innovation.md",
             "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\n",
@@ -2138,10 +2142,12 @@ decision:
             "README.md",
             "START_HERE.md",
             "WORKFLOW_KERNEL.md",
-            "WORKFLOW_ROUTER.md",
-            "TASK_START_MINI.md",
-            "TASK_START_CARD.md",
-            "AGENT_RUNTIME_HARD_GATE.md",
+            "core/QUICK_START.md",
+            "core/WORKFLOW_ROUTER.md",
+            "core/TASK_START_MINI.md",
+            "core/TASK_START_CARD.md",
+            "core/AGENT_RUNTIME_HARD_GATE.md",
+            "protocols/agent_cleanup_protocol.md",
             "playbooks/tune.md",
             "playbooks/ablation.md",
             "playbooks/confirmation.md",

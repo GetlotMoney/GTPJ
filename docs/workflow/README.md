@@ -12,7 +12,7 @@
 先读 START_HERE.md
 再读 WORKFLOW_KERNEL.md
 再读一个相关 playbook
-只有路由不清楚或 playbook 明确要求时，才读长文件
+只有路由不清楚或 playbook 明确要求时，才读 core/protocols/reference/archive
 ```
 
 ## 当前有效入口
@@ -21,11 +21,18 @@
 |---|---|
 | `START_HERE.md` | 人话入口。每个 GTPJ 工作流任务先从这里开始。 |
 | `WORKFLOW_KERNEL.md` | 不可破坏的核心规则：证据、agents、版本、保留策略和安全边界。 |
-| `WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
-| `TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
-| `TASK_START_CARD.md` | 正式写入或运行前的完整 Coordinator 启动卡。 |
-| `AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的真实右侧临时 agents 硬门。 |
+| `WORKFLOW_MANIFEST.yaml` | 机器可读文档索引。 |
 | `WORKFLOW_FILE_MAP.md` | 说明哪些文件是有效入口、参考资料、历史记录或模板。 |
+
+## Core 文件
+
+| 文件 | 用途 |
+|---|---|
+| `core/QUICK_START.md` | 人话短口令备忘。 |
+| `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
+| `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
+| `core/TASK_START_CARD.md` | 正式写入或运行前的完整 Coordinator 启动卡。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的真实右侧临时 agents 硬门。 |
 
 ## 执行卡 Playbooks
 
@@ -54,11 +61,11 @@ docs/workflow/playbooks/autonomous_campaign.md
 本轮 owner 明确要求
 WORKFLOW_KERNEL.md
 START_HERE.md
-WORKFLOW_ROUTER.md
-TASK_START_CARD.md
+core/WORKFLOW_ROUTER.md
+core/TASK_START_CARD.md
 被选中的 playbook
-长协议参考文件
-历史报告
+protocols/reference 文件
+archive 历史文件
 ```
 
 GitHub 仍然是工作流规范的权威来源。本地 Codex skill 只是执行镜像，工作流规则改变后必须同步。
@@ -69,8 +76,8 @@ GitHub 仍然是工作流规范的权威来源。本地 Codex skill 只是执行
 START_HERE.md
 -> WORKFLOW_KERNEL.md
 -> 相关 playbook
--> TASK_START_CARD.md
--> AGENT_RUNTIME_HARD_GATE.md
+-> core/TASK_START_CARD.md
+-> core/AGENT_RUNTIME_HARD_GATE.md
 -> validate-agent-runtime
 -> multi-agent-preflight
 -> Runner

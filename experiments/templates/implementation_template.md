@@ -3,8 +3,8 @@
 Reference contract:
 
 ```text
-docs/workflow/code_interface_contract.md
-docs/workflow/innovation_code_review_protocol.md
+docs/workflow/protocols/code_interface_contract.md
+docs/workflow/protocols/innovation_code_review_protocol.md
 ```
 
 Hard gate: if interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence.

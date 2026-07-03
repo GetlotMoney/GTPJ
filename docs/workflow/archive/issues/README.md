@@ -7,7 +7,7 @@
 - 新对话默认先读本文件，再读最近日期的问题文档。
 - 不要每次全量阅读所有历史问题；只有当最近文档无法解释当前问题时，再按关键词检索旧文档。
 - 每个问题文档必须写清：症状、影响范围、根因、解决方案、预防规则、是否需要沉淀到 helper。
-- 如果同类问题出现 2 次，同步补充 `docs/workflow/runbook.md`。
+- 如果同类问题出现 2 次，同步补充 `docs/workflow/archive/runbooks/runbook.md`。
 - 如果同类问题出现 3 次，优先沉淀到 `workflow/gtpj_workflow.py` helper，而不是继续靠聊天记忆。
 
 ## 命名规则
@@ -54,5 +54,5 @@ ISSUE-YYYYMMDD-001
 环境/命令问题 -> 先看最近问题文档，再看 runbook。
 证据/账本问题 -> 先看 trial README/result/quality，再看 issues。
 指标异常问题 -> 先看 attempt result/log artifact，再看 issues。
-workflow 规则争议 -> 先看 docs/workflow/git_policy.md、module_trial_protocol.md，再看 issues。
+workflow 规则争议 -> 先看 docs/workflow/protocols/git_policy.md、module_trial_protocol.md，再看 issues。
 ```
