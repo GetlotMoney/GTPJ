@@ -25,6 +25,8 @@ transition_id:
 - [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
 - [ ] 没有未声明的 eval / class order / logits shape 改动。
 - [ ] class order、seen/unseen split、label mapping、logits shape、metric calculation 未改变或已按高风险记录。
+- [ ] 标准 GZSL 数据集、split、class order、label mapping、U/S/H/ZS 语义未被模板实现改变。
+- [ ] `module_source.md` 记录了 paper/source、template family、attachment point 和 baseline-off 解释。
 - [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。
 - [ ] `current_state` 能由 `TRANSITIONS.jsonl` 的 chain head 派生。
 - [ ] `authority_refs` 指向现有 GitHub 轻量证据或合法 Warehouse/Research URI。

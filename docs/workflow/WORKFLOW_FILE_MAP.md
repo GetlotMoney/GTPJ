@@ -47,6 +47,7 @@ protocols/paper_intake.md
 protocols/idea_tree_protocol.md
 protocols/experiment_protocol.md
 protocols/module_trial_protocol.md
+protocols/module_template_selection.md
 protocols/code_interface_contract.md
 protocols/innovation_code_review_protocol.md
 protocols/quality_gate.md
@@ -80,6 +81,7 @@ archive/issues/
 
 ```text
 experiments/templates/
+experiments/templates/modules/
 schemas/
 workflow/gtpj_workflow.py
 ```

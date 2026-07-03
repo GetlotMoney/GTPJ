@@ -11,6 +11,15 @@ Hard gate: if interface, label mapping, seen/unseen split, class order, logits s
 
 ## Module
 
+```text
+module_source: module_source.md
+template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+base_version:
+base_code_tag:
+dataset: CUB xlsa17 att_splits
+evaluation: standard GZSL U/S/H/ZS
+```
+
 ## Motivation
 
 ## Attachment Point
@@ -22,6 +31,20 @@ Hard gate: if interface, label mapping, seen/unseen split, class order, logits s
 | Before/after | |
 | Consumes | |
 | Produces | |
+
+## Template Selection
+
+```text
+selected_template:
+selection_reason:
+mechanism_claim:
+why_not_narrower_template:
+high_risk_reason:
+```
+
+Implementation must follow `docs/workflow/protocols/module_template_selection.md`.
+If the trial changes evaluation, split, class order, label mapping, or metric semantics,
+it is not a normal comparable module trial.
 
 ## Input Contract
 
@@ -71,6 +94,8 @@ normalization/reduction changes:
 
 ```text
 eval path changed: yes/no
+dataset:
+split file:
 logits shape:
 class order:
 label mapping:

@@ -31,7 +31,7 @@ Owner 可以只说：
 开下一个新模块
 试这个：<一句话想法>
 读论文
-从论文开始
+基于 vX 从论文开始做实验
 全自动研究 campaign
 跑10创新+100调参
 继续上一个
@@ -55,7 +55,7 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 | `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
 | `消融` | ablation | 判断 version-level 或 trial-internal，并先检查接口门。 |
 | `读论文` / `找创新点` | paper intake / idea discovery | 只做来源复核和候选创新登记，不直接开 trial 或训练。 |
-| `从论文开始` / `论文到实验闭环` | paper -> idea -> module trial closed loop | 先读论文和建候选，成熟 IDEA 进 selected queue 后才进入正式实验硬门。 |
+| `基于 vX 从论文开始做实验` / `论文到实验闭环` | paper -> idea -> module trial closed loop | 缺 owner 指定 base version 时只读论文和建候选；成熟 IDEA 进 selected queue 且指定 base code tag 后才进入正式实验硬门。 |
 | `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
 | `开下一个新模块` | innovation / module trial | 明确继续当前版本 selected 队列的下一个 ready idea。 |
 | `试这个：...` | local heuristic idea 或 innovation / module trial | 先判断能否成为 idea / trial，不能直接跳过 source 和 interface gate。 |
@@ -122,7 +122,7 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 用户请求 | 任务类型 | 是否进 `idea_tree/` | GitHub 写入 | 本地外部写入 | 必读协议 | 必需 agents/gates |
 |---|---|---:|---|---|---|---|
 | 读一篇论文，找创新点 | paper intake / idea discovery | 候选成熟后才进 | `idea_tree/sources/`、必要时 `idea_tree/inbox.md` 或 `idea_tree/ideas/` | `GTPJ_Research/papers/`、`notes/`、`source_reviews/`、`ideas/` | `docs/workflow/protocols/paper_intake.md`, `docs/workflow/protocols/idea_tree_protocol.md` | Reader/Planner，source review |
-| 从论文开始，形成创新并验证 | paper -> idea -> module trial closed loop | 成熟 IDEA 才进 | `idea_tree/sources/`、`idea_tree/ideas/`、`idea_tree/queues/`、`experiments/module_trials/` | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `docs/workflow/playbooks/paper_to_experiment.md` 加 paper intake / idea_tree / module trial 协议 | Reader/Planner、Source Reviewer；正式 trial 前加 Implementer、Interface Checker、Runner、Quality Checker、Reviewer，并通过 agent_runtime / preflight / cleanup |
+| 基于 vX 从论文开始，形成创新并验证 | paper -> idea -> module trial closed loop | 成熟 IDEA 才进 | `idea_tree/sources/`、`idea_tree/ideas/`、`idea_tree/queues/`、`experiments/module_trials/` | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `docs/workflow/playbooks/paper_to_experiment.md` 加 paper intake / idea_tree / module template / module trial 协议 | Reader/Planner、Source Reviewer；正式 trial 前加 Implementer、Interface Checker、Runner、Quality Checker、Reviewer，并通过 base_code_tag / module_source / agent_runtime / preflight / cleanup |
 | 给论文来源、评估标准、安全边界和实验标准，让 workflow 全部接管 | autonomous research campaign | 由子任务决定 | campaign ledger、`idea_tree/`、`experiments/` 各子目录 | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `autonomous_research_campaign.md` 加各子任务协议 | Coordinator、Source Reader、Idea Planner、Runner Monitor、Log Metric Parser、Result Comparator、Evidence Quality Checker，按阶段加 Implementer/Interface/Reviewer/Promotion |
 | 任意组合实验，例如 `跑10创新+100调参` | mixed experiment campaign | 由 workstream 决定 | `experiments/campaigns/` + 各实验归属目录 | `GTPJ_Warehouse`、必要时 `GTPJ_Research`、服务器 runner 状态 | `mixed_experiment_campaign_protocol.md` 加各子任务协议 | Workflow Coordinator、Campaign Planner、Runner Monitor、Result Comparator、Evidence Quality Checker；按 workstream 加专用角色 |
 | 自己想到一个新机制 | local heuristic idea | 是，但先写来源和假设 | `idea_tree/inbox.md` 或 `idea_tree/ideas/IDEA-xxxx/` | `GTPJ_Research/ideas/` | `idea_tree_protocol.md` | Reader/Planner，Interface Checker 预审 |

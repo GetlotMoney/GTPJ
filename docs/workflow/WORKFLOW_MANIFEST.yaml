@@ -136,6 +136,11 @@ files:
     category: protocol
     status: active_reference
     daily_read: false
+  - logical_id: module_template_selection
+    canonical_path: docs/workflow/protocols/module_template_selection.md
+    category: protocol
+    status: active_reference
+    daily_read: false
   - logical_id: code_interface_contract
     canonical_path: docs/workflow/protocols/code_interface_contract.md
     category: protocol

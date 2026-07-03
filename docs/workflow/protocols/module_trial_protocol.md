@@ -17,6 +17,7 @@ idea_tree/ideas/IDEA-xxxx_short_name/IDEA.md
 ```text
 docs/workflow/protocols/code_interface_contract.md
 docs/workflow/protocols/innovation_code_review_protocol.md
+docs/workflow/protocols/module_template_selection.md
 ```
 
 分支和 tag 命名必须带 base version：
@@ -42,6 +43,7 @@ experiments/module_trials/IDEA-xxxx_short_name/
 `-- TRIAL-001_short_name/
     |-- README.md
     |-- ATTEMPTS.md
+    |-- module_source.md
     |-- framework_diagram.md
     |-- implementation.md
     |-- code.diff
@@ -61,8 +63,10 @@ experiments/module_trials/IDEA-xxxx_short_name/
 每个 trial 必须记录：
 
 - source idea file
+- module source, paper/code source, and paper-writing explanation
 - base version
 - base code tag
+- module template family
 - version-specific idea score
 - framework diagram path and glossary
 - insertion point
@@ -79,6 +83,7 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - changed files
 - implementation summary
 - framework diagram with every key variable and method explained
+- template selection reason and standard GZSL boundary
 - Review 0 idea/source intent check
 - Review 1 design/interface precheck
 - Review 2 code diff pre-run review
@@ -126,6 +131,38 @@ Each `attempts/ATTEMPT-xxx/` directory should keep its own:
 Before any real attempt run, trial-internal bookkeeping follows the same two-stage evidence rule:
 
 ## Innovation code review gate
+
+## Module source and template gate
+
+每个新 module trial 必须先写：
+
+```text
+module_source.md
+implementation.md
+```
+
+`module_source.md` 必须能回答之后写论文时最关键的问题：
+
+```text
+这个模块来自哪里？
+论文/官方代码中的机制是什么？
+我们复制了什么、改造了什么、自己新增了什么？
+它为什么适合当前 base version 的 GTPJ？
+它使用哪个模板族，接到哪个代码位置？
+switch off 为什么等价于 base version？
+```
+
+模板族必须来自：
+
+```text
+feature_adapter
+fusion_gate
+auxiliary_loss
+sampler_or_data_view
+```
+
+如果机制触碰 evaluation、split、label mapping、class order 或 metric 语义，不能作为普通
+module trial 与 baseline 直接比较；必须单独标记为 high-risk evaluation/data protocol work。
 
 如果 module trial 会把 idea、论文机制、官方代码或本地创新改成实际代码，必须先通过
 `docs/workflow/protocols/innovation_code_review_protocol.md`：

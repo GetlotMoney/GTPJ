@@ -406,6 +406,7 @@ class WorkflowHelperTest(unittest.TestCase):
             ("task_start_card", "docs/workflow/core/TASK_START_CARD.md", "core", "active", False),
             ("agent_runtime_hard_gate", "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
             ("agent_cleanup_protocol", "docs/workflow/protocols/agent_cleanup_protocol.md", "protocol", "active_reference", False),
+            ("module_template_selection", "docs/workflow/protocols/module_template_selection.md", "protocol", "active_reference", False),
             ("playbook_tune", "docs/workflow/playbooks/tune.md", "playbook", "active", False),
             ("playbook_ablation", "docs/workflow/playbooks/ablation.md", "playbook", "active", False),
             ("playbook_confirmation", "docs/workflow/playbooks/confirmation.md", "playbook", "active", False),
@@ -595,7 +596,7 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
         self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
 
-    def test_start_routes_paper_to_experiment_closed_loop_without_writing(self) -> None:
+    def test_start_blocks_paper_to_experiment_without_base_version(self) -> None:
         idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
         version_before = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
 
@@ -605,17 +606,34 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("owner_phrase: 从论文开始", stdout)
         self.assertIn("task_type: paper -> idea -> module trial closed loop", stdout)
+        self.assertIn("base_version: missing", stdout)
+        self.assertIn("base_code_tag: missing", stdout)
+        self.assertIn("playbook: docs/workflow/playbooks/paper_to_experiment.md", stdout)
+        self.assertIn("blocked_missing_base_version", stdout)
+        self.assertIn("formal_runner_allowed: false", stdout)
+        self.assertIn("blocked_reason: missing_base_code_version; paper-to-experiment cannot default to current active version", stdout)
+        self.assertIn("next_action: ask owner for base version, e.g. 基于 v5 从论文开始做实验", stdout)
+        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
+
+    def test_start_routes_paper_to_experiment_with_explicit_base_version(self) -> None:
+        code, stdout, stderr = self._run_main("start", "--phrase", "基于 v1 从论文开始做实验")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 基于 v1 从论文开始做实验", stdout)
+        self.assertIn("task_type: paper -> idea -> module trial closed loop", stdout)
+        self.assertIn("base_version: v1", stdout)
+        self.assertIn("base_code_tag: v1", stdout)
         self.assertIn("playbook: docs/workflow/playbooks/paper_to_experiment.md", stdout)
         self.assertIn(
             "closed_loop: paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue -> trial_preflight -> runner_evidence -> idea_feedback",
             stdout,
         )
-        self.assertIn("agent_runtime_gate: required before formal trial/Runner", stdout)
-        self.assertIn("multi_agent_preflight: required before formal trial/Runner", stdout)
+        self.assertIn("module_template_family", stdout)
+        self.assertIn("module_source", stdout)
+        self.assertIn("standard_gzsl", stdout)
         self.assertIn("formal_runner_allowed: false until agent_runtime and multi_agent_preflight pass", stdout)
-        self.assertIn("do not create trial or run training until a selected idea passes gates", stdout)
-        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
-        self.assertEqual(version_before, (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8"))
 
     def test_start_auto_routes_mixed_experiment_phrase_to_closed_loop_campaign(self) -> None:
         code, stdout, stderr = self._run_main("start", "--phrase", "跑2创新+8调参")
@@ -973,9 +991,19 @@ log:v1:module_trial:TRIAL-001:attempt-001
         trial_dir = self.repo / "experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router"
         readme = (trial_dir / "README.md").read_text(encoding="utf-8")
         framework = (trial_dir / "framework_diagram.md").read_text(encoding="utf-8")
+        module_source = (trial_dir / "module_source.md").read_text(encoding="utf-8")
+        implementation = (trial_dir / "implementation.md").read_text(encoding="utf-8")
         self.assertEqual("", stderr)
         self.assertEqual(0, code)
         self.assertIn("已创建 experiments/module_trials/IDEA-0001_token_router/TRIAL-001_token_router", stdout)
+        self.assertIn("module_source: module_source.md", readme)
+        self.assertIn("module_template_family:", readme)
+        self.assertIn("standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py", readme)
+        self.assertIn("template_family:", module_source)
+        self.assertIn("paper_writing_note:", module_source)
+        self.assertIn("standard GZSL U/S/H/ZS", module_source)
+        self.assertIn("Template Selection", implementation)
+        self.assertIn("module_template_selection.md", implementation)
         self.assertIn("framework_diagram: framework_diagram.md", readme)
         self.assertIn("## Framework Diagram", readme)
         self.assertIn("## Variable Glossary", framework)
@@ -2158,8 +2186,12 @@ decision:
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
+            "docs/workflow/protocols/module_template_selection.md",
+            "feature_adapter_template.py\nstandard GZSL U/S/H/ZS\nbase_code_tag\n",
+        )
+        self._write(
             "docs/workflow/playbooks/innovation.md",
-            "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\n",
+            "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\n",
         )
         self._write("docs/workflow/playbooks/tune.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/ablation.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
@@ -2167,9 +2199,10 @@ decision:
         self._write("docs/workflow/playbooks/promotion.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
-        self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nU, S, H, ZS\n")
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")
 
@@ -2189,6 +2222,7 @@ decision:
             "core/TASK_START_CARD.md",
             "core/AGENT_RUNTIME_HARD_GATE.md",
             "protocols/agent_cleanup_protocol.md",
+            "protocols/module_template_selection.md",
             "playbooks/tune.md",
             "playbooks/ablation.md",
             "playbooks/confirmation.md",

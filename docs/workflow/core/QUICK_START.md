@@ -13,7 +13,7 @@ docs/workflow/WORKFLOW_KERNEL.md
 |---|---|
 | `汇报`, `查状态` | 只读状态检查。除非明确要求，不写 evidence。 |
 | `读论文`, `找创新点` | 论文读取 / idea discovery。 |
-| `从论文开始`, `论文到实验闭环` | 论文读取 -> idea_tree -> module trial 的桥接闭环。使用 `playbooks/paper_to_experiment.md`。 |
+| `基于 vX 从论文开始做实验`, `论文到实验闭环` | 论文读取 -> idea_tree -> module trial 的桥接闭环；缺 `vX` 时不能开 trial。使用 `playbooks/paper_to_experiment.md`。 |
 | `调参` | 调参 Tune。使用 `playbooks/tune.md`。 |
 | `消融` | 消融 Ablation。使用 `playbooks/ablation.md`。 |
 | `复现`, `确认结果` | 复现确认 Confirmation。使用 `playbooks/confirmation.md`。 |

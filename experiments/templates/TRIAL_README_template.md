@@ -11,6 +11,9 @@ code_branch: dev/v1-idea-xxxx-trial-001-short-name
 code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:
+module_source: module_source.md
+module_template_family:
+standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 attempts_table: ATTEMPTS.md
 best_attempt_id:
 best_attempt_dir:
@@ -43,6 +46,24 @@ confirmation_status:
 
 | File | Change | Code layer |
 |---|---|---|
+
+## Module Source
+
+```text
+path: module_source.md
+source_type:
+paper_id:
+source_ref:
+official_code_url:
+official_code_path:
+mechanism_claim:
+template_family:
+attachment_point:
+baseline_off_explanation:
+paper_writing_note:
+```
+
+No new module trial may omit source and template mapping. Historical baselines may stay as legacy records.
 
 ## Result
 

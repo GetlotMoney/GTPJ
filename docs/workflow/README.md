@@ -90,10 +90,10 @@ START_HERE.md
 python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
 ```
 
-论文到实验闭环用桥接执行卡，不直接从 paper intake 开训：
+论文到实验闭环用桥接执行卡，不直接从 paper intake 开训；正式实验必须由 owner 指定 base version：
 
 ```bash
-python workflow/gtpj_workflow.py start --phrase "从论文开始"
+python workflow/gtpj_workflow.py start --phrase "基于 v5 从论文开始做实验"
 ```
 
 最小闭环是：

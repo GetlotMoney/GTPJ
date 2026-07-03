@@ -1211,6 +1211,7 @@ def required_repository_files() -> list[str]:
         "docs/workflow/protocols/git_policy.md",
         "docs/workflow/protocols/versioning.md",
         "docs/workflow/protocols/module_trial_protocol.md",
+        "docs/workflow/protocols/module_template_selection.md",
         "docs/workflow/protocols/code_interface_contract.md",
         "docs/workflow/protocols/innovation_code_review_protocol.md",
         "docs/workflow/reference/code_interface.md",
@@ -1257,6 +1258,14 @@ def required_repository_files() -> list[str]:
         "experiments/templates/agent_summary_template.md",
         "experiments/templates/run_receipt_template.yaml",
         "experiments/templates/quality_check_template.md",
+        "experiments/templates/modules/README.md",
+        "experiments/templates/modules/module_source_template.md",
+        "experiments/templates/modules/standard_trial_config_template.yaml",
+        "experiments/templates/modules/standard_gzsl_module_framework_template.py",
+        "experiments/templates/modules/feature_adapter_template.py",
+        "experiments/templates/modules/fusion_gate_template.py",
+        "experiments/templates/modules/auxiliary_loss_template.py",
+        "experiments/templates/modules/sampler_or_data_view_template.py",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
         "experiments/v1/result.md",
@@ -1388,6 +1397,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("TRIAL_README_template.md must include ## Trial Flow")
     if "## Framework Diagram" not in trial_template:
         raise WorkflowError("TRIAL_README_template.md must include ## Framework Diagram")
+    for marker in ["module_source:", "module_template_family:", "standard_gzsl_framework"]:
+        if marker not in trial_template:
+            raise WorkflowError(f"TRIAL_README_template.md missing module template marker: {marker}")
     artifact_schema = read_text(REPO_ROOT / "schemas" / "artifact_ref.schema.json")
     if '"pruned"' not in artifact_schema:
         raise WorkflowError("artifact_ref.schema.json must allow status=pruned")
@@ -1424,9 +1436,68 @@ def cmd_validate(_: argparse.Namespace) -> int:
     for marker in ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "formal_runner_allowed:", "formal_evidence_allowed:", "agent_output_refs:"]:
         if marker not in receipt_template:
             raise WorkflowError(f"run_receipt_template.yaml missing run receipt marker: {marker}")
-    for marker in ["checkpoint retention", "Top-3", "subject_id:", "TRANSITIONS.jsonl", "authority_refs", "validate-agent-runtime", "multi-agent-preflight", "agent_output_refs"]:
+    for marker in [
+        "checkpoint retention",
+        "Top-3",
+        "subject_id:",
+        "TRANSITIONS.jsonl",
+        "authority_refs",
+        "validate-agent-runtime",
+        "multi-agent-preflight",
+        "agent_output_refs",
+        "标准 GZSL",
+        "module_source.md",
+    ]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
+    module_template_protocol = read_text(
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "module_template_selection.md"
+    )
+    for marker in [
+        "feature_adapter_template.py",
+        "fusion_gate_template.py",
+        "auxiliary_loss_template.py",
+        "sampler_or_data_view_template.py",
+        "standard_gzsl_module_framework_template.py",
+        "base_version",
+        "base_code_tag",
+        "standard GZSL U/S/H/ZS",
+    ]:
+        if marker not in module_template_protocol:
+            raise WorkflowError(f"module_template_selection.md missing marker: {marker}")
+    module_template_markers = {
+        "experiments/templates/modules/README.md": [
+            "feature_adapter_template.py",
+            "fusion_gate_template.py",
+            "standard_gzsl_module_framework_template.py",
+            "U, S, H, ZS",
+        ],
+        "experiments/templates/modules/module_source_template.md": [
+            "paper_id:",
+            "source_ref:",
+            "template_family:",
+            "paper_writing_note:",
+        ],
+        "experiments/templates/modules/standard_trial_config_template.yaml": [
+            "standard_gzsl_u_s_h_zs",
+            "protect_seen_unseen_split",
+            "protect_label_mapping",
+        ],
+        "experiments/templates/modules/standard_gzsl_module_framework_template.py": [
+            "GZSLProtectedState",
+            "assert_logits_shape",
+            "standard_gzsl_u_s_h_zs",
+        ],
+        "experiments/templates/modules/feature_adapter_template.py": ["TrialFeatureAdapter", "template_family"],
+        "experiments/templates/modules/fusion_gate_template.py": ["TrialFusionGate", "template_family"],
+        "experiments/templates/modules/auxiliary_loss_template.py": ["TrialAuxiliaryLoss", "lambda_trial_loss"],
+        "experiments/templates/modules/sampler_or_data_view_template.py": ["TrialViewSelector", "xlsa17"],
+    }
+    for path_text, markers in module_template_markers.items():
+        text = read_text(REPO_ROOT / path_text)
+        for marker in markers:
+            if marker not in text:
+                raise WorkflowError(f"{path_text} missing module template marker: {marker}")
     promotion_agents = read_text(
         REPO_ROOT / "docs" / "workflow" / "agents" / "by_experiment" / "promotion" / "agents" / "README.md"
     )
@@ -1672,6 +1743,10 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Shape Invariants",
         "Baseline-Off Path",
         "Minimum Verification",
+        "Template Selection",
+        "template_family",
+        "standard GZSL U/S/H/ZS",
+        "module_template_selection.md",
     ]:
         if marker not in implementation_template:
             raise WorkflowError(f"implementation_template.md missing section: {marker}")
@@ -5370,6 +5445,7 @@ WORKFLOW_MANIFEST_REQUIRED_IDS = {
     "playbook_mixed_campaign",
     "playbook_paper_intake",
     "playbook_paper_to_experiment",
+    "module_template_selection",
 }
 
 
@@ -5549,7 +5625,22 @@ def workflow_consistency_errors() -> list[str]:
             "agent_output_refs",
             "agent-cleanup-plan",
         ],
-        "docs/workflow/playbooks/innovation.md": ["探索 / 正式分界", "formal_evidence_allowed"],
+        "docs/workflow/protocols/module_template_selection.md": [
+            "feature_adapter_template.py",
+            "standard GZSL U/S/H/ZS",
+            "base_code_tag",
+        ],
+        "docs/workflow/playbooks/innovation.md": [
+            "探索 / 正式分界",
+            "formal_evidence_allowed",
+            "module_template_selection.md",
+            "module_source.md",
+        ],
+        "docs/workflow/playbooks/paper_to_experiment.md": [
+            "base_code_tag",
+            "module_template_selection.md",
+            "module_source.md",
+        ],
         "experiments/templates/agent_summary_template.md": [
             "multi_agent_preflight:",
             "formal_runner_allowed:",
@@ -5557,6 +5648,7 @@ def workflow_consistency_errors() -> list[str]:
             "agent_cleanup:",
         ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
+        "experiments/templates/modules/README.md": ["standard_gzsl_module_framework_template.py", "U, S, H, ZS"],
     }
     for path_text, markers in required_markers.items():
         path = REPO_ROOT / path_text
@@ -5868,6 +5960,25 @@ def format_requested_mix(requested: dict[str, int]) -> str:
     return ", ".join(f"{kind}={requested[kind]}" for kind in order if requested.get(kind))
 
 
+def owner_phrase_base_version(phrase: str) -> str | None:
+    match = re.search(r"(?:基于|base(?:d)?\s+on|from)\s*(v[0-9]+)", phrase, re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    match = re.search(r"\b(v[0-9]+)\b", phrase, re.IGNORECASE)
+    if match and any(token in phrase for token in ["代码", "base", "版本"]):
+        return match.group(1).lower()
+    return None
+
+
+def is_paper_to_experiment_phrase(phrase: str) -> bool:
+    exact = {"从论文开始", "论文到实验闭环", "读论文并验证创新"}
+    if phrase in exact:
+        return True
+    if "论文" not in phrase:
+        return False
+    return any(token in phrase for token in ["做实验", "跑实验", "验证创新", "实验闭环"])
+
+
 def mini_card_for_phrase(phrase: str) -> dict[str, str]:
     data = load_idea_tree()
     base_version = current_active_version(data)
@@ -5888,7 +5999,7 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "gates": "campaign_manifest, work_items, agent_runtime, multi_agent_preflight, artifact_boundary, cleanup",
             "next_action": "create campaign manifest and agent_runtime.yaml after owner approval",
         }
-    if normalized in {"读论文", "找创新点", "提取创新"}:
+    if normalized in {"读论文", "找创新点", "提取创新", "从论文读取获得创新"}:
         return {
             "owner_phrase": normalized,
             "task_type": "paper intake / idea discovery",
@@ -5911,11 +6022,37 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "blocked_reason": "paper intake cannot directly start training or create module trial",
             "next_action": "scan GTPJ_Research/papers/_inbox and PAPERS_INDEX.md; do not run training",
         }
-    if normalized in {"从论文开始", "论文到实验闭环", "读论文并验证创新", "从论文读取获得创新"}:
+    if is_paper_to_experiment_phrase(normalized):
+        explicit_base_version = owner_phrase_base_version(normalized)
+        if explicit_base_version is None:
+            return {
+                "owner_phrase": normalized,
+                "task_type": "paper -> idea -> module trial closed loop",
+                "base_version": "missing",
+                "base_code_tag": "missing",
+                "target": "paper-derived idea pipeline",
+                "writes": "Research/idea_tree only; experiments blocked until owner specifies base version",
+                "agent_mode": "role_only for intake/triage; real_multi_agent only after base version and trial gates",
+                "agent_instance_mode": "role_only",
+                "playbook": "docs/workflow/playbooks/paper_to_experiment.md",
+                "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/paper_to_experiment.md",
+                "closed_loop": "paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue -> blocked_missing_base_version",
+                "runner_scope": "none",
+                "formal_runner_allowed": "false",
+                "formal_evidence_allowed": "false",
+                "agent_runtime_gate": "not_required until base version and selected IDEA are specified",
+                "multi_agent_preflight": "not_required until base version and selected IDEA are specified",
+                "owner_monitor_mode": "not_required until formal Runner",
+                "agent_activity_stream": "not_required until formal Runner",
+                "gates": "base_version, base_code_tag, source_status, source_ref, module_template_family, module_source, interface_contract",
+                "blocked_reason": "missing_base_code_version; paper-to-experiment cannot default to current active version",
+                "next_action": "ask owner for base version, e.g. 基于 v5 从论文开始做实验",
+            }
         return {
             "owner_phrase": normalized,
             "task_type": "paper -> idea -> module trial closed loop",
-            "base_version": base_version,
+            "base_version": explicit_base_version,
+            "base_code_tag": explicit_base_version,
             "target": "paper-derived idea pipeline",
             "writes": "Research first; GitHub idea_tree after source/mechanism gate; experiments only after selected idea and owner approval",
             "agent_mode": "role_only for intake/triage; real_multi_agent when code starts or formal trial evidence is planned",
@@ -5930,7 +6067,7 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "multi_agent_preflight": "required before formal trial/Runner",
             "owner_monitor_mode": "true for formal Runner",
             "agent_activity_stream": "required before formal Runner",
-            "gates": "source_status, source_ref, hypothesis, implementation_scope, risk, version_scores, selected_queue, interface_contract, agent_runtime, multi_agent_preflight, cleanup",
+            "gates": "source_status, source_ref, hypothesis, implementation_scope, risk, version_scores, selected_queue, module_template_family, module_source, standard_gzsl, interface_contract, agent_runtime, multi_agent_preflight, cleanup",
             "blocked_reason": "formal run blocked until a paper-derived IDEA is selected and real agents pass preflight",
             "next_action": "read PAPERS_INDEX/_inbox and classify sources; do not create trial or run training until a selected idea passes gates",
         }
@@ -6055,6 +6192,7 @@ def fill_mini_card_defaults(card: dict[str, str]) -> dict[str, str]:
     formal_intent = "real_multi_agent" in agent_mode and not read_only_real_multi_agent_later
     filled.setdefault("subject_id", "pending")
     filled.setdefault("evidence_state", "not_applicable")
+    filled.setdefault("base_code_tag", "not_applicable")
     if formal_intent:
         filled.setdefault("runner_scope", "formal_runner")
         filled.setdefault("formal_runner_allowed", "false until multi_agent_preflight pass")
@@ -6087,6 +6225,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         "owner_phrase",
         "task_type",
         "base_version",
+        "base_code_tag",
         "target",
         "subject_id",
         "evidence_state",
@@ -6606,6 +6745,80 @@ trial_folder: {rel(idea_dir)}
     ensure_dir(trial_dir)
     copy_new(REPO_ROOT / "experiments" / base_version / "config.yaml", trial_dir / "config.yaml")
     write_new(trial_dir / "code.diff", "")
+    template_family = str(
+        idea.get("module_template_family")
+        or idea.get("required_module_template")
+        or version_entry.get("module_template_family")
+        or "pending"
+    ).strip()
+    write_new(
+        trial_dir / "module_source.md",
+        f"""# Module Source
+
+```text
+idea_id: {idea_id}
+trial_id: {trial_id}
+module_name: {slug}
+template_family: {template_family}
+base_version: {base_version}
+base_code_tag: {base_version}
+dataset: CUB xlsa17 att_splits
+evaluation: standard GZSL U/S/H/ZS
+```
+
+## Source
+
+```text
+source_type: {idea.get('source_type', '')}
+paper_id:
+source_ref: {idea.get('source_ref', '')}
+source_status: {idea.get('source_status', '')}
+official_code_url:
+official_code_path:
+official_code_commit:
+```
+
+## Mechanism Claim
+
+```text
+mechanism_claim: {idea.get('hypothesis', '')}
+target_signal:
+expected_effect_on_gzsl:
+```
+
+## Adaptation To GTPJ
+
+```text
+what_is_copied:
+what_is_adapted:
+what_is_new:
+why_fit_gtpj: {version_entry.get('rationale', '')}
+not_implemented_from_source:
+```
+
+## Template Mapping
+
+```text
+template_family: {template_family}
+attachment_point:
+input_tensors:
+output_tensors:
+config_switch:
+baseline_off_explanation:
+```
+
+## Paper Writing Note
+
+```text
+module_origin_sentence:
+method_explanation:
+difference_from_source:
+ablation_needed:
+limitations:
+paper_writing_note:
+```
+""",
+    )
     write_new(
         trial_dir / "framework_diagram.md",
         f"""# Framework Diagram
@@ -6700,6 +6913,9 @@ applicability: {version_entry.get('applicability', '')}
 code_branch: {code_branch}
 code_tag: {code_tag}
 code_commit:
+module_source: module_source.md
+module_template_family: {template_family}
+standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
@@ -6723,6 +6939,21 @@ review_round_2: review_round_2.md
 agent_summary: agent_summary.md
 framework_diagram: framework_diagram.md
 ```
+
+## Module Source
+
+```text
+path: module_source.md
+source_type: {idea.get('source_type', '')}
+source_ref: {idea.get('source_ref', '')}
+mechanism_claim: {idea.get('hypothesis', '')}
+template_family: {template_family}
+attachment_point:
+baseline_off_explanation:
+paper_writing_note:
+```
+
+No new module trial may omit source and template mapping. Historical baselines may stay as legacy records.
 
 ## 改动文件
 
@@ -6802,9 +7033,19 @@ activation_mode: real_multi_agent
 ```text
 docs/workflow/protocols/code_interface_contract.md
 docs/workflow/protocols/innovation_code_review_protocol.md
+docs/workflow/protocols/module_template_selection.md
 ```
 
 ## 新模块
+
+```text
+module_source: module_source.md
+template_family: {template_family}
+base_version: {base_version}
+base_code_tag: {base_version}
+dataset: CUB xlsa17 att_splits
+evaluation: standard GZSL U/S/H/ZS
+```
 
 ## 基于什么
 
@@ -6817,6 +7058,16 @@ docs/workflow/protocols/innovation_code_review_protocol.md
 | 接入前/后 | |
 | Consumes | |
 | Produces | |
+
+## Template Selection
+
+```text
+selected_template: {template_family}
+selection_reason:
+mechanism_claim: {idea.get('hypothesis', '')}
+why_not_narrower_template:
+high_risk_reason:
+```
 
 ## Input Contract（输入契约）
 
@@ -6863,9 +7114,14 @@ normalization/reduction changes:
 
 ```text
 eval path changed: yes/no
+dataset: CUB
+split file: xlsa17/att_splits.mat
 logits shape:
 class order:
+label mapping:
+seen/unseen split:
 metric calculation:
+metric semantics: standard GZSL U/S/H/ZS
 ```
 
 ## Checkpoint Contract（Checkpoint 契约）
@@ -6885,6 +7141,8 @@ missing/unexpected keys:
 - [ ] Logits shape check。
 - [ ] Loss scalar 和 backward check。
 - [ ] Evaluation 输出 class-count 检查。
+- [ ] Label mapping 检查。
+- [ ] Seen/unseen split 检查。
 - [ ] Base config files 没有变化。
 
 ## 验证命令

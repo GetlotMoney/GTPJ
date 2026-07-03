@@ -9,6 +9,7 @@ START_HERE.md
 WORKFLOW_KERNEL.md
 docs/workflow/reference/GZSL_HARD_RULES.md
 docs/workflow/reference/innovation_decomposition_protocol.md
+docs/workflow/protocols/module_template_selection.md
 docs/workflow/protocols/idea_tree_protocol.md
 docs/workflow/protocols/module_trial_protocol.md
 docs/workflow/protocols/code_interface_contract.md
@@ -106,6 +107,23 @@ Paper
 
 同一个 Hypothesis 加到不同位置，通常新开 Trial；只调参数才留在 Attempt。
 
+## 模板选择
+
+新 module trial 必须先按 `docs/workflow/protocols/module_template_selection.md` 选模板。
+
+```text
+feature_adapter
+fusion_gate
+auxiliary_loss
+sampler_or_data_view
+```
+
+选择原则：先确定论文/idea 的 mechanism claim，再找 attachment point，最后选最窄模板。
+如果 owner 没有明确 `base_version` / `base_code_tag`，只能做 idea discovery，不能开正式 trial。
+
+每个新模块必须写 trial-local `module_source.md`，说明模块来源、论文机制、GTPJ 适配方式、
+模板族、接入点、baseline-off 解释和之后写论文可用的表述。
+
 ## 代码流程图
 
 只要创新会改变代码逻辑、forward、loss、evaluation、输入输出或关键张量流向，Trial
@@ -142,6 +160,8 @@ raw logs/checkpoints 写 GTPJ_Warehouse
 ## 阻断门
 
 - 没有有效 idea id 或 owner 接受的 local heuristic。
+- 论文创新要做实验但缺少 owner 明确指定的 base version / base code tag。
+- 没有 `module_source.md` 或没有选择 module template family。
 - interface semantics 不清楚。
 - attempt 改变了实现假设，应该新开 trial。
 - 没有真实右侧临时 agents、没有 `agent_runtime.yaml` 或 `validate-agent-runtime` 未通过。

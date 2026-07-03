@@ -1,0 +1,30 @@
+# Trial-local config template for paper-derived GTPJ modules.
+# Defaults must preserve the selected base version.
+
+dataset:
+  value: CUB
+dataset_split:
+  value: xlsa17/att_splits.mat
+evaluation_protocol:
+  value: standard_gzsl_u_s_h_zs
+
+module_name:
+  value: TODO_MODULE
+module_template_family:
+  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+use_trial_module:
+  value: false
+
+# Keep lambda at zero until the module is explicitly enabled for an attempt.
+lambda_trial_loss:
+  value: 0.0
+
+# Protected GZSL semantics. Do not change inside a normal module trial.
+protect_seen_unseen_split:
+  value: true
+protect_class_order:
+  value: true
+protect_label_mapping:
+  value: true
+protect_metric_semantics:
+  value: true

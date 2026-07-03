@@ -14,6 +14,7 @@ docs/workflow/playbooks/paper_intake.md
 docs/workflow/playbooks/innovation.md
 docs/workflow/protocols/paper_intake.md
 docs/workflow/protocols/idea_tree_protocol.md
+docs/workflow/protocols/module_template_selection.md
 docs/workflow/protocols/module_trial_protocol.md
 ```
 
@@ -45,16 +46,19 @@ paper_inbox
 2. 来源复核：记录 `source_status`、`source_ref`、官方代码链接、本地代码路径和 clone commit。
 3. 候选创新：粗想法只进 `idea_tree/inbox.md`；成熟机制才创建或更新
    `idea_tree/ideas/IDEA-xxxx_slug/IDEA.md` 和 `idea_tree/idea_tree.json`。
-4. 正式 IDEA 门：必须有 `hypothesis`、`implementation_scope`、`risk`、
+4. 正式 IDEA 门：必须有 owner 指定的 `base_version`、`base_code_tag`、`hypothesis`、
+   `implementation_scope`、`risk`、
    `version_scores.<base_version>`、空 blockers，以及可检查的接口影响。
 5. 选择队列：只有 owner 或当前计划明确选中后，才写入
    `idea_tree/queues/01_selected_next.md` 或当前版本 view。
-6. Trial 预检：按 `innovation.md` 和 `module_trial_protocol.md` 创建 trial 前检查
-   base version、分支、接口契约、Review 0 和 artifact 边界。
-7. 正式实验：必须生成或读取 `agent_runtime.yaml`，记录真实 `agent_instance_id`
+6. 模板选择：按 `module_template_selection.md` 选择最窄模板，写 `module_source.md`，
+   并确认标准 GZSL 数据集、split、label mapping、class order、U/S/H/ZS 语义不变。
+7. Trial 预检：按 `innovation.md` 和 `module_trial_protocol.md` 创建 trial 前检查
+   base version、base code tag、分支、接口契约、Review 0 和 artifact 边界。
+8. 正式实验：必须生成或读取 `agent_runtime.yaml`，记录真实 `agent_instance_id`
    与 UI 显示名/role 映射，依次通过 `validate-agent-runtime`、`multi-agent-preflight`
    和 `agent-cleanup-plan`，并明确 owner-visible monitor loop。
-8. 结果反馈：`record-module-attempt`、`sync-trial-summary`、`closeout-check` 后，更新
+9. 结果反馈：`record-module-attempt`、`sync-trial-summary`、`closeout-check` 后，更新
    Research 的 `decision_history.md` 或 `experiment_plan.md`，并回写 idea_tree 的
    status、version score、risk、linked_trials 和 next_action。
 
@@ -68,13 +72,16 @@ Warehouse: 正式 runner 的日志、checkpoint、receipt 和大 artifact
 
 Paper intake 本身不启动训练，也不直接创建 module trial。
 只有通过正式 IDEA 门、进入 selected queue，并由 owner 批准实验后，才允许走 formal Runner。
+如果 owner 没有明确说“基于 vX 代码开始”，本闭环停在候选创新和版本适配评分，不得默认当前 active version。
 
 ## 阻断门
 
 - 没有 verified source，且 owner 未接受 local heuristic。
 - 没有明确 `source_ref`，或官方代码声明无法反查到本地 clone/失败记录。
 - 缺少 `hypothesis`、`implementation_scope`、`risk` 或当前版本评分。
+- 缺少 owner 明确指定的 `base_version` / `base_code_tag`。
 - idea 未进入 selected queue。
+- 未选择 module template family，或缺少 `module_source.md`。
 - Interface Checker 不能判断接口影响。
 - 正式实验前缺少真实右侧 temporary agents、`agent_runtime.yaml`、preflight 或 cleanup plan。
 - 阶段结束时没有汇报 keep / close / unknown agents，或 completed agents 未关闭并记录 `close_result`。
