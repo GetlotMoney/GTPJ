@@ -29,6 +29,7 @@ evaluation: standard GZSL U/S/H/ZS
 | 改多路分数或特征融合 | `fusion_gate_template.py` | global/local score 或 text/visual branch 融合处 | 中 |
 | 只新增正则或辅助 loss | `auxiliary_loss_template.py` | `compute_loss` 内，读取已有 tensor | 中低 |
 | 改采样、cache view、patch/view 选择 | `sampler_or_data_view_template.py` | batch / feature cache / view selector | 高 |
+| 两个或更多模块必须一起才构成机制 | `composite_module_template.py` | 一个 composite slot 统一调 feature/fusion/loss/view 子模块 | 高 |
 | 改 evaluation、split、label map 或 metric | 禁止作为普通 module trial | eval script / dataset split | 极高；不可与 baseline 直接比较 |
 
 选择算法：
@@ -53,7 +54,22 @@ TRIAL-002: auxiliary loss
 TRIAL-003: fusion gate
 ```
 
-只有当机制本身不可拆分，才允许一个 Trial 使用多个模板，并标为 high risk。
+只有当机制本身不可拆分，才允许一个 Trial 使用多个模板，并必须走
+`composite_module_template.py`。主训练框架只能看到一个 composite 插槽，不能在
+`train_GTPJ_CUB.py` 或旧模型里散落多处临时分支。composite trial 必须记录：
+
+```text
+module_scope: composite
+components:
+  - name:
+    template_family:
+    attachment_point:
+    enabled_key:
+composition_mode: sequential | parallel | gated | residual
+baseline_off_explanation:
+```
+
+如果两个子模块可以独立验证，仍然拆成多个 Trial；只有一起才成立的机制才用 composite。
 
 ## 标准 GZSL 边界
 
@@ -103,6 +119,7 @@ paper_writing_note:
 
 - config switch 默认关闭；
 - switch off 等价于 `base_version`；
+- composite trial 的 all components off 等价于 `base_version`；
 - forward 不改变 batch 维和 class 维；
 - eval 不改变 seen/unseen split、class order、label mapping、metric 语义；
 - 新 loss 的 `lambda=0` 不改变 total loss；

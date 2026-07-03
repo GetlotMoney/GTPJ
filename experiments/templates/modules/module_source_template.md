@@ -5,6 +5,7 @@ idea_id:
 trial_id:
 module_name:
 template_family:
+module_scope:
 base_version:
 base_code_tag:
 dataset: CUB xlsa17 att_splits
@@ -47,6 +48,13 @@ not_implemented_from_source:
 
 ```text
 template_family:
+module_scope: single_module | composite | architecture_change
+components:
+  - name:
+    template_family:
+    attachment_point:
+    enabled_key:
+composition_mode: none | sequential | parallel | gated | residual
 attachment_point:
 input_tensors:
 output_tensors:

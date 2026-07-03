@@ -1267,6 +1267,7 @@ def required_repository_files() -> list[str]:
         "experiments/templates/modules/fusion_gate_template.py",
         "experiments/templates/modules/auxiliary_loss_template.py",
         "experiments/templates/modules/sampler_or_data_view_template.py",
+        "experiments/templates/modules/composite_module_template.py",
         "experiments/v1/VERSION.md",
         "experiments/v1/config.yaml",
         "experiments/v1/result.md",
@@ -1401,6 +1402,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
     for marker in [
         "module_source:",
         "module_template_family:",
+        "module_scope:",
         "standard_gzsl_framework",
         "standard_gzsl_training_template",
     ]:
@@ -1454,6 +1456,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "标准 GZSL",
         "module_source.md",
         "standard_gzsl_training_template.py",
+        "module_scope: composite",
     ]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
@@ -1465,6 +1468,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "fusion_gate_template.py",
         "auxiliary_loss_template.py",
         "sampler_or_data_view_template.py",
+        "composite_module_template.py",
         "standard_gzsl_module_framework_template.py",
         "standard_gzsl_training_template.py",
         "base_version",
@@ -1477,6 +1481,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/templates/modules/README.md": [
             "feature_adapter_template.py",
             "fusion_gate_template.py",
+            "composite_module_template.py",
             "standard_gzsl_module_framework_template.py",
             "U, S, H, ZS",
         ],
@@ -1484,11 +1489,13 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "paper_id:",
             "source_ref:",
             "template_family:",
+            "module_scope:",
             "paper_writing_note:",
         ],
         "experiments/templates/modules/standard_trial_config_template.yaml": [
             "base_code_tag",
             "training_template",
+            "composition_mode",
             "standard_gzsl_u_s_h_zs",
             "protect_seen_unseen_split",
             "protect_label_mapping",
@@ -1508,6 +1515,12 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/templates/modules/fusion_gate_template.py": ["TrialFusionGate", "template_family"],
         "experiments/templates/modules/auxiliary_loss_template.py": ["TrialAuxiliaryLoss", "lambda_trial_loss"],
         "experiments/templates/modules/sampler_or_data_view_template.py": ["TrialViewSelector", "xlsa17"],
+        "experiments/templates/modules/composite_module_template.py": [
+            "TrialCompositeModule",
+            "CompositePlan",
+            "composition_mode",
+            "all_components_disabled",
+        ],
     }
     for path_text, markers in module_template_markers.items():
         text = read_text(REPO_ROOT / path_text)
@@ -1762,6 +1775,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Template Selection",
         "Training Entry",
         "template_family",
+        "module_scope",
+        "composition_mode",
         "standard_gzsl_training_template.py",
         "standard GZSL U/S/H/ZS",
         "module_template_selection.md",
@@ -5645,6 +5660,7 @@ def workflow_consistency_errors() -> list[str]:
         ],
         "docs/workflow/protocols/module_template_selection.md": [
             "feature_adapter_template.py",
+            "composite_module_template.py",
             "standard GZSL U/S/H/ZS",
             "base_code_tag",
             "standard_gzsl_training_template.py",
@@ -5670,6 +5686,7 @@ def workflow_consistency_errors() -> list[str]:
         "experiments/templates/modules/README.md": [
             "standard_gzsl_module_framework_template.py",
             "standard_gzsl_training_template.py",
+            "composite_module_template.py",
             "U, S, H, ZS",
         ],
     }
@@ -6774,6 +6791,16 @@ trial_folder: {rel(idea_dir)}
         or version_entry.get("module_template_family")
         or "pending"
     ).strip()
+    module_scope = str(
+        idea.get("module_scope")
+        or version_entry.get("module_scope")
+        or ("composite" if template_family == "composite" else "single_module")
+    ).strip()
+    composition_mode = str(
+        idea.get("composition_mode")
+        or version_entry.get("composition_mode")
+        or ("pending" if module_scope == "composite" else "none")
+    ).strip()
     write_new(
         trial_dir / "module_source.md",
         f"""# Module Source
@@ -6783,6 +6810,7 @@ idea_id: {idea_id}
 trial_id: {trial_id}
 module_name: {slug}
 template_family: {template_family}
+module_scope: {module_scope}
 base_version: {base_version}
 base_code_tag: {base_version}
 dataset: CUB xlsa17 att_splits
@@ -6823,6 +6851,13 @@ not_implemented_from_source:
 
 ```text
 template_family: {template_family}
+module_scope: {module_scope}
+components:
+  - name:
+    template_family:
+    attachment_point:
+    enabled_key:
+composition_mode: {composition_mode}
 attachment_point:
 input_tensors:
 output_tensors:
@@ -6938,6 +6973,8 @@ code_tag: {code_tag}
 code_commit:
 module_source: module_source.md
 module_template_family: {template_family}
+module_scope: {module_scope}
+composition_mode: {composition_mode}
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
 trial_decision: pending
@@ -6972,6 +7009,9 @@ source_type: {idea.get('source_type', '')}
 source_ref: {idea.get('source_ref', '')}
 mechanism_claim: {idea.get('hypothesis', '')}
 template_family: {template_family}
+module_scope: {module_scope}
+components:
+composition_mode: {composition_mode}
 attachment_point:
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
 baseline_off_explanation:
@@ -7066,6 +7106,7 @@ docs/workflow/protocols/module_template_selection.md
 ```text
 module_source: module_source.md
 template_family: {template_family}
+module_scope: {module_scope}
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
 base_version: {base_version}
 base_code_tag: {base_version}
@@ -7092,6 +7133,9 @@ selected_template: {template_family}
 selection_reason:
 mechanism_claim: {idea.get('hypothesis', '')}
 why_not_narrower_template:
+module_scope:
+components:
+composition_mode:
 high_risk_reason:
 ```
 

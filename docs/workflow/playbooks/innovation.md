@@ -116,9 +116,11 @@ feature_adapter
 fusion_gate
 auxiliary_loss
 sampler_or_data_view
+composite
 ```
 
 选择原则：先确定论文/idea 的 mechanism claim，再找 attachment point，最后选最窄模板。
+如果两个子模块可以独立验证，拆成多个 Trial；只有机制不可拆时才用 `composite`。
 如果 owner 没有明确 `base_version` / `base_code_tag`，只能做 idea discovery，不能开正式 trial。
 
 每个新模块必须写 trial-local `module_source.md`，说明模块来源、论文机制、GTPJ 适配方式、

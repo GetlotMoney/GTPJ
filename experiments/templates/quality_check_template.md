@@ -28,6 +28,7 @@ transition_id:
 - [ ] 标准 GZSL 数据集、split、class order、label mapping、U/S/H/ZS 语义未被模板实现改变。
 - [ ] `module_source.md` 记录了 paper/source、template family、attachment point 和 baseline-off 解释。
 - [ ] 训练入口已对照 `standard_gzsl_training_template.py`，并记录 config、seed、dataset/split、eval function、checkpoint policy 和 artifact refs。
+- [ ] 如果 `module_scope: composite`，每个 component 的 template family、attachment point、enabled key、composition mode 和 all-off baseline path 已记录。
 - [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。
 - [ ] `current_state` 能由 `TRANSITIONS.jsonl` 的 chain head 派生。
 - [ ] `authority_refs` 指向现有 GitHub 轻量证据或合法 Warehouse/Research URI。

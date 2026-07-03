@@ -11,6 +11,7 @@
 | `fusion_gate_template.py` | paper idea 改多路 score/feature 融合 | eval metric, class axis, baseline-off path |
 | `auxiliary_loss_template.py` | paper idea 只新增辅助监督或正则 | total loss when lambda=0 |
 | `sampler_or_data_view_template.py` | paper idea 改采样、cache view 或 patch/view 选择 | xlsa17 split, labels, eval loader |
+| `composite_module_template.py` | paper idea 必须融合两个或更多模块才成立 | one composite slot, all-off baseline path |
 | `standard_gzsl_module_framework_template.py` | 所有模板的公共安全框架 | protected GZSL semantics |
 
 ## 必填记录
@@ -19,6 +20,7 @@
 module_source_template.md
 standard_trial_config_template.yaml
 standard_gzsl_training_template.py
+composite_module_template.py (only for inseparable multi-component trials)
 implementation.md
 interface_precheck.md
 quality_check.md

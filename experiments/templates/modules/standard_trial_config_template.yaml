@@ -20,9 +20,19 @@ module_name:
 module_source:
   value: module_source.md
 module_template_family:
-  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite
 training_template:
   value: experiments/templates/modules/standard_gzsl_training_template.py
+module_scope:
+  value: single_module | composite | architecture_change
+composition_mode:
+  value: none | sequential | parallel | gated | residual
+components:
+  value:
+    - name: TODO_COMPONENT
+      template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+      attachment_point: TODO_ATTACHMENT
+      enabled_key: use_TODO_COMPONENT
 use_trial_module:
   value: false
 
