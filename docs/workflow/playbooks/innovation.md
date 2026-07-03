@@ -127,6 +127,10 @@ composite
 模板族、接入点、baseline-off 解释和之后写论文可用的表述。
 每个正式 Trial 还必须写 `trial_meta.yaml` 并通过 `validate-trial-meta`，用于硬判定
 `single_module`、`composite` 或 `architecture_change`。
+如果 owner 明确说“用新模板”或“不继承老模板”，`trial_meta.yaml` 必须设置
+`training_entry.mode: strict_template_entry`，Runner 只能使用 trial-local
+`training_entry.py`。旧入口中本次需要打开的模块必须迁移到新入口，不能继续把分支堆到
+`train_GTPJ_CUB.py`。
 
 ## 代码流程图
 

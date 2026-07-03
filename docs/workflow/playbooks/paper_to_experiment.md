@@ -53,6 +53,8 @@ paper_inbox
    `idea_tree/queues/01_selected_next.md` 或当前版本 view。
 6. 模板选择：按 `module_template_selection.md` 选择最窄模板，写 `module_source.md`，
    并确认标准 GZSL 数据集、split、label mapping、class order、U/S/H/ZS 语义不变。
+   如果 owner 指定“用新模板”，必须设置 `training_entry.mode: strict_template_entry`，
+   复制标准训练模板为 trial-local `training_entry.py`，并迁移旧入口中需要打开的模块。
 7. Trial 预检：按 `innovation.md` 和 `module_trial_protocol.md` 创建 trial 前检查
    base version、base code tag、分支、接口契约、Review 0 和 artifact 边界。
 8. 正式实验：必须生成或读取 `agent_runtime.yaml`，记录真实 `agent_instance_id`

@@ -18,6 +18,9 @@ module_scope:
 composition_mode:
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode: existing_entry_equivalent | strict_template_entry
+selected_training_entry:
+legacy_module_migration: not_required | required | completed
 attempts_table: ATTEMPTS.md
 best_attempt_id:
 best_attempt_dir:
@@ -69,6 +72,9 @@ composition_mode:
 affects:
 attachment_point:
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode:
+selected_training_entry:
+legacy_module_migration:
 baseline_off_explanation:
 paper_writing_note:
 ```

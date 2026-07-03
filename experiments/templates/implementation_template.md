@@ -17,6 +17,9 @@ trial_meta: trial_meta.yaml
 template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite
 module_scope: single_module | composite | architecture_change
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode: existing_entry_equivalent | strict_template_entry
+selected_training_entry:
+legacy_module_migration: not_required | required | completed
 base_version:
 base_code_tag:
 dataset: CUB xlsa17 att_splits
@@ -62,7 +65,10 @@ it is not a normal comparable module trial.
 
 ```text
 selected_training_entry:
+training_entry_mode:
 standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+strict_template_rule:
+legacy_module_migration:
 equivalence_note:
 config_path:
 seed:
@@ -76,6 +82,10 @@ Explain whether the run uses a copied training template or an existing entry
 such as `train_GTPJ_CUB.py`. The explanation must map config, seed,
 dataset/split, frozen backbone, model/module, train loop, standard GZSL eval,
 checkpoint/log retention, and result/quality summaries.
+If `training_entry_mode: strict_template_entry`, the Runner must use a
+trial-local training entry copied from `standard_gzsl_training_template.py`.
+Any module that was enabled in the old entry must be migrated into that clean
+entry; do not keep adding branches to the old training script.
 
 ## Input Contract
 

@@ -449,6 +449,11 @@ trial_id: TRIAL-001
 module_scope: single_module
 template_family: feature_adapter
 risk: normal
+training_entry:
+  mode: existing_entry_equivalent
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: train_GTPJ_CUB.py
+  legacy_module_migration: not_required
 affects:
   forward_main_flow: false
   class_scoring: false
@@ -482,6 +487,11 @@ trial_id: TRIAL-001
 module_scope: single_module
 template_family: feature_adapter
 risk: normal
+training_entry:
+  mode: existing_entry_equivalent
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: train_GTPJ_CUB.py
+  legacy_module_migration: not_required
 affects:
   forward_main_flow: false
   class_scoring: true
@@ -505,6 +515,81 @@ audit:
 
         self.assertEqual(1, code)
         self.assertIn("module_scope must be architecture_change", stderr)
+
+    def test_validate_trial_meta_rejects_strict_mode_using_old_entry(self) -> None:
+        self._write(
+            "trial_meta.yaml",
+            """schema_version: gtpj.trial_meta.v0
+trial_id: TRIAL-001
+module_scope: single_module
+template_family: feature_adapter
+risk: normal
+training_entry:
+  mode: strict_template_entry
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: train_GTPJ_CUB.py
+  legacy_module_migration: required
+affects:
+  forward_main_flow: false
+  class_scoring: false
+  train_data_view: false
+  eval_input_output: false
+  split_or_label_mapping: false
+baseline_off:
+  supported: true
+  expected_equivalence: v1
+  all_switches_false_equals_base: true
+audit:
+  shape_audit: required
+  switch_off_equivalence: required
+  standard_gzsl_eval_audit: required
+  split_integrity_audit: not_required
+  class_order_audit: not_required
+""",
+        )
+
+        code, _stdout, stderr = self._run_main("validate-trial-meta", "--path", "trial_meta.yaml")
+
+        self.assertEqual(1, code)
+        self.assertIn("strict_template_entry must select a trial-local training entry", stderr)
+
+    def test_validate_trial_meta_accepts_strict_template_entry(self) -> None:
+        self._write(
+            "trial_meta.yaml",
+            """schema_version: gtpj.trial_meta.v0
+trial_id: TRIAL-001
+module_scope: single_module
+template_family: feature_adapter
+risk: normal
+training_entry:
+  mode: strict_template_entry
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: training_entry.py
+  legacy_module_migration: completed
+affects:
+  forward_main_flow: false
+  class_scoring: false
+  train_data_view: false
+  eval_input_output: false
+  split_or_label_mapping: false
+baseline_off:
+  supported: true
+  expected_equivalence: v1
+  all_switches_false_equals_base: true
+audit:
+  shape_audit: required
+  switch_off_equivalence: required
+  standard_gzsl_eval_audit: required
+  split_integrity_audit: not_required
+  class_order_audit: not_required
+""",
+        )
+
+        code, stdout, stderr = self._run_main("validate-trial-meta", "--path", "trial_meta.yaml")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-trial-meta-ok", stdout)
 
     def test_scan_ignores_runtime_state(self) -> None:
         legacy_marker = "TUNE" + "-024"
@@ -1080,14 +1165,19 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("affects:", module_source)
         self.assertIn("schema_version: gtpj.trial_meta.v0", trial_meta)
         self.assertIn("module_scope: single_module", trial_meta)
+        self.assertIn("training_entry:", trial_meta)
+        self.assertIn("mode: existing_entry_equivalent", trial_meta)
+        self.assertIn("selected_entry: train_GTPJ_CUB.py", trial_meta)
         self.assertIn("affects:", trial_meta)
         self.assertIn("paper_writing_note:", module_source)
         self.assertIn("standard GZSL U/S/H/ZS", module_source)
+        self.assertIn("training_entry_mode: existing_entry_equivalent", module_source)
         self.assertIn("Template Selection", implementation)
         self.assertIn("trial_meta: trial_meta.yaml", implementation)
         self.assertIn("module_scope", implementation)
         self.assertIn("composition_mode", implementation)
         self.assertIn("affects", implementation)
+        self.assertIn("training_entry_mode: existing_entry_equivalent", implementation)
         self.assertIn("standard_gzsl_training_template.py", implementation)
         self.assertIn("module_template_selection.md", implementation)
         self.assertIn("framework_diagram: framework_diagram.md", readme)
@@ -2273,11 +2363,11 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
-            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\n",
+            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
         )
         self._write(
             "docs/workflow/playbooks/innovation.md",
-            "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\nvalidate-trial-meta\n",
+            "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\nvalidate-trial-meta\nstrict_template_entry\n",
         )
         self._write("docs/workflow/playbooks/tune.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/ablation.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
@@ -2288,7 +2378,7 @@ decision:
         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nU, S, H, ZS\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")
 

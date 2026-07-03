@@ -29,6 +29,7 @@ transition_id:
 - [ ] `module_source.md` 记录了 paper/source、template family、attachment point 和 baseline-off 解释。
 - [ ] `trial_meta.yaml` 已通过 `validate-trial-meta`，`module_scope` 与 `affects` 没有非法组合。
 - [ ] 训练入口已对照 `standard_gzsl_training_template.py`，并记录 config、seed、dataset/split、eval function、checkpoint policy 和 artifact refs。
+- [ ] 如果 `training_entry_mode: strict_template_entry`，Runner 使用 trial-local training entry，旧入口中已打开模块已迁移。
 - [ ] 如果 `module_scope: composite`，每个 component 的 template family、attachment point、enabled key、composition mode 和 all-off baseline path 已记录。
 - [ ] GZSL hard rules 已记录到 `rule_checks`，失败硬门没有进入 advance/promote。
 - [ ] `current_state` 能由 `TRANSITIONS.jsonl` 的 chain head 派生。

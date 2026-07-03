@@ -54,6 +54,21 @@ TRIAL_TEMPLATE_FAMILIES = {
     "composite",
     "architecture_change",
 }
+TRIAL_TRAINING_ENTRY_MODES = {
+    "existing_entry_equivalent",
+    "strict_template_entry",
+}
+TRIAL_STRICT_ENTRY_INVALID_SELECTED = {
+    "",
+    "existing_entry",
+    "existing_entry_equivalent",
+    "train_GTPJ_CUB.py",
+}
+TRIAL_LEGACY_MIGRATION_STATES = {
+    "not_required",
+    "required",
+    "completed",
+}
 TRIAL_ARCHITECTURE_AFFECT_FLAGS = {
     "forward_main_flow",
     "class_scoring",
@@ -691,6 +706,29 @@ def validate_trial_meta_data(data: dict[str, object], raw_text: str = "") -> lis
         errors.append("module_scope=composite requires template_family=composite")
     if scope == "architecture_change" and family != "architecture_change":
         errors.append("module_scope=architecture_change requires template_family=architecture_change")
+
+    training_entry = data.get("training_entry")
+    if not isinstance(training_entry, dict):
+        errors.append("training_entry section is required")
+        training_entry = {}
+    entry_mode = str(training_entry.get("mode", "")).strip()
+    selected_entry = str(training_entry.get("selected_entry", "")).strip()
+    standard_template = str(training_entry.get("standard_template", "")).strip()
+    legacy_migration = str(training_entry.get("legacy_module_migration", "")).strip()
+    if entry_mode not in TRIAL_TRAINING_ENTRY_MODES:
+        errors.append(
+            f"training_entry.mode must be one of {sorted(TRIAL_TRAINING_ENTRY_MODES)}, got {entry_mode!r}"
+        )
+    if entry_mode == "strict_template_entry":
+        if "standard_gzsl_training_template.py" not in standard_template:
+            errors.append("strict_template_entry requires standard_gzsl_training_template.py as standard_template")
+        if selected_entry in TRIAL_STRICT_ENTRY_INVALID_SELECTED:
+            errors.append("strict_template_entry must select a trial-local training entry, not train_GTPJ_CUB.py")
+        if legacy_migration not in TRIAL_LEGACY_MIGRATION_STATES:
+            errors.append(
+                "strict_template_entry requires legacy_module_migration: "
+                + " | ".join(sorted(TRIAL_LEGACY_MIGRATION_STATES))
+            )
 
     affects = data.get("affects")
     if not isinstance(affects, dict):
@@ -5796,6 +5834,7 @@ def workflow_consistency_errors() -> list[str]:
             "standard GZSL U/S/H/ZS",
             "base_code_tag",
             "standard_gzsl_training_template.py",
+            "strict_template_entry",
         ],
         "docs/workflow/playbooks/innovation.md": [
             "探索 / 正式分界",
@@ -5803,6 +5842,7 @@ def workflow_consistency_errors() -> list[str]:
             "module_template_selection.md",
             "module_source.md",
             "validate-trial-meta",
+            "strict_template_entry",
         ],
         "docs/workflow/playbooks/paper_to_experiment.md": [
             "base_code_tag",
@@ -5821,6 +5861,7 @@ def workflow_consistency_errors() -> list[str]:
             "standard_gzsl_training_template.py",
             "composite_module_template.py",
             "architecture_change_template.md",
+            "strict_template_entry",
             "U, S, H, ZS",
         ],
     }
@@ -6946,8 +6987,18 @@ trial_folder: {rel(idea_dir)}
         or version_entry.get("composition_mode")
         or ("pending" if module_scope == "composite" else "none")
     ).strip()
+    training_entry_mode = str(args.training_entry_mode).strip()
+    selected_training_entry = (
+        "training_entry.py" if training_entry_mode == "strict_template_entry" else "train_GTPJ_CUB.py"
+    )
+    legacy_module_migration = "required" if training_entry_mode == "strict_template_entry" else "not_required"
     risk_level = "high" if module_scope == "architecture_change" else "normal"
     split_audit = "required" if module_scope == "architecture_change" else "not_required"
+    if training_entry_mode == "strict_template_entry":
+        copy_new(
+            REPO_ROOT / "experiments" / "templates" / "modules" / "standard_gzsl_training_template.py",
+            trial_dir / selected_training_entry,
+        )
     write_new(
         trial_dir / "module_source.md",
         f"""# Module Source
@@ -6963,6 +7014,9 @@ base_version: {base_version}
 base_code_tag: {base_version}
 dataset: CUB xlsa17 att_splits
 evaluation: standard GZSL U/S/H/ZS
+training_entry_mode: {training_entry_mode}
+selected_training_entry: {selected_training_entry}
+legacy_module_migration: {legacy_module_migration}
 ```
 
 ## Source
@@ -7017,6 +7071,9 @@ input_tensors:
 output_tensors:
 config_switch:
 baseline_off_explanation:
+training_entry_mode: {training_entry_mode}
+selected_training_entry: {selected_training_entry}
+legacy_module_migration: {legacy_module_migration}
 ```
 
 ## Paper Writing Note
@@ -7038,6 +7095,12 @@ trial_id: {trial_id}
 module_scope: {module_scope}
 template_family: {template_family}
 risk: {risk_level}
+
+training_entry:
+  mode: {training_entry_mode}
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: {selected_training_entry}
+  legacy_module_migration: {legacy_module_migration}
 
 attachment_points:
   - TODO_ATTACHMENT
@@ -7163,6 +7226,9 @@ composition_mode: {composition_mode}
 trial_meta: trial_meta.yaml
 standard_gzsl_framework: experiments/templates/modules/standard_gzsl_module_framework_template.py
 standard_gzsl_training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode: {training_entry_mode}
+selected_training_entry: {selected_training_entry}
+legacy_module_migration: {legacy_module_migration}
 trial_decision: pending
 promotion_decision: not_applicable
 promote_to:
@@ -7202,6 +7268,9 @@ affects:
 trial_meta: trial_meta.yaml
 attachment_point:
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode: {training_entry_mode}
+selected_training_entry: {selected_training_entry}
+legacy_module_migration: {legacy_module_migration}
 baseline_off_explanation:
 paper_writing_note:
 ```
@@ -7279,7 +7348,7 @@ activation_mode: real_multi_agent
     )
     write_new(
         trial_dir / "implementation.md",
-        """# 实现记录
+        f"""# 实现记录
 
 参考契约：
 
@@ -7297,6 +7366,9 @@ trial_meta: trial_meta.yaml
 template_family: {template_family}
 module_scope: {module_scope}
 training_template: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode: {training_entry_mode}
+selected_training_entry: {selected_training_entry}
+legacy_module_migration: {legacy_module_migration}
 base_version: {base_version}
 base_code_tag: {base_version}
 dataset: CUB xlsa17 att_splits
@@ -7338,7 +7410,10 @@ high_risk_reason:
 
 ```text
 selected_training_entry:
+training_entry_mode: {training_entry_mode}
 standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+strict_template_rule: 当 mode=strict_template_entry 时，Runner 只能使用 trial-local training_entry.py。
+legacy_module_migration: {legacy_module_migration}
 equivalence_note:
 config_path:
 seed:
@@ -7349,6 +7424,8 @@ artifact_refs:
 ```
 
 说明本 Trial 是复制标准训练模板，还是沿用 `train_GTPJ_CUB.py` 等等价入口。
+如果 owner 指定“用新模板”，必须设置 `training_entry_mode: strict_template_entry`，
+把旧入口中打开的模块迁移到 trial-local `training_entry.py`，不得继续在旧入口上加分支。
 必须覆盖 config、seed、dataset/split、frozen backbone、model/module、
 train loop、standard GZSL eval、checkpoint/log retention、result/quality summary。
 
@@ -9484,6 +9561,11 @@ def build_parser() -> argparse.ArgumentParser:
     new_trial.add_argument("--trial-id", required=True)
     new_trial.add_argument("--slug", required=True)
     new_trial.add_argument("--base-version", default="")
+    new_trial.add_argument(
+        "--training-entry-mode",
+        choices=sorted(TRIAL_TRAINING_ENTRY_MODES),
+        default="existing_entry_equivalent",
+    )
     new_trial.set_defaults(func=cmd_new_trial)
 
     dyn_plan = sub.add_parser("plan-dynamic-routing-batch", help="生成 IDEA-0003/TRIAL-001 dynamic routing 50 组两卡 batch")

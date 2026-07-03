@@ -42,6 +42,17 @@ formal module trials. The other files are module-level templates. Together they
 are reusable for GTPJ standard GZSL trials, but they are not universal templates
 for every model, dataset, split, or evaluation protocol.
 
+Training entry modes:
+
+```text
+existing_entry_equivalent: existing train_GTPJ_CUB.py may run if implementation.md maps it to the standard template.
+strict_template_entry: Runner must use a trial-local training_entry.py copied from the standard template.
+```
+
+Use `strict_template_entry` whenever the owner says to use the new template.
+In that mode, modules that were opened in the old entry must be migrated into
+the trial-local clean entry instead of adding more branches to the old script.
+
 Engineering rule:
 
 ```text

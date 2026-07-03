@@ -4,6 +4,12 @@ module_scope: single_module
 template_family: feature_adapter
 risk: normal
 
+training_entry:
+  mode: existing_entry_equivalent
+  standard_template: experiments/templates/modules/standard_gzsl_training_template.py
+  selected_entry: train_GTPJ_CUB.py
+  legacy_module_migration: not_required
+
 attachment_points:
   - visual_feature_after_clip
 

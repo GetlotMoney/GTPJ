@@ -173,8 +173,29 @@ paper_writing_note:
 config -> seed -> dataset/split -> frozen backbone -> model/module -> train loop -> standard GZSL eval -> checkpoint/artifact refs -> result/quality summary
 ```
 
-已有 `train_GTPJ_CUB.py` 可以作为等价实现继续使用，但 trial-local
-`implementation.md` 必须说明它与训练模板的对应关系。新训练入口不得跳过：
+训练入口有两种模式，必须写入 `trial_meta.yaml` 的 `training_entry.mode`：
+
+```text
+existing_entry_equivalent
+strict_template_entry
+```
+
+默认模式是 `existing_entry_equivalent`：已有 `train_GTPJ_CUB.py` 可以作为等价实现继续使用，
+但 trial-local `implementation.md` 必须说明它与训练模板的对应关系。
+
+如果 owner 明确说“用新模板”“用新的训练模板”“不要继承老模板”，必须使用
+`strict_template_entry`。此时 Runner 只能使用从
+`standard_gzsl_training_template.py` 复制出的 trial-local `training_entry.py`，不能继续在
+`train_GTPJ_CUB.py` 或旧训练入口里追加分支。旧入口中本次实验需要打开的模块必须迁移到
+`training_entry.py`，并记录：
+
+```text
+training_entry_mode: strict_template_entry
+selected_training_entry: training_entry.py
+legacy_module_migration: required | completed
+```
+
+新训练入口不得跳过：
 
 - `base_version` / `base_code_tag`；
 - `module_source.md`；
@@ -198,6 +219,8 @@ CUB xlsa17 baseline 互相比。
 - 缺少 `trial_meta.yaml` 或 `validate-trial-meta` 不通过。
 - 未选择 `template_family`。
 - 缺少 `standard_gzsl_training_template.py` 对照或等价训练入口说明。
+- owner 已要求新模板，但 `training_entry.mode` 不是 `strict_template_entry`。
+- `strict_template_entry` 仍选择 `train_GTPJ_CUB.py` 或没有迁移旧入口中已打开模块。
 - 模板选择理由不能解释 mechanism 到 attachment point 的映射。
 - 任何代码路径会静默改变 split、class order、label mapping、logits shape 或 U/S/H/ZS 语义。
 - 采样或数据视图模板没有单独高风险质量检查。

@@ -11,6 +11,9 @@ base_version:
 base_code_tag:
 dataset: CUB xlsa17 att_splits
 evaluation: standard GZSL U/S/H/ZS
+training_entry_mode: existing_entry_equivalent | strict_template_entry
+selected_training_entry:
+legacy_module_migration: not_required | required | completed
 ```
 
 ## Source
@@ -67,6 +70,9 @@ input_tensors:
 output_tensors:
 config_switch:
 baseline_off_explanation:
+training_entry_mode:
+selected_training_entry:
+legacy_module_migration:
 ```
 
 ## Paper Writing Note

@@ -25,6 +25,12 @@ module_template_family:
   value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite | architecture_change
 training_template:
   value: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode:
+  value: existing_entry_equivalent | strict_template_entry
+selected_training_entry:
+  value: train_GTPJ_CUB.py | training_entry.py
+legacy_module_migration:
+  value: not_required | required | completed
 module_scope:
   value: single_module | composite | architecture_change
 composition_mode:
