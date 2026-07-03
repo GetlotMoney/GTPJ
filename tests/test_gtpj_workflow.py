@@ -407,6 +407,7 @@ class WorkflowHelperTest(unittest.TestCase):
             ("agent_runtime_hard_gate", "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
             ("agent_cleanup_protocol", "docs/workflow/protocols/agent_cleanup_protocol.md", "protocol", "active_reference", False),
             ("module_template_selection", "docs/workflow/protocols/module_template_selection.md", "protocol", "active_reference", False),
+            ("ai_cross_review_protocol", "docs/workflow/protocols/ai_cross_review_protocol.md", "protocol", "active_reference", False),
             ("playbook_tune", "docs/workflow/playbooks/tune.md", "playbook", "active", False),
             ("playbook_ablation", "docs/workflow/playbooks/ablation.md", "playbook", "active", False),
             ("playbook_confirmation", "docs/workflow/playbooks/confirmation.md", "playbook", "active", False),
@@ -436,6 +437,8 @@ class WorkflowHelperTest(unittest.TestCase):
         self.assertIn("docs/workflow/WORKFLOW_MANIFEST.yaml", required)
         self.assertIn("docs/workflow/core/TASK_START_MINI.md", required)
         self.assertIn("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", required)
+        self.assertIn("docs/workflow/protocols/ai_cross_review_protocol.md", required)
+        self.assertIn("experiments/templates/ai_cross_review_template.md", required)
         self.assertIn("experiments/templates/modules/standard_gzsl_training_template.py", required)
         self.assertIn("experiments/templates/modules/composite_module_template.py", required)
         self.assertIn("experiments/templates/modules/trial_meta_template.yaml", required)
@@ -2349,6 +2352,156 @@ decision:
         self.assertIn("multi_agent_preflight:", stdout)
         self.assertIn("formal_runner_allowed: false", stdout)
 
+    def _write_valid_ai_cross_review_pack(self, pack_dir: str) -> None:
+        self._write(f"{pack_dir}/00_task.md", "task_id: TEST\nowner_participation: not_required\n")
+        self._write(f"{pack_dir}/01_codex_actions.md", "codex_role: implementer\nchanged_files:\n")
+        self._write(f"{pack_dir}/02_diff.patch", "diff --git a/file b/file\n")
+        self._write(f"{pack_dir}/03_validation.md", "commands_run:\nmachine_gates_passed: true\n")
+        self._write(f"{pack_dir}/04_claims.md", "claim:\nstatus: verified\nevidence_ref:\n")
+        self._write(
+            f"{pack_dir}/05_claude_review_round_1.md",
+            "round: 1\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
+        )
+        self._write(
+            f"{pack_dir}/06_codex_response_round_1.md",
+            "round: 1\nreviewer: codex\naddressed_claude_findings:\nvalidation_rerun:\nremaining_blocking_issues:\n",
+        )
+        self._write(
+            f"{pack_dir}/07_claude_review_round_2.md",
+            "round: 2\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
+        )
+        self._write(
+            f"{pack_dir}/08_codex_response_round_2.md",
+            "round: 2\nreviewer: codex\naddressed_claude_findings:\nvalidation_rerun:\nremaining_blocking_issues:\n",
+        )
+        self._write(
+            f"{pack_dir}/09_claude_review_round_3.md",
+            "round: 3\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
+        )
+        self._write(
+            f"{pack_dir}/10_final_decision.md",
+            "ai_cross_review_status: pass\n"
+            "owner_participation: not_required\n"
+            "rounds_completed: 3\n"
+            "claude_code_read_only: true\n"
+            "codex_fixes_or_rebuttals_recorded: true\n"
+            "machine_gates_passed: true\n"
+            "unresolved_blocking_issues: 0\n",
+        )
+
+    def test_validate_ai_cross_review_accepts_three_round_pack(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-test"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-ai-cross-review-ok", stdout)
+        self.assertIn("rounds=3", stdout)
+
+    def test_validate_ai_cross_review_rejects_non_pass_claude_verdict(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-non-pass"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        self._write(
+            f"{pack_dir}/05_claude_review_round_1.md",
+            "round: 1\n"
+            "reviewer: claude_code\n"
+            "claude_code_read_only: true\n"
+            "verdict: needs_fix\n"
+            "blocking_issues:\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("05_claude_review_round_1.md verdict must be pass", stderr)
+
+    def test_validate_ai_cross_review_rejects_missing_round_three(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-bad"
+        for filename in [
+            "00_task.md",
+            "01_codex_actions.md",
+            "02_diff.patch",
+            "03_validation.md",
+            "04_claims.md",
+            "05_claude_review_round_1.md",
+            "06_codex_response_round_1.md",
+            "07_claude_review_round_2.md",
+            "08_codex_response_round_2.md",
+            "10_final_decision.md",
+        ]:
+            self._write(f"{pack_dir}/{filename}", "placeholder\n")
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("missing review file: 09_claude_review_round_3.md", stderr)
+
+    def test_run_ai_cross_review_creates_three_round_pack_with_fake_claude(self) -> None:
+        self._write(
+            "fake_claude.py",
+            "import sys\n"
+            "print('round: fake')\n"
+            "print('reviewer: claude_code')\n"
+            "print('claude_code_read_only: true')\n"
+            "print('verdict: pass')\n"
+            "print('blocking_issues:')\n",
+        )
+        self._write("docs/example.md", "changed\n")
+        validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/run-test",
+            "--slug",
+            "run-test",
+            "--task-title",
+            "测试三轮 AI 交叉审核",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            "--claude-command",
+            sys.executable,
+            "--claude-command-arg",
+            "fake_claude.py",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("run-ai-cross-review-ok", stdout)
+        pack = self.repo / "docs/agent_reviews/run-test"
+        self.assertTrue((pack / "05_claude_review_round_1.md").exists())
+        self.assertTrue((pack / "07_claude_review_round_2.md").exists())
+        self.assertTrue((pack / "09_claude_review_round_3.md").exists())
+        final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
+        self.assertIn("ai_cross_review_status: pass", final_text)
+        self.assertIn("unresolved_blocking_issues: 0", final_text)
+
+    def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
+        validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/skip-claude",
+            "--slug",
+            "skip-claude",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            "--skip-claude",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(1, code)
+        self.assertIn("status=blocked", stdout)
+        final_text = (self.repo / "docs/agent_reviews/skip-claude/10_final_decision.md").read_text(encoding="utf-8")
+        self.assertIn("ai_cross_review_status: blocked", final_text)
+
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
@@ -2361,6 +2514,10 @@ decision:
         self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write(
+            "docs/workflow/protocols/ai_cross_review_protocol.md",
+            "owner_participation: not_required\nclaude_code_read_only: true\nrounds_completed: 3\nrun-ai-cross-review\nvalidate-ai-cross-review\n",
+        )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
             "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
@@ -2376,7 +2533,11 @@ decision:
         self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
-        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
+        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
+        self._write(
+            "experiments/templates/ai_cross_review_template.md",
+            "05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+        )
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
 
@@ -2398,6 +2559,7 @@ decision:
             "core/TASK_START_CARD.md",
             "core/AGENT_RUNTIME_HARD_GATE.md",
             "protocols/agent_cleanup_protocol.md",
+            "protocols/ai_cross_review_protocol.md",
             "protocols/module_template_selection.md",
             "playbooks/tune.md",
             "playbooks/ablation.md",

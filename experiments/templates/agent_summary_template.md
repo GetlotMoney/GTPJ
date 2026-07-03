@@ -33,6 +33,16 @@ agent_cleanup:
   close_results:
   unknown_ui_agents:
   closed_agents_record:
+ai_cross_review:
+  required:
+  review_pack:
+  rounds_completed:
+  claude_code_read_only:
+  codex_fixes_or_rebuttals_recorded:
+  machine_gates_passed:
+  unresolved_blocking_issues:
+  validate_command:
+  validate_result:
 multi_agent_preflight:
   required_agents_spawned:
   agent_instance_ids_present:

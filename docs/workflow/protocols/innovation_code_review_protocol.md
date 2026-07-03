@@ -43,6 +43,14 @@ Review 2: code diff pre-run review
 Review 3: post-run evidence review
 ```
 
+重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion 或论文 claim 相关改动，还必须执行
+`docs/workflow/protocols/ai_cross_review_protocol.md` 的 Claude Code + Codex 三轮交叉审核。该审核不需要 owner
+参与日常判断，但必须保留 review pack 并通过：
+
+```text
+python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
+```
+
 ### Review 0: Idea / Source Intent
 
 Reader/Planner 与 Coordinator 检查：

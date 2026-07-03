@@ -44,6 +44,13 @@ transition_id:
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
 - [ ] checkpoint retention 已记录：默认最多保留 Top-3 checkpoint；logs、receipts、configs、summaries、manifests、registries 和 artifact id 不随 checkpoint 删除。
 
+## AI 交叉审核
+
+- [ ] 重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动已创建三轮 AI 交叉审核包。
+- [ ] Claude Code 审核保持只读，Codex 的修复、rebuttal 和重跑验证已记录。
+- [ ] 已运行 `validate-ai-cross-review --path <review_pack>`，且 `unresolved_blocking_issues: 0`。
+- [ ] 若审核包 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+
 ## Promotion Gate（仅正式提升 vX 时填写）
 
 - [ ] parent_version / parent_tag 明确。

@@ -169,3 +169,24 @@ evidence_level: debug_smoke
 formal_evidence: false
 eligible_for_keep_best_promotion_confirmation: false
 ```
+
+## 7. 免 owner 日常参与的 AI 交叉审核
+
+重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动，默认不需要 owner 参与日常审核。
+
+改动必须走 Claude Code + Codex 三轮交叉审核：
+
+```text
+Codex 实现/修复 -> Claude Code 只读审核 -> Codex 回应/重跑验证
+重复 3 轮 -> validate-ai-cross-review -> 通过后才信任改动
+```
+
+正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。通过包必须包含：
+
+```text
+owner_participation: not_required
+rounds_completed: 3
+claude_code_read_only: true
+machine_gates_passed: true
+unresolved_blocking_issues: 0
+```

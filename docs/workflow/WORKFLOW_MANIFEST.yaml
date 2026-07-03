@@ -151,6 +151,11 @@ files:
     category: protocol
     status: active_reference
     daily_read: false
+  - logical_id: ai_cross_review_protocol
+    canonical_path: docs/workflow/protocols/ai_cross_review_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
   - logical_id: quality_gate
     canonical_path: docs/workflow/protocols/quality_gate.md
     category: protocol

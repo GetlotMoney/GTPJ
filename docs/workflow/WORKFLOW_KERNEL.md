@@ -171,3 +171,16 @@ promotion 可以按协议创建本地文件、commit 和 tag，但不能 push，
 ```
 
 如果都不满足，不进入日常 workflow。
+
+## 免 owner 日常参与的 AI 交叉审核
+
+Owner 不参与日常代码审核。重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion
+或论文 claim 相关改动，必须由 Claude Code 与 Codex 完成三轮交叉审核，并通过：
+
+```text
+python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
+```
+
+Claude Code 必须只读；Codex 可以实现、修复、重跑验证和记录 rebuttal。三轮审核包 blocked 时，不能进入正式
+Runner、keep/best、confirmation、promotion、baseline 或 paper claim。push、删除、远端发布和破坏性迁移仍然需要
+owner 明确授权。

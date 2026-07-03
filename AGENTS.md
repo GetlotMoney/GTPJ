@@ -29,10 +29,19 @@
 ## 沟通
 
 - 与 owner 协作时默认使用中文。
+- 新增或修改项目文档、workflow 文档、模板说明和审核报告时，正文必须使用中文；命令、字段名、文件名、代码标识和必要英文接口名可以保留原文。
 - 先说结论，再说关键原因。
 - 复杂任务在编辑前先给简短计划。
 - 直接说明不确定性和风险。
 - 交付流程图、框架图、代码路径图或实验链路图时，默认额外生成一个可本地打开的 HTML 文件，并在回复中用 `file:///D:/.../xxx.html` 的绝对本地链接给 owner。Markdown/Mermaid 可以作为仓库权威记录，但不能替代 owner 可直接打开的 HTML 视图。
+
+## AI 审核规范
+
+- 重要代码修改、workflow/helper/template 修改、训练入口、评估语义、实验结论、promotion 或论文 claim 相关决策，默认由 Codex 与 Claude Code 完成三轮交叉审核，不要求 owner 参与日常审核。
+- Codex 负责实现、修复、反驳和重跑验证；Claude Code 只读审查，不直接改文件、不启动训练、不执行 push/delete/发布。
+- 三轮审核必须留下中文 evidence pack，并通过 `python workflow\gtpj_workflow.py validate-ai-cross-review --path <review_pack>` 后，才能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+- AI 审核不能替代机器验证；能运行的测试、workflow validate、audit-boundary、schema 或 helper gate 必须优先运行并记录。
+- push、删除、远端发布、破坏性迁移、密钥处理或用户数据操作仍然必须等待 owner 明确授权。
 
 ## 仓库规则
 
