@@ -29,6 +29,18 @@ temporary_subagent_ids:
   evidence_quality_checker: 019f239f-c37c-75e3-8a2a-b5c6e0ffbe6b
   result_comparator: 019f23a5-8c8a-7c50-a076-f1b93160a2e4
 
+temporary_subagent_display_names:
+  runner_monitor: "ATTEMPT-005 Runner Monitor"
+  interface_checker: "ATTEMPT-005 Interface Checker"
+  evidence_quality_checker: "ATTEMPT-005 Evidence Quality Checker"
+  result_comparator: "ATTEMPT-005 Result Comparator"
+
+agent_cleanup:
+  retention_policy: current_stage_active_only
+  close_completed_agents_on_stage_end: true
+  close_command: multi_agent_v1.close_agent
+  close_results_record: AGENT_ACTIVITY.md
+
 agent_instance_status:
   runner_monitor: completed
   interface_checker: completed

@@ -286,6 +286,7 @@ class WorkflowHelperTest(unittest.TestCase):
         include_agent_ids: bool = True,
         include_owner_monitor: bool = True,
         include_preflight: bool = True,
+        duplicate_agent_id: bool = False,
     ) -> Path:
         gate_path = self.repo / path
         self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
@@ -314,6 +315,13 @@ class WorkflowHelperTest(unittest.TestCase):
             "  interface_checker: 019f2222-2222-7222-8222-222222222222\n"
             "  evidence_quality_checker: 019f3333-3333-7333-8333-333333333333\n"
         )
+        if duplicate_agent_id:
+            agent_ids = (
+                "temporary_subagent_ids:\n"
+                "  runner_monitor: 019f1111-1111-7111-8111-111111111111\n"
+                "  interface_checker: 019f2222-2222-7222-8222-222222222222\n"
+                "  evidence_quality_checker: 019f2222-2222-7222-8222-222222222222\n"
+            )
         if not include_agent_ids:
             agent_ids = "temporary_subagent_ids:\n  runner_monitor: temporary_subagent\n"
         owner_monitor = (
@@ -1992,6 +2000,14 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("agent_output_refs.runner_monitor must point to a local evidence file", stderr)
 
+    def test_validate_agent_runtime_rejects_duplicate_agent_id_roles(self) -> None:
+        gate_path = self._write_agent_runtime_gate(duplicate_agent_id=True)
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("reuse one agent id for multiple roles", stderr)
+
     def test_multi_agent_preflight_accepts_valid_gate(self) -> None:
         gate_path = self._write_agent_runtime_gate()
 
@@ -2001,6 +2017,21 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("multi-agent-preflight-ok", stdout)
         self.assertIn("formal_runner_allowed=true", stdout)
+
+    def test_agent_cleanup_plan_lists_keep_and_close_agents(self) -> None:
+        gate_path = self._write_agent_runtime_gate()
+
+        code, stdout, stderr = self._run_main("agent-cleanup-plan", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("agent-cleanup-plan path=", stdout)
+        self.assertIn("keep_count=1", stdout)
+        self.assertIn("KEEP role=runner_monitor", stdout)
+        self.assertIn("close_count=2", stdout)
+        self.assertIn("CLOSE role=interface_checker", stdout)
+        self.assertIn("CLOSE role=evidence_quality_checker", stdout)
+        self.assertIn("duplicate_instance_ids=0", stdout)
 
     def test_validate_agent_runtime_rejects_missing_owner_monitor_mode(self) -> None:
         gate_path = self._write_agent_runtime_gate(include_owner_monitor=False)
@@ -2030,15 +2061,15 @@ decision:
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\n")
         self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\n")
-        self._write("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\n")
+        self._write("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write("docs/workflow/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
         self._write("docs/workflow/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
-        self._write("docs/workflow/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\n")
+        self._write("docs/workflow/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/playbooks/innovation.md",
             "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\n",
         )
-        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\n")
+        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")

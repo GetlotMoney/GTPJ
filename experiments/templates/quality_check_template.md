@@ -32,6 +32,8 @@ transition_id:
 - [ ] `formal_runner_allowed: true` 和 `formal_evidence_allowed: true` 有真实 agent 输出支撑。
 - [ ] `agent_status_refs` 和 `agent_output_refs` 指向可读取、非空、能关联 role / agent id 的文件。
 - [ ] `activation_mode: real_multi_agent` 时已记录真实右侧临时 agent ids；没有用单窗口 Coordinator 冒充多 agents。
+- [ ] 阶段结束前已运行 `agent-cleanup-plan`，completed agents 的关闭结果已写入 `closed_agents_record`。
+- [ ] 未发现一个 agent id 同时承担多个正式独立角色；如存在，已标记为历史限制或降级证据。
 - [ ] Runner start 之前 Interface/Quality/Runner Monitor 至少给出 allow/pass；缺失时本轮降级为 debug/smoke 或 blocked。
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
 - [ ] checkpoint retention 已记录：默认最多保留 Top-3 checkpoint；logs、receipts、configs、summaries、manifests、registries 和 artifact id 不随 checkpoint 删除。

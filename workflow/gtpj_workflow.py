@@ -73,6 +73,11 @@ EVIDENCE_LEVELS = {
     "confirmation_grade",
     "baseline_grade",
 }
+NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS = {
+    "debug_smoke",
+    "routing_index_only",
+    "audit_note_only",
+}
 EVIDENCE_ROUTING_STATES = {
     "hypothesis_ready",
     "interface_precheck_passed",
@@ -1213,6 +1218,7 @@ def required_repository_files() -> list[str]:
         "docs/workflow/result_index_protocol.md",
         "docs/workflow/agent_contracts.md",
         "docs/workflow/agent_orchestration.md",
+        "docs/workflow/agent_cleanup_protocol.md",
         "docs/workflow/agent_report_policy.md",
         "docs/workflow/evidence_routing_protocol.md",
         "docs/workflow/AGENT_RUNTIME_HARD_GATE.md",
@@ -5132,8 +5138,11 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     if not formal:
         evidence_level = scalars.get("evidence_level", "")
         debug_smoke = truthy(scalars.get("debug_smoke", ""))
-        if evidence_level != "debug_smoke" and not debug_smoke:
-            errors.append(f"{gate_name} non-formal runtime gate must declare evidence_level: debug_smoke")
+        if evidence_level not in NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS and not debug_smoke:
+            errors.append(
+                f"{gate_name} non-formal runtime gate must declare evidence_level: "
+                f"{'/'.join(sorted(NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS))}"
+            )
         return errors
 
     if scalars.get("activation_mode") != "real_multi_agent":
@@ -5187,6 +5196,15 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     for role, instance_id in agent_ids.items():
         if not valid_runtime_agent_instance_id(instance_id):
             errors.append(f"{gate_name} temporary_subagent_ids.{role} is not a real agent/thread id")
+    instance_to_roles: dict[str, list[str]] = {}
+    for role, instance_id in agent_ids.items():
+        instance_to_roles.setdefault(instance_id.strip(), []).append(role)
+    for instance_id, roles in sorted(instance_to_roles.items()):
+        if len(roles) > 1:
+            errors.append(
+                f"{gate_name} temporary_subagent_ids reuse one agent id for multiple roles: "
+                f"{instance_id} -> {', '.join(sorted(roles))}"
+            )
 
     if not has_any_role(agent_ids, {"runner_monitor", "runner"}):
         errors.append(f"{gate_name} missing Runner Monitor temporary subagent id")
@@ -5313,17 +5331,83 @@ def cmd_multi_agent_preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+AGENT_CLEANUP_CLOSE_STATUSES = {"completed", "complete", "closed"}
+AGENT_CLEANUP_KEEP_STATUSES = {"spawned", "running", "active"}
+
+
+def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
+    gate_path = resolve_agent_runtime_gate_path(args.path)
+    if not gate_path.exists():
+        raise WorkflowError(f"Missing agent runtime gate: {display_path(gate_path)}")
+    scalars, maps = read_simple_yaml_maps(gate_path)
+    agent_ids = maps.get("temporary_subagent_ids", {})
+    statuses = maps.get("agent_instance_status", {})
+    output_refs = maps.get("agent_output_refs", {})
+
+    keep: list[tuple[str, str, str]] = []
+    close: list[tuple[str, str, str]] = []
+    unknown: list[tuple[str, str, str]] = []
+    instance_to_roles: dict[str, list[str]] = {}
+    for role, instance_id in sorted(agent_ids.items()):
+        instance_to_roles.setdefault(instance_id, []).append(role)
+        status = statuses.get(role, "").strip().lower()
+        row = (role, instance_id, status or "missing")
+        if status in AGENT_CLEANUP_KEEP_STATUSES:
+            keep.append(row)
+        elif status in AGENT_CLEANUP_CLOSE_STATUSES:
+            close.append(row)
+        else:
+            unknown.append(row)
+
+    print(f"agent-cleanup-plan path={display_path(gate_path)}")
+    print(f"subject_id={scalars.get('subject_id', '')}")
+    print(f"retention_policy={scalars.get('right_sidebar_retention_policy', '')}")
+    print(f"closed_agents_record={scalars.get('closed_agents_record', '')}")
+    print(f"keep_count={len(keep)}")
+    for role, instance_id, status in keep:
+        print(f"KEEP role={role} id={instance_id} status={status}")
+    print(f"close_count={len(close)}")
+    for role, instance_id, status in close:
+        output_ref = output_refs.get(role, "")
+        print(f"CLOSE role={role} id={instance_id} status={status} output_ref={output_ref}")
+    print(f"unknown_count={len(unknown)}")
+    for role, instance_id, status in unknown:
+        print(f"UNKNOWN role={role} id={instance_id} status={status}")
+    duplicate_instances = {instance_id: roles for instance_id, roles in instance_to_roles.items() if len(roles) > 1}
+    print(f"duplicate_instance_ids={len(duplicate_instances)}")
+    for instance_id, roles in sorted(duplicate_instances.items()):
+        print(f"DUPLICATE id={instance_id} roles={','.join(sorted(roles))}")
+    if unknown:
+        raise WorkflowError("Agent cleanup plan has unknown agent statuses; do not close blindly")
+    return 0
+
+
 def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
     required_markers = {
         "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight"],
         "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed"],
-        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": ["multi_agent_preflight", "formal_runner_allowed", "agent_output_refs"],
+        "docs/workflow/AGENT_RUNTIME_HARD_GATE.md": [
+            "multi_agent_preflight",
+            "formal_runner_allowed",
+            "agent_output_refs",
+            "agent-cleanup-plan",
+        ],
         "docs/workflow/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
         "docs/workflow/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
-        "docs/workflow/agent_orchestration.md": ["multi_agent_preflight", "formal_runner_allowed", "agent_output_refs"],
+        "docs/workflow/agent_orchestration.md": [
+            "multi_agent_preflight",
+            "formal_runner_allowed",
+            "agent_output_refs",
+            "agent-cleanup-plan",
+        ],
         "docs/workflow/playbooks/innovation.md": ["探索 / 正式分界", "formal_evidence_allowed"],
-        "experiments/templates/agent_summary_template.md": ["multi_agent_preflight:", "formal_runner_allowed:", "agent_output_refs:"],
+        "experiments/templates/agent_summary_template.md": [
+            "multi_agent_preflight:",
+            "formal_runner_allowed:",
+            "agent_output_refs:",
+            "agent_cleanup:",
+        ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
     }
     for path_text, markers in required_markers.items():
@@ -8422,6 +8506,10 @@ def build_parser() -> argparse.ArgumentParser:
     multi_agent_preflight = sub.add_parser("multi-agent-preflight", help="校验正式 Runner 启动前的 multi-agent preflight")
     multi_agent_preflight.add_argument("--path", required=True)
     multi_agent_preflight.set_defaults(func=cmd_multi_agent_preflight)
+
+    agent_cleanup = sub.add_parser("agent-cleanup-plan", help="只读列出右侧临时 agents 的保留/关闭计划")
+    agent_cleanup.add_argument("--path", required=True)
+    agent_cleanup.set_defaults(func=cmd_agent_cleanup_plan)
 
     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)

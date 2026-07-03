@@ -26,6 +26,13 @@ temporary_subagent_ids:
 agent_instance_status:
 agent_status_refs:
 agent_output_refs:
+agent_cleanup:
+  cleanup_plan_command:
+  keep_agents:
+  close_agents:
+  close_results:
+  unknown_ui_agents:
+  closed_agents_record:
 multi_agent_preflight:
   required_agents_spawned:
   agent_instance_ids_present:

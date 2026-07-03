@@ -235,6 +235,7 @@ promotion 证据。debug/smoke 跑完后，如果 owner 要正式结论，必须
 ```bash
 python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
 python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py agent-cleanup-plan --path <agent_runtime.yaml>
 ```
 
 动态路由 batch 生成命令必须传入通过校验的 gate：
@@ -258,3 +259,11 @@ python workflow/gtpj_workflow.py plan-dynamic-routing-batch \
 
 一句话：状态机是账本，Runner 是执行器，agents 是工作流主体。三者缺一，不能声称完整
 workflow-v2 闭环。
+
+## 9. Agent Cleanup
+
+阶段结束或 workflow 结束前必须按 `docs/workflow/agent_cleanup_protocol.md` 执行 cleanup。
+
+`agent-cleanup-plan` 只读列出 keep / close / unknown；真正关闭由 Coordinator 按名单调用可用的 close-agent 工具，并把 `closed`、`not_found`、`retained_by_owner` 或 `unknown_ui_agent` 写入 `closed_agents_record`。
+
+重复 agent id 不能代表独立角色。一个 agent id 如果同时承担多个正式角色，必须标记为历史限制或降级，不能作为完整 `real_multi_agent` 证据。

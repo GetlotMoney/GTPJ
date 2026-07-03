@@ -109,6 +109,7 @@ formal_runner_allowed、formal_evidence_allowed
 agent_instance_status、agent_status_refs、agent_output_refs
 owner_monitor_mode、report_channel、agent_activity_stream
 right_sidebar_retention_policy、close_completed_agents_on_stage_end、closed_agents_record
+agent-cleanup-plan 输出和 close_result 记录
 dataset/split/label mapping 假设
 GPU 或 runner slot 锁
 result/artifact 写入位置

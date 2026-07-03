@@ -149,6 +149,16 @@ close_completed_agents_on_stage_end: true
 closed_agents_record: AGENT_ACTIVITY.md
 ```
 
+阶段结束前必须运行只读 cleanup 计划：
+
+```bash
+python workflow/gtpj_workflow.py agent-cleanup-plan --path <agent_runtime.yaml>
+```
+
+然后 Coordinator 按 `docs/workflow/agent_cleanup_protocol.md` 汇报 keep / close / unknown。重复 agent id
+不能算独立角色；如果历史记录中一个 id 同时承担多个正式角色，该 runtime gate 必须标记为限制或降级，不能冒充完整
+`real_multi_agent` 证据。
+
 如果 owner 明确要求跨阶段保留某个可见 agent，Coordinator 必须在启动卡和
 `agent_summary.md` 写明保留原因、预计结束条件和正式输出位置。
 
