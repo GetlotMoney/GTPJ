@@ -394,10 +394,42 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         return gate_path
 
+    def _write_minimal_workflow_manifest(self) -> None:
+        entries = [
+            ("workflow_readme", "docs/workflow/README.md", "daily_entry", "active", False),
+            ("manifest", "docs/workflow/WORKFLOW_MANIFEST.yaml", "daily_entry", "active", False),
+            ("start_here", "docs/workflow/START_HERE.md", "daily_entry", "active", True),
+            ("kernel", "docs/workflow/WORKFLOW_KERNEL.md", "daily_entry", "active", True),
+            ("router", "docs/workflow/WORKFLOW_ROUTER.md", "core", "active", False),
+            ("task_start_mini", "docs/workflow/TASK_START_MINI.md", "core", "active", False),
+            ("task_start_card", "docs/workflow/TASK_START_CARD.md", "core", "active", False),
+            ("agent_runtime_hard_gate", "docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
+            ("playbook_tune", "docs/workflow/playbooks/tune.md", "playbook", "active", False),
+            ("playbook_ablation", "docs/workflow/playbooks/ablation.md", "playbook", "active", False),
+            ("playbook_confirmation", "docs/workflow/playbooks/confirmation.md", "playbook", "active", False),
+            ("playbook_innovation", "docs/workflow/playbooks/innovation.md", "playbook", "active", False),
+            ("playbook_promotion", "docs/workflow/playbooks/promotion.md", "playbook", "active", False),
+            ("playbook_mixed_campaign", "docs/workflow/playbooks/mixed_campaign.md", "playbook", "active", False),
+            ("playbook_paper_intake", "docs/workflow/playbooks/paper_intake.md", "playbook", "active", False),
+        ]
+        lines = ["workflow_version: v2", "files:"]
+        for logical_id, path, category, status, daily_read in entries:
+            lines.extend(
+                [
+                    f"  - logical_id: {logical_id}",
+                    f"    canonical_path: {path}",
+                    f"    category: {category}",
+                    f"    status: {status}",
+                    f"    daily_read: {str(daily_read).lower()}",
+                ]
+            )
+        self._write("docs/workflow/WORKFLOW_MANIFEST.yaml", "\n".join(lines) + "\n")
+
     def test_required_files_include_owner_facing_start_docs(self) -> None:
         required = self.module.required_repository_files()
 
         self.assertIn("docs/workflow/QUICK_START.md", required)
+        self.assertIn("docs/workflow/WORKFLOW_MANIFEST.yaml", required)
         self.assertIn("docs/workflow/TASK_START_MINI.md", required)
         self.assertIn("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", required)
 
@@ -2072,8 +2104,11 @@ decision:
         self.assertIn("formal_runner_allowed: false", stdout)
 
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
+        self._write_minimal_workflow_manifest()
+        self._write("docs/workflow/README.md", "# Workflow\n")
         self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\n")
         self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\n")
+        self._write("docs/workflow/WORKFLOW_ROUTER.md", "# Router\n")
         self._write("docs/workflow/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write("docs/workflow/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
         self._write("docs/workflow/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
@@ -2082,6 +2117,12 @@ decision:
             "docs/workflow/playbooks/innovation.md",
             "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\n",
         )
+        self._write("docs/workflow/playbooks/tune.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/ablation.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/confirmation.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/promotion.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
 
@@ -2090,6 +2131,36 @@ decision:
         self.assertEqual("", stderr)
         self.assertEqual(0, code)
         self.assertIn("validate-workflow-consistency-ok", stdout)
+
+    def test_list_workflow_files_groups_manifest_entries(self) -> None:
+        self._write_minimal_workflow_manifest()
+        for rel_path in [
+            "README.md",
+            "START_HERE.md",
+            "WORKFLOW_KERNEL.md",
+            "WORKFLOW_ROUTER.md",
+            "TASK_START_MINI.md",
+            "TASK_START_CARD.md",
+            "AGENT_RUNTIME_HARD_GATE.md",
+            "playbooks/tune.md",
+            "playbooks/ablation.md",
+            "playbooks/confirmation.md",
+            "playbooks/innovation.md",
+            "playbooks/promotion.md",
+            "playbooks/mixed_campaign.md",
+            "playbooks/paper_intake.md",
+        ]:
+            self._write(f"docs/workflow/{rel_path}", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+
+        code, stdout, stderr = self._run_main("list-workflow-files")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow-files manifest=docs/workflow/WORKFLOW_MANIFEST.yaml", stdout)
+        self.assertIn("daily_entry:", stdout)
+        self.assertIn("core:", stdout)
+        self.assertIn("playbook:", stdout)
+        self.assertIn("manifest_errors=0", stdout)
 
     def test_validate_remote_accepts_origin_refs_matching_local_v1_tag(self) -> None:
         with tempfile.TemporaryDirectory() as remote_tmp:

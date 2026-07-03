@@ -65,6 +65,12 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 
 不要默认深读所有旧协议。
 
+如果只是确认文档层级，不要人工扫完整目录，使用：
+
+```bash
+python workflow/gtpj_workflow.py list-workflow-files
+```
+
 ## 3. 用户人话路由
 
 | 用户说 | 默认路由 | 执行卡 |

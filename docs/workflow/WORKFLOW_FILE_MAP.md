@@ -2,12 +2,16 @@
 
 这个文件用来让 workflow 目录可读：哪些是日常入口，哪些只是参考材料。
 
+机器可读索引见 `WORKFLOW_MANIFEST.yaml`。后续物理迁移目录时，先更新 manifest 和
+helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有效。
+
 ## 日常权威文件
 
 | 文件 | 状态 |
 |---|---|
 | `START_HERE.md` | 每个 GTPJ 工作流任务从这里开始。 |
 | `WORKFLOW_KERNEL.md` | 硬规则层。必须短而权威。 |
+| `WORKFLOW_MANIFEST.yaml` | 机器可读瘦身索引，标记 daily/core/playbook/protocol/archive。 |
 | `WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
 | `TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
 | `TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |

@@ -1206,6 +1206,7 @@ def required_repository_files() -> list[str]:
         "docs/DATA_SETUP.md",
         "docs/workflow/README.md",
         "docs/workflow/QUICK_START.md",
+        "docs/workflow/WORKFLOW_MANIFEST.yaml",
         "docs/workflow/TASK_START_MINI.md",
         "docs/workflow/git_policy.md",
         "docs/workflow/versioning.md",
@@ -5333,6 +5334,40 @@ def cmd_multi_agent_preflight(args: argparse.Namespace) -> int:
 
 AGENT_CLEANUP_CLOSE_STATUSES = {"completed", "complete", "closed"}
 AGENT_CLEANUP_KEEP_STATUSES = {"spawned", "running", "active"}
+WORKFLOW_MANIFEST_CATEGORIES = {
+    "daily_entry",
+    "core",
+    "playbook",
+    "protocol",
+    "reference",
+    "agents",
+    "archive",
+    "deprecated",
+}
+WORKFLOW_MANIFEST_STATUSES = {
+    "active",
+    "active_reference",
+    "historical",
+    "deprecated",
+    "moved_redirect",
+}
+WORKFLOW_MANIFEST_REQUIRED_IDS = {
+    "workflow_readme",
+    "manifest",
+    "start_here",
+    "kernel",
+    "router",
+    "task_start_mini",
+    "task_start_card",
+    "agent_runtime_hard_gate",
+    "playbook_tune",
+    "playbook_ablation",
+    "playbook_confirmation",
+    "playbook_innovation",
+    "playbook_promotion",
+    "playbook_mixed_campaign",
+    "playbook_paper_intake",
+}
 
 
 def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
@@ -5382,8 +5417,118 @@ def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def workflow_manifest_path() -> Path:
+    return REPO_ROOT / "docs" / "workflow" / "WORKFLOW_MANIFEST.yaml"
+
+
+def read_workflow_manifest_entries(path: Path | None = None) -> list[dict[str, str]]:
+    manifest_path = path or workflow_manifest_path()
+    if not manifest_path.exists():
+        raise WorkflowError(f"Missing workflow manifest: {rel(manifest_path)}")
+    entries: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    in_files = False
+    for raw_line in read_text(manifest_path).splitlines():
+        line = raw_line.rstrip()
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line == "files:":
+            in_files = True
+            continue
+        if not in_files:
+            continue
+        item_match = re.match(r"^\s{2}-\s+([A-Za-z0-9_]+):\s*(.*)$", line)
+        if item_match:
+            current = {item_match.group(1): yaml_unquote(item_match.group(2))}
+            entries.append(current)
+            continue
+        field_match = re.match(r"^\s{4}([A-Za-z0-9_]+):\s*(.*)$", line)
+        if field_match and current is not None:
+            current[field_match.group(1)] = yaml_unquote(field_match.group(2))
+    if not entries:
+        raise WorkflowError(f"Workflow manifest has no files entries: {rel(manifest_path)}")
+    return entries
+
+
+def workflow_manifest_errors() -> list[str]:
+    errors: list[str] = []
+    try:
+        entries = read_workflow_manifest_entries()
+    except WorkflowError as exc:
+        return [str(exc)]
+
+    seen_ids: set[str] = set()
+    seen_paths: set[str] = set()
+    daily_read: list[str] = []
+    for entry in entries:
+        logical_id = entry.get("logical_id", "")
+        canonical_path = entry.get("canonical_path", "")
+        category = entry.get("category", "")
+        status = entry.get("status", "")
+        if not logical_id:
+            errors.append("workflow manifest entry missing logical_id")
+        elif logical_id in seen_ids:
+            errors.append(f"workflow manifest duplicate logical_id: {logical_id}")
+        seen_ids.add(logical_id)
+        if not canonical_path:
+            errors.append(f"{logical_id or '<missing-id>'} missing canonical_path")
+            continue
+        if canonical_path.startswith("/") or re.match(r"^[A-Za-z]:", canonical_path):
+            errors.append(f"{logical_id} canonical_path must be repo-relative: {canonical_path}")
+        if ".." in Path(canonical_path).parts:
+            errors.append(f"{logical_id} canonical_path must not contain '..': {canonical_path}")
+        if canonical_path in seen_paths:
+            errors.append(f"workflow manifest duplicate canonical_path: {canonical_path}")
+        seen_paths.add(canonical_path)
+        if category not in WORKFLOW_MANIFEST_CATEGORIES:
+            errors.append(f"{logical_id} invalid category: {category}")
+        if status not in WORKFLOW_MANIFEST_STATUSES:
+            errors.append(f"{logical_id} invalid status: {status}")
+        if category in {"archive", "deprecated"} and status == "active":
+            errors.append(f"{logical_id} cannot be active in {category}")
+        if truthy(entry.get("daily_read", "")):
+            daily_read.append(logical_id)
+            if category not in {"daily_entry", "playbook"}:
+                errors.append(f"{logical_id} daily_read must stay in daily_entry or playbook")
+        path = REPO_ROOT / canonical_path
+        if not path.exists():
+            errors.append(f"{logical_id} missing canonical_path: {canonical_path}")
+
+    missing_ids = sorted(WORKFLOW_MANIFEST_REQUIRED_IDS - seen_ids)
+    for logical_id in missing_ids:
+        errors.append(f"workflow manifest missing required logical_id: {logical_id}")
+    if len(daily_read) > 4:
+        errors.append("workflow manifest daily_read must stay compact: " + ", ".join(daily_read))
+    return errors
+
+
+def cmd_list_workflow_files(_: argparse.Namespace) -> int:
+    entries = read_workflow_manifest_entries()
+    by_category: dict[str, list[dict[str, str]]] = {}
+    for entry in entries:
+        by_category.setdefault(entry.get("category", "uncategorized"), []).append(entry)
+
+    print(f"workflow-files manifest={rel(workflow_manifest_path())} entries={len(entries)}")
+    for category in sorted(by_category):
+        rows = sorted(by_category[category], key=lambda item: item.get("logical_id", ""))
+        print(f"{category}: {len(rows)}")
+        for entry in rows:
+            daily = " daily" if truthy(entry.get("daily_read", "")) else ""
+            exists = "ok" if (REPO_ROOT / entry.get("canonical_path", "")).exists() else "missing"
+            print(
+                f"  {entry.get('logical_id', '')} status={entry.get('status', '')}{daily} "
+                f"path={entry.get('canonical_path', '')} exists={exists}"
+            )
+    errors = workflow_manifest_errors()
+    print(f"manifest_errors={len(errors)}")
+    for error in errors:
+        print(f"ERROR {error}")
+    return 1 if errors else 0
+
+
 def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
+    errors.extend(workflow_manifest_errors())
     required_markers = {
         "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight"],
         "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed"],
@@ -8567,6 +8712,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
+
+    list_workflow_files = sub.add_parser("list-workflow-files", help="按 manifest 列出 workflow 文档层级和瘦身状态")
+    list_workflow_files.set_defaults(func=cmd_list_workflow_files)
 
     validate_remote = sub.add_parser("validate-remote", help="校验远端 main/baseline tags 与本地治理事实")
     validate_remote.add_argument("--remote", default="origin")

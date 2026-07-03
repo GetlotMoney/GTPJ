@@ -2,6 +2,10 @@
 
 本目录不再要求作为一整片协议森林来阅读。
 
+`WORKFLOW_MANIFEST.yaml` 是当前文档瘦身索引：它把 workflow 文件标成
+`daily_entry`、`core`、`playbook`、`protocol`、`reference`、`agents` 和
+`archive`。日常只看入口和一个 playbook；长协议只按 playbook 点名读取。
+
 日常规则：
 
 ```text
@@ -85,3 +89,10 @@ plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync
 ```
 
 不要为了“完整”默认搬运或阅读整个 `docs/workflow/`。
+
+检查当前瘦身索引：
+
+```bash
+python workflow/gtpj_workflow.py list-workflow-files
+python workflow/gtpj_workflow.py validate-workflow-consistency
+```
