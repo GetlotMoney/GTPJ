@@ -148,6 +148,18 @@ Review 3 -> review_round_2.md + agent_summary.md
 临时或较大的 HTML 进入 `GTPJ_Warehouse/diagrams/`，`framework_diagram.md` 记录
 `file:///D:/...` 链接、artifact id、哈希或说明。
 
+如果创新代码改变了 forward、loss、evaluation、输入输出、张量流向或模块分支逻辑，
+`README.md` 还必须包含 `## Code Flow Diagram`。这张图优先服务 owner 快速读懂代码实际怎么走：
+
+- 从输入张量开始，标出图像、文本、类别原型、配置开关等入口；
+- 标出新增或修改的代码模块、关键分支、gate、loss 读取点；
+- 标出每个关键节点的输出，至少写清 `[B（图片/样本数量）, C（类别数量）]` 这类含义；
+- 标出最终 logits / loss / metric 的出口；
+- 如果代码实际流程和论文/idea 意图不同，必须在图旁写 `code_vs_intent`。
+
+`README.md` 中的 `Code Flow Diagram` 可以先简单，但必须可读；完整变量、方法、loss
+和 baseline-off 细节继续写在 `framework_diagram.md`。
+
 `framework_diagram.md` 必须解释：
 
 - 每个图中变量的来源、shape、含义、是否参与梯度、train/eval 差异；

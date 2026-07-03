@@ -128,18 +128,19 @@ ATTEMPT-004 and the workflow-v2 validation campaign refine the ATTEMPT-003 direc
 |---|---|---|---|---:|---:|---:|---|
 | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-035 | `direction_sample_h48_w0.525_a0.005` | 75.02 | 72.69 | 77.51 | repeat first |
 | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-009 | `dr016_direction_sample_h48_w0.45_a0.003_r02` | 75.00 | 72.93 | 77.19 | supporting single |
-| Workflow-v2 campaign | `RUN-20260702-0003-mixed2innov8tune-2gpu` | DR-004 | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | repeat candidate |
+| ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-002 / DR-004 | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | repeat candidate |
 
 Current interpretation:
 
 - Best observed single is ATTEMPT-004 DR-035 H=75.02.
 - The strongest family is `direction_sample`, hidden 48, anchor lambda around 0.003-0.005.
-- Workflow-v2 innovation probes did not help and are stopped for this campaign.
+- ATTEMPT-006 workflow-v2 innovation probes did not help and are stopped for this campaign.
 - No result is confirmed; promotion remains blocked until min3 repeat and post-run quality closeout.
 
 Integrated report:
 
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md`
+- `attempts/ATTEMPT-006/result.yaml`
 
 ## Checkpoint Retention
 
@@ -196,6 +197,37 @@ code_vs_intent: dynamic gates modulate existing v5 residual strengths; GZSL inte
 ```
 
 `framework_diagram.md` explains the four dynamic gate sites, their anchors, input/output tensors, baseline-off behavior, and why this trial remains revise rather than promote.
+
+## Code Flow Diagram
+
+This is the owner-facing code-path sketch for the implemented dynamic routing
+logic. Full variable and module details remain in `framework_diagram.md`.
+
+```mermaid
+flowchart TD
+  Image["image batch<br/>B images"] --> CLIP["CLIP visual encoder<br/>CLS + patch tokens"]
+  Text["class text prototypes<br/>C classes"] --> PSE["PSE text path"]
+  CLIP --> GateCtx["gate context<br/>sample/class/fixed"]
+  GateCtx --> LocalGate["local_gate"]
+  GateCtx --> ICSAGate["icsa_gate"]
+  GateCtx --> DirectionGate["direction_gate"]
+  GateCtx --> PSEGate["pse_gate"]
+  PSEGate --> TextMix["text prototype residual blend"]
+  TextMix --> ICSA["ICSA conditional text"]
+  ICSAGate --> ICSA
+  ICSA --> GlobalScore["global logits [B (image/sample count), C (class count)]"]
+  CLIP --> BVSA["BVSA local scoring"]
+  DirectionGate --> BVSA
+  BVSA --> LocalScore["local logits [B (image/sample count), C (class count)]"]
+  GlobalScore --> Fuse["final logits = global + local_gate * local"]
+  LocalScore --> Fuse
+  LocalGate --> Fuse
+  Fuse --> TrainEval["CE/loss readers and GZSL U/S/H/ZS metrics"]
+```
+
+`code_vs_intent`: implemented dynamic gates modulate existing v5 residual routes;
+dataset split, label mapping, class order, metric semantics, and logits contract
+remain unchanged.
 
 ## Results
 

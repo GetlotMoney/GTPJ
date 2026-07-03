@@ -106,6 +106,19 @@ Paper
 
 同一个 Hypothesis 加到不同位置，通常新开 Trial；只调参数才留在 Attempt。
 
+## 代码流程图
+
+只要创新会改变代码逻辑、forward、loss、evaluation、输入输出或关键张量流向，Trial
+`README.md` 必须有 `## Code Flow Diagram`：
+
+```text
+input tensors -> changed modules / gates / branches -> logits / loss / metrics
+```
+
+这张图是 owner 读代码路径的入口，不替代 `framework_diagram.md`。完整变量 glossary、
+method glossary、loss flow、baseline-off 和 code-vs-intent 仍写入 trial 级
+`framework_diagram.md`。
+
 ## 复核循环
 
 保留 Review 0-3：

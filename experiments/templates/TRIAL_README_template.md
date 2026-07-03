@@ -86,6 +86,19 @@ code_vs_intent:
 - line semantics: each arrow says whether it is data flow, supervision/target, read-only reference, or config/control.
 - code vs intent note: explicitly state whether the implemented path matches the idea/design.
 
+## Code Flow Diagram
+
+Required when this Trial changes forward, loss, evaluation, input/output, tensor
+flow, or code branching logic. Keep this README diagram owner-readable; put full
+variable and method details in `framework_diagram.md`.
+
+```mermaid
+flowchart TD
+  Input["input tensors"] --> Changed["changed code path / module"]
+  Changed --> Output["outputs: logits [B (image/sample count), C (class count)]"]
+  Output --> Metric["loss / U-S-H-ZS metrics"]
+```
+
 ## Innovation Code Review
 
 ```text

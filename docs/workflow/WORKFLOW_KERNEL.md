@@ -92,6 +92,8 @@ owner_visible_reporting: true
 - promotion 和 baseline claim 默认比较 `confirmed_H` / repeat mean，不能只凭 best repeat。
 - 不能把未确认的 `best_observed_H` 说成 confirmed baseline。
 - 每个正式版本 `experiments/vX/` 必须有版本级 `framework_diagram.md` 和 `MODULES.md`；`VERSION.md` 必须链接它们并包含 `## Framework Diagram`。模块说明不能只列名字，必须解释 purpose、input、output、config switch 和 baseline-off behavior。
+- 创新代码、forward、loss、evaluation 或输入输出逻辑发生变化时，所属 Trial 的 `README.md` 必须包含 `## Code Flow Diagram`，用简洁流程图说明代码实际输入、输出、关键张量流向、分支开关和最终 logits/metric 出口；完整变量/方法说明仍放在 `framework_diagram.md`。
+- 批量实验 / mixed campaign 不能单独成为正式结果分支。它只能保存 routing index、run map、work item 映射和监控状态；正式结果必须自动回写到对应归属目录：version-level 写 `experiments/vX/<type>/`，trial-internal 写 `experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/`，真正新创新写对应 IDEA/TRIAL。
 
 ## 5. 运行安全
 
