@@ -1664,7 +1664,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "experiments/templates/modules/standard_gzsl_training_template.py": [
             "StandardGZSLTrainingRun",
             "assert_standard_gzsl_eval",
-            "best_H",
+            "best_observed_H",
             "standard_gzsl_u_s_h_zs",
         ],
         "experiments/templates/modules/feature_adapter_template.py": ["TrialFeatureAdapter", "template_family"],

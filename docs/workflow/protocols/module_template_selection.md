@@ -203,7 +203,7 @@ legacy_module_migration: required | completed
 - `module_template_family`；
 - CUB xlsa17 split 或显式 high-risk dataset adaptation note；
 - standard GZSL U/S/H/ZS evaluation；
-- `best_H` 只作为 observed result，不能自动写成 confirmed；
+- `best_observed_H` 只作为 observed result，不能自动写成 confirmed；
 - checkpoint / log / result artifact refs。
 
 这些模板只在 GTPJ 标准 GZSL module trial 范围内通用。若改成 AWA2/SUN、

@@ -10,7 +10,7 @@ Protected semantics:
 - evaluation uses seen + unseen classes
 - logits stay [B (image/sample count), C (class count)]
 - metrics stay U, S, H, ZS under standard_gzsl_u_s_h_zs
-- best_H is an observed run field until confirmation evidence exists
+- best_observed_H is a run-local observation until confirmation evidence exists
 """
 
 from __future__ import annotations
@@ -65,9 +65,19 @@ class GZSLMetrics:
     ZS: float
     epoch: int
 
-    @property
-    def best_H(self) -> float:
-        return float(self.H)
+
+@dataclass(frozen=True)
+class LossPack:
+    """Training-step output with an explicit scalar optimization loss."""
+
+    loss: torch.Tensor
+    extras: Mapping[str, torch.Tensor] | None = None
+
+    def assert_valid(self) -> None:
+        if not isinstance(self.loss, torch.Tensor):
+            raise TypeError("LossPack.loss must be a torch.Tensor")
+        if self.loss.ndim != 0:
+            raise ValueError("LossPack.loss must be a scalar tensor")
 
 
 def flatten_yaml_values(raw: Mapping[str, Any]) -> dict[str, Any]:
@@ -118,12 +128,22 @@ def set_reproducibility(seed: int) -> None:
     """Set minimum reproducibility knobs; use stricter project helpers when available."""
     torch.manual_seed(seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+        torch.cuda.manual_seed(seed)
 
 
 def harmonic_mean(seen_acc: float, unseen_acc: float) -> float:
     denom = float(seen_acc) + float(unseen_acc)
     return 0.0 if denom <= 0 else (2.0 * float(seen_acc) * float(unseen_acc)) / denom
+
+
+def require_1d_long_tensor(value: Any, name: str) -> torch.Tensor:
+    """Protected class lists must already be torch tensors from the approved dataloader."""
+    if not isinstance(value, torch.Tensor):
+        raise TypeError(f"{name} must be a torch.Tensor; convert numpy arrays in the dataloader adapter")
+    tensor = value.long().flatten()
+    if tensor.ndim != 1:
+        raise ValueError(f"{name} must flatten to a 1-D class-index tensor")
+    return tensor
 
 
 def assert_standard_gzsl_state(dataloader: Any) -> None:
@@ -132,8 +152,8 @@ def assert_standard_gzsl_state(dataloader: Any) -> None:
     missing = [name for name in required if not hasattr(dataloader, name)]
     if missing:
         raise ValueError(f"dataloader missing GZSL protected fields: {missing}")
-    seen = dataloader.seenclasses.long().flatten()
-    unseen = dataloader.unseenclasses.long().flatten()
+    seen = require_1d_long_tensor(dataloader.seenclasses, "dataloader.seenclasses")
+    unseen = require_1d_long_tensor(dataloader.unseenclasses, "dataloader.unseenclasses")
     if seen.numel() == 0 or unseen.numel() == 0:
         raise ValueError("GZSL requires both seen and unseen classes")
     if set(seen.detach().cpu().tolist()) & set(unseen.detach().cpu().tolist()):
@@ -192,11 +212,14 @@ def train_one_step(
     batch: Any,
     model: nn.Module,
     frozen_backbone: nn.Module,
-    optimizer: torch.optim.Optimizer,
     cfg: Mapping[str, Any],
-) -> Mapping[str, torch.Tensor]:
-    """TODO: one forward/backward step; lambda=0 must match base loss."""
-    raise NotImplementedError("wire to model.compute_loss and backward")
+) -> LossPack:
+    """TODO: compute one scalar training loss; lambda=0 must match base loss.
+
+    Do not call backward or optimizer.step here. `run_training_entry` owns the
+    shared optimization order so strict-template trials cannot silently skip it.
+    """
+    raise NotImplementedError("wire to model.compute_loss and return LossPack(loss=...)")
 
 
 def evaluate_standard_gzsl(
@@ -215,17 +238,23 @@ def record_checkpoint_reference(
     metrics: GZSLMetrics,
     model: nn.Module,
 ) -> None:
-    """TODO: write checkpoint/artifact pointers; keep heavy files outside Git."""
+    """TODO: write checkpoint/artifact pointers; enforce run.top_k_checkpoints retention outside Git."""
     raise NotImplementedError("wire to warehouse artifact registration")
 
 
-def write_owner_visible_summary(run: StandardGZSLTrainingRun, best: GZSLMetrics) -> None:
-    """TODO: update result.yaml/result.md/quality_check.md with artifact refs."""
-    summary = {
+def build_owner_visible_summary(run: StandardGZSLTrainingRun, best: GZSLMetrics) -> dict[str, Any]:
+    """Build the minimal owner-visible payload that the concrete writer must persist."""
+    return {
         "run": asdict(run),
+        "best_observed_H": float(best.H),
         "best_observed": asdict(best),
         "confirmation_status": "unconfirmed",
     }
+
+
+def write_owner_visible_summary(run: StandardGZSLTrainingRun, best: GZSLMetrics) -> None:
+    """TODO: persist result.yaml/result.md/quality_check.md from build_owner_visible_summary()."""
+    summary = build_owner_visible_summary(run, best)
     raise NotImplementedError(f"write trial-local summary files from: {summary}")
 
 
@@ -245,9 +274,11 @@ def run_training_entry(config_path: str | Path, output_dir: str | Path) -> GZSLM
     for epoch in range(1, run.max_epochs + 1):
         model.train()
         for batch in iter_train_batches(run, dataloader, cfg):
-            loss_pack = train_one_step(run, batch, model, frozen_backbone, optimizer, cfg)
-            if "loss" not in loss_pack:
-                raise ValueError("train_one_step must return a loss tensor")
+            optimizer.zero_grad(set_to_none=True)
+            loss_pack = train_one_step(run, batch, model, frozen_backbone, cfg)
+            loss_pack.assert_valid()
+            loss_pack.loss.backward()
+            optimizer.step()
 
         if epoch % run.eval_every_epochs == 0:
             metrics = evaluate_standard_gzsl(run, dataloader, model, frozen_backbone)
