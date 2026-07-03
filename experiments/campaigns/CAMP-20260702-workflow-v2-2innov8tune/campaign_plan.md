@@ -10,6 +10,20 @@ This campaign validates the new workflow-v2 agent runtime hard gate with a small
 
 The method scope stays inside `IDEA-0003 / TRIAL-001 Dynamic Residual Routing`.
 
+Campaign run map:
+
+```text
+campaign_run_map.md
+campaign_run_map.html
+```
+
+Formal result evidence is not stored in this campaign directory. This campaign
+is a routing index; the formal trial-local ledger is:
+
+```text
+experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006/
+```
+
 ## Candidate Set
 
 Profile:
@@ -34,6 +48,16 @@ Tune jobs:
 7. `tune_direction_class_h48_w0.50_a0.003`
 8. `tune_direction_h48_w0.45_a0.004`
 
+Owner-facing work item ids are recorded in `WORK_ITEMS.md`:
+
+```text
+INNOV-001..INNOV-002 -> runner jobs DR-001..DR-002
+TUNE-001..TUNE-008   -> runner jobs DR-003..DR-010
+```
+
+Runner-local `attempt_id` values in server summaries are batch-local and do not
+equal GitHub formal `ATTEMPT-xxx` records.
+
 ## Boundaries
 
 - No new forward path, loss, data split, label mapping, metric semantics, or class order changes.
@@ -41,6 +65,8 @@ Tune jobs:
 - `dynamic_pse_mode=sample` is forbidden.
 - This campaign cannot promote a new model version by itself.
 - Best single must be separated from repeat mean and confirmation evidence.
+- Campaign files must not be used as authoritative H/U/S/ZS sources; use
+  ATTEMPT-006 result and quality files instead.
 
 ## Runtime
 

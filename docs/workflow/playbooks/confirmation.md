@@ -29,9 +29,33 @@ quality_gate.md
 右侧临时 agents，并通过 `validate-agent-runtime` 和 `multi-agent-preflight`。否则
 confirmation 必须阻断；不能用单窗口 sequential review 生成 confirmed evidence。
 
-## Repeat 规则
+## 复现 / Repeat 类型
 
-默认 confirmation 跑 3 次。
+必须先声明本轮是哪一种：
+
+```text
+exact_repeat:
+  固定原始 code commit、config、seed、data/cache、epoch schedule、batch size 和评估口径。
+  用来回答“原始结果能不能原样再跑出来”。
+  只有 exact_repeat 才能叫严格复现。
+
+same_seed_min3:
+  同一个原始 seed 重跑 3 次。
+  用来检查非确定性、环境漂移和同配置可重复性。
+
+seed_sweep / score_search:
+  主配置固定，但 seed 变化。
+  用来冲分、找 seed 敏感性或观察稳定性；不能叫严格复现，也不能单独作为 confirmed evidence。
+
+multi_seed_stability:
+  预先声明多个 seed，报告 mean/min/max/range。
+  可作为稳定性证据，但必须和 exact_repeat 区分。
+```
+
+seed 是实验配置的一部分。改变 seed 就不是“同配置严格复现”，只能是
+`seed_sweep`、`score_search` 或 `multi_seed_stability`。
+
+默认 confirmation 跑 3 次，但必须写明 repeat 类型。
 
 如果复现通过：
 
@@ -43,6 +67,7 @@ promotion_compare_metric = repeat mean / confirmed_H
 
 不能隐藏较弱 repeat。稳定性属于正式证据的一部分。
 不得只凭 best repeat 做 promotion 或 baseline claim。
+不得把 multi-seed 的最高值写成 exact-repeat confirmed。
 
 ## 输出
 

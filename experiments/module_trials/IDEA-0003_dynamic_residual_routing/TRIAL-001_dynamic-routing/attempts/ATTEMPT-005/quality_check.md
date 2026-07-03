@@ -3,10 +3,12 @@
 ```yaml
 attempt_id: ATTEMPT-005
 run_id: RUN-20260703-0001-dr035-min3-confirm-2gpu
-decision: pre_run_warn_until_agent_runtime_passes
-evidence_state: interface_precheck_passed
+decision: not_confirmed
+evidence_state: stopped_repeat_unstable
 formal_evidence: true
 promotion_decision: blocked
+repeat_type: seed_sweep
+exact_repeat: false
 ```
 
 ## Pre-Run Checks
@@ -32,13 +34,20 @@ promotion_decision: blocked
 
 ## Required After Runner
 
-- [ ] 3 / 3 jobs completed, 0 failed.
-- [ ] `summary.csv`, `summary.jsonl`, `batch_status.json`, `plan.json`, and `events.jsonl` are available.
-- [ ] Runtime artifact hash and size are recorded.
-- [ ] Result table reports H/U/S/ZS for all three repeats.
-- [ ] Stability reports mean/min/max/range.
-- [ ] Warehouse copy/receipt is available.
+- [x] 3 / 3 jobs completed, 0 failed.
+- [x] `summary.csv`, `summary.jsonl`, `batch_status.json`, `plan.json`, and `events.jsonl` are available.
+- [x] Runtime artifact hash and size are recorded in `result.yaml`.
+- [x] Result table reports H/U/S/ZS for all three runs.
+- [x] Stability reports mean/min/max/range.
+- [x] Warehouse paths are recorded in runtime summaries.
 - [ ] Only Top-3 model checkpoints are retained, or an explicit exception is documented.
+
+## Classification Correction
+
+- [x] Seed changed from source seed 5 to seeds 6/7/8.
+- [x] Therefore this is not `exact_repeat`.
+- [x] Correct type is `seed_sweep` / `multi_seed_stability`.
+- [x] Multi-seed best cannot be used as exact-repeat confirmed evidence.
 
 ## Confirmation Gate
 
@@ -52,3 +61,14 @@ no obvious U/S collapse
 ```
 
 If these fail, the correct state is `stopped_repeat_unstable` or `rerun_required`, not promotion.
+
+Observed:
+
+```text
+H mean = 74.15
+H min = 73.91
+H max = 74.39
+H range = 0.48
+```
+
+Decision: `not_confirmed`; promotion remains blocked.

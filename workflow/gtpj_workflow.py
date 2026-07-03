@@ -7671,7 +7671,21 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     if repeat_source_ranks and max(repeat_source_ranks) <= 2:
         repeat_group = "top2_frozen_repeat"
 
+    def work_item_prefix(group: str) -> str:
+        if "innovation" in group:
+            return "INNOV"
+        if "tune" in group:
+            return "TUNE"
+        if "ablate" in group:
+            return "ABL"
+        if "confirm" in group:
+            return "CONFIRM"
+        if "repeat" in group:
+            return "REPEAT"
+        return "RUN"
+
     jobs: list[dict[str, object]] = []
+    work_item_counts: dict[str, int] = {}
     for index, (group, name, updates) in enumerate(specs, start=1):
         updates = dict(updates)
         pse_mode = updates.get("dynamic_pse_mode")
@@ -7682,9 +7696,12 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
             )
         job_seed = int(updates.get("random_seed", seed))
         updates["random_seed"] = job_seed
+        prefix = work_item_prefix(group)
+        work_item_counts[prefix] = work_item_counts.get(prefix, 0) + 1
         jobs.append(
             {
                 "job_id": f"DR-{index:03d}",
+                "work_item_id": f"{prefix}-{work_item_counts[prefix]:03d}",
                 "attempt_id": f"ATTEMPT-{index:03d}",
                 "phase": "explore",
                 "group": group,
@@ -7699,9 +7716,11 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     for repeat_index, source_rank in enumerate(repeat_source_ranks):
         index = 41 + repeat_index
         source_repeat_index = sum(1 for rank in repeat_source_ranks[: repeat_index + 1] if rank == source_rank)
+        work_item_counts["REPEAT"] = work_item_counts.get("REPEAT", 0) + 1
         jobs.append(
             {
                 "job_id": f"DR-{index:03d}",
+                "work_item_id": f"REPEAT-{work_item_counts['REPEAT']:03d}",
                 "attempt_id": f"ATTEMPT-{index:03d}",
                 "phase": "repeat",
                 "group": repeat_group,
@@ -7852,7 +7871,7 @@ def append_summary(run_dir, row):
         summary = run_dir / "summary.csv"
         exists = summary.exists()
         fields = [
-            "job_id", "attempt_id", "phase", "group", "name", "seed", "source_rank",
+            "job_id", "work_item_id", "attempt_id", "phase", "group", "name", "seed", "source_rank",
             "resolved_from_job_id", "status", "U", "S", "H", "ZS", "best_epoch", "gpu",
             "log_path", "warehouse_dir",
         ]

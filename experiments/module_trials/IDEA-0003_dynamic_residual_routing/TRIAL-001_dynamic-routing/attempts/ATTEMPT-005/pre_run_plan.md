@@ -1,5 +1,14 @@
 # ATTEMPT-005 Pre-Run Plan
 
+## Post-Run Correction
+
+This file records the original pre-run plan, but the executed jobs changed the
+source seed. DR-035 came from source seed 5, while ATTEMPT-005 executed seeds
+6/7/8. Under the updated reproduction rule, this is classified as `seed_sweep`
+/ `multi_seed_stability`, not `exact_repeat` and not confirmed reproduction.
+The authoritative closeout is recorded in `result.yaml`, `result.md`,
+`quality_check.md`, `agent_summary.md`, and `TRANSITIONS.jsonl`.
+
 ## Scope
 
 - Trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing

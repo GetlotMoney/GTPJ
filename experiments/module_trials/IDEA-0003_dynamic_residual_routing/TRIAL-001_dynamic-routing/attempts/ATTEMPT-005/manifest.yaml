@@ -2,9 +2,9 @@ schema_version: gtpj-attempt-manifest/v1
 attempt_id: ATTEMPT-005
 trial_id: TRIAL-001
 idea_id: IDEA-0003
-kind: module-trial-confirmation
+kind: module-trial-seed-sweep
 base_version: v5
-status: running
+status: completed
 created_at: "2026-07-03T00:19:47+08:00"
 
 target:
@@ -12,6 +12,7 @@ target:
   source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
   source_job: DR-035
   source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
   source_H: 75.02
   source_U: 72.69
   source_S: 77.51
@@ -24,6 +25,9 @@ run:
   pre_run_freeze_commit: 4eb948c237ffc79a64f8cd4bed151c813a79bbcc
   started_at: "2026-07-03T00:33:49+08:00"
   profile: dr035-min3-confirm
+  corrected_run_type: seed_sweep
+  exact_repeat: false
+  classification_note: "Seeds changed from source seed 5 to 6/7/8; this is not strict reproduction."
   jobs: 3
   gpus: [0, 1]
   base_config: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-004/config.yaml
@@ -60,8 +64,8 @@ frozen_config:
   weight_s2v: 0.525
 
 evidence:
-  evidence_level: formal_running
-  confirmation_status: pending
+  evidence_level: seed_sweep_observation
+  confirmation_status: not_confirmed
   confirmed_H: pending
   result_yaml: result.yaml
   result_md: result.md
@@ -85,6 +89,7 @@ artifact_policy:
   checkpoint_retention: top3
 
 decision:
-  status: pending_run
+  status: stopped_repeat_unstable
   promotion_decision: blocked
-  reason: DR-035 requires min3 confirmation and later direction ablation support before promotion.
+  reason: Multi-seed sweep did not meet confirmation thresholds and does not count as exact repeat.
+  next_action: Run exact_repeat with source seed 5 before any confirmed claim.

@@ -6,9 +6,21 @@ campaign_run: RUN-20260702-0003-mixed2innov8tune-2gpu
 related_prior_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
 trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
 evidence_level: single_run_valid / tune_promising
-confirmation_status: needs_min3_repeat
+confirmation_status: needs_exact_repeat
 promotion_decision: blocked
+work_items: WORK_ITEMS.md
+campaign_run_map: campaign_run_map.md
+formal_result_ref: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006/result.yaml
 ```
+
+## Campaign Ledger
+
+| Ledger | Purpose |
+|---|---|
+| `WORK_ITEMS.md` | Maps owner-facing `INNOV-*` / `TUNE-*` ids to runner-local `DR-*` jobs. |
+| `campaign_run_map.md` | Records the campaign run map and links to the formal owning Trial. |
+| `campaign_run_map.html` | Local browser-readable version of the campaign run map. |
+| `ATTEMPT-006/result.yaml` | Formal trial-local result source for this 10-run batch. |
 
 ## Integrated View
 
@@ -17,17 +29,20 @@ promotion_decision: blocked
 | ATTEMPT-003 | `RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu` | DR-018 | direction tune | `direction_sample_h48_w0.5_a0.003` | 74.86 | 73.10 | 76.71 | 81.84 | 37 | `tune_promising`, needs confirmation |
 | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-035 | direction narrow tune | `direction_sample_h48_w0.525_a0.005` | 75.02 | 72.69 | 77.51 | 82.04 | 48 | best observed single |
 | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-009 | neighbor repeat | `dr016_direction_sample_h48_w0.45_a0.003_r02` | 75.00 | 72.93 | 77.19 | 81.95 | 48 | supporting single |
-| Workflow-v2 campaign | `RUN-20260702-0003-mixed2innov8tune-2gpu` | DR-004 | direction tune | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | 81.96 | 37 | repeat candidate |
-| Workflow-v2 campaign | `RUN-20260702-0003-mixed2innov8tune-2gpu` | DR-006 | direction tune | `tune_direction_h48_w0.50_a0.005` | 74.67 | 72.29 | 77.21 | 81.62 | 48 | repeat candidate |
-| Workflow-v2 campaign | `RUN-20260702-0003-mixed2innov8tune-2gpu` | DR-010 | direction tune | `tune_direction_h48_w0.45_a0.004` | 74.64 | 72.43 | 76.98 | 81.62 | 50 | backup repeat candidate |
+| ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-002 / DR-004 | direction tune | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | 81.96 | 37 | repeat candidate |
+| ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-004 / DR-006 | direction tune | `tune_direction_h48_w0.50_a0.005` | 74.67 | 72.29 | 77.21 | 81.62 | 48 | repeat candidate |
+| ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-008 / DR-010 | direction tune | `tune_direction_h48_w0.45_a0.004` | 74.64 | 72.43 | 76.98 | 81.62 | 50 | backup repeat candidate |
+| ATTEMPT-005 | `RUN-20260703-0001-dr035-min3-confirm-2gpu` | DR-002 | DR-035 seed sweep | `direction_sample_h48_w0.525_a0.005_s7` | 74.39 | 71.49 | 77.54 | n/a | n/a | `stopped_repeat_unstable`; not exact repeat |
 
 ## Interpretation
 
 - The best current dynamic-routing family is `direction_sample` with `dynamic_gate_hidden=48`.
 - The strongest observed single is ATTEMPT-004 DR-035 at H=75.02, using `weight_s2v=0.525` and `dynamic_gate_anchor_lambda=0.005`.
-- The workflow-v2 10-run campaign did not exceed DR-035, but it supports the same direction-gate region: `w=0.45-0.525`, `anchor_lambda=0.003-0.005`, hidden 48.
+- ATTEMPT-006 / workflow-v2 10-run campaign did not exceed DR-035, but it supports the same direction-gate region: `w=0.45-0.525`, `anchor_lambda=0.003-0.005`, hidden 48.
 - The two workflow-v2 innovation probes underperformed: DR-001 H=73.62 and DR-002 H=73.63. They are stopped for this campaign unless a new hypothesis or attachment point is proposed.
+- These two items are `innovation_probe` switch probes inside the existing TRIAL-001, not full paper-derived innovations from `idea_tree`.
 - No result in this report is `confirmed_H`. All top values remain single-run or support singles until min3 repeat and quality checks are complete.
+- ATTEMPT-005 used seeds 6/7/8 while DR-035 came from source seed 5. It is now classified as `seed_sweep`, not `exact_repeat`, and cannot confirm DR-035.
 
 ## Agent Decisions
 
@@ -45,7 +60,7 @@ Evidence Quality Checker:
 ```text
 decision: warn
 confirmed_results: none
-required_before_promotion: min3 repeat, artifact identity, GZSL rule_checks, log checks, checkpoint retention
+required_before_promotion: exact repeat or declared stability protocol, artifact identity, GZSL rule_checks, log checks, checkpoint retention
 ```
 
 ## Repeat Routing
@@ -54,12 +69,12 @@ Priority repeat set:
 
 | Priority | Candidate | Reason |
 |---:|---|---|
-| 1 | ATTEMPT-004 DR-035 `direction_sample_h48_w0.525_a0.005` | Highest observed H=75.02; must be tested for stability. |
+| 1 | ATTEMPT-004 DR-035 `direction_sample_h48_w0.525_a0.005` | Highest observed H=75.02; ATTEMPT-005 only ran seed sweep, so source-seed exact repeat is still required. |
 | 2 | Workflow-v2 DR-004 `tune_direction_h48_w0.525_a0.003` | Best in the 10-run workflow-v2 campaign; close to the same weight region. |
 | 3 | ATTEMPT-004 DR-009 `dr016_direction_sample_h48_w0.45_a0.003_r02` | H=75.00 supporting neighbor evidence. |
 | 4 | Workflow-v2 DR-006 `tune_direction_h48_w0.50_a0.005` | Good seen score and same anchor family; backup repeat. |
 
-Default next action: run min3 repeat for DR-035 first. If budget allows, include DR-004 and DR-006 as neighbor stability checks.
+Default next action: if DR-035 is still the target, run `exact_repeat` with the source seed fixed to 5. Multi-seed sweeps may be useful for score search or stability analysis, but they must not be labeled as strict reproduction. If budget allows, test DR-004 and DR-006 under the same declared repeat type.
 
 ## Artifact Pointers
 

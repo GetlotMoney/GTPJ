@@ -1356,6 +1356,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(len(jobs), 10)
         self.assertEqual(groups["innovation_probe"], 2)
         self.assertEqual(groups["direction_tune"], 8)
+        self.assertEqual([job["work_item_id"] for job in jobs[:2]], ["INNOV-001", "INNOV-002"])
+        self.assertEqual([job["work_item_id"] for job in jobs[2:]], [f"TUNE-{i:03d}" for i in range(1, 9)])
         self.assertTrue(all(job["seed"] == 5 for job in jobs))
         self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
         self.assertTrue(any(update.get("dynamic_local_mode") == "sample" for update in updates))

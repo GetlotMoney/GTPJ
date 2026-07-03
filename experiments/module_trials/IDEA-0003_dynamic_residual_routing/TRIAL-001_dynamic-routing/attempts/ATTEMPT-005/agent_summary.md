@@ -15,6 +15,7 @@
 
 - Target is ATTEMPT-004 DR-035, H=75.02, not confirmed.
 - ATTEMPT-005 is a min3 confirmation run with three frozen repeats and no tuning.
+- Post-run correction: because the executed seeds were 6/7/8 while the source DR-035 seed was 5, this is a seed_sweep / multi_seed_stability run, not an exact_repeat.
 - Formal Runner must not start until `agent_runtime.yaml` contains real temporary agent ids and validates.
 - Owner-visible monitor mode is required throughout the server run.
 
@@ -36,6 +37,26 @@ Evidence Quality Checker:
 Result Comparator:
   decision: warn; target is DR-035 stability, not exact H=75.02 reproduction.
   resolution: report official_single as best repeat and stability as mean/min/max/range.
+```
+
+## Post-Run Closeout
+
+```text
+Log Analyst:
+  decision: allow factual parse
+  result: 3 completed / 0 failed; best single DR-002 H=74.39.
+
+Result Comparator:
+  decision: not_confirmed
+  reason: H mean=74.15 and min=73.91 fail confirmation thresholds.
+
+Evidence Quality Checker:
+  decision: warn
+  reason: artifact identity recorded; checkpoint retention still needs explicit server-side audit.
+
+Coordinator:
+  decision: stopped_repeat_unstable
+  note: classify as seed_sweep, not exact_repeat.
 ```
 
 ## Memory Policy

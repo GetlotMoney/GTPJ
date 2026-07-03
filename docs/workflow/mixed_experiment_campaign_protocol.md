@@ -59,6 +59,8 @@ experiments/campaigns/CAMP-YYYYMMDD-xxxx/
   agent_runtime.yaml
   campaign_plan.md
   WORKSTREAMS.md
+  WORK_ITEMS.md
+  campaign_run_map.md
   SCHEDULER_STATE.yaml
   RESULT_INDEX.md
   DECISION_LOG.md
@@ -77,9 +79,33 @@ experiments/vX/confirmation/
 experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
 ```
 
-Campaign 目录只保存 routing index，不保存 authoritative result facts。`RESULT_INDEX.md`
-只能引用正式 `result.yaml`、`quality_check.md`、manifest 和 Warehouse artifact。
-正式 H/U/S/ZS 不得以 campaign 文件作为权威来源。
+Campaign 目录只保存 routing index / scheduler index，不保存 authoritative result facts。
+正式 H/U/S/ZS 不得以 campaign 文件作为权威来源。`RESULT_INDEX.md` 只能引用各自归属
+subject 下的正式 `result.yaml`、`quality_check.md`、manifest 和 Warehouse artifact。
+
+混合实验不能创建“组合实验正式分支”来单独做数。Coordinator 必须把每个 workstream / task
+路由回原本归属：
+
+```text
+version-level tune / ablation / confirmation -> experiments/vX/<type>/
+trial-internal tune / probe / confirmation -> experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
+new paper-derived innovation -> new or existing IDEA/TRIAL directory with its own framework_diagram.md
+campaign -> only routing index, work item mapping, monitor state, and derived summaries
+```
+
+每个混合 campaign 必须区分 owner-facing work item id 和 runner job id：
+
+```text
+INNOV-001 / TUNE-001 / ABL-001 / CONFIRM-001 = workflow work item id
+DR-001 / DR-002 / ... = runner-local job id
+```
+
+`WORK_ITEMS.md` 必须记录二者映射、实验类型、框架/配置、seed、结果、证据状态和
+artifact 引用。Runner 输出里的 batch-local `attempt_id` 不等于 GitHub 正式 `ATTEMPT-xxx`。
+
+`campaign_run_map.md` 必须记录本 campaign 的调度图：work item、runner job、正式归属 subject、
+artifact 链接和下一步路由。它不是新方法 `framework_diagram.md`。真正新创新、新 Trial 或新版本
+仍然必须在自身目录下维护 `framework_diagram.md`。
 
 每个 campaign task 必须绑定：
 
@@ -205,6 +231,9 @@ hypothesis_ready
 - 不允许 100 个 tune 在没有 baseline repro/status 的情况下直接开跑。
 - 不允许 10 个 innovation 同时改同一代码路径。
 - tune 可以在 frozen baseline 上批量跑；innovation 必须逐个通过 source、interface、code review 和 smoke。
+- innovation workstream 默认必须从 `idea_tree` 或已登记 hypothesis/Trial 取 idea。
+  若只是把现有合法开关组合起来验证 workflow 或做探针，必须命名为 `innovation_probe`，
+  并在 `WORK_ITEMS.md` 写明 `source_type: existing_trial_switch_probe`；不能冒充完整论文创新流程。
 - innovation 的代码准备可以和 tune 的 frozen runs 并行，但最终 GitHub ledger 只能由 Coordinator 写。
 - 任一 workstream 产生异常指标或接口疑点，必须暂停该 workstream，不能污染其它 workstream。
 - top candidates 才进入 repeat；默认 min3 repeat 后才允许正式结论。

@@ -1,0 +1,49 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt_id: ATTEMPT-006
+trial_id: TRIAL-001_dynamic-routing
+idea_id: IDEA-0003_dynamic_residual_routing
+kind: trial-internal-mixed-probe-tune
+status: completed
+base_version: v5
+branch: dev/v5-idea-0003-trial-001-dynamic-routing
+source_campaign:
+  campaign_id: CAMP-20260702-workflow-v2-2innov8tune
+  campaign_role: routing_index_only
+  campaign_dir: experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune
+run:
+  run_id: RUN-20260702-0003-mixed2innov8tune-2gpu
+  profile: workflow-v2-2innov-8tune
+  runtime_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu
+  warehouse_scope: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/
+  jobs_planned: 10
+  jobs_completed: 10
+  jobs_failed: 0
+  gpus: "0,1"
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: lr_stages
+  seed: 5
+workstreams:
+  innovation_probe:
+    count: 2
+    source_type: existing_trial_switch_probe
+    formal_new_innovation: false
+    outcome: stop_no_gain
+  direction_tune:
+    count: 8
+    source_type: trial_internal_config_search
+    formal_new_innovation: false
+    outcome: tune_promising
+evidence:
+  evidence_level: tune_promising
+  confirmation_status: not_confirmed
+  authoritative_result: result.yaml
+  quality_ref: quality_check.md
+  agent_summary_ref: agent_summary.md
+  work_items_ref: WORK_ITEMS.md
+  campaign_index_ref: experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/RESULT_INDEX.md
+decision:
+  status: keep_as_trial_internal_evidence
+  promotion_decision: blocked
+  next_action: exact-repeat or declared stability protocol for top direction candidates before any confirmed claim.

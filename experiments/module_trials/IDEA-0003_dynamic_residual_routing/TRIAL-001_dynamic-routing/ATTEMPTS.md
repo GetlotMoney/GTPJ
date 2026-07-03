@@ -5,8 +5,9 @@
 | `ATTEMPT-001` | `RUN-20260630-0005-dynroute50-2gpu` | 50 completed / 0 failed | DR-001 static control H=74.40 | DR-008 local_class_h24 H=74.39 | DR-008 repeat mean H=74.23 | revise, no promotion |
 | `ATTEMPT-002` | `RUN-20260701-0007-dynroute-bs128-exploit50-2gpu` + `RUN-20260701-0008-dynroute-bs128-bold50-2gpu` | 94 completed / 6 failed, bs=128 | DR-014 H=70.84 | DR-014 direction_sample_h112_w0.5_a0.02 H=70.84 | no repeat; bs128 control H=69.70 | reject, restore bs=64 |
 | `ATTEMPT-003` | `RUN-20260701-0009-dynroute-bs64-repro-tune50-2gpu` aborted pre-evidence; `RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu` | 50 completed / 0 failed | DR-018 direction_sample_h48_w0.5_a0.003 H=74.86 | DR-018 direction_sample_h48_w0.5_a0.003 H=74.86 | static mean H=74.49; DR-008 mean H=74.28; DR-023 mean H=74.60 | tune_promising; needs min3 confirmation + direction ablation |
-| `ATTEMPT-004` | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu`; related campaign `RUN-20260702-0003-mixed2innov8tune-2gpu` | 50 completed / 0 failed; 10 completed / 0 failed | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-009 H=75.00 supporting single; workflow-v2 DR-004 H=74.75 | tune_promising; repeat DR-035 first; promotion blocked |
-| `ATTEMPT-005` | planned `RUN-20260703-0001-dr035-min3-confirm-2gpu` | planned 3-job min3 repeat | target DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | pending | pending DR-035 x3 seeds 6/7/8 | confirmation pending; promotion blocked |
+| `ATTEMPT-004` | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | 50 completed / 0 failed | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-035 direction_sample_h48_w0.525_a0.005 H=75.02 | DR-009 H=75.00 supporting single | tune_promising; repeat DR-035 first; promotion blocked |
+| `ATTEMPT-005` | `RUN-20260703-0001-dr035-min3-confirm-2gpu` | 3 completed / 0 failed | DR-002 seed7 H=74.39 | DR-002 seed7 H=74.39 | seeds 6/7/8 H=73.91/74.39/74.15; mean H=74.15; exact_repeat not run | seed_sweep only; not_confirmed; promotion blocked |
+| `ATTEMPT-006` | `RUN-20260702-0003-mixed2innov8tune-2gpu` | 10 completed / 0 failed | TUNE-002 / DR-004 direction_sample_h48_w0.525_a0.003 H=74.75 | TUNE-002 / DR-004 H=74.75 | no exact repeat; campaign is routing index only | tune_promising; formal ledger for workflow-v2 2-probe + 8-tune batch |
 
 ## ATTEMPT-001 Notes
 
@@ -181,24 +182,52 @@ Pre-run records:
 ## ATTEMPT-004 Post-Run Notes
 
 `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` completed 50 / 50 jobs with 0 failures.
-The later owner-visible workflow validation campaign `RUN-20260702-0003-mixed2innov8tune-2gpu`
-completed 10 / 10 jobs with 0 failures and is used as supporting direction-tune evidence.
 
 Main observations:
 
 - Best observed single so far: DR-035 `direction_sample_h48_w0.525_a0.005`, H=75.02, U=72.69, S=77.51, ZS=82.04.
 - Closest supporting prior run: DR-009 `dr016_direction_sample_h48_w0.45_a0.003_r02`, H=75.00, U=72.93, S=77.19.
-- Workflow-v2 campaign best: DR-004 `tune_direction_h48_w0.525_a0.003`, H=74.75, U=72.90, S=76.69.
 - Direction sample with hidden 48 and anchor lambda around 0.003-0.005 is the strongest current family.
-- The workflow-v2 innovation probes DR-001/DR-002 scored H=73.62/73.63 and are stopped for this campaign.
 
 Evidence boundary:
 
 - These are single-run / supporting-single results, not `confirmed_H`.
 - Promotion is blocked until min3 repeat, log audit, artifact identity, GZSL rule checks, and checkpoint retention are complete.
-- Overall next repeat priority is DR-035, with DR-004 and DR-006 as neighbor stability checks if budget allows.
+- Overall next repeat priority is DR-035.
 
-Campaign records:
+## ATTEMPT-006 Post-Run Notes
+
+`RUN-20260702-0003-mixed2innov8tune-2gpu` completed 10 / 10 jobs with 0 failures.
+It is recorded as ATTEMPT-006 because mixed campaigns must not become a separate
+formal result branch. The campaign directory is only a routing index.
+
+Main observations:
+
+- Best workflow-v2 campaign result: TUNE-002 / DR-004 `tune_direction_h48_w0.525_a0.003`,
+  H=74.75, U=72.90, S=76.69.
+- TUNE-004 / DR-006 scored H=74.67 and TUNE-008 / DR-010 scored H=74.64.
+- The two workflow-v2 innovation probes INNOV-001/INNOV-002 scored H=73.62/73.63 and
+  are stopped for this campaign.
+- These were existing-switch probes, not paper-derived full innovations and not new Trials.
+
+Evidence boundary:
+
+- These are single-run / tune-promising results, not `confirmed_H`.
+- Promotion is blocked until repeat/stability, log audit, artifact identity, GZSL rule checks,
+  checkpoint retention, and necessary ablation evidence are complete.
+
+Attempt-local records:
+
+- `attempts/ATTEMPT-006/manifest.yaml`
+- `attempts/ATTEMPT-006/result.yaml`
+- `attempts/ATTEMPT-006/result.md`
+- `attempts/ATTEMPT-006/WORK_ITEMS.md`
+- `attempts/ATTEMPT-006/quality_check.md`
+- `attempts/ATTEMPT-006/agent_summary.md`
+- `attempts/ATTEMPT-006/TRANSITIONS.jsonl`
+- `attempts/ATTEMPT-006/evidence_routing.yaml`
+
+Campaign routing-index records:
 
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/FINAL_REPORT.md`
 - `experiments/campaigns/CAMP-20260702-workflow-v2-2innov8tune/RESULT_INDEX.md`
