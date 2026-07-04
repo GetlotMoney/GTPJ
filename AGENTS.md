@@ -37,11 +37,28 @@
 
 ## AI 审核规范
 
-- 重要代码修改、workflow/helper/template 修改、训练入口、评估语义、实验结论、promotion 或论文 claim 相关决策，默认由 Codex 与 Claude Code 完成三轮交叉审核，不要求 owner 参与日常审核。
+- 重要代码修改、workflow/helper/template 修改、训练入口、评估语义、实验结论、promotion 或论文 claim 相关决策，默认不要求 owner 参与日常审核，但必须按 `review_tier` 分层执行 AI 交叉审核。
+- 机器验证永远优先且永远必跑；AI 审核不能替代测试、workflow validate、audit-boundary、schema 或 helper gate。
 - Codex 负责实现、修复、反驳和重跑验证；Claude Code 只读审查，不直接改文件、不启动训练、不执行 push/delete/发布。
-- 三轮审核必须留下中文 evidence pack，并通过 `python workflow\gtpj_workflow.py validate-ai-cross-review --path <review_pack>` 后，才能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
-- AI 审核不能替代机器验证；能运行的测试、workflow validate、audit-boundary、schema 或 helper gate 必须优先运行并记录。
+- `fast`：0 轮 Claude Code，只允许低风险轻量文档或 workflow 修补；仍必须有机器验证和临时 Codex agent 预审。
+- `review-1`：1 轮 Claude Code，用于普通 workflow/helper/template 修补，不直接污染正式实验结论。
+- `strict-3`：3 轮 Claude Code，只用于训练入口、评估语义、正式实验结论、promotion、baseline 或论文 claim 等会污染正式结论的改动。
+- Claude Code 前必须先开临时 Codex agent 做只读预审；预审完成后立刻关闭，并在 evidence pack 记录真实 `agent_instance_id`、UI 显示名和结构化 `close_result`。
+- AI 交叉审核必须留下中文 evidence pack，并通过 `python workflow\gtpj_workflow.py validate-ai-cross-review --path <review_pack>` 后，才能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
 - push、删除、远端发布、破坏性迁移、密钥处理或用户数据操作仍然必须等待 owner 明确授权。
+
+## 最简 GTPJ 工作流
+
+1. 先查状态：确认分支、HEAD、dirty 文件、远端/服务器是否需要同步；只读问题先只读回答。
+2. 再定任务：按 `START_HERE.md` 判断是查状态、读论文、创新、调参、消融、复现、promotion 还是混合 campaign。
+3. 明确基线：所有实验必须写清 `base_version` / `base_code_tag`；论文到实验必须先有 owner 指定的代码版本。
+4. 选模板：新创新优先用模块模板热插拔；owner 明确要求“新模板重建”时，使用 `standard_gzsl_training_template.py` 生成 trial-local 训练入口，不继续堆旧训练脚本。
+5. 先写计划：正式写入或训练前生成 mini 启动摘要；需要正式证据时再展开完整 task card。
+6. 正式 Runner 前开真实临时 agents：写 `agent_runtime.yaml`，记录真实 agent id、UI 显示名、role 映射、output refs，并依次跑 `validate-agent-runtime`、`multi-agent-preflight`、`agent-cleanup-plan`。
+7. 跑实验：Runner 串行锁 GPU；GitHub 只记轻量账本；raw logs、checkpoint、generated figures 和 cache 进 Warehouse/Research，不进 GitHub。
+8. 收结果：写 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`agent_summary.md`、`AGENT_ACTIVITY.md`；必须报告 mean/min/max/range，不能只报 best。
+9. 做审核：普通 workflow 修补走 `review-1`，正式结论污染风险走 `strict-3`；所有机器验证照跑。
+10. 收尾清理：每阶段报告 `keep / close / unknown agents`，关闭 completed agents，记录 `close_result`，右侧栏只保留当前 active agents。
 
 ## 仓库规则
 

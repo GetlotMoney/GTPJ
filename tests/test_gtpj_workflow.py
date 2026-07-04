@@ -3079,8 +3079,8 @@ decision:
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
         self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
         self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
@@ -3112,6 +3112,7 @@ decision:
             "experiments/templates/ai_cross_review_template.md",
             "review_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
         )
+        self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
 
@@ -3120,6 +3121,49 @@ decision:
         self.assertEqual("", stderr)
         self.assertEqual(0, code)
         self.assertIn("validate-workflow-consistency-ok", stdout)
+
+    def test_validate_workflow_consistency_rejects_stale_ai_review_phrase(self) -> None:
+        self._write_minimal_workflow_manifest()
+        self._write("docs/workflow/README.md", "# Workflow\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n重复 3 轮\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
+        self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
+        self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write(
+            "docs/workflow/protocols/ai_cross_review_protocol.md",
+            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
+        )
+        self._write(
+            "docs/workflow/protocols/module_template_selection.md",
+            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
+        )
+        self._write(
+            "docs/workflow/playbooks/innovation.md",
+            "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\nvalidate-trial-meta\nstrict_template_entry\n",
+        )
+        for name in ["tune", "ablation", "confirmation", "promotion", "mixed_campaign", "paper_intake"]:
+            self._write(f"docs/workflow/playbooks/{name}.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+        self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
+        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
+        self._write(
+            "experiments/templates/ai_cross_review_template.md",
+            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+        )
+        self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
+        self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
+
+        code, stdout, stderr = self._run_main("validate-workflow-consistency")
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("contains stale AI review phrase", stderr)
+        self.assertIn("重复 3 轮", stderr)
 
     def test_list_workflow_files_groups_manifest_entries(self) -> None:
         self._write_minimal_workflow_manifest()

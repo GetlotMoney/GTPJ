@@ -5929,8 +5929,8 @@ def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
     errors.extend(workflow_manifest_errors())
     required_markers = {
-        "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed"],
+        "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight", "review_tier", "review-1", "strict-3"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed", "review_tier", "review-1", "strict-3"],
         "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
@@ -5994,6 +5994,11 @@ def workflow_consistency_errors() -> list[str]:
             "agent_cleanup:",
             "ai_cross_review:",
         ],
+        "experiments/templates/quality_check_template.md": [
+            "review_tier",
+            "validate-ai-cross-review",
+            "unresolved_blocking_issues: 0",
+        ],
         "experiments/templates/ai_cross_review_template.md": [
             "review_tier",
             "fast",
@@ -6033,6 +6038,38 @@ def workflow_consistency_errors() -> list[str]:
         for marker in markers:
             if marker not in text:
                 errors.append(f"{path_text} missing marker: {marker}")
+
+    stale_ai_review_phrases = [
+        "三轮 AI 交叉审核包",
+        "三轮交叉审核",
+        "三轮审核包",
+        "重复 3 轮",
+        "必须由 Claude Code 与 Codex 完成三轮",
+    ]
+    stale_scan_roots = [
+        REPO_ROOT / "AGENTS.md",
+        REPO_ROOT / "CLAUDE.md",
+        REPO_ROOT / "docs" / "workflow",
+        REPO_ROOT / "experiments" / "templates",
+    ]
+    for root in stale_scan_roots:
+        if root.is_file():
+            candidates = [root]
+        elif root.exists():
+            candidates = [path for path in root.rglob("*") if path.is_file()]
+        else:
+            candidates = []
+        for path in candidates:
+            rel_path = rel(path)
+            normalized = rel_path.replace("\\", "/")
+            if "/archive/" in "/" + normalized:
+                continue
+            if path.suffix.lower() not in {".md", ".yaml", ".yml", ".py"}:
+                continue
+            text = read_text(path)
+            for phrase in stale_ai_review_phrases:
+                if phrase in text:
+                    errors.append(f"{rel_path} contains stale AI review phrase: {phrase}")
 
     playbook_dir = REPO_ROOT / "docs" / "workflow" / "playbooks"
     if playbook_dir.exists():

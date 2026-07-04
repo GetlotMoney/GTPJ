@@ -174,11 +174,15 @@ eligible_for_keep_best_promotion_confirmation: false
 
 重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动，默认不需要 owner 参与日常审核。
 
-改动必须走 Claude Code + Codex 三轮交叉审核：
+改动必须按 `review_tier` 走 Claude Code + Codex 分层交叉审核：
 
 ```text
-Codex 实现/修复 -> Claude Code 只读审核 -> Codex 回应/重跑验证
-重复 3 轮 -> validate-ai-cross-review -> 通过后才信任改动
+机器验证永远必跑
+Codex 临时 agent 预审并关闭 -> Claude Code 只读审核 -> Codex 回应/重跑验证
+fast: 0 轮 Claude，仅低风险轻量修补
+review-1: 1 轮 Claude，普通 workflow/helper/template 修补
+strict-3: 3 轮 Claude，训练入口、评估语义、正式实验结论、promotion、baseline 或论文 claim 风险
+validate-ai-cross-review -> 通过后才信任改动
 ```
 
 正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。通过包必须包含：
