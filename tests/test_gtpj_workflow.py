@@ -110,6 +110,31 @@ class WorkflowHelperTest(unittest.TestCase):
         self._write("idea_tree/INDEX.md", "# 总创意清单\n\n")
         self._write("idea_tree/versions/v1.md", "# v1 创意选择清单\n\n")
         self._write(
+            "idea_tree/queues/queue_state.yaml",
+            'schema_version: "gtpj-queue-state/v1"\n'
+            'updated_at: "test"\n'
+            "current_window:\n"
+            '  focus: "test focus"\n'
+            '  policy: "test policy"\n'
+            "actions:\n"
+            '  - priority: "P0"\n'
+            '    item: "Run queue smoke."\n'
+            '    type: "workflow"\n'
+            '    owner: "Coordinator"\n'
+            '    status: "open"\n'
+            '    blocked_by: "-"\n'
+            '    evidence_ref: "NEXT_ACTIONS.md"\n'
+            "completed: []\n"
+            "selected_next: []\n"
+            "module_candidates: []\n"
+            "ablation_questions: []\n"
+            "tuning_questions: []\n",
+        )
+        self._write("idea_tree/queues/01_selected_next.md", "# 已选队列\n\n")
+        self._write("idea_tree/queues/02_module_candidates.md", "# 模块候选\n\n")
+        self._write("idea_tree/queues/03_ablation_questions.md", "# 消融问题队列\n\n")
+        self._write("idea_tree/queues/04_tuning_questions.md", "# 调参问题队列\n\n")
+        self._write(
             "experiments/EXPERIMENT_REGISTRY.md",
             "# Experiment Registry\n\n| Experiment | Version | Kind | Status | Directory | Note |\n"
             "|---|---|---|---|---|---|\n| 暂无 | - | - | - | - | - |\n",
@@ -191,6 +216,7 @@ class WorkflowHelperTest(unittest.TestCase):
             "source_ref": "paper-x",
             "source_status": "verified",
             "global_score": 80,
+            "core_summary": "Token routing core idea.",
             "version_scores": {"v1": version_score},
             "base_versions": ["v1"],
             "based_on_modules": [],
@@ -203,7 +229,6 @@ class WorkflowHelperTest(unittest.TestCase):
             "linked_versions": [],
             "linked_experiments": [],
             "evidence": [],
-            "next_action": "trial",
         }
 
     def _write_idea_tree(self, ideas: list[dict]) -> None:
@@ -1078,10 +1103,40 @@ log:v1:module_trial:TRIAL-001:attempt-001
         global_index = (self.repo / "idea_tree/INDEX.md").read_text(encoding="utf-8")
         v1_view = (self.repo / "idea_tree/versions/v1.md").read_text(encoding="utf-8")
         self.assertIn('"stage": "candidate"', idea_json)
+        self.assertIn('"core_summary": ""', idea_json)
         self.assertIn("总创意清单", global_index)
+        self.assertIn("主要内容", global_index)
+        self.assertNotIn("下一步", global_index)
         self.assertIn("IDEA-0001_token_router/IDEA.md", global_index)
         self.assertIn("v1 创意选择清单", v1_view)
+        self.assertIn("版本适配说明", v1_view)
         self.assertIn("IDEA-0001_token_router/IDEA.md", v1_view)
+
+    def test_todo_status_reports_queue_state(self) -> None:
+        code, stdout, stderr = self._run_main("todo-status")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("todo-status", stdout)
+        self.assertIn("source: idea_tree/queues/queue_state.yaml", stdout)
+        self.assertIn("focus: test focus", stdout)
+        self.assertIn("current_actions: 1 open / 1 total", stdout)
+
+    def test_refresh_todo_writes_owner_views_from_queue_state(self) -> None:
+        code, stdout, stderr = self._run_main("refresh-todo")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("refresh-todo-ok", stdout)
+        next_actions = (self.repo / "NEXT_ACTIONS.md").read_text(encoding="utf-8")
+        candidates = (self.repo / "idea_tree/queues/02_module_candidates.md").read_text(encoding="utf-8")
+        tuning = (self.repo / "idea_tree/queues/04_tuning_questions.md").read_text(encoding="utf-8")
+        self.assertIn("GTPJ 当前待办", next_actions)
+        self.assertIn("Run queue smoke.", next_actions)
+        self.assertIn("queue_state.yaml", candidates)
+        self.assertNotIn("下一步 |", candidates)
+        self.assertIn("experiments/vX/tune/", tuning)
+        self.assertNotIn("experiments/v1/tune/", tuning)
 
     def test_new_trial_requires_explicit_selected_version_stage(self) -> None:
         self._write_selected_idea_files(stage=None)
@@ -1545,6 +1600,70 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(all(update["weight_s2v"] == 0.525 for update in updates))
         self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
 
+    def test_dynamic_routing_batch_plan_has_dr035_min6_confirm_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="dr035-min6-confirm")
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 6)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 7)])
+        self.assertEqual([job["group"] for job in jobs], ["confirm_dr035"] * 6)
+        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 6)
+        self.assertEqual([job["seed"] for job in jobs], [5] * 6)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 6)
+        self.assertEqual(
+            [job["name"] for job in jobs],
+            [
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r1",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r2",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r3",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r4",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r5",
+                "dr035_direction_sample_h48_w0.525_a0.005_s5_r6",
+            ],
+        )
+        self.assertTrue(all(update["use_dynamic_routing"] for update in updates))
+        self.assertTrue(all(update["dynamic_local_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_icsa_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_pse_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+        self.assertTrue(all(update["dynamic_gate_anchor_lambda"] == 0.005 for update in updates))
+        self.assertTrue(all(update["weight_s2v"] == 0.525 for update in updates))
+
+    def test_dynamic_routing_batch_plan_has_h76_existing_routing_100_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="h76-existing-routing-100")
+        groups = Counter(job["group"] for job in jobs)
+        phases = Counter(job["phase"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 100)
+        self.assertEqual(phases["explore"], 100)
+        self.assertEqual(groups["sanity_control"], 4)
+        self.assertEqual(groups["direction_core_tune"], 36)
+        self.assertEqual(groups["direction_micro_tune"], 12)
+        self.assertEqual(groups["direction_pse_tune"], 16)
+        self.assertEqual(groups["local_direction_tune"], 16)
+        self.assertEqual(groups["local_direction_pse_tune"], 8)
+        self.assertEqual(groups["direction_pse_micro_tune"], 4)
+        self.assertEqual(groups["guarded_icsa_direction_tune"], 4)
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(
+            any(
+                update.get("dynamic_direction_mode") == "sample"
+                and update.get("dynamic_gate_hidden") == 48
+                and update.get("dynamic_gate_anchor_lambda") == 0.005
+                and update.get("weight_s2v") == 0.525
+                for update in updates
+            )
+        )
+        self.assertTrue(any(update.get("dynamic_local_mode") == "sample" for update in updates))
+        self.assertTrue(any(update.get("dynamic_pse_mode") == "class" for update in updates))
+        self.assertTrue(any(update.get("dynamic_icsa_mode") in {"sample", "class"} for update in updates))
+        self.assertTrue(
+            all(float(update.get("icsa_ratio", 0.0)) <= 0.004 for update in updates if "icsa_ratio" in update)
+        )
+
     def test_plan_dynamic_routing_batch_rejects_formal_run_without_agent_runtime_gate(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
@@ -1703,6 +1822,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
         plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-WF2-10/plan.json").read_text(encoding="utf-8"))
         self.assertEqual("workflow-v2-2innov-8tune", plan["profile"])
         self.assertEqual(10, len(plan["jobs"]))
+
+    def test_plan_dynamic_routing_batch_accepts_h76_100_job_profile(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-100",
+            "--profile",
+            "h76-existing-routing-100",
+            "--jobs",
+            "100",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 100", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-100/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual("h76-existing-routing-100", plan["profile"])
+        self.assertEqual(100, len(plan["jobs"]))
 
     def test_config_epoch_schedule_uses_lr_stages_total(self) -> None:
         config_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001/config.yaml"

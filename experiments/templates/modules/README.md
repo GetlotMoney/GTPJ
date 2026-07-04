@@ -37,25 +37,22 @@ metrics: U, S, H, ZS
 dataset default: CUB xlsa17 att_splits
 ```
 
-`standard_gzsl_training_template.py` is the full training-entry scaffold for
-formal module trials. The other files are module-level templates. Together they
-are reusable for GTPJ standard GZSL trials, but they are not universal templates
-for every model, dataset, split, or evaluation protocol.
+`standard_gzsl_training_template.py` 是正式 module trials 的完整 training-entry scaffold。
+其它文件是 module-level templates。它们整体可复用于 GTPJ standard GZSL trials，
+但不是适用于所有 model、dataset、split 或 evaluation protocol 的通用模板。
 
-Training entry modes:
+Training entry modes：
 
 ```text
 existing_entry_equivalent: existing train_GTPJ_CUB.py may run if implementation.md maps it to the standard template.
 strict_template_entry: Runner must use a trial-local training_entry.py copied from the standard template.
 ```
 
-Use `strict_template_entry` whenever the owner says to use the new template.
-In that mode, modules that were opened in the old entry must be migrated into
-the trial-local clean entry instead of adding more branches to the old script.
+只要 owner 明确说使用新模板，就使用 `strict_template_entry`。在这种模式下，
+旧入口里已经打开的模块必须迁移到 trial-local clean entry，不要继续往旧脚本加分支。
 
-Engineering rule:
+工程规则：
 
 ```text
-Innovation may be complex internally, but the main training framework may only
-see one standard trial slot.
+创新内部可以复杂，但主训练框架只能看到一个标准 trial slot。
 ```

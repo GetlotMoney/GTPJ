@@ -1,10 +1,10 @@
 # Evidence Routing Protocol
 
-GTPJ workflow-v2 is a tamper-evident append-only evidence state machine.
+GTPJ workflow-v2 是一个防篡改、只追加的证据状态机。
 
 ## Core Object
 
-The workflow routes a concrete subject, not an abstract chat conclusion:
+工作流路由的是具体证据对象，不是抽象聊天结论：
 
 ```text
 subject_id
@@ -18,11 +18,12 @@ transition
 
 ## Authoritative History
 
-`TRANSITIONS.jsonl` is the authoritative state history.
+`TRANSITIONS.jsonl` 是权威状态历史。
 
-`evidence_routing.yaml` is only a materialized view. Its `current_state` must be derived from the chain head in `TRANSITIONS.jsonl`; it must not be hand-edited to claim a stronger state.
+`evidence_routing.yaml` 只是物化视图。它的 `current_state` 必须从
+`TRANSITIONS.jsonl` 的 chain head 推导出来，不能手工编辑成更强的状态。
 
-Each transition records:
+每条 transition 必须记录：
 
 ```text
 previous_transition_id
@@ -30,11 +31,11 @@ previous_transition_hash
 current_transition_hash
 ```
 
-The hash is computed from canonical UTF-8 JSON with sorted keys, excluding `current_transition_hash` itself.
+哈希基于规范化 UTF-8 JSON 计算，字段按 key 排序，并排除 `current_transition_hash` 本身。
 
 ## Transition Authority
 
-Agents do not directly make formal facts true.
+agents 不能直接让正式事实成立。
 
 ```text
 Log Analyst / Result Analyst: propose transition
@@ -42,17 +43,19 @@ Interface Checker / Quality Checker / Reviewer: check transition
 Coordinator: apply transition
 ```
 
-Only an applied transition may update the materialized state.
+只有已经 apply 的 transition 才能更新物化状态。
 
 ## Stop And Failure
 
-Stopping is also a transition. Failures must be structured as `transition_type: stop | block | reject | rerun`, with a `failure_type` when applicable.
+停止也是一种 transition。失败必须结构化记录为
+`transition_type: stop | block | reject | rerun`，必要时同时写明 `failure_type`。
 
 ## Fact Source Boundary
 
-Campaign ledgers may index result refs, quality refs, and next actions. They must not become authoritative sources for H/U/S/ZS.
+campaign 账本可以索引 result refs、quality refs 和 next actions，但不能成为
+H/U/S/ZS 的权威来源。
 
-Formal facts still come from:
+正式事实仍然来自：
 
 ```text
 manifest.yaml
@@ -66,10 +69,11 @@ Warehouse logs/checkpoints/receipts
 
 ## Helper
 
-Use:
+使用：
 
 ```bash
 python workflow/gtpj_workflow.py validate-evidence-routing
 ```
 
-The helper checks transition chain continuity, hash correctness, current-state derivation, authority refs, hard-rule verdicts, and campaign result-index boundaries.
+helper 会检查 transition chain 连续性、哈希正确性、当前状态派生关系、authority refs、
+硬规则 verdict，以及 campaign result-index 边界。

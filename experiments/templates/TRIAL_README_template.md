@@ -47,7 +47,7 @@ confirmed_H:
 confirmation_status:
 ```
 
-`code_branch` is cut from current `main`. `base_code_tag` is the true code source.
+`code_branch` 从当前 `main` 切出。`base_code_tag` 是真实代码来源。
 
 ## Changed Files
 
@@ -79,7 +79,7 @@ baseline_off_explanation:
 paper_writing_note:
 ```
 
-No new module trial may omit source and template mapping. Historical baselines may stay as legacy records.
+新的 module trial 不能省略 source 和 template mapping。历史 baselines 可以作为 legacy records 保留。
 
 ## Result
 
@@ -88,7 +88,8 @@ No new module trial may omit source and template mapping. Historical baselines m
 
 ## Attempts
 
-Detailed attempt records live in `ATTEMPTS.md`. Reproducibility evidence for each attempt should live in `attempts/ATTEMPT-xxx/`, unless this is a legacy single-attempt trial.
+详细 attempt 记录放在 `ATTEMPTS.md`。除非这是 legacy single-attempt trial，否则每个 attempt
+的可复现证据应放在 `attempts/ATTEMPT-xxx/`。
 
 ## Trial Flow
 
@@ -115,19 +116,18 @@ warehouse_artifact:
 code_vs_intent:
 ```
 
-`framework_diagram.md` must include:
+`framework_diagram.md` 必须包含：
 
-- variable glossary: every diagram variable's source, shape, meaning, gradient/detach status, and train/eval difference.
-- method glossary: every diagram method/module's code location, inputs, outputs, responsibility, config switch, and baseline-off behavior.
-- embedded loss flow: each loss is attached to the tensors it reads; do not list all losses only at the end.
-- line semantics: each arrow says whether it is data flow, supervision/target, read-only reference, or config/control.
-- code vs intent note: explicitly state whether the implemented path matches the idea/design.
+- variable glossary：每个图中变量的来源、shape、含义、gradient/detach 状态和 train/eval 差异。
+- method glossary：每个图中 method/module 的代码位置、输入、输出、职责、config switch 和 baseline-off behavior。
+- embedded loss flow：每个 loss 都要贴到它读取的 tensor 上，不能只在末尾列 loss 名。
+- line semantics：每条箭头都要说明是 data flow、supervision/target、read-only reference 还是 config/control。
+- code vs intent note：显式说明实现路径是否符合 idea/design。
 
 ## Code Flow Diagram
 
-Required when this Trial changes forward, loss, evaluation, input/output, tensor
-flow, or code branching logic. Keep this README diagram owner-readable; put full
-variable and method details in `framework_diagram.md`.
+当该 Trial 改变 forward、loss、evaluation、input/output、tensor flow 或 code branching logic
+时必须填写。README 中的图要让 owner 能快速读懂；完整变量和方法细节放在 `framework_diagram.md`。
 
 ```mermaid
 flowchart TD

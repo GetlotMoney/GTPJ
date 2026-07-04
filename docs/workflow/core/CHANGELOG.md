@@ -2,11 +2,11 @@
 
 ## workflow-v1
 
-Original broad workflow protocol set.
+原始的大范围 workflow 协议集合。
 
 ## workflow-v1.5
 
-Slim owner-facing workflow:
+面向 owner 的精简 workflow：
 
 ```text
 START_HERE.md
@@ -16,11 +16,11 @@ TASK_START_MINI.md
 TASK_START_CARD.md
 ```
 
-Daily workflow became usable without reading the whole protocol directory.
+日常 workflow 不再需要读完整 protocol 目录也能使用。
 
 ## workflow-v2
 
-Evidence routing kernel:
+证据路由内核：
 
 ```text
 subject_id / subject_type
@@ -33,11 +33,11 @@ innovation hypothesis decomposition
 validate-evidence-routing
 ```
 
-The goal is not more documentation. The goal is machine-checkable state transition and clear authority refs.
+目标不是增加更多文档，而是让状态迁移可机器检查，并让 authority refs 清晰可追踪。
 
 ## workflow-v2 runtime gate
 
-Added the formal Runner start hard gate:
+新增正式 Runner 启动硬门：
 
 ```text
 AGENT_RUNTIME_HARD_GATE.md
@@ -46,13 +46,13 @@ validate-agent-runtime
 right_sidebar_temporary_agents
 ```
 
-Formal experiments now require real temporary agents with recorded `agent_instance_id`
-and pre-run allow/check before Runner starts. Coordinator single-window execution is
-only candidate/debug evidence, not a complete real_multi_agent workflow.
+正式实验现在要求真实 temporary agents，并在 Runner 启动前记录 `agent_instance_id`
+和 pre-run allow/check。Coordinator 单窗口执行只能算 candidate/debug evidence，
+不是完整 `real_multi_agent` workflow。
 
 ## workflow-v2 right-sidebar cleanup
 
-Added the owner-visible agent cleanup rule:
+新增 owner 可见的 agent cleanup 规则：
 
 ```text
 right_sidebar_retention_policy: current_stage_active_only
@@ -60,14 +60,13 @@ close_completed_agents_on_stage_end: true
 closed_agents_record: AGENT_ACTIVITY.md
 ```
 
-At workflow or stage closeout, Coordinator must record keep/close lists, persist
-completed agent conclusions to `agent_summary.md` / `AGENT_ACTIVITY.md` / result /
-quality / issues / memory, then close completed temporary agents. The right sidebar
-should show current active roles, not historical windows.
+在 workflow 或阶段 closeout 时，Coordinator 必须记录 keep/close lists，把已完成 agent
+结论沉淀到 `agent_summary.md` / `AGENT_ACTIVITY.md` / result / quality / issues / memory，
+然后关闭 completed temporary agents。右侧栏应该显示当前 active roles，而不是历史窗口。
 
 ## workflow-v2 formal multi-agent preflight
 
-Tightened the formal evidence rule:
+收紧正式 evidence 规则：
 
 ```text
 formal_runner_allowed: true
@@ -77,9 +76,7 @@ agent_instance_status / agent_status_refs / agent_output_refs
 multi-agent-preflight helper
 ```
 
-If real multi-agent cannot be proven, formal Runner start is blocked. `role_only`
-and sequential structured review remain useful for read-only triage, drafts and
-debug/smoke, but they cannot be promoted into formal evidence after the fact.
-The helper now verifies local status/output evidence files for each recorded
-temporary sub-agent; Codex tool state must be captured into those files because
-the Python helper cannot query hidden chat-tool sandbox state directly.
+如果无法证明真实 multi-agent，正式 Runner start 必须阻断。`role_only` 和顺序结构化 review
+仍可用于只读 triage、drafts 和 debug/smoke，但不能事后升级为 formal evidence。
+helper 现在会验证每个 recorded temporary sub-agent 的本地 status/output evidence files；
+Codex tool state 必须沉淀到这些文件中，因为 Python helper 不能直接查询隐藏 chat-tool sandbox state。

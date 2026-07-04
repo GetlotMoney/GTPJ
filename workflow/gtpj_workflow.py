@@ -1240,6 +1240,7 @@ def validate_idea_tree_data(data: object) -> tuple[str, list[dict]]:
             "source_ref",
             "source_status",
             "global_score",
+            "core_summary",
             "version_scores",
             "base_versions",
             "based_on_modules",
@@ -1252,7 +1253,6 @@ def validate_idea_tree_data(data: object) -> tuple[str, list[dict]]:
             "linked_versions",
             "linked_experiments",
             "evidence",
-            "next_action",
         ]:
             if field not in idea:
                 raise WorkflowError(f"{idea_id} missing required field: {field}")
@@ -1300,6 +1300,267 @@ def cmd_status(_: argparse.Namespace) -> int:
     print("后续队列:")
     for queue in sorted((REPO_ROOT / "idea_tree" / "queues").glob("*.md")):
         print(f"- {rel(queue)}")
+    return 0
+
+
+def queue_state_path() -> Path:
+    return REPO_ROOT / "idea_tree" / "queues" / "queue_state.yaml"
+
+
+def read_queue_state(path: Path | None = None) -> dict[str, object]:
+    """Parse the small queue_state.yaml subset used by the todo helper."""
+    path = path or queue_state_path()
+    if not path.exists():
+        raise WorkflowError(f"Missing queue state file: {rel(path)}")
+    data: dict[str, object] = {}
+    current_key = ""
+    current_item: dict[str, str] | None = None
+    for raw_line in read_text(path).splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if not raw_line.startswith(" "):
+            match = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if not match:
+                continue
+            current_key = match.group(1)
+            current_item = None
+            value = match.group(2).strip()
+            data[current_key] = yaml_unquote(value) if value else {}
+            continue
+        if not current_key:
+            continue
+        if raw_line.startswith("  - "):
+            if not isinstance(data.get(current_key), list):
+                data[current_key] = []
+            current_item = {}
+            assert isinstance(data[current_key], list)
+            data[current_key].append(current_item)
+            rest = raw_line[4:].strip()
+            if ":" in rest:
+                key, value = rest.split(":", 1)
+                current_item[key.strip()] = yaml_unquote(value.strip())
+            continue
+        if current_item is not None and raw_line.startswith("    "):
+            match = re.match(r"^\s{4}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if match:
+                current_item[match.group(1)] = yaml_unquote(match.group(2).strip())
+            continue
+        if raw_line.startswith("  ") and not raw_line.startswith("    "):
+            match = re.match(r"^\s{2}([A-Za-z0-9_]+):\s*(.*)$", raw_line)
+            if match:
+                section = data.get(current_key)
+                if not isinstance(section, dict):
+                    section = {}
+                    data[current_key] = section
+                section[match.group(1)] = yaml_unquote(match.group(2).strip())
+    return data
+
+
+def queue_items(data: dict[str, object], section: str) -> list[dict[str, str]]:
+    value = data.get(section, [])
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def queue_section(data: dict[str, object], section: str) -> dict[str, str]:
+    value = data.get(section, {})
+    return value if isinstance(value, dict) else {}
+
+
+def render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    lines = [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("---" for _ in headers) + " |",
+    ]
+    lines.extend("| " + " | ".join(str(value) or "-" for value in row) + " |" for row in rows)
+    return lines
+
+
+def queue_markdown_note() -> list[str]:
+    return [
+        "",
+        "> 本文件由 `idea_tree/queues/queue_state.yaml` 生成。修改队列时先改机器源，再运行 `python workflow/gtpj_workflow.py refresh-todo`。",
+        "",
+    ]
+
+
+def render_next_actions(data: dict[str, object]) -> str:
+    window = queue_section(data, "current_window")
+    action_rows = [
+        [
+            item.get("priority", "-"),
+            item.get("item", "-"),
+            item.get("type", "-"),
+            item.get("owner", "-"),
+            item.get("status", "-"),
+            item.get("blocked_by", "-"),
+            item.get("evidence_ref", "-"),
+        ]
+        for item in queue_items(data, "actions")
+    ] or [["-", "当前没有近期动作。", "-", "-", "-", "-", "-"]]
+    done_rows = [
+        [
+            item.get("item", "-"),
+            item.get("evidence_ref", "-"),
+        ]
+        for item in queue_items(data, "completed")
+    ] or [["-", "-"]]
+    lines = [
+        "# GTPJ 当前待办",
+        "",
+        "这是当前执行窗口，只保留近期优先动作；完整创意库不放在这里。",
+        "",
+        f"- 当前关注：{window.get('focus', '-')}",
+        f"- 管理规则：{window.get('policy', '只保留 3-7 条近期动作；具体实验动作写入 task/trial/attempt。')}",
+        f"- 更新时间：{data.get('updated_at', '-')}",
+        "",
+        "## 当前窗口",
+        "",
+        *render_table(["优先级", "事项", "类型", "负责人", "状态", "阻塞", "证据位置"], action_rows),
+        "",
+        "## 已完成摘要",
+        "",
+        *render_table(["事项", "证据位置"], done_rows),
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def render_selected_next(data: dict[str, object]) -> str:
+    rows = [
+        [
+            item.get("subject_id", "-"),
+            item.get("idea", "-"),
+            item.get("base_version", "-"),
+            item.get("state", "-"),
+            item.get("reason", "-"),
+            item.get("evidence_ref", "-"),
+        ]
+        for item in queue_items(data, "selected_next")
+    ]
+    lines = ["# 已选队列", *queue_markdown_note()]
+    if rows:
+        lines.extend(render_table(["对象", "Idea", "基于版本", "状态", "入队理由", "证据位置"], rows))
+    else:
+        lines.append("当前没有已选中的 module trial。")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_module_candidates(data: dict[str, object]) -> str:
+    rows = [
+        [
+            item.get("idea", "-"),
+            item.get("candidate", "-"),
+            item.get("switch", "-"),
+            item.get("source_status", "-"),
+            item.get("priority", "-"),
+            item.get("reason", "-"),
+            item.get("state", "-"),
+        ]
+        for item in queue_items(data, "module_candidates")
+    ]
+    lines = [
+        "# 模块候选",
+        *queue_markdown_note(),
+        "规则：任何新候选必须先进入 `idea_tree/inbox.md`，补全来源后才能登记为 `idea_tree/ideas/IDEA-xxxx_slug/IDEA.md`。",
+        "",
+    ]
+    if rows:
+        lines.extend(render_table(["Idea", "候选", "主开关", "来源状态", "优先级", "入队理由", "当前状态"], rows))
+    else:
+        lines.append("当前没有模块候选。")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_ablation_questions(data: dict[str, object]) -> str:
+    rows = [
+        [
+            item.get("question", "-"),
+            item.get("subject", "-"),
+            item.get("type", "-"),
+            item.get("priority", "-"),
+            item.get("reason", "-"),
+            item.get("state", "-"),
+        ]
+        for item in queue_items(data, "ablation_questions")
+    ]
+    lines = ["# 消融问题队列", *queue_markdown_note()]
+    if rows:
+        lines.extend(render_table(["问题", "所属对象", "类型", "优先级", "入队理由", "当前状态"], rows))
+    else:
+        lines.append("当前没有待做消融问题。")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_tuning_questions(data: dict[str, object]) -> str:
+    rows = [
+        [
+            item.get("question", "-"),
+            item.get("base_version", "-"),
+            item.get("parameter_scope", "-"),
+            item.get("priority", "-"),
+            item.get("reason", "-"),
+            item.get("state", "-"),
+        ]
+        for item in queue_items(data, "tuning_questions")
+    ]
+    lines = [
+        "# 调参问题队列",
+        *queue_markdown_note(),
+        "调参实验按 base version 写入 `experiments/vX/tune/`；trial 内部调参写入对应 trial 的 `attempts/ATTEMPT-xxx/`。",
+        "",
+    ]
+    if rows:
+        lines.extend(render_table(["问题", "基于版本", "参数/范围", "优先级", "入队理由", "当前状态"], rows))
+    else:
+        lines.append("当前没有待做调参问题。")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_todo_views(data: dict[str, object]) -> None:
+    outputs = {
+        "NEXT_ACTIONS.md": render_next_actions(data),
+        "idea_tree/queues/01_selected_next.md": render_selected_next(data),
+        "idea_tree/queues/02_module_candidates.md": render_module_candidates(data),
+        "idea_tree/queues/03_ablation_questions.md": render_ablation_questions(data),
+        "idea_tree/queues/04_tuning_questions.md": render_tuning_questions(data),
+    }
+    for relative, content in outputs.items():
+        path = REPO_ROOT / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content.rstrip() + "\n", encoding="utf-8")
+
+
+def cmd_refresh_todo(_: argparse.Namespace) -> int:
+    data = read_queue_state()
+    write_todo_views(data)
+    print("refresh-todo-ok")
+    print(f"source={rel(queue_state_path())}")
+    return 0
+
+
+def cmd_todo_status(_: argparse.Namespace) -> int:
+    data = read_queue_state()
+    window = queue_section(data, "current_window")
+    print("todo-status")
+    print(f"- source: {rel(queue_state_path())}")
+    print(f"- updated_at: {data.get('updated_at', '-')}")
+    print(f"- focus: {window.get('focus', '-')}")
+    for section, label in [
+        ("actions", "current_actions"),
+        ("selected_next", "selected_next"),
+        ("module_candidates", "module_candidates"),
+        ("ablation_questions", "ablation_questions"),
+        ("tuning_questions", "tuning_questions"),
+    ]:
+        items = queue_items(data, section)
+        open_items = [item for item in items if item.get("status", item.get("state", "open")) != "done"]
+        print(f"- {label}: {len(open_items)} open / {len(items)} total")
     return 0
 
 
@@ -1392,6 +1653,11 @@ def required_repository_files() -> list[str]:
         "idea_tree/idea_tree.json",
         "idea_tree/versions/v1.md",
         "idea_tree/versions/v2.md",
+        "idea_tree/queues/queue_state.yaml",
+        "idea_tree/queues/01_selected_next.md",
+        "idea_tree/queues/02_module_candidates.md",
+        "idea_tree/queues/03_ablation_questions.md",
+        "idea_tree/queues/04_tuning_questions.md",
         "experiments/README.md",
         "experiments/EXPERIMENT_REGISTRY.md",
         "experiments/VERSION_TREE.md",
@@ -4322,11 +4588,6 @@ def sync_idea_tree_from_trial(
         idea["linked_trials"].append(trial_rel)
     delta_h = metric_delta_h(version, metrics)
     reference = comparison_reference_phrase(version) if version in CANONICAL_BASELINES else version
-    idea["next_action"] = (
-        f"{trial_id} {attempt_upper} synchronized as {decision}: "
-        f"H={metrics.get('H', '')}, delta_H={delta_h or '-'} vs {reference}; "
-        + trial_followup_phrase(version, decision)
-    )
     evidence_ref = f"{trial_rel}/result.yaml"
     note = (
         f"{attempt_upper} H={metrics.get('H', '')}, delta_H={delta_h or '-'} "
@@ -7149,6 +7410,17 @@ def idea_file_for_row(idea: dict) -> str:
     return f"{str(idea_dir).rstrip('/')}/IDEA.md" if idea_dir else ""
 
 
+def idea_core_summary(idea: dict) -> str:
+    summary = str(idea.get("core_summary", "")).strip()
+    if summary:
+        return summary
+    hypothesis = str(idea.get("hypothesis", "")).strip()
+    if hypothesis:
+        return hypothesis
+    target = str(idea.get("target_component", "")).strip()
+    return target or "待补充核心机制。"
+
+
 def write_idea_index(data: dict) -> None:
     current_version = data.get("current_version", "v1")
     ideas = sorted(
@@ -7164,10 +7436,10 @@ def write_idea_index(data: dict) -> None:
         "",
         f"当前实验版本视图：`idea_tree/versions/{current_version}.md`",
         "",
-        "这是给人读的全局创意总表，只回答“有哪些创意”。",
-        "具体某个版本下一步试什么，请读取 `idea_tree/versions/vX.md`。",
+        "这是给人读的全局创意总表，只回答“有哪些创意、主要机制是什么”。",
+        "它是各版本挑选 idea 的公共菜市场，不记录任何局部执行动作或实验计划。",
         "",
-        "| Idea | 标题 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 | 下一步 |",
+        "| Idea | 标题 | 主要内容 | Idea 文件 | 来源状态 | 全局分 | 覆盖版本 | 全局状态 |",
         "|---|---|---|---|---:|---|---|---|",
     ]
     for idea in ideas:
@@ -7175,9 +7447,10 @@ def write_idea_index(data: dict) -> None:
         lines.append(
             "| "
             f"`{idea.get('idea_id', '')}` | {idea.get('title', '')} | "
+            f"{idea_core_summary(idea)} | "
             f"`{idea_file_for_row(idea)}` | {idea.get('source_status', '')} | "
             f"{idea.get('global_score', 0)} | {versions or '-'} | "
-            f"{idea.get('status', '')} | {idea.get('next_action', '')} |"
+            f"{idea.get('status', '')} |"
         )
     if not ideas:
         lines.append("| - | - | - | - | - | - | - | 等待从可靠来源重新登记。 |")
@@ -7189,6 +7462,7 @@ def write_idea_index(data: dict) -> None:
             "",
             "- 本文件是总清单，不直接作为实验优先级队列。",
             "- 按版本选择创新 trial 时，读取 `idea_tree/versions/<base_version>.md`。",
+            "- 具体执行动作只能写入版本队列、trial/attempt 记录、task card 或实验结果文件，不写入本总表。",
             "- `idea_tree.json` 是唯一机器事实源；本文件由 helper 刷新。",
             "",
         ]
@@ -7217,7 +7491,7 @@ def write_idea_version_doc(data: dict, version: str) -> None:
         f"本文件只展示适用于 `{version}` 的创意视图。总创意库见 `idea_tree/INDEX.md`。",
         "`idea_tree.json` 是唯一机器事实源；本文件由 helper 刷新。",
         "",
-        "| 排名 | Idea | 标题 | Idea 文件 | 优先级 | 适用性 | 阶段 | 阻塞点 | 下一步 |",
+        "| 排名 | Idea | 标题 | Idea 文件 | 优先级 | 适用性 | 阶段 | 阻塞点 | 版本适配说明 |",
         "|---:|---|---|---|---:|---|---|---|---|",
     ]
     for rank, idea in enumerate(ideas, 1):
@@ -7230,7 +7504,7 @@ def write_idea_version_doc(data: dict, version: str) -> None:
             f"`{idea_file_for_row(idea)}` | {entry.get('score', 0)} | "
             f"{entry.get('applicability', '')} | {idea_version_stage(idea, version)} | "
             f"{blocker_text} | "
-            f"{idea.get('next_action', '')} |"
+            f"{entry.get('rationale', '')} |"
         )
     if not ideas:
         lines.append("| - | - | - | - | - | - | - | - | 当前版本还没有可选创意。 |")
@@ -7904,6 +8178,7 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         "source_ref": args.source_ref or "",
         "source_status": args.source_status,
         "global_score": global_score,
+        "core_summary": "",
         "version_scores": {
             base_version: {
                 "score": version_score,
@@ -7927,7 +8202,6 @@ def cmd_new_idea(args: argparse.Namespace) -> int:
         "linked_versions": [],
         "linked_experiments": [],
         "evidence": [],
-        "next_action": "补全 IDEA.md，并决定是否选中",
     }
     idea_dir = REPO_ROOT / idea_dir_rel
     ensure_dir(idea_dir)
@@ -9728,10 +10002,10 @@ def _workflow_v2_2innov_8tune_specs() -> list[tuple[str, str, dict[str, object]]
     return specs
 
 
-def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
+def _dr035_confirm_specs(repeat_count: int) -> list[tuple[str, str, dict[str, object]]]:
     specs: list[tuple[str, str, dict[str, object]]] = []
     source_seed = 5
-    for repeat_index in [1, 2, 3]:
+    for repeat_index in range(1, repeat_count + 1):
         specs.append(
             (
                 "confirm_dr035",
@@ -9746,8 +10020,184 @@ def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
             )
         )
 
-    if len(specs) != 3:
-        raise WorkflowError(f"DR-035 min3 confirmation plan must contain 3 jobs, got {len(specs)}")
+    if len(specs) != repeat_count:
+        raise WorkflowError(f"DR-035 confirmation plan must contain {repeat_count} jobs, got {len(specs)}")
+    return specs
+
+
+def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
+    return _dr035_confirm_specs(3)
+
+
+def _dr035_min6_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
+    return _dr035_confirm_specs(6)
+
+
+def _h76_existing_routing_100_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = [
+        ("sanity_control", "static_v5_control", {"use_dynamic_routing": False}),
+        ("sanity_control", "dynamic_fixed_all", _dynamic_updates()),
+        (
+            "sanity_control",
+            "dr035_fixed_direction_h48_w0.525_a0.005",
+            _dynamic_updates(
+                dynamic_direction_mode="fixed",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.005,
+                weight_s2v=0.525,
+            ),
+        ),
+        (
+            "sanity_control",
+            "dr035_source_config_shadow",
+            _dynamic_updates(
+                dynamic_direction_mode="sample",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.005,
+                weight_s2v=0.525,
+            ),
+        ),
+    ]
+
+    for hidden in [40, 48, 56]:
+        for weight_s2v in [0.50, 0.525, 0.55, 0.575]:
+            for anchor in [0.003, 0.005, 0.007]:
+                specs.append(
+                    (
+                        "direction_core_tune",
+                        f"direction_sample_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                        _dynamic_updates(
+                            dynamic_direction_mode="sample",
+                            dynamic_gate_hidden=hidden,
+                            dynamic_gate_anchor_lambda=anchor,
+                            weight_s2v=weight_s2v,
+                        ),
+                    )
+                )
+
+    for weight_s2v in [0.515, 0.525, 0.535, 0.545]:
+        for anchor in [0.002, 0.004, 0.006]:
+            specs.append(
+                (
+                    "direction_micro_tune",
+                    f"direction_sample_h48_w{weight_s2v:g}_a{anchor:g}",
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                    ),
+                )
+            )
+
+    for hidden in [48, 56]:
+        for weight_s2v in [0.50, 0.525, 0.55, 0.575]:
+            for pse_outer_ratio in [0.55, 0.60]:
+                specs.append(
+                    (
+                        "direction_pse_tune",
+                        f"dp_h{hidden}_w{weight_s2v:g}_p{pse_outer_ratio:g}_a0.005",
+                        _dynamic_updates(
+                            dynamic_direction_mode="sample",
+                            dynamic_pse_mode="class",
+                            dynamic_gate_hidden=hidden,
+                            dynamic_gate_anchor_lambda=0.005,
+                            weight_s2v=weight_s2v,
+                            pse_outer_ratio=pse_outer_ratio,
+                        ),
+                    )
+                )
+
+    for hidden in [48, 56]:
+        for weight_s2v in [0.50, 0.525, 0.55, 0.575]:
+            for local_weight in [0.06, 0.08]:
+                specs.append(
+                    (
+                        "local_direction_tune",
+                        f"ld_sample_h{hidden}_l{local_weight:g}_w{weight_s2v:g}_a0.005",
+                        _dynamic_updates(
+                            dynamic_local_mode="sample",
+                            dynamic_direction_mode="sample",
+                            dynamic_gate_hidden=hidden,
+                            dynamic_gate_anchor_lambda=0.005,
+                            local_weight=local_weight,
+                            weight_s2v=weight_s2v,
+                        ),
+                    )
+                )
+
+    for name, local_mode, hidden, local_weight, weight_s2v, pse_outer_ratio, anchor in [
+        ("ldp_sample_h48_l0.06_w0.525_p0.55_a0.005", "sample", 48, 0.06, 0.525, 0.55, 0.005),
+        ("ldp_sample_h48_l0.08_w0.525_p0.60_a0.005", "sample", 48, 0.08, 0.525, 0.60, 0.005),
+        ("ldp_sample_h56_l0.06_w0.55_p0.55_a0.005", "sample", 56, 0.06, 0.55, 0.55, 0.005),
+        ("ldp_sample_h56_l0.08_w0.55_p0.60_a0.007", "sample", 56, 0.08, 0.55, 0.60, 0.007),
+        ("ldp_class_h48_l0.06_w0.525_p0.55_a0.005", "class", 48, 0.06, 0.525, 0.55, 0.005),
+        ("ldp_class_h48_l0.08_w0.525_p0.60_a0.005", "class", 48, 0.08, 0.525, 0.60, 0.005),
+        ("ldp_class_h56_l0.06_w0.55_p0.55_a0.005", "class", 56, 0.06, 0.55, 0.55, 0.005),
+        ("ldp_class_h56_l0.08_w0.55_p0.60_a0.007", "class", 56, 0.08, 0.55, 0.60, 0.007),
+    ]:
+        specs.append(
+            (
+                "local_direction_pse_tune",
+                name,
+                _dynamic_updates(
+                    dynamic_local_mode=local_mode,
+                    dynamic_direction_mode="sample",
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=local_weight,
+                    weight_s2v=weight_s2v,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    for name, hidden, weight_s2v, pse_outer_ratio, anchor in [
+        ("dp_micro_h48_w0.515_p0.55_a0.004", 48, 0.515, 0.55, 0.004),
+        ("dp_micro_h48_w0.535_p0.55_a0.004", 48, 0.535, 0.55, 0.004),
+        ("dp_micro_h56_w0.525_p0.60_a0.006", 56, 0.525, 0.60, 0.006),
+        ("dp_micro_h56_w0.545_p0.60_a0.006", 56, 0.545, 0.60, 0.006),
+    ]:
+        specs.append(
+            (
+                "direction_pse_micro_tune",
+                name,
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    pse_outer_ratio=pse_outer_ratio,
+                ),
+            )
+        )
+
+    for name, icsa_mode, hidden, icsa_ratio, weight_s2v, anchor in [
+        ("icsa_guard_sample_h48_r0.002_w0.525_a0.005", "sample", 48, 0.002, 0.525, 0.005),
+        ("icsa_guard_class_h48_r0.002_w0.525_a0.005", "class", 48, 0.002, 0.525, 0.005),
+        ("icsa_guard_sample_h56_r0.004_w0.55_a0.005", "sample", 56, 0.004, 0.55, 0.005),
+        ("icsa_guard_class_h56_r0.004_w0.55_a0.005", "class", 56, 0.004, 0.55, 0.005),
+    ]:
+        specs.append(
+            (
+                "guarded_icsa_direction_tune",
+                name,
+                _dynamic_updates(
+                    dynamic_icsa_mode=icsa_mode,
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    icsa_ratio=icsa_ratio,
+                    conditional_text_ratio=icsa_ratio,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
+
+    if len(specs) != 100:
+        raise WorkflowError(f"H=76 existing-routing plan must contain 100 jobs, got {len(specs)}")
     return specs
 
 
@@ -9778,6 +10228,12 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         repeat_source_ranks = []
     elif profile == "dr035-min3-confirm":
         specs = _dr035_min3_confirm_specs()
+        repeat_source_ranks = []
+    elif profile == "dr035-min6-confirm":
+        specs = _dr035_min6_confirm_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-existing-routing-100":
+        specs = _h76_existing_routing_100_specs()
         repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
@@ -10590,6 +11046,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status", help="显示仓库状态")
     status.set_defaults(func=cmd_status)
+
+    todo_status = sub.add_parser("todo-status", help="只读汇报当前待办窗口和队列计数")
+    todo_status.set_defaults(func=cmd_todo_status)
+
+    refresh_todo = sub.add_parser("refresh-todo", help="从 queue_state.yaml 刷新 NEXT_ACTIONS 和队列 Markdown")
+    refresh_todo.set_defaults(func=cmd_refresh_todo)
 
     repro_status = sub.add_parser("repro-status", help="只读显示 baseline 复现状态")
     repro_status.add_argument("--version", default="")

@@ -99,8 +99,8 @@ idea_tree/queues/01_selected_next.md 或 02_module_candidates.md
 ## 同步边界
 
 ```text
-Research: 完整阅读、长推理、源码复核、候选 idea 草稿
-GitHub: paper/source 轻量索引、正式 idea、版本评分、next_action
+Research: 完整阅读、长推理、源码复核、候选 idea 草稿和决策历史
+GitHub: paper/source 轻量索引、正式 idea、主要机制、版本评分和证据引用
 Warehouse: paper intake 通常不写；只有生成大型 OCR/图表/长报告时才登记
 ```
 

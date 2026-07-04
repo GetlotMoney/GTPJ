@@ -40,14 +40,17 @@ idea_id
 来源 paper/code/user observation
 source_status
 global_score
+core_summary
 version_scores.v1/v2/vX
 hypothesis
 implementation_scope
 risk
 linked_trials
 evidence artifact id / research URI
-next_action
 ```
+
+`core_summary` 只描述这个创意的主要机制或模块内容。它不是下一步动作。
+全局 idea 记录禁止写 `next_action` 这类局部执行计划字段。
 
 不要把完整论文笔记、长摘录、完整方法复盘、长版草稿或大量失败分支写入 GitHub。
 
@@ -140,10 +143,12 @@ idea_tree/idea_tree.json    机器可读唯一事实源
 - 每个模块 trial 必须有 `idea_id`。
 - 没有 `idea_id`，就不能创建 `dev/vX-idea-*` 分支。
 - tune 和 ablation 问题不会直接变成 idea 节点。
-- `idea_tree/INDEX.md` 是给人读的总创意清单。它必须展示每个创意文件路径和覆盖版本。
-  它不直接决定下一步试什么。
-- `idea_tree/versions/vX.md` 是给人读的版本选择清单。决定某个版本下一步创新 trial 时，
-  只读对应版本文件，例如 `idea_tree/versions/v1.md`。
+- `idea_tree/INDEX.md` 是给人读的总创意清单。它必须展示每个创意主要内容、文件路径和覆盖版本。
+  它是各版本挑选 idea 的公共货架，不直接决定下一步试什么，也不写局部实验动作。
+- `idea_tree/versions/vX.md` 是给人读的版本选择清单。它只说明该版本下的适配分、阶段、
+  阻塞点和适配理由，不替代 trial/attempt 计划。
+- 具体下一步动作只能写在 `idea_tree/queues/`、task card、trial/attempt 记录、
+  result/quality 文件或版本级执行计划中，不能写入全局 `INDEX.md` 或全局 idea 字段。
 - `idea_tree/idea_tree.json` 是机器可读的注册表。它必须包含同样的 `idea_id`、
   `idea_dir`、global score 和 per-version scores。
 - 每个创意必须有自己的文件：`idea_tree/ideas/IDEA-xxxx_slug/IDEA.md`。

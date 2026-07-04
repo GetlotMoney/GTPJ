@@ -1,16 +1,17 @@
 # Code Interface Contract Alias
 
-The canonical code interface contract is:
+权威 code interface contract 是：
 
 ```text
 docs/workflow/protocols/code_interface_contract.md
 ```
 
-This file exists so external checklists, agents, or prompts that look for `docs/workflow/reference/code_interface.md` do not miss the interface gate.
+本文件用于兼容会查找 `docs/workflow/reference/code_interface.md` 的外部 checklist、agents
+或 prompts，避免它们错过 interface gate。
 
-Rules:
+规则：
 
-- Read `docs/workflow/protocols/code_interface_contract.md` before changing model code, forward paths, loss, data flow, scoring, or evaluation behavior.
-- If the change comes from an idea, innovation, paper module, official code, or module trial, also read `docs/workflow/protocols/innovation_code_review_protocol.md`.
-- If interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence.
-- Unclear interface evidence blocks Runner, `keep`, and `promote`.
+- 修改 model code、forward paths、loss、data flow、scoring 或 evaluation behavior 前，先读 `docs/workflow/protocols/code_interface_contract.md`。
+- 如果改动来自 idea、innovation、paper module、official code 或 module trial，也要读 `docs/workflow/protocols/innovation_code_review_protocol.md`。
+- 如果 interface、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚，该实验就是 invalid evidence。
+- interface evidence 不清楚时，Runner、`keep` 和 `promote` 全部阻断。

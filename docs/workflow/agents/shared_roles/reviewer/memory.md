@@ -18,7 +18,7 @@
 - workflow compliance
 - evidence completeness
 - interface/metric risks
-- sync between GitHub docs, local skill, Research, and Warehouse.
+- GitHub docs、local skill、Research 和 Warehouse 之间的同步状态。
 
 ## Update Rules
 

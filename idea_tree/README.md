@@ -9,8 +9,12 @@
 D:\Backup\Documents\Myself\GTPJ_Research
 ```
 
-GitHub 这里只保存能让实验可追溯的最小证据：idea id、来源、版本评分、假设、
-实现范围、风险、关联 trial、artifact/research URI 和下一步。
+GitHub 这里只保存能让实验可追溯的最小证据：idea id、来源、主要机制、版本评分、
+假设、实现范围、风险、关联 trial 和 artifact/research URI。
+
+总创意清单是各个版本挑选 idea 的公共“菜市场”。它只说明“这个创意主要是什么”，
+不写某个版本、某个实验或某个人的局部执行动作。具体执行动作只能写到版本队列、
+trial/attempt、task card 或实验结果文件中，避免全局索引污染局部实验决策。
 
 `inbox.md` 用来暂存粗糙想法。只有来源和版本适配记录清楚的想法，才移动成稳定的
 `IDEA-xxxx` 节点。没有 idea 节点，就不能启动模块 trial。
@@ -26,7 +30,7 @@ idea_tree/
 |-- versions/
 |   |-- v1.md                # v1 创意选择清单
 |   `-- v2.md                # v2 创意选择清单
-|-- queues/                  # 从总索引派生出的当前执行队列
+|-- queues/                  # 从总索引派生出的当前执行队列；queue_state.yaml 是机器源
 `-- sources/                 # 论文/来源索引
 ```
 
@@ -40,13 +44,13 @@ idea_id
 来源 paper/code/user observation
 source_status
 global_score
+core_summary
 version_scores.v1/v2/vX
 hypothesis
 implementation_scope
 risk
 linked_trials
 evidence artifact id / research URI
-next_action
 ```
 
 不要在这里写完整论文笔记、长摘录、长推理或草稿。
@@ -61,8 +65,17 @@ version_scores.v1 = 这个创意对 GTPJ-v1 的适配记录
 version_scores.v2 = 这个创意对 GTPJ-v2 的适配记录
 ```
 
-`INDEX.md` 是总创意清单，只回答项目里有哪些创意。某个版本下一步适合试什么，
-读取 `versions/<version>.md`，例如 `versions/v1.md`。
+`INDEX.md` 是总创意清单，只回答项目里有哪些创意、主要机制是什么。它不是任何
+版本的执行计划。某个版本要挑选什么 idea，读取 `versions/<version>.md`，
+例如 `versions/v1.md`；真正的执行动作再落到 queue、trial、attempt 或 task card。
+
+`queues/queue_state.yaml` 是当前队列的机器源。`NEXT_ACTIONS.md` 和 `queues/*.md`
+由 helper 刷新：
+
+```bash
+python workflow/gtpj_workflow.py todo-status
+python workflow/gtpj_workflow.py refresh-todo
+```
 
 一个创意可以同时适用于多个版本，但每个版本可以有不同分数、阶段和实现说明。
 

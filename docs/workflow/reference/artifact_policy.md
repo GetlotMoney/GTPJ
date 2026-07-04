@@ -1,10 +1,11 @@
 # Artifact Policy
 
-This file defines the GitHub boundary and external artifact boundary for GTPJ. The goal is to keep GitHub as a lightweight fact index while preserving a complete evidence chain.
+本文定义 GTPJ 的 GitHub 边界和外部 artifact 边界。目标是让 GitHub 保持为轻量事实索引，
+同时保留完整证据链。
 
 ## GitHub Boundary
 
-GitHub is the reproducible control plane, governance source, and lightweight fact index. It must answer:
+GitHub 是可复现控制面、治理事实源和轻量事实索引。它必须能回答：
 
 ```text
 How can this result be reproduced?
@@ -14,19 +15,23 @@ Which code, config, command, seed, dataset split, label mapping, class order, an
 Which external artifact is the raw evidence, where is it, and what is its hash?
 ```
 
-GitHub does not store raw logs, checkpoints, generated experiment figures, full paper-reading material, full idea-tree reasoning, long innovation drafts, or paper-note libraries.
+GitHub 不保存 raw logs、checkpoints、生成的实验图、完整论文阅读材料、完整创意树推理、
+长创新草稿或论文笔记库。
 
-For idea records, GitHub stores only the stable fields needed to reproduce and audit an experiment:
+对于 idea 记录，GitHub 只保存复现和审计实验所需的稳定字段：
 
 ```text
 idea_id, title, source reference, source_status, global_score,
-version_scores.vX, hypothesis, implementation_scope, risk,
-linked_trials, evidence artifact ids or research URIs, and next_action.
+core_summary, version_scores.vX, hypothesis, implementation_scope, risk,
+linked_trials, and evidence artifact ids or research URIs.
 ```
+
+全局 idea 记录只描述创意本身和可追溯证据，不保存局部下一步动作。执行动作应写入
+queue、trial/attempt、task card 或 result/quality 文件。
 
 ## External Stores
 
-External directories carry complete materials and large assets:
+外部目录保存完整材料和大型资产：
 
 ```text
 GTPJ_Research
@@ -38,25 +43,23 @@ GTPJ_Warehouse
 
 ## Checkpoint Retention
 
-Training checkpoints are not permanent evidence by default. After an experiment
-campaign is parsed and its logs/receipts/configs are registered, Warehouse should
-retain only the Top-3 `model_best`/best-model checkpoints by H among the retained
-candidate set. All other training checkpoints (`*.pth`, `*.pt`, `*.ckpt`) may be
-deleted after a retention manifest records what was kept and removed.
+训练 checkpoint 默认不是永久证据。一次 experiment campaign 被解析，并且 logs/receipts/configs
+已经注册后，Warehouse 在保留候选集合中只保留按 H 排名前三（Top-3）的 `model_best`/best-model
+checkpoints。其它训练 checkpoints（`*.pth`、`*.pt`、`*.ckpt`）可以在 retention manifest
+记录保留和删除内容后删除。
 
-Do not delete logs, receipts, configs, summaries, manifests, or registry files
-when applying checkpoint retention. They are the audit trail. If a removed
-checkpoint had already been registered as an artifact, keep its artifact id and
-mark the artifact reference as `pruned` instead of deleting the evidence row.
+执行 checkpoint retention 时，不要删除 logs、receipts、configs、summaries、manifests
+或 registry files。它们是审计轨迹。如果被删除的 checkpoint 已经注册为 artifact，
+保留 artifact id，并把 artifact reference 标记为 `pruned`，不要删除证据行。
 
-GitHub references external assets through logical URIs:
+GitHub 通过 logical URIs 引用外部资产：
 
 ```text
 warehouse://gtpj/runs/v1/tune/TUNE-001_topo008/attempt-001/logs/train.log
 research://ideas/IDEA-0001.md
 ```
 
-Local physical paths are stored in the ignored local file:
+本地物理路径存放在被忽略的本地文件中：
 
 ```text
 .gtpj/local_paths.yaml
@@ -64,7 +67,7 @@ Local physical paths are stored in the ignored local file:
 
 ## Artifact Identity
 
-Every external artifact that enters the evidence chain must have a stable identity, not just a path:
+每个进入证据链的外部 artifact 必须有稳定身份，而不能只有路径：
 
 ```text
 artifact_id
@@ -78,52 +81,52 @@ required_for
 status
 ```
 
-A path only says where the file is. The hash and size prove which exact file it is.
+路径只能说明文件在哪里；哈希和大小才能证明它到底是哪一个文件。
 
 ## Forbidden GitHub Artifacts
 
-Do not commit these to GitHub:
+不要把以下内容提交到 GitHub：
 
 - `train_log/`
 - `experiments/**/logs/*`
 - `experiments/**/checkpoints/*`
-- generated experiment figures under `experiments/**/figures/*`
+- `experiments/**/figures/*` 下生成的实验图
 - `*.pt`, `*.pth`, `*.ckpt`, `*.onnx`
 - `*.npy`, `*.npz`
-- raw datasets, feature caches, tensor dumps
-- paper PDFs, complete OCR dumps, complete reading libraries, complete idea trees
+- 原始 datasets、feature caches、tensor dumps
+- paper PDFs、完整 OCR dumps、完整 reading libraries、完整 idea trees
 - `.gtpj/local_paths.yaml`, `.gtpj/locks/`, `.gtpj_runtime/`
 
-Allowed GitHub artifacts:
+允许进入 GitHub 的 artifacts：
 
-- code, config, schema, workflow helper
+- code、config、schema、workflow helper
 - `manifest.yaml`
 - `result.yaml`
 - `result.md`
 - `quality_check.md`
 - `agent_summary.md`
-- version tree, experiment registry, lightweight idea index
-- small hand-maintained explanatory figure source files, while generated experiment figures must stay external
+- version tree、experiment registry、轻量 idea index
+- 小型手工维护的解释性图源文件；生成的实验图仍必须留在外部
 
 ## Boundary Audit
 
-Before committing, run:
+提交前运行：
 
 ```bash
 python workflow/gtpj_workflow.py audit-boundary
 ```
 
-`audit-boundary` checks that:
+`audit-boundary` 检查：
 
-- raw logs, checkpoints, generated figures, and caches are not tracked or commit candidates under `experiments/`
-- old `copied_log` evidence does not continue as the new evidence model
-- result records point to manifests
-- manifests point to external artifact identities
-- GitHub does not contain assets that belong in the external stores
+- `experiments/` 下 raw logs、checkpoints、generated figures 和 caches 没有被 track 或进入 commit candidate；
+- 旧的 `copied_log` 证据模式没有继续作为新证据模型；
+- result records 指向 manifests；
+- manifests 指向外部 artifact identities；
+- GitHub 不包含应该放在外部存储中的资产。
 
 ## Legacy Migration
 
-The historical `GTPJ-v1 / tag v1 / H=73.93` baseline log was migrated to the local warehouse:
+历史 `GTPJ-v1 / tag v1 / H=73.93` baseline log 已迁移到本地 Warehouse：
 
 ```text
 artifact_id: log:legacy:v1_baseline:GTPJ-v1_CUB_seed5_20260613-145232
@@ -132,4 +135,5 @@ sha256: 850a01a5c1500f75fef3d9729b8e89b47c78aa40203792341b03515ddc5edfb9
 size_bytes: 139148
 ```
 
-The repository should not keep any Git-tracked raw log exception. Historical evidence remains reproducible through the external artifact pointer, hash, config snapshot, result record, and quality record.
+仓库不应保留任何 Git-tracked raw log 例外。历史证据通过外部 artifact pointer、hash、
+config snapshot、result record 和 quality record 保持可复现。

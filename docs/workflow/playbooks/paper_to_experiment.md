@@ -62,7 +62,8 @@ paper_inbox
    和 `agent-cleanup-plan`，并明确 owner-visible monitor loop。
 9. 结果反馈：`record-module-attempt`、`sync-trial-summary`、`closeout-check` 后，更新
    Research 的 `decision_history.md` 或 `experiment_plan.md`，并回写 idea_tree 的
-   status、version score、risk、linked_trials 和 next_action。
+   status、version score、risk、linked_trials、evidence 和必要的版本适配说明。具体下一步动作
+   只能写入 selected queue、trial/attempt、task card 或 result/quality 文件，不写入全局 idea 总表。
 
 ## 写入边界
 

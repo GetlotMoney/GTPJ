@@ -12,6 +12,7 @@
       "source_ref": "paper:Enhancing CLIP with GPT-4; code:https://github.com/mayug/VDT-Adapter",
       "source_status": "verified",
       "global_score": 82.0,
+      "core_summary": "用 CLIP-A-self 对 seen-class GPT/VDT 句子描述做自注意力聚合，增强文本原型适配器，同时保持 GZSL 接口不变。",
       "version_scores": {
         "v1": {
           "score": 78.0,
@@ -98,8 +99,7 @@
           "ref": "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.yaml",
           "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
-      ],
-      "next_action": "Use GTPJ-v5 as the active mainline; future tuning can inspect PSE/BVSA weight sensitivity while comparing repeat mean against v4 confirmed_H=74.45."
+      ]
     },
     {
       "idea_id": "IDEA-0002",
@@ -110,6 +110,7 @@
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
       "global_score": 72.0,
+      "core_summary": "把 JEPA 辅助损失的视觉 context 移到 FAE memory，用 FAE-enhanced context 预测 detached pre-FAE patch target。",
       "version_scores": {
         "v2": {
           "score": 72.0,
@@ -216,8 +217,7 @@
           "ref": "experiments/v5/VERSION.md",
           "note": "GTPJ-v5 is the active mainline for future tuning; v4 confirmed_H=74.45 remains the confirmed reference."
         }
-      ],
-      "next_action": "Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45."
+      ]
     },
     {
       "idea_id": "IDEA-0003",
@@ -228,12 +228,13 @@
       "source_ref": "owner:2026-06-30:make residual and mixture coefficients dynamic routes",
       "source_status": "local_heuristic",
       "global_score": 78.0,
+      "core_summary": "把 v5 中固定 residual/mix 系数改成可学习 dynamic gates，按样本或类别调节 local、ICSA、BVSA direction 和 PSE routing。",
       "version_scores": {
         "v5": {
           "score": 82.0,
           "applicability": "direct",
           "stage": "trialing",
-          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. TRIAL-001 ATTEMPT-001 completed 50/50 jobs; best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Follow-up should keep ICSA fixed and focus direction/local/PSE gates.",
+          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. TRIAL-001 ATTEMPT-001 completed 50/50 jobs; best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Version fit remains tied to direction/local/PSE routing points; ICSA full dynamic routing is recorded as a higher-risk variant rather than a default version action.",
           "blockers": [
             "ATTEMPT-001 did not exceed v4 confirmed_H=74.45 or v5 repeat mean H=74.44"
           ]
@@ -290,8 +291,7 @@
           "ref": "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml",
           "note": "ATTEMPT-007 H=74.61, delta_H=+0.07 vs v5 best_observed_H=74.54 (unconfirmed); trial decision=keep."
         }
-      ],
-      "next_action": "TRIAL-001 ATTEMPT-007 synchronized as keep: H=74.61, delta_H=+0.07 vs v5 best_observed_H=74.54 (unconfirmed); do not promote/tag before v5 clean confirmation."
+      ]
     }
   ]
 }

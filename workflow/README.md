@@ -14,15 +14,15 @@ docs/workflow/protocols/quality_gate.md
 docs/workflow/reference/agent_contracts.md
 ```
 
-当前 active mainline code 是 `GTPJ-v3 / tag v3`。`H=74.27` 记录为
-`best_observed_H`，`confirmed_H` 仍待 clean confirmation；`GTPJ-v1 / tag v1 / H=73.93`
-仍是历史 confirmed baseline。`validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
+当前 active mainline code 是 `GTPJ-v5 / tag v5`。`best_observed_H=74.54`，
+`confirmed_H=74.44`，仍需和更强 confirmed reference `v4 confirmed_H=74.45` 区分表述。
+`validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
 用于核对远端 `main` 和 baseline tags 是否与本地治理事实对齐。
 
 任何状态检查、结果比较、promotion 或 tag 前，先用只读命令判断复现状态：
 
 ```bash
-python workflow/gtpj_workflow.py repro-status --version v3
+python workflow/gtpj_workflow.py repro-status --version v5
 ```
 
 如果输出 `verdict: needs_confirmation`，该版本只能作为 active code / unconfirmed reference，
@@ -52,13 +52,15 @@ owner 日常可以直接说人话口令，Coordinator 负责映射到下面的�
 # status / validation
 python workflow/gtpj_workflow.py start --phrase "开新模块"
 python workflow/gtpj_workflow.py status
-python workflow/gtpj_workflow.py repro-status --version v3
+python workflow/gtpj_workflow.py todo-status
+python workflow/gtpj_workflow.py refresh-todo
+python workflow/gtpj_workflow.py repro-status --version v5
 python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-remote
 python workflow/gtpj_workflow.py audit-boundary
 
 # tune suggestion
-python workflow/gtpj_workflow.py tune-suggest --version v3
+python workflow/gtpj_workflow.py tune-suggest --version v5
 
 # version-level tune example
 git switch main

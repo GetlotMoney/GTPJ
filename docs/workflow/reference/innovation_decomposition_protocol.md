@@ -1,6 +1,6 @@
 # Innovation Decomposition Protocol
 
-Innovation is managed by hypothesis and implementation binding, not by paper name alone.
+创新按 hypothesis 和 implementation binding 管理，不能只按论文名管理。
 
 ## Hierarchy
 
@@ -22,7 +22,8 @@ Trial = hypothesis + interpretation + attachment point + implementation contract
 Attempt = parameter, seed, epoch, weight, top-k, or narrow runtime try inside one Trial.
 ```
 
-One paper may produce multiple hypotheses. One hypothesis may produce multiple trials when it is attached to different code paths or forward/loss/eval bindings.
+一篇论文可以产生多个 hypotheses。同一个 hypothesis 如果接到不同代码路径或不同
+forward/loss/eval binding，也可以产生多个 trials。
 
 ## Trial Split Rules
 
@@ -51,7 +52,8 @@ hidden size
 other narrow config searches
 ```
 
-Pure parameter tuning cannot create a new method version `vX`; it can only become a confirmed/reference config after confirmation.
+纯参数调优不能创建新的 method version `vX`；它只能在 confirmation 后成为
+confirmed/reference config。
 
 ## Innovation Source Rule
 
@@ -82,7 +84,7 @@ why_this_probe:
 
 ## Fingerprint
 
-Every runnable hypothesis should have a lightweight duplicate fingerprint:
+每个可运行 hypothesis 都应该有一个轻量 duplicate fingerprint：
 
 ```yaml
 hypothesis_fingerprint:
@@ -93,4 +95,4 @@ hypothesis_fingerprint:
   eval_signal:
 ```
 
-Before opening a new Trial, Coordinator checks whether the same hypothesis already exists under another name.
+打开新 Trial 前，Coordinator 必须检查同一个 hypothesis 是否已经以其它名称存在。

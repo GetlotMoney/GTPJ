@@ -578,7 +578,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - trial code tag；
 - baseline H、trial H、delta H；
 - U/S/ZS、seed、best epoch；
-- complete manifest/result/quality/interface evidence；
+- 完整 manifest/result/quality/interface evidence；
 - `evidence_level: baseline_grade`；
 - `confirmation_status: confirmed`；
 - `best_observed_H` 和 `confirmed_H` 已区分；

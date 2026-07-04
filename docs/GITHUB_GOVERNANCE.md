@@ -123,13 +123,13 @@ idea_id
 来源 paper/code/user observation
 source_status
 global_score
+core_summary
 version_scores.v1/v2/vX
 hypothesis
 implementation_scope
 risk
 linked_trials
 evidence artifact id / research URI
-next_action
 ```
 
 GitHub 不保存：
@@ -160,8 +160,9 @@ GitHub 使用 `warehouse://`、`research://` URI 和 sha256/size 引用它们。
 - GitHub 和本地不是机械每次同时写；是否联动由 `docs/workflow/core/WORKFLOW_ROUTER.md` 分类决定。
 - 论文阅读、来源复核、新 idea 和长推理先写 `GTPJ_Research`，再把轻量事实和 `research://` 引用写入 GitHub。
 - 训练日志、checkpoint 和大文件先写 `GTPJ_Warehouse`，再把 `warehouse://`、sha256、size、指标摘要写入 GitHub。
-- 如果某次结果改变 idea 状态、version score、trial 结论、promotion 判断或 next_action，必须同步更新
-  Research 长版记录和 GitHub 轻量索引。
+- 如果某次结果改变 idea 状态、version score、trial 结论、promotion 判断、evidence 或版本适配说明，
+  必须同步更新 Research 长版记录和 GitHub 轻量索引。具体下一步动作只写入 queue、trial/attempt、
+  task card 或 result/quality 文件，不写入全局 idea 总表。
 - 如果某次任务不需要联动，启动卡和收尾说明必须写出 skip reason。
 
 ## Runtime 不强制什么
@@ -542,7 +543,8 @@ version_scores.v3 = 对 GTPJ-v3 的适配记录
 
 - 版本选择清单只看对应 `version_scores.vX`，例如 `versions/v1.md` 看 `version_scores.v1`。
 - `global_score` 只表示长期价值，不决定当前优先级。
-- `idea_tree/INDEX.md` 是总创意清单；`idea_tree/versions/vX.md` 是某个版本的选择清单。
+- `idea_tree/INDEX.md` 是总创意清单，只说明创意主要内容；`idea_tree/versions/vX.md` 是某个版本的选择清单。
+- 下一步动作不写入全局总创意清单，只写入 queue、trial/attempt、task card 或实验结果文件。
 - 创新 trial 只读取对应 base version 的 `idea_tree/versions/vX.md`，避免每次读取完整总表。
 - 新增 `v2` 后，每个保留创意都必须重新写 `version_scores.v2`。
 - 不能把 `version_scores.v1` 直接复制成 `version_scores.v2`。

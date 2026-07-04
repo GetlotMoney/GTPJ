@@ -154,11 +154,13 @@ blocking_issues:
 - 已完成 agents 的输出已入账，关闭名单和保留名单已写入 `AGENT_ACTIVITY.md` 或 closeout summary；
   右侧栏只留下当前阶段 active agents。
 
-Module trial attempt closeout must use the helper path when attempt evidence exists:
+当 attempt evidence 存在时，module trial attempt closeout 必须使用 helper 路径：
 
 ```bash
 python workflow/gtpj_workflow.py sync-trial-summary --trial-dir ... --attempt-id ... --decision ...
 python workflow/gtpj_workflow.py closeout-check --trial-dir ... --attempt-id ...
 ```
 
-The helper-generated `agent_summary.md` and `review_round_2.md` are the current-attempt GitHub summaries. Longer sub-agent reports may be kept in Warehouse, but they must not be required for the root closeout files to point at the latest attempt.
+helper 生成的 `agent_summary.md` 和 `review_round_2.md` 是 current-attempt 的 GitHub summaries。
+更长的 sub-agent reports 可以保存在 Warehouse，但 root closeout files 指向最新 attempt
+不应依赖这些长报告。

@@ -74,7 +74,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和结构辅助命令。 |
 | `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
-| `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
+| `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
 | `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
@@ -239,11 +239,13 @@ idea_tree/                 # 创意来源、评分、排序
 
 ### `idea_tree/queues/`
 
-当前工作队列，从总索引派生，不是事实来源。
+当前工作队列，从总索引派生，不是全局创意事实来源。`queue_state.yaml` 是机器可读源，
+四个 Markdown 文件是给人读的派生视图。
 
 | 路径 | 用途 |
 |---|---|
-| `idea_tree/queues/01_selected_next.md` | 已选中的下一步模块 trial。 |
+| `idea_tree/queues/queue_state.yaml` | 当前待办和队列的机器源；用 `todo-status` 只读汇报，用 `refresh-todo` 刷新 Markdown。 |
+| `idea_tree/queues/01_selected_next.md` | 已选执行队列，记录已经明确选中的 module trial 候选。 |
 | `idea_tree/queues/02_module_candidates.md` | 当前候选模块列表。 |
 | `idea_tree/queues/03_ablation_questions.md` | 消融问题队列。 |
 | `idea_tree/queues/04_tuning_questions.md` | 调参问题队列。 |

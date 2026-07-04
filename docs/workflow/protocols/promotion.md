@@ -1,47 +1,40 @@
 # Automatic Promotion
 
-Promotion means a clean framework/code semantic state is accepted as a new
-formal baseline version. A promotion creates version materials and a version
-tag. It does not automatically run `activate-version`.
+Promotion 表示一个干净的框架/代码语义状态被接受为新的正式 baseline 版本。
+promotion 会创建版本材料和版本 tag，但不会自动执行 `activate-version`。
 
-Pure tuning is not promotion. If a run changes only config or hyperparameters,
-it may become a confirmed config/reference under its existing `vX`, but it must
-not create a new formal `vY`.
+纯调参不是 promotion。如果一次运行只改变 config 或超参数，它可以成为现有 `vX`
+下的 confirmed config/reference，但不能创建新的正式 `vY`。
 
 ## Owner Standing Rule: Min3 Auto Promotion
 
-From 2026-06-29 onward, a candidate is reproducible when all of the following
-are true:
+从 2026-06-29 起，一个候选只有同时满足以下条件，才算可复现：
 
-- the same `source_job_id` has at least 3 successful repeats;
-- each repeat is completed/ok and has valid U/S/H/ZS metrics;
-- the repeats use the same code/config/evaluation contract;
-- class order, seen/unseen split, label mapping, logits shape, and metric
-  semantics are unchanged or explicitly audited.
+- 同一个 `source_job_id` 至少有 3 次成功 repeat；
+- 每次 repeat 都是 completed/ok，并且有有效 U/S/H/ZS 指标；
+- repeat 使用相同 code/config/evaluation contract；
+- class order、seen/unseen split、label mapping、logits shape 和 metric semantics
+  没有变化，或已经显式审计。
 
-Such a candidate is upgraded to `baseline_grade` evidence. It can be promoted
-automatically to the next formal version only if the underlying candidate also
-contains a framework/code semantic change. If it is pure tune/config-only, keep
-it under the parent version as a confirmed config/reference.
+满足这些条件后，候选可以升级为 `baseline_grade` evidence。只有当该候选同时包含
+框架/代码语义变化时，才允许自动 promotion 到下一个正式版本。如果只是 pure tune/config-only，
+必须保留在父版本下作为 confirmed config/reference。
 
-For a min3-confirmed candidate, the formal result row uses the successful repeat
-with the highest H. Record that row as `confirmed_H` / official H, and take the
-official U/S/ZS from the same repeat. Still record `H_mean`, `H_min`, `H_max`,
-and repeat count as stability evidence. A single high run cannot become
-`confirmed_H` until the min3 confirmation cluster has passed.
+对 min3-confirmed 候选，正式结果行使用成功 repeat 中 H 最高的一次。该行记录为
+`confirmed_H` / official H，并从同一次 repeat 取 official U/S/ZS。仍然必须记录
+`H_mean`、`H_min`、`H_max` 和 repeat count 作为稳定性证据。单次高分不能在 min3
+confirmation cluster 通过前成为 `confirmed_H`。
 
-When several min3-confirmed candidates exist, select the strongest confirmed
-config/reference by `confirmed_H` first, using repeat stability (`H_mean`,
-`H_min`, spread) as the guardrail or tie-breaker. Do not turn pure tuning into a
-new `vX`.
+如果同时存在多个 min3-confirmed 候选，优先按 `confirmed_H` 选择最强 confirmed
+config/reference，并用 repeat stability（`H_mean`、`H_min`、spread）作为护栏或平局判定。
+不要把纯调参变成新的 `vX`。
 
 ## GitHub Push Boundary
 
-Promotion may create local files, commits, and local tags after checks pass.
-It must not push branches or tags to GitHub unless the owner explicitly asks
-for that push after validation.
+promotion 在检查通过后可以创建本地文件、commit 和本地 tag。除非 owner 在验证后明确要求
+（explicitly asks），否则不能把分支或 tag push 到 GitHub；硬标记：must not push。
 
-Even with explicit push approval, it never allows:
+即使 owner 明确批准 push，也仍然不允许：
 
 - force-push;
 - deleting remote refs;
@@ -51,11 +44,10 @@ Even with explicit push approval, it never allows:
 
 ## Promotion Does Not Activate Code
 
-`promotion` creates a formal version/tag such as `v4`.
+`promotion` 只创建类似 `v4` 的正式 version/tag。
 
-`activate-version vX` is a separate action. It is required before current runtime
-aliases such as active configs are switched. If `activate-version` has not been
-run, record:
+`activate-version vX` 是单独动作。只有执行它之后，当前 runtime alias 或 active config
+才能切换。如果还没有执行 `activate-version`，必须记录：
 
 ```text
 active_main_update: not_activated
@@ -63,7 +55,7 @@ active_main_update: not_activated
 
 ## Trigger Fields
 
-A result may enter automatic promotion when it records:
+result 记录以下字段后，才可以进入 automatic promotion：
 
 ```text
 promotion_decision: promote
@@ -72,36 +64,32 @@ evidence_level: baseline_grade
 confirmation_status: confirmed
 ```
 
-For min3 auto promotion, the source confirmation may be upgraded from
-`confirmation_grade` to `baseline_grade` when the min3 rule above is satisfied.
-For pure tuning, this upgrade means confirmed config/reference only; it still
-does not authorize a new formal version.
+对 min3 auto promotion，当上面的 min3 规则满足后，source confirmation 可以从
+`confirmation_grade` 升级为 `baseline_grade`。对纯调参来说，这个升级只表示 confirmed
+config/reference，仍然不能授权新的正式版本。
 
-If the owner accepts or activates a candidate without `baseline_grade` evidence,
-record it as `owner_activated_unconfirmed` or another explicit provisional
-status. Do not convert such a candidate into a confirmed formal version until
-the promotion gates pass.
+如果 owner 在没有 `baseline_grade` evidence 的情况下接受或激活某个候选，必须记录为
+`owner_activated_unconfirmed` 或其它明确 provisional status。promotion gates 通过前，
+不能把它转换成 confirmed formal version。
 
 ## Hard Gates
 
-All gates must pass:
+所有 gate 必须通过：
 
-- source experiment/trial records parent version, code source, branch, commit,
-  config, command, metrics, and artifact evidence;
-- source experiment/trial contains a framework/code semantic change; pure tune
-  must stay under the existing version;
-- source evidence is not a single high point only;
-- `dirty_state: clean` and `git_dirty: false` are recorded or inferable;
-- metrics include U, S, H, ZS, seed, best epoch, and comparison reference;
+- source experiment/trial 记录 parent version、code source、branch、commit、
+  config、command、metrics 和 artifact evidence；
+- source experiment/trial 包含框架/代码语义变化；pure tune 必须留在现有版本下；
+- source evidence 不能只是单次高点；
+- 已记录或可推断 `dirty_state: clean` 和 `git_dirty: false`；
+- metrics 包含 U、S、H、ZS、seed、best epoch 和 comparison reference；
 - `best_observed_H`, `confirmed_H`, and `confirmation_status` are distinct;
-- external artifact id, URI, sha256, and size are recorded;
-- `quality_check.md` has no blocking issue;
-- GitHub does not contain raw logs, checkpoints, generated figures, or caches;
-- target config can be frozen to `config/versions/vX.yaml`;
-- current working tree is clean before tagging and before any owner-authorized
-  push.
+- external artifact id、URI、sha256 和 size 已记录；
+- `quality_check.md` 没有 blocking issue；
+- GitHub 不包含 raw logs、checkpoints、generated figures 或 caches；
+- target config 可以冻结到 `config/versions/vX.yaml`；
+- 打 tag 和任何 owner 授权 push 前，当前 working tree 必须 clean。
 
-If any hard gate fails, do not create the formal version. Record:
+任一 hard gate 失败时，不得创建正式版本。记录：
 
 ```text
 promotion_decision: blocked
@@ -109,7 +97,7 @@ promotion_decision: blocked
 
 ## Automatic Actions
 
-After gates pass, Coordinator should:
+所有 gate 通过后，Coordinator 应该：
 
 1. Create a promotion branch from current `main`.
 2. Copy or create the promoted config at `config/versions/vX.yaml`.
@@ -117,7 +105,7 @@ After gates pass, Coordinator should:
 4. Update `experiments/VERSION_TREE.md`.
 5. Update `experiments/EXPERIMENT_REGISTRY.md`.
 6. Update `docs/PROJECT_STATUS.md`.
-7. Update `README.md` and other lightweight indices as needed.
+7. 按需更新 `README.md` 和其它轻量索引。
 8. Update helper canonical baseline metadata.
 9. Run validation.
 10. Commit the promotion ledger.

@@ -43,7 +43,9 @@ module_glossary: MODULES.md
 source_trial_framework:
 ```
 
-`framework_diagram.md` must explain the active version forward path, key tensors, module responsibilities, GZSL hard-rule boundary, loss/training flow, and code-vs-intent notes. `MODULES.md` must explain every named module with purpose, input, output, config switch, and baseline-off behavior.
+`framework_diagram.md` 必须解释 active version 的 forward path、关键 tensors、module responsibilities、
+GZSL hard-rule boundary、loss/training flow 和 code-vs-intent notes。`MODULES.md` 必须解释每个
+命名 module 的 purpose、input、output、config switch 和 baseline-off behavior。
 
 ## Version Flow
 

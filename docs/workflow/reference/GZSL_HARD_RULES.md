@@ -1,6 +1,6 @@
 # GZSL Hard Rules
 
-This file is the shared hard gate for all formal GTPJ experiments.
+本文是所有正式 GTPJ experiments 的共享 hard gate。
 
 ## Non-Negotiable Evaluation Rules
 
@@ -21,7 +21,7 @@ This file is the shared hard gate for all formal GTPJ experiments.
 | class axis | `C` = protected evaluation class count |
 | text/visual features | exact shape, dtype, device, train/eval behavior documented |
 
-Every new module must document:
+每个新 module 必须记录：
 
 ```text
 input tensors
@@ -36,7 +36,7 @@ metric impact
 
 ## Blocking Rule
 
-If any hard rule is unclear, the subject can only be:
+如果任何 hard rule 不清楚，该 subject 只能是：
 
 ```text
 blocked
@@ -44,7 +44,7 @@ rerun
 reject
 ```
 
-It cannot be:
+它不能是：
 
 ```text
 keep
@@ -56,4 +56,5 @@ baseline-grade evidence
 
 ## Evidence Routing
 
-GZSL checks must appear in `rule_checks` with `rule_id`, `verdict`, `checked_by`, and `authority_ref`. Failed GZSL checks cannot advance or promote a subject.
+GZSL checks 必须出现在 `rule_checks` 中，并包含 `rule_id`、`verdict`、`checked_by`
+和 `authority_ref`。失败的 GZSL checks 不能 advance 或 promote 一个 subject。

@@ -1,10 +1,10 @@
 # Result Index Protocol
 
-This file defines the minimum lightweight evidence structure that GitHub stores for GTPJ experiments.
+本文定义 GitHub 为 GTPJ experiments 保存的最小轻量证据结构。
 
 ## Experiment Files
 
-New experiment directories contain:
+新的 experiment 目录包含：
 
 ```text
 config.yaml
@@ -16,25 +16,26 @@ agent_summary.md
 README.md
 ```
 
-They must not create or commit raw `logs/`, checkpoints, generated figures, feature caches, or tensor dumps.
+它们不得创建或提交 raw `logs/`、checkpoints、generated figures、feature caches 或 tensor dumps。
 
 ## `manifest.yaml`
 
-`manifest.yaml` is the reproducibility map for programs and agents. It records:
+`manifest.yaml` 是程序和 agents 的可复现地图。它记录：
 
-- experiment id, kind, attempt id, status
-- base version, base code tag, code branch, code commit, dirty state
-- config path and config sha256
-- run command, seed, dataset, split id, class order id, label mapping id, metric contract id
-- idea summary, when the experiment changes code or method
-- external artifact identity: `artifact_id`, `uri`, `sha256`, `size_bytes`, `role`, `status`
-- whether interface contract review and boundary audit are required
+- experiment id、kind、attempt id、status
+- base version、base code tag、code branch、code commit、dirty state
+- config path 和 config sha256
+- run command、seed、dataset、split id、class order id、label mapping id、metric contract id
+- 当实验改变代码或方法时，记录 idea summary
+- 外部 artifact identity：`artifact_id`、`uri`、`sha256`、`size_bytes`、`role`、`status`
+- 是否需要 interface contract review 和 boundary audit
 
-For tune experiments, the idea summary can be empty, but the hypothesis must state that this is parameter tuning only and does not change code. For ablation, innovation, and module trial experiments, the idea summary must exist.
+对 tune experiments，idea summary 可以为空，但 hypothesis 必须说明这只是参数调优、不改变代码。
+对 ablation、innovation 和 module trial experiments，idea summary 必须存在。
 
 ## `result.yaml`
 
-`result.yaml` is the machine-readable result file for helpers, tests, registries, and promotion gates. It records:
+`result.yaml` 是 helper、tests、registries 和 promotion gates 使用的机器可读结果文件。它记录：
 
 - U, S, H, ZS, best epoch
 - baseline version and baseline H
@@ -47,9 +48,9 @@ For tune experiments, the idea summary can be empty, but the hypothesis must sta
 - `evidence.agent_summary`
 - `evidence.manifest_verified`
 - `evidence.boundary_audit_passed`
-- metric source and metric semantics
+- metric source 和 metric semantics
 
-`result.yaml` intentionally does not duplicate every artifact field. Promotion resolves the raw artifact as:
+`result.yaml` 有意不重复每个 artifact 字段。Promotion 按以下方式解析 raw artifact：
 
 ```text
 artifact_id = result.evidence.log_artifact_id
@@ -59,26 +60,27 @@ sha256      = artifact.sha256
 size_bytes  = artifact.size_bytes
 ```
 
-If the manifest cannot resolve the artifact id to URI, sha256, and size, the result is not promotable.
+如果 manifest 无法把 artifact id 解析到 URI、sha256 和 size，则该结果不可 promotion。
 
 ## `result.md`
 
-`result.md` is the human-readable interpretation. It is not the machine-parsed source of truth. It explains:
+`result.md` 是人读解释，不是机器解析的事实源。它解释：
 
-- whether metrics improved
-- where the improvement may come from
-- what the tradeoff is
-- whether the result is `keep`, `reject`, `rejected`, `rerun`, `needs_confirmation`, `blocked`, or `promote`
+- metrics 是否提升；
+- 提升可能来自哪里；
+- tradeoff 是什么；
+- 结果是 `keep`、`reject`、`rejected`、`rerun`、`needs_confirmation`、`blocked` 还是 `promote`。
 
 ## `agent_summary.md`
 
-`agent_summary.md` is the lightweight audit trail for agent work. It records which agents were enabled, which agents were disabled, what each agent checked, what issues were found, and which evidence references support the final decision.
+`agent_summary.md` 是 agent 工作的轻量审计轨迹。它记录哪些 agents 被启用、哪些 agents
+被禁用、每个 agent 检查了什么、发现了什么问题，以及哪些 evidence references 支撑最终决策。
 
-It must not contain full chat transcripts or raw logs. Long agent reports belong in Warehouse and are referenced by artifact id.
+它不能包含完整聊天记录或 raw logs。长 agent reports 应放入 Warehouse，并用 artifact id 引用。
 
 ## Protected Evaluation Semantics
 
-Experiments must not silently change:
+实验不得静默改变：
 
 - class order
 - seen/unseen split
@@ -88,11 +90,12 @@ Experiments must not silently change:
 - metric calculation
 - output fields consumed by the evaluation script
 
-If the experiment itself changes evaluation, it must be explicitly marked high risk and blocked for dual review by `Interface Checker` and `Quality Checker`. Otherwise, the result cannot be compared with the baseline.
+如果实验本身改变 evaluation，必须显式标记为 high risk，并由 `Interface Checker` 和
+`Quality Checker` 双重 review 阻断。否则该结果不能与 baseline 比较。
 
 ## Promotion Mapping
 
-Promotion reads:
+Promotion 读取：
 
 ```text
 code_commit      = manifest.version.code_commit
@@ -106,6 +109,6 @@ metrics          = result.metrics
 decision         = result.decision
 ```
 
-`record-result` only records evidence. It does not grant promotion. `promotion_decision: promote`
-triggers the promotion hard gate only together with `evidence_level: baseline_grade` and
-`confirmation_status: confirmed`; by itself it does not create a formal version.
+`record-result` 只记录 evidence，不授权 promotion。`promotion_decision: promote` 只有同时满足
+`evidence_level: baseline_grade` 和 `confirmation_status: confirmed` 时，才触发 promotion hard gate；
+它本身不会创建正式版本。

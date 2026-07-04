@@ -63,17 +63,17 @@ experiments/module_trials/IDEA-xxxx_short_name/
 每个 trial 必须记录：
 
 - source idea file
-- module source, paper/code source, and paper-writing explanation
+- module source、paper/code source 和论文写作解释
 - base version
 - base code tag
 - module template family
 - version-specific idea score
-- framework diagram path and glossary
+- framework diagram path 和 glossary
 - insertion point
 - input contract
 - output contract
 - shape invariants
-- config switch and baseline-off path
+- config switch 和 baseline-off path
 - 如果触碰 loss/evaluation，记录对应 contract
 - 最低验证证据
 - code branch
@@ -95,9 +95,10 @@ experiments/module_trials/IDEA-xxxx_short_name/
 
 ## Trial-internal attempts
 
-The same module trial may include multiple attempts, but they must stay within the same implementation hypothesis.
+同一个 module trial 可以包含多个 attempts，但这些 attempts 必须保持在同一个实现假设内。
 
-Use `ATTEMPTS.md` as the human-readable index for trial-internal parameter tuning, narrow follow-up ablations, confirmation/reruns, and debug-fix reruns.
+使用 `ATTEMPTS.md` 作为 trial-internal 参数调优、窄范围后续消融、confirmation/rerun
+和 debug-fix rerun 的人读索引。
 
 Trial-internal tuning and ablation are required parts of judging whether a new module is useful. They stay inside the trial because they answer:
 
@@ -107,28 +108,28 @@ Trial-internal tuning and ablation are required parts of judging whether a new m
 当前 best attempt 是否能 clean confirmation？
 ```
 
-They are not version-level tune or ablation runs. Do not record them under `experiments/vX/tune/`,
-`experiments/vX/ablation/`, or `experiments/vX/confirmation/` unless the task is explicitly a standalone
-baseline-version experiment outside the module trial.
+它们不是 version-level tune 或 ablation。除非任务明确是 module trial 之外的独立
+baseline-version 实验，否则不要记录到 `experiments/vX/tune/`、`experiments/vX/ablation/`
+或 `experiments/vX/confirmation/`。
 
-Recommended table:
+推荐表格：
 ```text
 | Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
 ```
 
-Recommended `Type` values:
+推荐 `Type` 取值：
 ```text
 param_tune / ablation / confirmation / rerun / anchor_followup / debug_fix
 ```
 
-Each `attempts/ATTEMPT-xxx/` directory should keep its own:
+每个 `attempts/ATTEMPT-xxx/` 目录应该保留自己的：
 - `config.yaml`
 - `manifest.yaml`
 - `result.yaml`
 - `quality_check.md`
 - `result.md`
 
-Before any real attempt run, trial-internal bookkeeping follows the same two-stage evidence rule:
+任何真实 attempt run 启动前，trial-internal 账本也必须遵守同一套两阶段证据规则：
 
 ## Innovation code review gate
 
@@ -216,55 +217,59 @@ AI 交叉审核 -> 重要代码/决策改动使用 docs/workflow/protocols/ai_cr
 
 ### `pre-run freeze commit`
 
-Before Runner starts, first freeze into Git:
+Runner 启动前，先把以下内容冻结进 Git：
 
-- the target `attempts/ATTEMPT-xxx/config.yaml`
-- the planned row in `ATTEMPTS.md`
-- any required task-start card or attempt note that explains what this run will do
+- 目标 `attempts/ATTEMPT-xxx/config.yaml`；
+- `ATTEMPTS.md` 中的计划行；
+- 任何解释本次 run 要做什么的 task-start card 或 attempt note。
 
-Hard rules:
+硬规则：
 
-- Runner must start from a clean worktree after this commit;
-- the attempt `run_commit` must point to this freeze commit;
-- this commit must not pre-fill the run's `manifest.yaml`, `result.yaml`, `result.md`, `quality_check.md`, metrics, or artifact registration.
+- Runner 必须从该 commit 后的 clean worktree 启动；
+- attempt 的 `run_commit` 必须指向这个 freeze commit；
+- 这个 commit 不能预先填写本次 run 的 `manifest.yaml`、`result.yaml`、`result.md`、
+  `quality_check.md`、metrics 或 artifact registration。
 
 ### `post-run result commit`
 
-After the attempt finishes, write the attempt-local:
+attempt 完成后，写入 attempt-local：
 
 - `manifest.yaml`
 - `result.yaml`
 - `result.md`
 - `quality_check.md`
 
-and then update the trial root summary and indexes in a separate result-bookkeeping step.
+然后在单独的 result-bookkeeping 步骤中更新 trial root summary 和索引。
 
-After the attempt finishes and before result bookkeeping is considered complete, apply checkpoint retention:
+attempt 完成后、result bookkeeping 被认为完成前，必须执行 checkpoint retention：
 
-- keep at most 3 model checkpoints for the attempt, batch, or run;
-- keep the top 3 by the attempt's primary validation metric, defaulting to GZSL-H;
-- delete only model weight files such as `.pth`, `.pt`, `.ckpt`, or `.safetensors`;
-- never delete raw logs, configs, manifests, results, quality checks, runner receipts, events, summaries, or
-  Warehouse registry entries;
-- if more than 3 checkpoints must be kept for promotion, reproducibility diagnosis, or owner-requested audit,
-  record the exception in the attempt `quality_check.md`.
+- 每个 attempt、batch 或 run 最多保留 3 个模型 checkpoint；
+- 默认按 attempt 主验证指标 GZSL-H 保留 Top-3；
+- 只删除 `.pth`、`.pt`、`.ckpt` 或 `.safetensors` 等模型权重文件；
+- 永远不要删除 raw logs、configs、manifests、results、quality checks、runner receipts、
+  events、summaries 或 Warehouse registry entries；
+- 如果因为 promotion、可复现诊断或 owner 要求审计而必须保留超过 3 个 checkpoint，
+  必须在 attempt 的 `quality_check.md` 中记录例外。
 
-Rules:
-- `TRIAL-001` is one implementation line for one idea, not one training run.
-- `ATTEMPT-001`, `ATTEMPT-002`, and later rows are repeated runs or small controlled variations inside that same trial.
-- Numeric-only changes such as ratio, lambda, temperature, dropout, seed, or scheduler stay inside the same trial as `param_tune`.
-- A narrow diagnostic ablation that only helps explain the current trial may stay in the same trial as `ablation`.
-- A clean rerun that confirms the current best attempt may stay in the same trial as `confirmation`.
-- If the change becomes a new implementation hypothesis, a new forward path, or a new loss mechanism, open `TRIAL-002` instead of extending `TRIAL-001`.
-- The trial root `README.md`, `result.yaml`, and `quality_check.md` should point to the current decision-driving `best_attempt_id` rather than trying to inline every attempt detail.
-- Trial-internal attempts must not create git tags. Record the attempt with `best_attempt_id`,
-  `attempts/ATTEMPT-xxx/`, `run_commit`, `record_commit`, and Warehouse artifact ids.
-- Existing historical trials with only one root-level attempt may remain readable as legacy evidence, but any new attempt added after this rule should be recorded in `ATTEMPTS.md`.
-- If a real attempt run starts while the worktree is dirty, or before the attempt config and planned `ATTEMPTS.md` row are frozen into Git, the result cannot be treated as promotion-ready evidence; at most it may be recorded as debug or `revise`.
-- If same-config, same-seed confirmation attempts disagree across the decision boundary, record `mixed_confirmation`.
-  The next attempt must be a reproducibility diagnosis or deterministic confirmation before any 10-run tune sweep.
-  Keep model semantics frozen; only expose or enable controls such as `strict_determinism`,
-  `use_dedicated_batch_rng`, and `batch_sampling_seed`, and ensure the training log prints those runtime states.
+规则：
+- `TRIAL-001` 是一个 idea 的一条实现线，不是一次训练运行。
+- `ATTEMPT-001`、`ATTEMPT-002` 及后续行，是同一 trial 内的重复运行或小范围受控变化。
+- 只改变 ratio、lambda、temperature、dropout、seed 或 scheduler 的数值变化，保留在同一 trial 内，类型写为 `param_tune`。
+- 只用于解释当前 trial 的窄范围诊断消融，可以保留在同一 trial 内，类型写为 `ablation`。
+- 用于确认当前 best attempt 的 clean rerun，可以保留在同一 trial 内，类型写为 `confirmation`。
+- 如果变化变成新的实现假设、新 forward 路径或新 loss 机制，必须打开 `TRIAL-002`，不能继续扩展 `TRIAL-001`。
+- trial root 的 `README.md`、`result.yaml` 和 `quality_check.md` 应该指向当前驱动决策的
+  `best_attempt_id`，不要试图内联每个 attempt 的全部细节。
+- trial-internal attempts 不能创建 git tags。attempt 记录使用 `best_attempt_id`、
+  `attempts/ATTEMPT-xxx/`、`run_commit`、`record_commit` 和 Warehouse artifact ids。
+- 只有一个 root-level attempt 的历史 trial 可以保留为 legacy evidence；本规则之后新增的 attempt
+  应写入 `ATTEMPTS.md`。
+- 如果真实 attempt run 在 dirty worktree 下启动，或在 attempt config 与计划 `ATTEMPTS.md`
+  行冻结进 Git 之前启动，则结果不能视为 promotion-ready evidence；最多记录为 debug 或 `revise`。
+- 如果 same-config、same-seed confirmation attempts 在决策边界两侧不一致，记录为
+  `mixed_confirmation`。下一次 attempt 必须先做可复现诊断或确定性 confirmation，不能直接开 10-run tune sweep。
+  保持模型语义冻结；只能暴露或启用 `strict_determinism`、`use_dedicated_batch_rng`、
+  `batch_sampling_seed` 等控制项，并确保训练日志打印这些 runtime states。
 
 `trial_decision`：
 

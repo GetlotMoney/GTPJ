@@ -9,7 +9,9 @@
 新增模块可以测试一个假设，但不能静默改变 baseline 接口、tensor shape 或评估语义。
 ```
 
-Hard gate: if the interface, label mapping, seen/unseen split, class order, logits shape, or metric semantics are unclear, the experiment is invalid evidence. It cannot enter Runner, cannot be marked `keep`, and cannot be promoted.
+硬门：如果 interface、label mapping、seen/unseen split、class order、logits shape
+或 metric semantics 不清楚，该实验就是无效证据。它不能进入 Runner，不能标记为
+`keep`，也不能 promotion。
 
 ## Innovation Code Review Gate
 
