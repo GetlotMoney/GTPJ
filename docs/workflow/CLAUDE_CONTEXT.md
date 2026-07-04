@@ -1,5 +1,13 @@
 # Claude Code 共享项目上下文
 
+## 当前审核分层
+
+- 机器验证永远优先于模型意见。
+- `fast` 不调用 Claude Code，但必须有机器验证通过和临时 Codex agent 预审通过。
+- `review-1` 只需要 1 轮 Claude Code，用于普通 workflow/helper/template 修补。
+- `strict-3` 才需要 3 轮 Claude Code，只用于会污染正式实验结论、promotion、baseline 或论文 claim 的改动。
+- Claude Code 前必须读取 `02_codex_temp_agent_pre_review.md`，确认临时 Codex agent 已 `completed_closed`。
+
 本文件是 GTPJ 给 Claude Code 的轻量共享上下文。它只记录稳定规则，当前事实仍以本次审核包、仓库文件、验证命令和实验 artifact 为准。
 
 ## 项目目标
@@ -36,4 +44,3 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 - `agent_runtime.yaml` 中 agent id、UI 显示名、role 映射、output refs 或 cleanup 记录缺失。
 - 将 debug/smoke 或 seed sweep 伪装成正式 confirmation。
 - 用当前主会话或隐藏记忆冒充真实 `real_multi_agent` 证据。
-

@@ -1,5 +1,11 @@
 # Claude Code 项目入口
 
+## 审核分层
+
+- 以审核包 `10_final_decision.md` 中的 `review_tier` 和 `claude_rounds_required` 为准。
+- `review-1` 只做第 1 轮；`strict-3` 才做 3 轮。
+- Claude Code 审核前必须已有 `02_codex_temp_agent_pre_review.md`，且临时 Codex agent 已关闭并记录 `lifecycle: completed_closed`。
+
 本文件是 Claude Code 的项目级只读上下文。它用于让 Claude 快速理解 GTPJ 的稳定规则，不能替代当前 diff、测试、workflow validate 或实验 artifact 证据。
 
 ## 默认角色
@@ -27,4 +33,3 @@
 - 不删除用户数据。
 - 不写入或编辑仓库文件。
 - 默认只报告 blocking issues；非阻断风格、命名、微小测试建议不要展开。
-

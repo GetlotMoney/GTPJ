@@ -135,6 +135,35 @@ class WorkflowHelperTest(unittest.TestCase):
                 code = int(exc.code or 0)
         return code, stdout.getvalue(), stderr.getvalue()
 
+    def _passing_codex_pre_review_args(self) -> list[str]:
+        return [
+            "--codex-pre-review-agent-id",
+            "agent-test-001",
+            "--codex-pre-review-agent-name",
+            "Temp Review Agent",
+            "--codex-pre-review-close-result",
+            "agent_id=agent-test-001 previous_status=completed closed: true",
+            "--codex-pre-review-verdict",
+            "pass",
+        ]
+
+    def _custom_full_validation_command(self) -> str:
+        self._write(
+            "workflow/gtpj_workflow.py",
+            "import sys\n"
+            "allowed = {'validate', 'validate-workflow-consistency', 'audit-boundary'}\n"
+            "command = sys.argv[1] if len(sys.argv) > 1 else ''\n"
+            "if command not in allowed:\n"
+            "    raise SystemExit(1)\n"
+            "print(command + '-ok')\n",
+        )
+        return (
+            f'"{sys.executable}" workflow\\gtpj_workflow.py validate && '
+            f'"{sys.executable}" workflow\\gtpj_workflow.py validate-workflow-consistency && '
+            f'"{sys.executable}" workflow\\gtpj_workflow.py audit-boundary && '
+            f'"{sys.executable}" -m py_compile workflow\\gtpj_workflow.py'
+        )
+
     def _registry_text(self) -> str:
         return (self.repo / "experiments/EXPERIMENT_REGISTRY.md").read_text(encoding="utf-8")
 
@@ -2666,7 +2695,7 @@ decision:
             "print('blocking_issues:')\n",
         )
         self._write("docs/example.md", "changed\n")
-        validation_command = f'"{sys.executable}" -c "print(123)"'
+        validation_command = self._custom_full_validation_command()
 
         code, stdout, stderr = self._run_main(
             "run-ai-cross-review",
@@ -2676,6 +2705,10 @@ decision:
             "run-test",
             "--task-title",
             "测试三轮 AI 交叉审核",
+            "--review-tier",
+            "strict-3",
+            "--validation-profile",
+            "custom-full-equivalent",
             "--no-default-validation",
             "--validation-command",
             validation_command,
@@ -2683,6 +2716,7 @@ decision:
             sys.executable,
             "--claude-command-arg",
             "fake_claude.py",
+            *self._passing_codex_pre_review_args(),
         )
 
         pack = self.repo / "docs/agent_reviews/run-test"
@@ -2701,27 +2735,323 @@ decision:
         self.assertEqual("", stderr)
         self.assertEqual(0, code, stdout + stderr + debug_review)
         self.assertIn("run-ai-cross-review-ok", stdout)
+        self.assertIn("tier=strict-3", stdout)
         self.assertTrue((pack / "02_focused_diff.md").exists())
         self.assertTrue((pack / "02_review_brief.md").exists())
+        self.assertTrue((pack / "02_codex_temp_agent_pre_review.md").exists())
         self.assertTrue((pack / "05_claude_review_round_1.md").exists())
         self.assertTrue((pack / "07_claude_review_round_2.md").exists())
         self.assertTrue((pack / "09_claude_review_round_3.md").exists())
         prompt_text = (self.repo / "captured_claude_prompt.txt").read_text(encoding="utf-8")
         brief_text = (pack / "02_review_brief.md").read_text(encoding="utf-8")
+        pre_review_text = (pack / "02_codex_temp_agent_pre_review.md").read_text(encoding="utf-8")
         round_text = (pack / "05_claude_review_round_1.md").read_text(encoding="utf-8")
+        self.assertIn("02_codex_temp_agent_pre_review.md", prompt_text)
         self.assertIn("02_review_brief.md", prompt_text)
         self.assertIn("02_focused_diff.md", prompt_text)
         self.assertIn("Do not read 02_diff.patch by default", prompt_text)
         self.assertIn("review_mode: blocking-only", brief_text)
         self.assertIn("prompt_profile: focused", brief_text)
+        self.assertIn("review_tier: strict-3", brief_text)
+        self.assertIn("lifecycle: completed_closed", pre_review_text)
+        self.assertIn("closed_before_claude: true", pre_review_text)
+        self.assertIn("close_result_confirms_completion: true", pre_review_text)
+        self.assertIn("verdict: pass", pre_review_text)
         self.assertIn("02_review_brief.md", round_text)
         self.assertIn("02_focused_diff.md", round_text)
         final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
         self.assertIn("ai_cross_review_status: pass", final_text)
+        self.assertIn("review_tier: strict-3", final_text)
+        self.assertIn("claude_rounds_required: 3", final_text)
+        self.assertIn("codex_temp_agent_pre_review: pass", final_text)
         self.assertIn("unresolved_blocking_issues: 0", final_text)
 
-    def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
+    def test_run_ai_cross_review_review_one_creates_one_claude_round(self) -> None:
+        self._write(
+            "fake_claude.py",
+            "print('round: fake')\n"
+            "print('reviewer: claude_code')\n"
+            "print('claude_code_read_only: true')\n"
+            "print('verdict: pass')\n"
+            "print('blocking_issues:')\n",
+        )
+        validation_command = self._custom_full_validation_command()
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/review-one",
+            "--slug",
+            "review-one",
+            "--review-tier",
+            "review-1",
+            "--validation-profile",
+            "custom-full-equivalent",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            "--claude-command",
+            sys.executable,
+            "--claude-command-arg",
+            "fake_claude.py",
+            *self._passing_codex_pre_review_args(),
+        )
+
+        pack = self.repo / "docs/agent_reviews/review-one"
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code, stdout)
+        self.assertIn("tier=review-1", stdout)
+        self.assertTrue((pack / "05_claude_review_round_1.md").exists())
+        self.assertFalse((pack / "06_codex_response_round_1.md").exists())
+        self.assertFalse((pack / "07_claude_review_round_2.md").exists())
+        final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
+        self.assertIn("review_tier: review-1", final_text)
+        self.assertIn("claude_rounds_required: 1", final_text)
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", "docs/agent_reviews/review-one")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("rounds=1", stdout)
+
+    def test_run_ai_cross_review_fast_uses_no_claude_rounds(self) -> None:
+        self._write(
+            "fake_claude.py",
+            "raise SystemExit('Claude should not run for fast tier')\n",
+        )
         validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/fast",
+            "--slug",
+            "fast",
+            "--review-tier",
+            "fast",
+            "--risk-level",
+            "low",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            "--claude-command",
+            sys.executable,
+            "--claude-command-arg",
+            "fake_claude.py",
+            *self._passing_codex_pre_review_args(),
+        )
+
+        pack = self.repo / "docs/agent_reviews/fast"
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code, stdout)
+        self.assertIn("tier=fast", stdout)
+        self.assertFalse((pack / "05_claude_review_round_1.md").exists())
+        final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
+        self.assertIn("review_tier: fast", final_text)
+        self.assertIn("claude_rounds_required: 0", final_text)
+        self.assertIn("codex_temp_agent_pre_review: pass", final_text)
+        claims_text = (pack / "04_claims.md").read_text(encoding="utf-8")
+        self.assertIn("evidence_ref: 02_codex_temp_agent_pre_review.md", claims_text)
+        self.assertNotIn("05_claude_review_round_1.md", claims_text)
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", "docs/agent_reviews/fast")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("rounds=0", stdout)
+
+    def test_run_ai_cross_review_rejects_missing_machine_validation(self) -> None:
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/no-validation",
+            "--slug",
+            "no-validation",
+            "--review-tier",
+            "fast",
+            "--risk-level",
+            "low",
+            "--no-default-validation",
+            *self._passing_codex_pre_review_args(),
+        )
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("requires machine validation", stderr)
+
+    def test_run_ai_cross_review_missing_pre_review_blocks_pack(self) -> None:
+        validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/missing-pre-review",
+            "--slug",
+            "missing-pre-review",
+            "--review-tier",
+            "fast",
+            "--risk-level",
+            "low",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(1, code)
+        self.assertIn("status=blocked", stdout)
+        final_text = (self.repo / "docs/agent_reviews/missing-pre-review/10_final_decision.md").read_text(encoding="utf-8")
+        self.assertIn("codex_temp_agent_pre_review: blocked", final_text)
+
+    def test_run_ai_cross_review_rejects_high_risk_non_strict_tier(self) -> None:
+        validation_command = self._custom_full_validation_command()
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/high-risk",
+            "--slug",
+            "high-risk",
+            "--risk-level",
+            "high",
+            "--review-tier",
+            "review-1",
+            "--validation-profile",
+            "custom-full-equivalent",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            *self._passing_codex_pre_review_args(),
+        )
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("requires --review-tier strict-3", stderr)
+
+    def test_run_ai_cross_review_rejects_weak_custom_full_equivalent_validation(self) -> None:
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/weak-full",
+            "--slug",
+            "weak-full",
+            "--review-tier",
+            "review-1",
+            "--validation-profile",
+            "custom-full-equivalent",
+            "--no-default-validation",
+            "--validation-command",
+            f'"{sys.executable}" -c "print(123)"',
+            *self._passing_codex_pre_review_args(),
+        )
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("custom-full-equivalent validation missing core gates", stderr)
+
+    def test_run_ai_cross_review_rejects_formal_result_file_non_strict_tier(self) -> None:
+        self._write("experiments/v1/confirmation/result.yaml", "H: 75.0\n")
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/formal-result",
+            "--slug",
+            "formal-result",
+            "--review-tier",
+            "review-1",
+            "--validation-profile",
+            "custom-full-equivalent",
+            "--no-default-validation",
+            "--validation-command",
+            self._custom_full_validation_command(),
+            *self._passing_codex_pre_review_args(),
+        )
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("requires --review-tier strict-3", stderr)
+
+    def test_run_ai_cross_review_rejects_unstructured_pre_review_close_result(self) -> None:
+        validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/bad-close-result",
+            "--slug",
+            "bad-close-result",
+            "--review-tier",
+            "fast",
+            "--risk-level",
+            "low",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            "--codex-pre-review-agent-id",
+            "agent-test-001",
+            "--codex-pre-review-agent-name",
+            "Temp Review Agent",
+            "--codex-pre-review-close-result",
+            "closed",
+            "--codex-pre-review-verdict",
+            "pass",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(1, code)
+        self.assertIn("status=blocked", stdout)
+        pre_review_text = (self.repo / "docs/agent_reviews/bad-close-result/02_codex_temp_agent_pre_review.md").read_text(encoding="utf-8")
+        self.assertIn("close_result_confirms_completion: false", pre_review_text)
+
+    def test_validate_ai_cross_review_rejects_handwritten_bad_close_result(self) -> None:
+        validation_command = f'"{sys.executable}" -c "print(123)"'
+
+        code, stdout, stderr = self._run_main(
+            "run-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/handwritten-bad-close",
+            "--slug",
+            "handwritten-bad-close",
+            "--review-tier",
+            "fast",
+            "--risk-level",
+            "low",
+            "--no-default-validation",
+            "--validation-command",
+            validation_command,
+            *self._passing_codex_pre_review_args(),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code, stdout)
+        self._write(
+            "docs/agent_reviews/handwritten-bad-close/02_codex_temp_agent_pre_review.md",
+            "codex_temp_agent_pre_review: pass\n"
+            "temporary_agent_required: true\n"
+            "agent_instance_id: agent-test-001\n"
+            "ui_display_name: Temp Review Agent\n"
+            "lifecycle: completed_closed\n"
+            "closed_before_claude: true\n"
+            "close_result_confirms_completion: true\n"
+            "close_result: closed\n"
+            "verdict: pass\n"
+            "blocking_issues:\n"
+            "notes: forged marker should not pass validation\n",
+        )
+
+        code, stdout, stderr = self._run_main(
+            "validate-ai-cross-review",
+            "--path",
+            "docs/agent_reviews/handwritten-bad-close",
+        )
+
+        self.assertEqual("", stdout)
+        self.assertEqual(1, code)
+        self.assertIn("close_result must include matching agent id", stderr)
+
+    def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
+        validation_command = self._custom_full_validation_command()
 
         code, stdout, stderr = self._run_main(
             "run-ai-cross-review",
@@ -2729,10 +3059,15 @@ decision:
             "docs/agent_reviews/skip-claude",
             "--slug",
             "skip-claude",
+            "--review-tier",
+            "review-1",
+            "--validation-profile",
+            "custom-full-equivalent",
             "--no-default-validation",
             "--validation-command",
             validation_command,
             "--skip-claude",
+            *self._passing_codex_pre_review_args(),
         )
 
         self.assertEqual("", stderr)
@@ -2755,7 +3090,7 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nrounds_completed: 3\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
+            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
@@ -2775,7 +3110,7 @@ decision:
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
         )
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")

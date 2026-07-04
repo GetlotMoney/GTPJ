@@ -7,10 +7,17 @@ task_id:
 task_title:
 scope:
 risk_level: low | medium | high
+validation_profile: default-core | custom-debug | custom-full-equivalent
 owner_participation: not_required
 review_required: true
+review_tier: fast | review-1 | strict-3
+claude_rounds_required: 0 | 1 | 3
 review_reason:
 acceptance_gates:
+- machine_gates_passed: true
+- codex_temp_agent_pre_review: pass
+- claude_rounds_required:
+- unresolved_blocking_issues: 0
 ```
 
 ## 01_codex_actions.md
@@ -29,6 +36,22 @@ risk_notes:
 填写 git diff 或 git diff --cached 输出。
 ```
 
+## 02_codex_temp_agent_pre_review.md
+
+```text
+codex_temp_agent_pre_review: pass | blocked
+temporary_agent_required: true
+agent_instance_id:
+ui_display_name:
+lifecycle: completed_closed
+closed_before_claude: true
+close_result_confirms_completion: true
+close_result:
+verdict: pass | needs_fix | blocked
+blocking_issues:
+notes:
+```
+
 ## 02_focused_diff.md
 
 ```text
@@ -41,6 +64,9 @@ prompt_profile: focused
 ```text
 prompt_profile: focused | full
 review_mode: blocking-only | full
+review_tier: fast | review-1 | strict-3
+claude_rounds_required: 0 | 1 | 3
+validation_profile: default-core | custom-debug | custom-full-equivalent
 changed_files:
 machine_gates_passed:
 default_inputs:
@@ -135,8 +161,13 @@ missing_validation:
 ```text
 ai_cross_review_status: pass | blocked
 owner_participation: not_required
-rounds_completed: 3
+review_tier: fast | review-1 | strict-3
+rounds_completed: 0 | 1 | 3
+claude_rounds_required: 0 | 1 | 3
+claude_rounds_completed: 0 | 1 | 3
 claude_code_read_only: true
+codex_temp_agent_pre_review: pass
+codex_temp_agent_lifecycle: completed_closed
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: true | false
 unresolved_blocking_issues: 0

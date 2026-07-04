@@ -5707,7 +5707,7 @@ AI_CROSS_REVIEW_ROUND_MARKERS = {
 AI_CROSS_REVIEW_FINAL_MARKERS = {
     "ai_cross_review_status: pass",
     "owner_participation: not_required",
-    "rounds_completed: 3",
+    "rounds_completed:",
     "claude_code_read_only: true",
     "codex_fixes_or_rebuttals_recorded: true",
     "machine_gates_passed: true",
@@ -5718,6 +5718,54 @@ AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS = [
     "python workflow\\gtpj_workflow.py validate-workflow-consistency",
     "python workflow\\gtpj_workflow.py audit-boundary",
     "python -m py_compile workflow\\gtpj_workflow.py",
+]
+AI_CROSS_REVIEW_CORE_VALIDATION_FRAGMENTS = [
+    "workflow\\gtpj_workflow.py validate",
+    "workflow\\gtpj_workflow.py validate-workflow-consistency",
+    "workflow\\gtpj_workflow.py audit-boundary",
+    "py_compile workflow\\gtpj_workflow.py",
+]
+AI_CROSS_REVIEW_TIER_ROUNDS = {
+    "fast": 0,
+    "review-1": 1,
+    "strict-3": 3,
+}
+AI_CROSS_REVIEW_STRICT_KEYWORDS = [
+    "training-entry",
+    "training_entry",
+    "train_",
+    "evaluation",
+    "metric",
+    "split",
+    "label",
+    "class-order",
+    "class_order",
+    "logits",
+    "runner",
+    "warehouse",
+    "confirmation",
+    "promotion",
+    "baseline",
+    "formal result",
+    "experiment conclusion",
+    "paper claim",
+    "论文 claim",
+    "正式实验结论",
+]
+AI_CROSS_REVIEW_STRICT_RESULT_FILENAMES = {
+    "result.yaml",
+    "result.yml",
+    "result.md",
+    "quality_check.md",
+    "attempts.md",
+    "agent_activity.md",
+    "promotion.md",
+    "baseline.md",
+}
+AI_CROSS_REVIEW_CLAUDE_ROUND_FILES = [
+    ("05_claude_review_round_1.md", "06_codex_response_round_1.md"),
+    ("07_claude_review_round_2.md", "08_codex_response_round_2.md"),
+    ("09_claude_review_round_3.md", ""),
 ]
 
 
@@ -5900,7 +5948,15 @@ def workflow_consistency_errors() -> list[str]:
         "docs/workflow/protocols/ai_cross_review_protocol.md": [
             "owner_participation: not_required",
             "claude_code_read_only: true",
-            "rounds_completed: 3",
+            "review_tier",
+            "fast",
+            "review-1",
+            "strict-3",
+            "02_codex_temp_agent_pre_review.md",
+            "completed_closed",
+            "close_result_confirms_completion",
+            "validation_profile",
+            "claude_rounds_required",
             "run-ai-cross-review",
             "validate-ai-cross-review",
             "02_review_brief.md",
@@ -5939,6 +5995,15 @@ def workflow_consistency_errors() -> list[str]:
             "ai_cross_review:",
         ],
         "experiments/templates/ai_cross_review_template.md": [
+            "review_tier",
+            "fast",
+            "review-1",
+            "strict-3",
+            "02_codex_temp_agent_pre_review.md",
+            "completed_closed",
+            "close_result_confirms_completion",
+            "validation_profile",
+            "claude_rounds_required",
             "02_review_brief.md",
             "02_focused_diff.md",
             "prompt_profile",
@@ -5994,6 +6059,55 @@ def resolve_ai_cross_review_path(path_text: str) -> Path:
     return path
 
 
+def scalar_from_text(text: str, key: str) -> str:
+    match = re.search(rf"(?im)^\s*{re.escape(key)}\s*:\s*(.*?)\s*$", text)
+    return match.group(1).strip() if match else ""
+
+
+def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], int, bool]:
+    final_path = pack_dir / "10_final_decision.md"
+    if not final_path.is_file():
+        return AI_CROSS_REVIEW_REQUIRED_FILES, 3, False
+    final_text = read_text(final_path)
+    review_tier = scalar_from_text(final_text, "review_tier")
+    if not review_tier:
+        return AI_CROSS_REVIEW_REQUIRED_FILES, 3, False
+    rounds_text = scalar_from_text(final_text, "claude_rounds_required")
+    try:
+        rounds_required = int(rounds_text)
+    except ValueError:
+        rounds_required = AI_CROSS_REVIEW_TIER_ROUNDS.get(review_tier, -1)
+    if review_tier not in AI_CROSS_REVIEW_TIER_ROUNDS or rounds_required not in AI_CROSS_REVIEW_TIER_ROUNDS.values():
+        return [
+            "00_task.md",
+            "01_codex_actions.md",
+            "02_codex_temp_agent_pre_review.md",
+            "02_diff.patch",
+            "02_focused_diff.md",
+            "02_review_brief.md",
+            "03_validation.md",
+            "04_claims.md",
+            "10_final_decision.md",
+        ], rounds_required, True
+    required = [
+        "00_task.md",
+        "01_codex_actions.md",
+        "02_codex_temp_agent_pre_review.md",
+        "02_diff.patch",
+        "02_focused_diff.md",
+        "02_review_brief.md",
+        "03_validation.md",
+        "04_claims.md",
+        "10_final_decision.md",
+    ]
+    for index in range(max(0, rounds_required)):
+        claude_file, codex_file = AI_CROSS_REVIEW_CLAUDE_ROUND_FILES[index]
+        required.append(claude_file)
+        if codex_file and index + 1 < rounds_required:
+            required.append(codex_file)
+    return required, rounds_required, True
+
+
 def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     errors: list[str] = []
     if not pack_dir.exists():
@@ -6001,7 +6115,8 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     if not pack_dir.is_dir():
         return [f"ai cross review path must be a directory: {display_path(pack_dir)}"]
 
-    for filename in AI_CROSS_REVIEW_REQUIRED_FILES:
+    required_files, rounds_required, tiered_pack = ai_cross_review_required_files_for_pack(pack_dir)
+    for filename in required_files:
         path = pack_dir / filename
         if not path.exists():
             errors.append(f"missing review file: {filename}")
@@ -6009,7 +6124,16 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
         if not path.is_file():
             errors.append(f"review entry must be a file: {filename}")
 
-    for filename, markers in AI_CROSS_REVIEW_ROUND_MARKERS.items():
+    round_marker_items = list(AI_CROSS_REVIEW_ROUND_MARKERS.items())
+    if tiered_pack:
+        allowed_round_files: set[str] = set()
+        for index in range(max(0, rounds_required)):
+            claude_file, codex_file = AI_CROSS_REVIEW_CLAUDE_ROUND_FILES[index]
+            allowed_round_files.add(claude_file)
+            if codex_file and index + 1 < rounds_required:
+                allowed_round_files.add(codex_file)
+        round_marker_items = [(filename, markers) for filename, markers in round_marker_items if filename in allowed_round_files]
+    for filename, markers in round_marker_items:
         path = pack_dir / filename
         if not path.is_file():
             continue
@@ -6024,14 +6148,57 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             elif verdict_match.group(1).strip().lower() != "pass":
                 errors.append(f"{filename} verdict must be pass")
 
+    pre_review_path = pack_dir / "02_codex_temp_agent_pre_review.md"
+    if tiered_pack and pre_review_path.is_file():
+        pre_text = read_text(pre_review_path)
+        for marker in [
+            "temporary_agent_required: true",
+            "verdict: pass",
+            "lifecycle: completed_closed",
+            "closed_before_claude: true",
+            "close_result_confirms_completion: true",
+        ]:
+            if marker not in pre_text:
+                errors.append(f"02_codex_temp_agent_pre_review.md missing marker: {marker}")
+        pre_agent_id = scalar_from_text(pre_text, "agent_instance_id")
+        pre_close_result = scalar_from_text(pre_text, "close_result")
+        if not codex_pre_review_close_result_text_valid(pre_agent_id, pre_close_result):
+            errors.append(
+                "02_codex_temp_agent_pre_review.md close_result must include matching agent id, previous_status=completed, and closed: true"
+            )
+
     final_path = pack_dir / "10_final_decision.md"
     if final_path.is_file():
         final_text = read_text(final_path)
         if "ai_cross_review_status: blocked" in final_text:
             errors.append("ai cross review is blocked")
+        if tiered_pack:
+            review_tier = scalar_from_text(final_text, "review_tier")
+            rounds_text = scalar_from_text(final_text, "claude_rounds_required")
+            if review_tier not in AI_CROSS_REVIEW_TIER_ROUNDS:
+                errors.append(f"10_final_decision.md invalid review_tier: {review_tier}")
+            else:
+                try:
+                    declared_rounds = int(rounds_text)
+                except ValueError:
+                    declared_rounds = -1
+                expected_rounds = AI_CROSS_REVIEW_TIER_ROUNDS[review_tier]
+                if declared_rounds != expected_rounds:
+                    errors.append(
+                        f"10_final_decision.md claude_rounds_required must be {expected_rounds} for {review_tier}"
+                    )
         for marker in sorted(AI_CROSS_REVIEW_FINAL_MARKERS):
             if marker not in final_text:
                 errors.append(f"10_final_decision.md missing marker: {marker}")
+        if tiered_pack:
+            for marker in [
+                "review_tier:",
+                "claude_rounds_required:",
+                "codex_temp_agent_pre_review: pass",
+                "codex_temp_agent_lifecycle: completed_closed",
+            ]:
+                if marker not in final_text:
+                    errors.append(f"10_final_decision.md missing marker: {marker}")
         if re.search(r"unresolved_blocking_issues:\s*[1-9]", final_text):
             errors.append("10_final_decision.md has unresolved blocking issues")
 
@@ -6219,8 +6386,11 @@ task_id: {args.task_id or safe_review_slug(review_slug)}
 task_title: {args.task_title or review_slug}
 scope: {args.scope}
 risk_level: {args.risk_level}
+validation_profile: {ai_cross_review_validation_profile(args)}
 prompt_profile: {args.prompt_profile}
 review_mode: {args.review_mode}
+review_tier: {args.review_tier}
+claude_rounds_required: {AI_CROSS_REVIEW_TIER_ROUNDS[args.review_tier]}
 machine_gates_passed: {str(validation_passed).lower()}
 owner_participation: not_required
 claude_code_read_only: true
@@ -6231,6 +6401,8 @@ claude_code_read_only: true
 {chr(10).join(f"- `{item}`" for item in context_files) if context_files else "- 未找到 Claude 项目上下文文件"}
 - `00_task.md`
 - `01_codex_actions.md`
+- `02_codex_temp_agent_pre_review.md`
+- `02_review_brief.md`
 - `02_focused_diff.md`
 - `03_validation.md`
 - `04_claims.md`
@@ -6327,6 +6499,7 @@ def build_claude_prompt_ascii(
         *existing_claude_context_files(),
         "00_task.md",
         "01_codex_actions.md",
+        "02_codex_temp_agent_pre_review.md",
         "02_review_brief.md",
         "02_focused_diff.md",
         "03_validation.md",
@@ -6432,6 +6605,7 @@ inputs_checked:
 - docs/workflow/CLAUDE_CONTEXT.md
 - 00_task.md
 - 01_codex_actions.md
+- 02_codex_temp_agent_pre_review.md
 - 02_review_brief.md
 - 02_focused_diff.md
 - 03_validation.md
@@ -6480,14 +6654,167 @@ remaining_blocking_issues: {remaining}
 """
 
 
-def make_final_decision_md(verdicts: list[str], validation_passed: bool, *, skip_claude: bool) -> str:
-    unresolved = 0 if validation_passed and verdicts == ["pass", "pass", "pass"] and not skip_claude else 1
+def codex_pre_review_close_result_text_valid(agent_id: str, close_result: str) -> bool:
+    text = close_result.strip()
+    lower = text.lower()
+    return (
+        bool(agent_id)
+        and agent_id in text
+        and "previous_status" in lower
+        and "completed" in lower
+        and ("closed: true" in lower or '"closed": true' in lower or "closed=true" in lower)
+    )
+
+
+def codex_temp_pre_review_passed(args: argparse.Namespace) -> bool:
+    close_result_confirms_completion = codex_pre_review_close_result_valid(args)
+    return (
+        args.codex_pre_review_verdict == "pass"
+        and bool(args.codex_pre_review_agent_id.strip())
+        and bool(args.codex_pre_review_agent_name.strip())
+        and args.codex_pre_review_lifecycle == "completed_closed"
+        and close_result_confirms_completion
+    )
+
+
+def codex_pre_review_close_result_valid(args: argparse.Namespace) -> bool:
+    return codex_pre_review_close_result_text_valid(
+        args.codex_pre_review_agent_id.strip(),
+        args.codex_pre_review_close_result.strip(),
+    )
+
+
+def make_codex_temp_agent_pre_review_md(args: argparse.Namespace) -> str:
+    passed = codex_temp_pre_review_passed(args)
+    close_result_confirms_completion = codex_pre_review_close_result_valid(args)
+    return f"""codex_temp_agent_pre_review: {"pass" if passed else "blocked"}
+temporary_agent_required: true
+agent_instance_id: {args.codex_pre_review_agent_id or "missing"}
+ui_display_name: {args.codex_pre_review_agent_name or "missing"}
+lifecycle: {args.codex_pre_review_lifecycle}
+closed_before_claude: {str(close_result_confirms_completion).lower()}
+close_result_confirms_completion: {str(close_result_confirms_completion).lower()}
+close_result: {args.codex_pre_review_close_result or "missing"}
+verdict: {args.codex_pre_review_verdict}
+blocking_issues:
+{"" if passed else "- missing passing temporary Codex pre-review agent evidence or close_result"}
+notes: {args.codex_pre_review_notes or "temporary agent must be closed before Claude Code review starts"}
+"""
+
+
+def ai_cross_review_validation_profile(args: argparse.Namespace) -> str:
+    if args.no_default_validation and args.validation_profile == "default-core":
+        return "custom-debug"
+    return args.validation_profile
+
+
+def ai_cross_review_requires_strict(args: argparse.Namespace, changed_files: list[str]) -> bool:
+    if args.risk_level == "high":
+        return True
+    for path_text in changed_files:
+        normalized = path_text.replace("\\", "/").lower()
+        filename = Path(normalized).name
+        if normalized.startswith("experiments/") and filename in AI_CROSS_REVIEW_STRICT_RESULT_FILENAMES:
+            return True
+    haystack = " ".join(
+        [
+            args.scope,
+            args.task_title,
+            args.review_reason,
+            args.risk_notes,
+            *changed_files,
+        ]
+    ).lower()
+    return any(keyword.lower() in haystack for keyword in AI_CROSS_REVIEW_STRICT_KEYWORDS)
+
+
+def ai_cross_review_self_report_command(command: str) -> bool:
+    lower = command.lower()
+    return any(
+        marker in lower
+        for marker in [
+            " echo ",
+            "echo ",
+            "write-output",
+            "write-host",
+            "python -c",
+            "py -c",
+            "print(",
+        ]
+    )
+
+
+def validate_ai_cross_review_tier_args(args: argparse.Namespace, changed_files: list[str]) -> str:
+    validation_profile = ai_cross_review_validation_profile(args)
+    if args.review_tier == "fast" and args.risk_level != "low":
+        raise WorkflowError("review_tier=fast requires --risk-level low")
+    if ai_cross_review_requires_strict(args, changed_files) and args.review_tier != "strict-3":
+        raise WorkflowError("high-risk or formal-result-affecting review requires --review-tier strict-3")
+    if args.no_default_validation and args.risk_level != "low" and validation_profile != "custom-full-equivalent":
+        raise WorkflowError("--no-default-validation for medium/high risk requires --validation-profile custom-full-equivalent")
+    if args.review_tier == "strict-3" and validation_profile not in {"default-core", "custom-full-equivalent"}:
+        raise WorkflowError("review_tier=strict-3 requires default-core or custom-full-equivalent validation")
+    if validation_profile == "custom-full-equivalent":
+        validation_commands = ([] if args.no_default_validation else list(AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS))
+        validation_commands.extend(args.validation_command)
+        normalized_commands = [command.lower().replace("/", "\\") for command in validation_commands]
+        missing = [
+            fragment
+            for fragment in AI_CROSS_REVIEW_CORE_VALIDATION_FRAGMENTS
+            if not any(fragment.lower() in command for command in normalized_commands)
+        ]
+        if missing:
+            raise WorkflowError("custom-full-equivalent validation missing core gates: " + ", ".join(missing))
+        weak = [
+            fragment
+            for fragment in AI_CROSS_REVIEW_CORE_VALIDATION_FRAGMENTS
+            if all(
+                ai_cross_review_self_report_command(command)
+                for command in validation_commands
+                if fragment.lower() in command.lower().replace("/", "\\")
+            )
+        ]
+        if weak:
+            raise WorkflowError("custom-full-equivalent validation uses self-reporting commands: " + ", ".join(weak))
+    return validation_profile
+
+
+def ai_cross_review_claude_evidence_refs(rounds_required: int) -> str:
+    refs = ["02_codex_temp_agent_pre_review.md"]
+    for index in range(rounds_required):
+        claude_file, codex_file = AI_CROSS_REVIEW_CLAUDE_ROUND_FILES[index]
+        refs.append(claude_file)
+        if codex_file and index + 1 < rounds_required:
+            refs.append(codex_file)
+    return "; ".join(refs)
+
+
+def make_final_decision_tiered_md(
+    verdicts: list[str],
+    validation_passed: bool,
+    *,
+    skip_claude: bool,
+    review_tier: str,
+    rounds_required: int,
+    pre_review_passed: bool,
+) -> str:
+    claude_ok = (not skip_claude) if rounds_required == 0 else (
+        len(verdicts) == rounds_required
+        and all(verdict == "pass" for verdict in verdicts)
+        and not skip_claude
+    )
+    unresolved = 0 if validation_passed and claude_ok and pre_review_passed else 1
     status = "pass" if unresolved == 0 else "blocked"
-    blocked_reason = "" if status == "pass" else "机器验证失败、Claude 未三轮通过、或本次跳过了真实 Claude Code 调用。"
+    blocked_reason = "" if status == "pass" else "machine validation failed, Codex temp pre-review is missing, or required Claude rounds did not pass."
     return f"""ai_cross_review_status: {status}
 owner_participation: not_required
-rounds_completed: 3
+review_tier: {review_tier}
+rounds_completed: {len(verdicts)}
+claude_rounds_required: {rounds_required}
+claude_rounds_completed: {len(verdicts)}
 claude_code_read_only: true
+codex_temp_agent_pre_review: {"pass" if pre_review_passed else "blocked"}
+codex_temp_agent_lifecycle: completed_closed
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: {str(validation_passed).lower()}
 unresolved_blocking_issues: {unresolved}
@@ -6502,8 +6829,13 @@ def cmd_run_ai_cross_review(args: argparse.Namespace) -> int:
     ensure_review_pack_writable(pack_dir, overwrite=args.overwrite)
     review_exclude_prefixes = ["docs/agent_reviews"]
     changed_files, _untracked = collect_changed_files(exclude_prefixes=review_exclude_prefixes)
+    validation_profile = validate_ai_cross_review_tier_args(args, changed_files)
     commands = [] if args.no_default_validation else list(AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS)
     commands.extend(args.validation_command)
+    if not commands:
+        raise WorkflowError("run-ai-cross-review requires machine validation; keep defaults or pass --validation-command")
+    rounds_required = AI_CROSS_REVIEW_TIER_ROUNDS[args.review_tier]
+    pre_review_passed = codex_temp_pre_review_passed(args)
 
     write_review_file(
         pack_dir,
@@ -6512,12 +6844,16 @@ def cmd_run_ai_cross_review(args: argparse.Namespace) -> int:
 task_title: {args.task_title or review_slug}
 scope: {args.scope}
 risk_level: {args.risk_level}
+validation_profile: {validation_profile}
 owner_participation: not_required
 review_required: true
-review_reason: {args.review_reason or "重要代码/工作流改动需要 Claude Code 与 Codex 三轮交叉审核。"}
+review_tier: {args.review_tier}
+claude_rounds_required: {rounds_required}
+review_reason: {args.review_reason or "重要代码/工作流改动需要按 review_tier 执行 AI 交叉审核。"}
 acceptance_gates:
 - machine_gates_passed: true
-- rounds_completed: 3
+- codex_temp_agent_pre_review: pass
+- claude_rounds_required: {rounds_required}
 - unresolved_blocking_issues: 0
 """,
         overwrite=args.overwrite,
@@ -6538,6 +6874,12 @@ risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制�
 """,
         overwrite=args.overwrite,
     )
+    write_review_file(
+        pack_dir,
+        "02_codex_temp_agent_pre_review.md",
+        make_codex_temp_agent_pre_review_md(args),
+        overwrite=args.overwrite,
+    )
     write_review_file(pack_dir, "02_diff.patch", build_ai_cross_review_diff(exclude_prefixes=review_exclude_prefixes), overwrite=args.overwrite)
     write_review_file(
         pack_dir,
@@ -6546,6 +6888,7 @@ risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制�
         overwrite=args.overwrite,
     )
     validation_passed, validation_text = run_ai_cross_review_validations(commands)
+    validation_text = f"validation_profile: {validation_profile}\n" + validation_text
     write_review_file(pack_dir, "03_validation.md", validation_text, overwrite=args.overwrite)
     write_review_file(
         pack_dir,
@@ -6562,35 +6905,41 @@ risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制�
     write_review_file(
         pack_dir,
         "04_claims.md",
-        f"""claim: 本次改动已由 Codex 生成证据包，并将由 Claude Code 只读审核三轮。
+        f"""claim: 本次改动已由 Codex 生成证据包，并按 review_tier={args.review_tier} 执行 Claude Code 只读审核。
 status: supported
-evidence_ref: 05_claude_review_round_1.md; 07_claude_review_round_2.md; 09_claude_review_round_3.md
+evidence_ref: {ai_cross_review_claude_evidence_refs(rounds_required)}
 
 claim: 机器验证命令已运行。
 status: {"verified" if validation_passed else "false"}
 evidence_ref: 03_validation.md
+
+claim: Claude Code 前置临时 Codex agent 已完成预审并关闭。
+status: {"verified" if pre_review_passed else "false"}
+evidence_ref: 02_codex_temp_agent_pre_review.md
 """,
-        overwrite=args.overwrite,
+        overwrite=True,
     )
 
     verdicts: list[str] = []
-    round_files = [
-        ("05_claude_review_round_1.md", "06_codex_response_round_1.md"),
-        ("07_claude_review_round_2.md", "08_codex_response_round_2.md"),
-        ("09_claude_review_round_3.md", ""),
-    ]
-    for index, (claude_file, codex_file) in enumerate(round_files, start=1):
+    for index, (claude_file, codex_file) in enumerate(AI_CROSS_REVIEW_CLAUDE_ROUND_FILES[:rounds_required], start=1):
         exit_code, stdout, stderr = run_claude_review(args, pack_dir, index)
         verdict, claude_md = make_claude_review_md(index, exit_code, stdout, stderr)
         verdicts.append(verdict)
         write_review_file(pack_dir, claude_file, claude_md, overwrite=args.overwrite)
-        if codex_file:
+        if codex_file and index < rounds_required:
             write_review_file(pack_dir, codex_file, make_codex_response_md(index, verdict, validation_passed), overwrite=args.overwrite)
 
     write_review_file(
         pack_dir,
         "10_final_decision.md",
-        make_final_decision_md(verdicts, validation_passed, skip_claude=args.skip_claude),
+        make_final_decision_tiered_md(
+            verdicts,
+            validation_passed,
+            skip_claude=args.skip_claude,
+            review_tier=args.review_tier,
+            rounds_required=rounds_required,
+            pre_review_passed=pre_review_passed,
+        ),
         overwrite=args.overwrite,
     )
 
@@ -6600,7 +6949,7 @@ evidence_ref: 03_validation.md
         for error in errors:
             print(f"ERROR {error}")
         return 1
-    print(f"run-ai-cross-review-ok path={display_path(pack_dir)} rounds=3")
+    print(f"run-ai-cross-review-ok path={display_path(pack_dir)} tier={args.review_tier} rounds={rounds_required}")
     return 0
 
 
@@ -6609,7 +6958,8 @@ def cmd_validate_ai_cross_review(args: argparse.Namespace) -> int:
     errors = ai_cross_review_errors(pack_dir)
     if errors:
         raise WorkflowError("AI 交叉审核校验失败:\n" + "\n".join(errors))
-    print(f"validate-ai-cross-review-ok path={display_path(pack_dir)} rounds=3")
+    _required_files, rounds_required, _tiered_pack = ai_cross_review_required_files_for_pack(pack_dir)
+    print(f"validate-ai-cross-review-ok path={display_path(pack_dir)} rounds={rounds_required}")
     return 0
 
 
@@ -10174,11 +10524,11 @@ def build_parser() -> argparse.ArgumentParser:
     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
 
-    validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 三轮 AI 交叉审核证据包")
+    validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 分层 AI 交叉审核证据包")
     validate_ai_cross_review.add_argument("--path", required=True)
     validate_ai_cross_review.set_defaults(func=cmd_validate_ai_cross_review)
 
-    run_ai_cross_review = sub.add_parser("run-ai-cross-review", help="生成证据包并调用 Claude Code 三轮只读审核")
+    run_ai_cross_review = sub.add_parser("run-ai-cross-review", help="生成证据包并按 review_tier 调用 Claude Code 只读审核")
     run_ai_cross_review.add_argument("--slug", default="")
     run_ai_cross_review.add_argument("--path", default="")
     run_ai_cross_review.add_argument("--task-id", default="")
@@ -10189,6 +10539,18 @@ def build_parser() -> argparse.ArgumentParser:
     run_ai_cross_review.add_argument("--risk-notes", default="")
     run_ai_cross_review.add_argument("--prompt-profile", default="focused", choices=["focused", "full"])
     run_ai_cross_review.add_argument("--review-mode", default="blocking-only", choices=["blocking-only", "full"])
+    run_ai_cross_review.add_argument("--review-tier", default="review-1", choices=sorted(AI_CROSS_REVIEW_TIER_ROUNDS))
+    run_ai_cross_review.add_argument(
+        "--validation-profile",
+        default="default-core",
+        choices=["default-core", "custom-debug", "custom-full-equivalent"],
+    )
+    run_ai_cross_review.add_argument("--codex-pre-review-agent-id", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-agent-name", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-lifecycle", default="completed_closed", choices=["completed_closed"])
+    run_ai_cross_review.add_argument("--codex-pre-review-close-result", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-verdict", default="blocked", choices=["pass", "needs_fix", "blocked"])
+    run_ai_cross_review.add_argument("--codex-pre-review-notes", default="")
     run_ai_cross_review.add_argument("--validation-command", action="append", default=[])
     run_ai_cross_review.add_argument("--no-default-validation", action="store_true")
     run_ai_cross_review.add_argument("--claude-command", default="claude")

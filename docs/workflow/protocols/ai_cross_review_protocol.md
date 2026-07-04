@@ -1,72 +1,128 @@
 # AI 交叉审核协议
 
-本协议定义 GTPJ 中重要代码、workflow、helper、模板、训练、评估和实验决策改动的“免 owner 日常参与”审核门。
+本协议定义 GTPJ 中代码、workflow、helper、模板、训练入口、评估语义和实验结论相关改动的 AI 审核门。目标不是增加仪式感，而是让重要改动在被信任前，先经过机器验证、临时 Codex 预审和必要的 Claude Code 只读审核。
 
-目标不是增加仪式感，而是让每个重要改动在被信任前，先经受一次独立、只读、可复现的反向审查。
+## 不可跳过规则
 
-## 核心规则
+- 机器验证永远必须运行。`run-ai-cross-review` 在没有验证命令时必须失败。
+- Claude Code 只读审核，不改文件、不启动训练、不 push、不删除用户数据。
+- Codex 负责实现、修复、反驳、重跑验证和写回证据。
+- owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
+- `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
 
-日常审核不要求 owner 参与。
+## 审核分层
 
-Codex 可以实现、修复和记录反驳。Claude Code 只读审核。Codex 必须对 Claude Code 的每个发现给出三类回应之一：
-
-```text
-修复
-基于证据驳回
-标记 blocked
-```
-
-最终是否接受改动，由机器验证和审核证据包共同决定。
-
-owner 不参与日常审核循环，但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
-
-## 必需轮次
-
-高影响改动必须执行三轮 AI 交叉审核：
+`review_tier` 只有三档：
 
 ```text
-第 1 轮：Claude Code 审查原始 diff 和证据包。
-第 2 轮：Codex 修复或反驳，重跑验证，Claude Code 审查更新后的状态。
-第 3 轮：Codex 关闭剩余问题，重跑验证，Claude Code 做最终接受性审查。
+fast: 0 轮 Claude Code
+review-1: 1 轮 Claude Code
+strict-3: 3 轮 Claude Code
 ```
 
-每一轮 Claude Code 都必须保持只读。Claude 的发现必须引用具体文件、行号范围、命令或缺失证据。没有可复现抓手的意见可以记录为 non-blocking concern，但不能只凭观点阻断。
+使用规则：
 
-## 触发条件
+- `fast` 只允许 `risk_level: low` 的普通文档或轻量 workflow 修补；仍必须有机器验证通过和临时 Codex agent 预审通过。
+- `review-1` 用于普通 workflow/helper/template 修补，不直接改变正式实验结论、训练入口、评估语义、promotion 或论文 claim。
+- `strict-3` 只用于会污染正式实验结论的改动，包括训练入口、forward/loss/evaluation、data/split/label/class order/logits/metric、Runner、Warehouse、confirmation、promotion、baseline claim 和论文 claim。
+- `risk_level: high` 或 scope/title/reason 中出现正式实验结论风险时，低于 `strict-3` 必须被 helper 拦截。
 
-以下改动必须执行三轮 AI 交叉审核：
+## 临时 Codex 预审
 
-- workflow helper 代码改动；
-- 会创建或改变硬门的 workflow 协议、模板或规范改动；
-- model、forward、loss、evaluation、data、split、class-order、metric 或 training-entry 改动；
-- module trial 中代码语义发生变化，且即将进入正式 Runner；
-- 会影响 keep、best、rerun、confirmation、promotion、baseline 或论文 claim 的结果解释；
-- owner 明确要求 Claude/Codex 审核的任何任务。
+Claude Code 之前必须先启动一个临时 Codex agent 做只读预审。该 agent 只检查当前 diff、验证证据和结论风险，不改文件、不启动训练。
 
-不改变硬门、代码或实验结论的小型文档修订，可以不启用本协议。
+预审完成后必须立刻关闭该 agent，并写入：
+
+```text
+02_codex_temp_agent_pre_review.md
+```
+
+必需字段：
+
+```text
+codex_temp_agent_pre_review: pass
+temporary_agent_required: true
+agent_instance_id: <真实 agent id>
+ui_display_name: <右侧栏显示名>
+lifecycle: completed_closed
+closed_before_claude: true
+close_result_confirms_completion: true
+close_result: <close_agent 返回内容或包含 agent_id、previous_status=completed、closed:true 的摘要>
+verdict: pass
+```
+
+如果临时 agent 未关闭、没有真实 id、没有 UI 显示名、没有 close_result，或者 verdict 不是 `pass`，审核包必须 blocked。
+`close_result` 不能只写 `closed`、`pass`、`done` 这类普通字符串；helper 会校验其中的 agent id、`previous_status`、`completed` 和 `closed:true`。
+
+## 验证 Profile
+
+默认验证 profile 是：
+
+```text
+validation_profile: default-core
+```
+
+默认会运行不启动训练的核心命令：
+
+```powershell
+python workflow\gtpj_workflow.py validate
+python workflow\gtpj_workflow.py validate-workflow-consistency
+python workflow\gtpj_workflow.py audit-boundary
+python -m py_compile workflow\gtpj_workflow.py
+```
+
+如果使用 `--no-default-validation`，必须至少提供一条 `--validation-command`，并记录：
+
+```text
+validation_profile: custom-debug | custom-full-equivalent
+```
+
+`medium` / `high` 风险或 `strict-3` 审核不能使用弱自定义验证冒充完整验证；需要 `default-core` 或 `custom-full-equivalent`。
+`custom-full-equivalent` 必须真实包含核心 gate 命令，不能用 `echo`、`print`、`python -c` 等自报方式把命令名称打印出来冒充验证。
 
 ## 证据包
 
-审核证据包应放在改动所在目录附近，或统一放在：
+默认位置：
 
 ```text
 docs/agent_reviews/YYYY-MM-DD-task-name/
 ```
 
-证据包必须包含：
+所有证据包都必须包含：
 
 ```text
 00_task.md
 01_codex_actions.md
+02_codex_temp_agent_pre_review.md
 02_diff.patch
+02_focused_diff.md
+02_review_brief.md
 03_validation.md
 04_claims.md
+10_final_decision.md
+```
+
+按 `claude_rounds_required` 追加：
+
+```text
+review_tier: fast
+claude_rounds_required: 0
+```
+
+```text
+review_tier: review-1
+claude_rounds_required: 1
+05_claude_review_round_1.md
+```
+
+```text
+review_tier: strict-3
+claude_rounds_required: 3
 05_claude_review_round_1.md
 06_codex_response_round_1.md
 07_claude_review_round_2.md
 08_codex_response_round_2.md
 09_claude_review_round_3.md
-10_final_decision.md
 ```
 
 模板位置：
@@ -75,112 +131,55 @@ docs/agent_reviews/YYYY-MM-DD-task-name/
 experiments/templates/ai_cross_review_template.md
 ```
 
-证据包正文必须使用中文；命令、字段名、文件名、代码标识和必要英文接口名可以保留原文。
-
-## Claude Code 调用方式
-
-推荐本地命令形态：
-
-```powershell
-$prompt = "阅读审核证据包。不要修改文件。只报告能用文件路径、行号、缺失测试、未支撑 claim 或可复现命令证明的问题。"
-$prompt | claude -p --bare --permission-mode plan --output-format json --disallowedTools Edit Write
-```
-
-`ultrareview` 可以作为额外审查，但不能替代审核证据包和最终决定文件。
-
 ## 通过条件
 
-审核包只有同时满足下面条件时，才能通过：
+最终决定文件必须满足：
 
 ```text
 ai_cross_review_status: pass
 owner_participation: not_required
-rounds_completed: 3
+review_tier: fast | review-1 | strict-3
+claude_rounds_required: 0 | 1 | 3
+claude_rounds_completed: 0 | 1 | 3
 claude_code_read_only: true
+codex_temp_agent_pre_review: pass
+codex_temp_agent_lifecycle: completed_closed
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
 ```
 
-只要仍有 blocking issue，最终决定必须写成：
+任一 blocking issue 未关闭时，最终决定必须是：
 
 ```text
 ai_cross_review_status: blocked
 ```
 
-blocked 的改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
-
-## 校验命令
-
-信任审核包前必须运行：
-
-```powershell
-python workflow\gtpj_workflow.py validate-ai-cross-review --path docs\agent_reviews\YYYY-MM-DD-task-name
-```
-
-这个 helper 检查结构、最终字段、每轮 Claude verdict 是否全部为 `pass`。它不判断 Claude 是否一定正确；它只保证审核循环完整、可追踪、且没有被最终决定文件伪装成通过。
-
-## 自动运行命令
-
-需要自动生成证据包、运行机器验证、调用 Claude Code 三轮只读审核并写回结果时，使用：
-
-```powershell
-python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --task-title "任务标题"
-```
-
-默认会写入：
-
-```text
-docs/agent_reviews/YYYY-MM-DD-task-name/
-```
-
-默认会运行不启动训练的 workflow 机器验证：
-
-```text
-python workflow\gtpj_workflow.py validate
-python workflow\gtpj_workflow.py validate-workflow-consistency
-python workflow\gtpj_workflow.py audit-boundary
-python -m py_compile workflow\gtpj_workflow.py
-```
-
-如需加入额外验证命令，可重复传入：
-
-```powershell
---validation-command "python -m pytest tests\test_gtpj_workflow.py -q -p no:cacheprovider"
-```
-
-如果只想生成证据包但不调用真实 Claude Code，可传入 `--skip-claude`；这种情况下最终状态必须是 blocked，不能当作正式通过。
+blocked 改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
 
 ## 快速审核优化
 
-默认 Claude Code 审核不再直接读取完整 diff。`run-ai-cross-review` 必须同时生成：
-
-```text
-02_diff.patch
-02_focused_diff.md
-02_review_brief.md
-```
-
-字段规则：
-
-```text
-prompt_profile: focused | full
-review_mode: blocking-only | full
-```
-
-默认值：
+默认使用：
 
 ```text
 prompt_profile: focused
 review_mode: blocking-only
 ```
 
-`focused` 模式下，Claude Code 默认只读 `CLAUDE.md`、`docs/workflow/CLAUDE_CONTEXT.md`、`02_review_brief.md`、`02_focused_diff.md`、`03_validation.md` 和 `04_claims.md`。完整 `02_diff.patch` 仍然必须保留在证据包中，但只作为追查备用证据。
+`focused` 模式下，Claude Code 默认只读 `CLAUDE.md`、`docs/workflow/CLAUDE_CONTEXT.md`、`02_codex_temp_agent_pre_review.md`、`02_review_brief.md`、`02_focused_diff.md`、`03_validation.md` 和 `04_claims.md`。完整 `02_diff.patch` 必须保留，但只在 focused diff 无法定位问题时读取。
 
-`blocking-only` 模式下，Claude Code 只报告会导致行为错误、证据污染、验证失败、正式实验结论不可靠的 blocking issues。非阻断命名、风格和微小测试粒度建议不要展开。
+`blocking-only` 模式下，Claude Code 只报告会导致行为错误、证据污染、验证失败或正式实验结论不可靠的 blocking issues。
 
-需要完整旧模式时，显式使用：
+## 命令
+
+生成审核包：
 
 ```powershell
-python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --prompt-profile full --review-mode full
+python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --task-title "任务标题"
+```
+
+校验证据包：
+
+```powershell
+python workflow\gtpj_workflow.py validate-ai-cross-review --path docs\agent_reviews\YYYY-MM-DD-task-name
 ```
