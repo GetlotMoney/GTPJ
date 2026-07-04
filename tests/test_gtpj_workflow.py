@@ -479,7 +479,7 @@ audit:
         code, stdout, stderr = self._run_main("validate-trial-meta", "--path", "trial_meta.yaml")
 
         self.assertEqual("", stderr)
-        self.assertEqual(0, code)
+        self.assertEqual(0, code, stdout + stderr)
         self.assertIn("validate-trial-meta-ok", stdout)
 
     def test_validate_trial_meta_rejects_single_module_scoring_change(self) -> None:
@@ -591,7 +591,7 @@ audit:
         code, stdout, stderr = self._run_main("validate-trial-meta", "--path", "trial_meta.yaml")
 
         self.assertEqual("", stderr)
-        self.assertEqual(0, code)
+        self.assertEqual(0, code, stdout + stderr)
         self.assertIn("validate-trial-meta-ok", stdout)
 
     def test_scan_ignores_runtime_state(self) -> None:
@@ -2656,6 +2656,9 @@ decision:
         self._write(
             "fake_claude.py",
             "import sys\n"
+            "prompt = sys.stdin.read()\n"
+            "with open('captured_claude_prompt.txt', 'a', encoding='utf-8', errors='replace') as handle:\n"
+            "    handle.write(prompt + '\\n---PROMPT---\\n')\n"
             "print('round: fake')\n"
             "print('reviewer: claude_code')\n"
             "print('claude_code_read_only: true')\n"
@@ -2682,13 +2685,37 @@ decision:
             "fake_claude.py",
         )
 
-        self.assertEqual("", stderr)
-        self.assertEqual(0, code)
-        self.assertIn("run-ai-cross-review-ok", stdout)
         pack = self.repo / "docs/agent_reviews/run-test"
+        debug_review = ""
+        if pack.exists():
+            debug_review = "\n".join(
+                (pack / name).read_text(encoding="utf-8")
+                for name in [
+                    "05_claude_review_round_1.md",
+                    "07_claude_review_round_2.md",
+                    "09_claude_review_round_3.md",
+                    "10_final_decision.md",
+                ]
+                if (pack / name).exists()
+            )
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code, stdout + stderr + debug_review)
+        self.assertIn("run-ai-cross-review-ok", stdout)
+        self.assertTrue((pack / "02_focused_diff.md").exists())
+        self.assertTrue((pack / "02_review_brief.md").exists())
         self.assertTrue((pack / "05_claude_review_round_1.md").exists())
         self.assertTrue((pack / "07_claude_review_round_2.md").exists())
         self.assertTrue((pack / "09_claude_review_round_3.md").exists())
+        prompt_text = (self.repo / "captured_claude_prompt.txt").read_text(encoding="utf-8")
+        brief_text = (pack / "02_review_brief.md").read_text(encoding="utf-8")
+        round_text = (pack / "05_claude_review_round_1.md").read_text(encoding="utf-8")
+        self.assertIn("02_review_brief.md", prompt_text)
+        self.assertIn("02_focused_diff.md", prompt_text)
+        self.assertIn("Do not read 02_diff.patch by default", prompt_text)
+        self.assertIn("review_mode: blocking-only", brief_text)
+        self.assertIn("prompt_profile: focused", brief_text)
+        self.assertIn("02_review_brief.md", round_text)
+        self.assertIn("02_focused_diff.md", round_text)
         final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
         self.assertIn("ai_cross_review_status: pass", final_text)
         self.assertIn("unresolved_blocking_issues: 0", final_text)
@@ -2728,7 +2755,7 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nrounds_completed: 3\nrun-ai-cross-review\nvalidate-ai-cross-review\n",
+            "owner_participation: not_required\nclaude_code_read_only: true\nrounds_completed: 3\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
@@ -2748,7 +2775,7 @@ decision:
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
         )
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")

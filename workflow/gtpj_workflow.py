@@ -5903,6 +5903,10 @@ def workflow_consistency_errors() -> list[str]:
             "rounds_completed: 3",
             "run-ai-cross-review",
             "validate-ai-cross-review",
+            "02_review_brief.md",
+            "02_focused_diff.md",
+            "prompt_profile",
+            "blocking-only",
         ],
         "docs/workflow/protocols/module_template_selection.md": [
             "feature_adapter_template.py",
@@ -5935,6 +5939,10 @@ def workflow_consistency_errors() -> list[str]:
             "ai_cross_review:",
         ],
         "experiments/templates/ai_cross_review_template.md": [
+            "02_review_brief.md",
+            "02_focused_diff.md",
+            "prompt_profile",
+            "blocking-only",
             "05_claude_review_round_1.md",
             "09_claude_review_round_3.md",
             "10_final_decision.md",
@@ -6148,6 +6156,106 @@ def build_ai_cross_review_diff(exclude_prefixes: list[str] | None = None) -> str
     return "\n".join(header)
 
 
+def existing_claude_context_files() -> list[str]:
+    files = ["CLAUDE.md", "docs/workflow/CLAUDE_CONTEXT.md"]
+    return [path_text for path_text in files if (REPO_ROOT / path_text).is_file()]
+
+
+def build_ai_cross_review_focused_diff(
+    changed_files: list[str],
+    *,
+    exclude_prefixes: list[str] | None = None,
+    max_chars: int = 120_000,
+) -> str:
+    _changed, untracked = collect_changed_files(exclude_prefixes=exclude_prefixes)
+    diff_stat = git_capture("diff", "--stat", "--").rstrip()
+    diff = git_capture("diff", "--unified=12", "--").rstrip()
+    truncated = False
+    if len(diff) > max_chars:
+        diff = diff[:max_chars].rstrip()
+        truncated = True
+    snippet = read_untracked_review_snippets(untracked, max_bytes=40_000)
+    blocks = [
+        "# Focused Diff",
+        "",
+        "本文件是给 Claude Code 默认读取的精简 diff。完整证据仍保留在 `02_diff.patch`。",
+        "",
+        "## Changed Files",
+        "",
+        "\n".join(f"- {item}" for item in changed_files) if changed_files else "- 当前没有 git status 变化",
+        "",
+        "## Diff Stat",
+        "",
+        "```text",
+        diff_stat or "(empty)",
+        "```",
+        "",
+        "## Focused Patch",
+        "",
+        "```diff",
+        diff or "(empty)",
+        "```",
+    ]
+    if truncated:
+        blocks.extend(["", "> focused diff 已截断；需要追查完整上下文时再读取 `02_diff.patch`。"])
+    if snippet:
+        blocks.extend(["", "## Untracked Text Snippets", "", snippet.rstrip()])
+    return "\n".join(blocks)
+
+
+def build_ai_cross_review_brief(
+    *,
+    args: argparse.Namespace,
+    review_slug: str,
+    changed_files: list[str],
+    commands: list[str],
+    validation_passed: bool,
+) -> str:
+    context_files = existing_claude_context_files()
+    return f"""# Claude Code 快速审核 Brief
+
+```text
+task_id: {args.task_id or safe_review_slug(review_slug)}
+task_title: {args.task_title or review_slug}
+scope: {args.scope}
+risk_level: {args.risk_level}
+prompt_profile: {args.prompt_profile}
+review_mode: {args.review_mode}
+machine_gates_passed: {str(validation_passed).lower()}
+owner_participation: not_required
+claude_code_read_only: true
+```
+
+## 默认读取顺序
+
+{chr(10).join(f"- `{item}`" for item in context_files) if context_files else "- 未找到 Claude 项目上下文文件"}
+- `00_task.md`
+- `01_codex_actions.md`
+- `02_focused_diff.md`
+- `03_validation.md`
+- `04_claims.md`
+
+## 备用证据
+
+- `02_diff.patch` 是完整 diff，只在 focused diff 无法定位问题时读取。
+- 旧轮次的 Claude/Codex 文件只在第 2/3 轮需要比对剩余问题时读取。
+
+## Changed Files
+
+{chr(10).join(f"- `{item}`" for item in changed_files) if changed_files else "- 当前没有 git status 变化"}
+
+## Validation Commands
+
+{chr(10).join(f"- `{command}`" for command in commands) if commands else "- 未提供验证命令"}
+
+## 审核要求
+
+- 只读审核，不改文件，不启动训练，不 push，不删除用户数据。
+- `blocking-only` 模式只报告会导致行为错误、证据污染、验证失败、正式实验结论不可靠的问题。
+- 非阻断命名、风格、微小测试建议不要展开；可写 `non_blocking_issues: omitted_by_blocking_only_mode`。
+"""
+
+
 def run_ai_cross_review_validations(commands: list[str]) -> tuple[bool, str]:
     if not commands:
         return False, "commands_run:\nnot_run:\n- 未提供验证命令。\nmachine_gates_passed: false\n"
@@ -6208,8 +6316,70 @@ missing_validation:
 """
 
 
+def build_claude_prompt_ascii(
+    pack_dir: Path,
+    round_number: int,
+    *,
+    prompt_profile: str,
+    review_mode: str,
+) -> str:
+    focused_inputs = [
+        *existing_claude_context_files(),
+        "00_task.md",
+        "01_codex_actions.md",
+        "02_review_brief.md",
+        "02_focused_diff.md",
+        "03_validation.md",
+        "04_claims.md",
+    ]
+    if round_number >= 2:
+        focused_inputs.extend(["05_claude_review_round_1.md", "06_codex_response_round_1.md"])
+    if round_number >= 3:
+        focused_inputs.extend(["07_claude_review_round_2.md", "08_codex_response_round_2.md"])
+    if prompt_profile == "full":
+        focused_inputs.insert(4, "02_diff.patch")
+    input_lines = "\n".join(f"- {item}" for item in focused_inputs)
+    if review_mode == "blocking-only":
+        review_note = "Review mode: blocking-only. Report only reproducible blocking issues. Do not expand style, naming, or minor test-granularity suggestions."
+    else:
+        review_note = "Review mode: full. You may report both blocking and non-blocking issues."
+    if prompt_profile == "focused":
+        patch_note = "Prompt profile: focused. Do not read 02_diff.patch by default; read it only when 02_focused_diff.md is insufficient to locate a blocking issue."
+    else:
+        patch_note = "Prompt profile: full. Read 02_diff.patch and use 02_review_brief.md to orient the review."
+    return f"""You are the read-only Claude Code reviewer for the GTPJ project.
+Review pack directory: {display_path(pack_dir)}
+Round: {round_number}
+
+Do not edit files. Do not start training. Do not push, delete, publish, or perform destructive actions.
+{review_note}
+{patch_note}
+
+Read these files first:
+{input_lines}
+
+Every blocking issue must cite a file path, line number or reproducible command/missing evidence.
+Output must contain these fields:
+```text
+round: {round_number}
+reviewer: claude_code
+claude_code_read_only: true
+verdict: pass | needs_fix | blocked
+blocking_issues:
+non_blocking_issues:
+unsupported_claims:
+missing_validation:
+```
+"""
+
+
 def run_claude_review(args: argparse.Namespace, pack_dir: Path, round_number: int) -> tuple[int, str, str]:
-    prompt = build_claude_prompt(pack_dir, round_number)
+    prompt = build_claude_prompt_ascii(
+        pack_dir,
+        round_number,
+        prompt_profile=args.prompt_profile,
+        review_mode=args.review_mode,
+    )
     if args.skip_claude:
         return 0, "verdict: blocked\nblocking_issues:\n- skip_claude enabled; 未调用 Claude Code。\n", ""
     executable = shutil.which(args.claude_command) or args.claude_command
@@ -6258,11 +6428,16 @@ def make_claude_review_md(round_number: int, exit_code: int, stdout: str, stderr
 reviewer: claude_code
 claude_code_read_only: true
 inputs_checked:
+- CLAUDE.md
+- docs/workflow/CLAUDE_CONTEXT.md
 - 00_task.md
 - 01_codex_actions.md
-- 02_diff.patch
+- 02_review_brief.md
+- 02_focused_diff.md
 - 03_validation.md
 - 04_claims.md
+fallback_available:
+- 02_diff.patch
 verdict: {verdict}
 blocking_issues:
 {blocking_value}
@@ -6364,8 +6539,26 @@ risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制�
         overwrite=args.overwrite,
     )
     write_review_file(pack_dir, "02_diff.patch", build_ai_cross_review_diff(exclude_prefixes=review_exclude_prefixes), overwrite=args.overwrite)
+    write_review_file(
+        pack_dir,
+        "02_focused_diff.md",
+        build_ai_cross_review_focused_diff(changed_files, exclude_prefixes=review_exclude_prefixes),
+        overwrite=args.overwrite,
+    )
     validation_passed, validation_text = run_ai_cross_review_validations(commands)
     write_review_file(pack_dir, "03_validation.md", validation_text, overwrite=args.overwrite)
+    write_review_file(
+        pack_dir,
+        "02_review_brief.md",
+        build_ai_cross_review_brief(
+            args=args,
+            review_slug=review_slug,
+            changed_files=changed_files,
+            commands=commands,
+            validation_passed=validation_passed,
+        ),
+        overwrite=args.overwrite,
+    )
     write_review_file(
         pack_dir,
         "04_claims.md",
@@ -9994,6 +10187,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_ai_cross_review.add_argument("--risk-level", default="medium", choices=["low", "medium", "high"])
     run_ai_cross_review.add_argument("--review-reason", default="")
     run_ai_cross_review.add_argument("--risk-notes", default="")
+    run_ai_cross_review.add_argument("--prompt-profile", default="focused", choices=["focused", "full"])
+    run_ai_cross_review.add_argument("--review-mode", default="blocking-only", choices=["blocking-only", "full"])
     run_ai_cross_review.add_argument("--validation-command", action="append", default=[])
     run_ai_cross_review.add_argument("--no-default-validation", action="store_true")
     run_ai_cross_review.add_argument("--claude-command", default="claude")

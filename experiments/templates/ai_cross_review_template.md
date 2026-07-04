@@ -29,6 +29,23 @@ risk_notes:
 填写 git diff 或 git diff --cached 输出。
 ```
 
+## 02_focused_diff.md
+
+```text
+prompt_profile: focused
+完整 diff 保留在 02_diff.patch；Claude Code 默认读取本文件。
+```
+
+## 02_review_brief.md
+
+```text
+prompt_profile: focused | full
+review_mode: blocking-only | full
+changed_files:
+machine_gates_passed:
+default_inputs:
+```
+
 ## 03_validation.md
 
 ```text

@@ -150,3 +150,37 @@ python -m py_compile workflow\gtpj_workflow.py
 ```
 
 如果只想生成证据包但不调用真实 Claude Code，可传入 `--skip-claude`；这种情况下最终状态必须是 blocked，不能当作正式通过。
+
+## 快速审核优化
+
+默认 Claude Code 审核不再直接读取完整 diff。`run-ai-cross-review` 必须同时生成：
+
+```text
+02_diff.patch
+02_focused_diff.md
+02_review_brief.md
+```
+
+字段规则：
+
+```text
+prompt_profile: focused | full
+review_mode: blocking-only | full
+```
+
+默认值：
+
+```text
+prompt_profile: focused
+review_mode: blocking-only
+```
+
+`focused` 模式下，Claude Code 默认只读 `CLAUDE.md`、`docs/workflow/CLAUDE_CONTEXT.md`、`02_review_brief.md`、`02_focused_diff.md`、`03_validation.md` 和 `04_claims.md`。完整 `02_diff.patch` 仍然必须保留在证据包中，但只作为追查备用证据。
+
+`blocking-only` 模式下，Claude Code 只报告会导致行为错误、证据污染、验证失败、正式实验结论不可靠的 blocking issues。非阻断命名、风格和微小测试粒度建议不要展开。
+
+需要完整旧模式时，显式使用：
+
+```powershell
+python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --prompt-profile full --review-mode full
+```
