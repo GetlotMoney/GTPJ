@@ -54,11 +54,13 @@
 3. 明确基线：所有实验必须写清 `base_version` / `base_code_tag`；论文到实验必须先有 owner 指定的代码版本。
 4. 选模板：新创新优先用模块模板热插拔；owner 明确要求“新模板重建”时，使用 `standard_gzsl_training_template.py` 生成 trial-local 训练入口，不继续堆旧训练脚本。
 5. 先写计划：正式写入或训练前生成 mini 启动摘要；需要正式证据时再展开完整 task card。
-6. 正式 Runner 前开真实临时 agents：写 `agent_runtime.yaml`，记录真实 agent id、UI 显示名、role 映射、output refs，并依次跑 `validate-agent-runtime`、`multi-agent-preflight`、`agent-cleanup-plan`。
-7. 跑实验：Runner 串行锁 GPU；GitHub 只记轻量账本；raw logs、checkpoint、generated figures 和 cache 进 Warehouse/Research，不进 GitHub。
-8. 收结果：写 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`agent_summary.md`、`AGENT_ACTIVITY.md`；必须报告 mean/min/max/range，不能只报 best。
-9. 做审核：普通 workflow 修补走 `review-1`，正式结论污染风险走 `strict-3`；所有机器验证照跑。
-10. 收尾清理：每阶段报告 `keep / close / unknown agents`，关闭 completed agents，记录 `close_result`，右侧栏只保留当前 active agents。
+6. 走状态机：正式证据对象必须绑定 `subject_id` / `subject_type`；`TRANSITIONS.jsonl` 是 append-only 权威历史，`evidence_routing.yaml` 只能由 chain head 派生，不能手写抬高状态。
+7. 正式 Runner 前开真实临时 agents：写 `agent_runtime.yaml`，记录真实 agent id、UI 显示名、role 映射、output refs，并依次跑 `validate-agent-runtime`、`multi-agent-preflight`、`agent-cleanup-plan`。
+8. 严格命名 agents：右侧临时 agent 显示名必须按 `<subject_id> | <Role Label>`，例如 `ATTEMPT-007 | Runner Monitor`；禁止使用 Herschel、Galileo、Feynman 等随机英文昵称。
+9. 跑实验：Runner 串行锁 GPU；GitHub 只记轻量账本；raw logs、checkpoint、generated figures 和 cache 进 Warehouse/Research，不进 GitHub。
+10. 收结果：写 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`agent_summary.md`、`AGENT_ACTIVITY.md`；必须报告 mean/min/max/range，不能只报 best。
+11. 做审核：普通 workflow 修补走 `review-1`，正式结论污染风险走 `strict-3`；所有机器验证照跑。
+12. 收尾清理：每阶段报告 `keep / close / unknown agents`，关闭 completed agents，记录 `close_result`，右侧栏只保留当前 active agents。
 
 ## 仓库规则
 

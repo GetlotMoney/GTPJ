@@ -30,10 +30,10 @@ temporary_subagent_ids:
   result_comparator: 019f23a5-8c8a-7c50-a076-f1b93160a2e4
 
 temporary_subagent_display_names:
-  runner_monitor: "ATTEMPT-005 Runner Monitor"
-  interface_checker: "ATTEMPT-005 Interface Checker"
-  evidence_quality_checker: "ATTEMPT-005 Evidence Quality Checker"
-  result_comparator: "ATTEMPT-005 Result Comparator"
+  runner_monitor: "ATTEMPT-005 | Runner Monitor"
+  interface_checker: "ATTEMPT-005 | Interface Checker"
+  evidence_quality_checker: "ATTEMPT-005 | Evidence Quality Checker"
+  result_comparator: "ATTEMPT-005 | Result Comparator"
 
 agent_cleanup:
   retention_policy: current_stage_active_only

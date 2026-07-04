@@ -69,6 +69,8 @@ owner_visible_reporting: true
 - 每轮 workflow 结束或阶段结束时，Coordinator 必须先确认已完成 agents 的结论写入
   `agent_summary.md` / `AGENT_ACTIVITY.md` / result / quality / issues / memory 等正式位置，
   然后关闭这些已完成 agents。右侧栏默认只保留当前阶段仍在工作的 active agents。
+- 右侧栏临时 agent 显示名必须严格按 `<subject_id> | <Role Label>` 命名，例如 `ATTEMPT-007 | Runner Monitor`、`ATTEMPT-007 | Interface Checker`、`ATTEMPT-007 | Evidence Quality Checker`。
+- 禁止使用与任务无关的随机英文昵称，例如 `Herschel`、`Galileo`、`Feynman`、`Bohr`；只写 `Runner` / `Quality` 这种泛名也不合格。
 - 角色名要清晰，例如 `运行监控 (Runner Monitor)`、`日志分析 (Log Analyst)`、`证据质量检查 (Evidence Quality Checker)`、`结果比较 (Result Comparator)`。
 - `Experiment Runner` 表示实际启动训练命令的运行角色；`Runner Monitor` 表示监控服务器、队列、GPU slot 和失败隔离的运行监控角色。小任务中二者可以由同一 Runner family 承担，但在启动卡和 `agent_summary.md` 里必须写清楚显示名和职责。
 

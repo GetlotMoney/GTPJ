@@ -130,6 +130,15 @@ agent_activity_stream：
 -> manifest/result/quality/agent_summary -> cleanup -> sync/closeout
 ```
 
+中间的证据成熟度由状态机管理：
+
+```text
+subject_id + subject_type -> TRANSITIONS.jsonl -> evidence_state -> evidence_routing.yaml
+```
+
+`TRANSITIONS.jsonl` 是只追加的权威历史；`evidence_routing.yaml` 只是当前状态视图，必须能由
+chain head 推导出来。聊天结论、服务器状态和 `agent_summary.md` 都不能手写覆盖状态机。
+
 从论文获得创新时，多一段前置闭环，但仍然只接入同一个实验闭环：
 
 ```text
@@ -194,3 +203,22 @@ claude_code_read_only: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
 ```
+
+## 8. 临时 agent 命名
+
+正式 `real_multi_agent` 不能使用随机英文昵称。右侧栏临时 agent 必须按任务命名：
+
+```text
+<subject_id> | <Role Label>
+```
+
+示例：
+
+```text
+ATTEMPT-007 | Runner Monitor
+ATTEMPT-007 | Interface Checker
+ATTEMPT-007 | Evidence Quality Checker
+```
+
+命名必须写入 `agent_runtime.yaml` 的 `temporary_subagent_display_names`，并由
+`validate-agent-runtime` 校验。随机昵称或只写 `Runner` / `Quality` 这种泛名，不能启动正式 Runner。

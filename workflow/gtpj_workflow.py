@@ -5409,6 +5409,48 @@ def validate_agent_runtime_role_ref(
     return errors, path, text
 
 
+def role_display_label(role: str) -> str:
+    return " ".join(part.capitalize() for part in role.split("_") if part)
+
+
+def validate_agent_display_name(subject_id: str, role: str, display_name: str) -> str | None:
+    normalized = display_name.strip()
+    if not normalized:
+        return f"temporary_subagent_display_names.{role} is missing"
+    legacy_random_names = {
+        "herschel",
+        "epicurus",
+        "galileo",
+        "aristotle",
+        "dewey",
+        "jason",
+        "poincare",
+        "dalton",
+        "mendel",
+        "bohr",
+        "raman",
+        "pasteur",
+        "descartes",
+        "linnaeus",
+        "dirac",
+        "lorentz",
+        "peirce",
+        "feynman",
+    }
+    if normalized.lower() in legacy_random_names:
+        return f"temporary_subagent_display_names.{role} uses a random legacy nickname: {display_name}"
+    if subject_id and subject_id.lower() not in normalized.lower():
+        return f"temporary_subagent_display_names.{role} must include subject_id: {subject_id}"
+    display_words = normalized.lower().replace("_", " ").replace("-", " ").replace("|", " ")
+    missing_role_words = [part for part in role.split("_") if part and part.lower() not in display_words]
+    if missing_role_words:
+        expected = role_display_label(role)
+        return f"temporary_subagent_display_names.{role} must include role label words: {expected}"
+    if "|" not in normalized:
+        return f"temporary_subagent_display_names.{role} must use '<subject_id> | <Role Label>' format"
+    return None
+
+
 def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     errors: list[str] = []
     scalars, maps = read_simple_yaml_maps(gate_path)
@@ -5505,6 +5547,16 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     for role, instance_id in agent_ids.items():
         if not valid_runtime_agent_instance_id(instance_id):
             errors.append(f"{gate_name} temporary_subagent_ids.{role} is not a real agent/thread id")
+    display_names = maps.get("temporary_subagent_display_names", {})
+    if not display_names:
+        errors.append(f"{gate_name} missing temporary_subagent_display_names")
+    for role in agent_ids:
+        display_error = validate_agent_display_name(scalars.get("subject_id", ""), role, display_names.get(role, ""))
+        if display_error:
+            errors.append(f"{gate_name} {display_error}")
+    extra_display_roles = sorted(set(display_names) - set(agent_ids))
+    for role in extra_display_roles:
+        errors.append(f"{gate_name} temporary_subagent_display_names.{role} has no matching temporary_subagent_ids entry")
     instance_to_roles: dict[str, list[str]] = {}
     for role, instance_id in agent_ids.items():
         instance_to_roles.setdefault(instance_id.strip(), []).append(role)
@@ -5936,6 +5988,8 @@ def workflow_consistency_errors() -> list[str]:
             "formal_runner_allowed",
             "agent_output_refs",
             "agent-cleanup-plan",
+            "temporary_subagent_display_names",
+            "<subject_id> | <Role Label>",
         ],
         "docs/workflow/core/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
         "docs/workflow/core/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
@@ -5944,6 +5998,7 @@ def workflow_consistency_errors() -> list[str]:
             "formal_runner_allowed",
             "agent_output_refs",
             "agent-cleanup-plan",
+            "<subject_id> | <Role Label>",
         ],
         "docs/workflow/protocols/ai_cross_review_protocol.md": [
             "owner_participation: not_required",

@@ -25,7 +25,7 @@ temporary_subagent_ids:
   runner_monitor: 019...
 
 temporary_subagent_display_names:
-  runner_monitor: "ATTEMPT-005 Runner Monitor"
+  runner_monitor: "ATTEMPT-005 | Runner Monitor"
 
 agent_instance_status:
   runner_monitor: completed
@@ -57,7 +57,39 @@ missing / failed / unknown / not_found -> 不盲关，先汇报
 
 重复 agent id 不能代表独立角色。一个 agent id 如果同时承担多个正式角色，必须标记为历史限制或降级，不能作为完整 `real_multi_agent` 证据。
 
-## 4. 只读计划命令
+## 4. 命名判定
+
+右侧栏临时 agent 显示名不能随便取英文名。正式 runtime 必须使用：
+
+```text
+<subject_id> | <Role Label>
+```
+
+其中 `subject_id` 是本次 attempt / confirmation / campaign / review pack 的机器可读任务 id，
+`Role Label` 是清晰角色名，例如 `Runner Monitor`、`Interface Checker`、
+`Evidence Quality Checker`、`Result Analyst`。
+
+合法示例：
+
+```text
+ATTEMPT-007 | Runner Monitor
+CONFIRM-20260703-strict-template-rebuild-v5 | Evidence Quality Checker
+DR035-EXACT-REPEAT | Result Comparator
+```
+
+非法示例：
+
+```text
+Herschel
+Galileo
+Feynman
+Runner
+Quality
+```
+
+非法原因：看不出属于哪个任务、哪个证据对象，也无法和 `agent_runtime.yaml` 稳定对应。
+
+## 5. 只读计划命令
 
 阶段结束前先运行：
 
@@ -67,7 +99,7 @@ python workflow/gtpj_workflow.py agent-cleanup-plan --path <agent_runtime.yaml>
 
 它只输出保留/关闭/未知名单，不会关闭 agent。
 
-## 5. Owner 可见汇报格式
+## 6. Owner 可见汇报格式
 
 ```text
 role: Coordinator

@@ -316,6 +316,7 @@ class WorkflowHelperTest(unittest.TestCase):
         include_owner_monitor: bool = True,
         include_preflight: bool = True,
         duplicate_agent_id: bool = False,
+        bad_display_name: bool = False,
     ) -> Path:
         gate_path = self.repo / path
         self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
@@ -353,6 +354,19 @@ class WorkflowHelperTest(unittest.TestCase):
             )
         if not include_agent_ids:
             agent_ids = "temporary_subagent_ids:\n  runner_monitor: temporary_subagent\n"
+        display_names = (
+            "temporary_subagent_display_names:\n"
+            "  runner_monitor: ATTEMPT-001 | Runner Monitor\n"
+            "  interface_checker: ATTEMPT-001 | Interface Checker\n"
+            "  evidence_quality_checker: ATTEMPT-001 | Evidence Quality Checker\n"
+        )
+        if bad_display_name:
+            display_names = (
+                "temporary_subagent_display_names:\n"
+                "  runner_monitor: Galileo\n"
+                "  interface_checker: ATTEMPT-001 | Interface Checker\n"
+                "  evidence_quality_checker: ATTEMPT-001 | Evidence Quality Checker\n"
+            )
         owner_monitor = (
             "owner_monitor_mode: true\n"
             "owner_role: monitor\n"
@@ -397,6 +411,7 @@ class WorkflowHelperTest(unittest.TestCase):
             "formal_evidence_allowed: true\n"
             f"{owner_monitor}"
             f"{agent_ids}"
+            f"{display_names}"
             "agent_instance_status:\n"
             "  runner_monitor: running\n"
             "  interface_checker: completed\n"
@@ -2510,6 +2525,14 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("not a real agent/thread id", stderr)
 
+    def test_validate_agent_runtime_rejects_random_display_name(self) -> None:
+        gate_path = self._write_agent_runtime_gate(bad_display_name=True)
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("uses a random legacy nickname", stderr)
+
     def test_validate_agent_runtime_rejects_missing_pre_run_allow(self) -> None:
         gate_path = self._write_agent_runtime_gate(quality_decision="not_checked")
 
@@ -3083,11 +3106,11 @@ decision:
         self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
         self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\ntemporary_subagent_display_names\n<subject_id> | <Role Label>\n")
         self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
         self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
-        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
             "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
@@ -3129,11 +3152,11 @@ decision:
         self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
         self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\ntemporary_subagent_display_names\n<subject_id> | <Role Label>\n")
         self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
         self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
-        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
             "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",

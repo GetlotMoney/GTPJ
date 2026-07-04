@@ -90,6 +90,12 @@ temporary_subagent_ids:
   evidence_quality_checker: 019...
   result_analyst: 019...
 
+temporary_subagent_display_names:
+  runner_monitor: "ATTEMPT-007 | Runner Monitor"
+  interface_checker: "ATTEMPT-007 | Interface Checker"
+  evidence_quality_checker: "ATTEMPT-007 | Evidence Quality Checker"
+  result_analyst: "ATTEMPT-007 | Result Analyst"
+
 pre_run_required_checks:
   runner_monitor: allow
   interface_checker: allow
@@ -130,6 +136,24 @@ authority_refs:
 `temporary_subagent_ids` 不能写成 `temporary_subagent`、`not_recorded`、`role_only`、
 `current Codex session` 这类占位文本。必须记录真实实例 id、可见 thread id 或明确的
 subagent id。
+
+`temporary_subagent_display_names` 必须记录右侧栏实际显示名。显示名使用严格格式：
+
+```text
+<subject_id> | <Role Label>
+```
+
+示例：
+
+```text
+ATTEMPT-007 | Runner Monitor
+CONFIRM-20260703-strict-template-rebuild-v5 | Interface Checker
+CAMP-20260704-workflow-v2 | Evidence Quality Checker
+```
+
+禁止使用与任务无关的随机英文昵称，例如 `Herschel`、`Galileo`、`Feynman`、`Bohr`。
+显示名必须同时说明“属于哪个任务”和“承担哪个角色”；否则 `validate-agent-runtime`
+必须阻断正式 Runner。
 
 `agent_activity_stream` 是 owner 可见流程账本。它必须记录：
 
@@ -258,7 +282,8 @@ python workflow/gtpj_workflow.py plan-dynamic-routing-batch \
 | 事后补写 agent_summary，但没有原始 agent id 和 allow/check | audit note only |
 
 一句话：状态机是账本，Runner 是执行器，agents 是工作流主体。三者缺一，不能声称完整
-workflow-v2 闭环。
+workflow-v2 闭环。状态机能证明“证据状态如何迁移”，但不能证明“谁独立检查过”；这个证明来自
+真实 agents、命名清晰的右侧栏实例和 `agent_runtime.yaml`。
 
 ## 9. Agent Cleanup
 

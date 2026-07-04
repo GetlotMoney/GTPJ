@@ -339,6 +339,16 @@ agents:
 `temporary_subagents.instances`。如果只写“temporary_subagent”但没有实例 id，Runner
 必须阻断。
 
+右侧栏显示名必须同步写入 `temporary_subagent_display_names`，并使用严格格式：
+
+```text
+<subject_id> | <Role Label>
+```
+
+例如 `ATTEMPT-007 | Runner Monitor`、`ATTEMPT-007 | Interface Checker`、
+`ATTEMPT-007 | Evidence Quality Checker`。不要使用随机英文昵称或只写泛角色名；显示名必须能让
+owner 在右侧栏直接看出该 agent 属于哪个任务、承担哪个角色。
+
 ## 最快合规路径
 
 Coordinator 默认必须选择“满足上下文隔离的最小有效路径”：
