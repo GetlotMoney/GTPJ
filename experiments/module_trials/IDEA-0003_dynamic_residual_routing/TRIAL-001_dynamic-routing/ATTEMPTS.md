@@ -9,6 +9,7 @@
 | `ATTEMPT-005` | `RUN-20260703-0001-dr035-min3-confirm-2gpu` | 3 completed / 0 failed | DR-002 seed7 H=74.39 | DR-002 seed7 H=74.39 | seeds 6/7/8 H=73.91/74.39/74.15; mean H=74.15; exact_repeat not run | seed_sweep only; not_confirmed; promotion blocked |
 | `ATTEMPT-006` | `RUN-20260702-0003-mixed2innov8tune-2gpu` | 10 completed / 0 failed | TUNE-002 / DR-004 direction_sample_h48_w0.525_a0.003 H=74.75 | TUNE-002 / DR-004 H=74.75 | no exact repeat; campaign is routing index only | tune_promising; formal ledger for workflow-v2 2-probe + 8-tune batch |
 | `ATTEMPT-007` | `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` | 3 completed / 0 failed | DR-002/DR-003 H=74.62 | DR-002/DR-003 H=74.62 | same-seed exact repeat seed 5 x3: 74.58/74.62/74.62; mean H=74.61; min H=74.58; range H=0.04 | confirmed_candidate; promotion blocked |
+| `ATTEMPT-008` | `RUN-20260704-0001-dr035-min6-confirm-s5-2gpu` | 6 completed / 0 failed | DR-004 H=74.76 | DR-004 H=74.76 | same-seed exact repeat seed 5 x6: 74.57/74.59/74.51/74.76/74.47/74.45; mean H=74.56; min H=74.45; range H=0.31 | not_confirmed; promotion blocked |
 
 ## ATTEMPT-001 Notes
 
@@ -265,3 +266,31 @@ Attempt-local records:
 - `attempts/ATTEMPT-007/AGENT_ACTIVITY.md`
 - `attempts/ATTEMPT-007/TRANSITIONS.jsonl`
 - `attempts/ATTEMPT-007/evidence_routing.yaml`
+
+## ATTEMPT-008 Post-Run Notes
+
+`RUN-20260704-0001-dr035-min6-confirm-s5-2gpu` completed 6 / 6 jobs with 0 failures.
+
+Main observations:
+
+- Exact-repeat scope is correct: all six jobs used source seed 5 and the DR-035 config.
+- Results were H=74.57 / 74.59 / 74.51 / 74.76 / 74.47 / 74.45.
+- Mean H=74.56, min H=74.45, max H=74.76, range H=0.31.
+- The min and range gates passed, but the mean gate `mean_H >= 74.60` did not pass.
+- Result state is `not_confirmed`; promotion remains blocked.
+
+Evidence boundary:
+
+- Runtime batch evidence remains on lab4090 under `.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu`.
+- Dedicated Warehouse path: `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-008/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu`.
+- Checkpoint retention was executed; only Top-3 checkpoints were retained.
+
+Attempt-local records:
+
+- `attempts/ATTEMPT-008/config.yaml`
+- `attempts/ATTEMPT-008/pre_run_plan.md`
+- `attempts/ATTEMPT-008/manifest.yaml`
+- `attempts/ATTEMPT-008/result.yaml`
+- `attempts/ATTEMPT-008/result.md`
+- `attempts/ATTEMPT-008/quality_check.md`
+- `attempts/ATTEMPT-008/agent_summary.md`

@@ -1,0 +1,119 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-008
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: DR-035 same-seed min6 exact repeat
+  status: completed_not_confirmed
+  recorded_at: "2026-07-04"
+version:
+  base_version: v5
+  base_code_tag: v5
+  code_branch: codex/h76-campaign-20260704
+  run_code_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+source:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
+  source_H: "75.02"
+schedule:
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: lr_stages
+  lr_stage_epochs: [20, 20, 10]
+  seed: 5
+  gpus: "0,1"
+run:
+  run_id: RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+  profile: dr035-min6-confirm
+  repeat_type: same_seed_min6_exact_repeat
+  runtime_path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+  jobs_total: 6
+  jobs_completed: 6
+  jobs_failed: 0
+  server_repo: /data/lby/projects/cv_project/GTPJ
+  server_branch: codex/h76-campaign-20260704
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
+  dedicated_warehouse: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-008/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+frozen_config:
+  use_dynamic_routing: true
+  dynamic_local_mode: fixed
+  dynamic_icsa_mode: fixed
+  dynamic_direction_mode: sample
+  dynamic_pse_mode: fixed
+  dynamic_gate_hidden: 48
+  dynamic_gate_anchor_lambda: 0.005
+  weight_s2v: 0.525
+  random_seed: 5
+completed_jobs:
+  - job_id: DR-001
+    seed: 5
+    H: "74.57"
+    U: "72.23"
+    S: "77.07"
+    ZS: "81.75"
+  - job_id: DR-002
+    seed: 5
+    H: "74.59"
+    U: "72.09"
+    S: "77.27"
+    ZS: "81.48"
+  - job_id: DR-003
+    seed: 5
+    H: "74.51"
+    U: "72.29"
+    S: "76.86"
+    ZS: "81.84"
+  - job_id: DR-004
+    seed: 5
+    H: "74.76"
+    U: "73.17"
+    S: "76.43"
+    ZS: "82.02"
+  - job_id: DR-005
+    seed: 5
+    H: "74.47"
+    U: "72.32"
+    S: "76.77"
+    ZS: "81.51"
+  - job_id: DR-006
+    seed: 5
+    H: "74.45"
+    U: "72.56"
+    S: "76.44"
+    ZS: "81.85"
+artifacts:
+  summary_csv:
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu/summary.csv
+    sha256: 00bfa517708e6ba4e7ee06682f133ad866dcf40cf0e0154238e719962e981b34
+  summary_jsonl:
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu/summary.jsonl
+    sha256: 6935987fc82b792793074e8629f37ccdf04633a0c3b0624931fca678445678b6
+  batch_status_json:
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu/batch_status.json
+    sha256: af3efdb1e243acae7a033dd9bc5ef542f6bdb9418b382aec06444cdf3fde2481
+  events_jsonl:
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu/events.jsonl
+    sha256: 7915eb5883750290c901c2f3b13d10f44be4870f6d6aba17ad794cd84efccb5b
+  plan_json:
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu/plan.json
+    sha256: 6151a41d1b63f43f7298da56b9453900131168a7912c38398f87e48dc79c062b
+result:
+  status: not_confirmed
+  confirmation_status: not_confirmed
+  confirmed_H: pending
+  promotion_decision: blocked
+checkpoint_retention:
+  required: true
+  retained_top3:
+    - path: DR-004/logs/best_model_CUB_2026-07-04_19-09-09_H7476.pth
+      sha256: daddd534525e237302dd997e3b970515dd8c5497406b16898b921744273ec0b6
+    - path: DR-002/logs/best_model_CUB_2026-07-04_18-58-29_H7459.pth
+      sha256: 5b89e4db66b3bd35ced4da6c98a70415d8244f9ad141fc3749584ef0ce97d318
+    - path: DR-001/logs/best_model_CUB_2026-07-04_18-58-29_H7457.pth
+      sha256: d154b222bc4da9f56c9258db2b5977e1a42931308e76f798e6f5e57ac618ae55
+  pruned_checkpoints: 3

@@ -1,0 +1,110 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-008
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+base_version: v5
+run_id: RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+result_type: same_seed_min6_exact_repeat
+exact_repeat: true
+confirmation_status: not_confirmed
+confirmed_H: pending
+promotion_decision: blocked
+target:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
+  source_H: "75.02"
+runs:
+  - job_id: DR-001
+    seed: 5
+    status: completed
+    U: "72.23"
+    S: "77.07"
+    H: "74.57"
+    ZS: "81.75"
+    best_epoch: "48"
+  - job_id: DR-002
+    seed: 5
+    status: completed
+    U: "72.09"
+    S: "77.27"
+    H: "74.59"
+    ZS: "81.48"
+    best_epoch: "48"
+  - job_id: DR-003
+    seed: 5
+    status: completed
+    U: "72.29"
+    S: "76.86"
+    H: "74.51"
+    ZS: "81.84"
+    best_epoch: "48"
+  - job_id: DR-004
+    seed: 5
+    status: completed
+    U: "73.17"
+    S: "76.43"
+    H: "74.76"
+    ZS: "82.02"
+    best_epoch: "37"
+  - job_id: DR-005
+    seed: 5
+    status: completed
+    U: "72.32"
+    S: "76.77"
+    H: "74.47"
+    ZS: "81.51"
+    best_epoch: "48"
+  - job_id: DR-006
+    seed: 5
+    status: completed
+    U: "72.56"
+    S: "76.44"
+    H: "74.45"
+    ZS: "81.85"
+    best_epoch: "47"
+metrics:
+  U: "72.44"
+  S: "76.81"
+  H: "74.56"
+  ZS: "81.74"
+  seed: "5"
+  best_epoch: min6_mean
+  best_single:
+    job_id: DR-004
+    U: "73.17"
+    S: "76.43"
+    H: "74.76"
+    ZS: "82.02"
+    best_epoch: "37"
+summary:
+  completed: 6
+  failed: 0
+  best_single_job: DR-004
+  best_single_H: "74.76"
+  mean_H: "74.56"
+  min_H: "74.45"
+  max_H: "74.76"
+  range_H: "0.31"
+  mean_U: "72.44"
+  mean_S: "76.81"
+  mean_ZS: "81.74"
+  mean_H_delta_vs_source_H: "-0.46"
+  best_H_delta_vs_source_H: "-0.26"
+gate_thresholds:
+  mean_H_ge: "74.60"
+  min_H_ge: "74.45"
+  range_H_le: "0.50"
+gate_result:
+  mean_H_ge_74_60: false
+  min_H_ge_74_45: true
+  range_H_le_0_50: true
+  no_obvious_U_S_collapse: true
+  decision: not_confirmed
+  evidence_state: min6_not_confirmed
+decision:
+  state: not_confirmed
+  reason: "Six same-seed exact repeats completed cleanly, but mean H=74.56 is below the declared 74.60 gate."
+  next_action: "Continue with ATTEMPT-009 existing-routing score search as planned; any top single must enter a separate repeat before confirmed or promotion claims."

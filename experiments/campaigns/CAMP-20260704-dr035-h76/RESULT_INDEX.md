@@ -8,5 +8,5 @@ result_ref: pending
 
 | Rank | Source | Status | Result ref |
 |---:|---|---|---|
-| pending | `ATTEMPT-008` | planned | `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-008/result.yaml` |
+| 1 | `ATTEMPT-008` | completed; not_confirmed; mean H=74.56; best H=74.76 | `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-008/result.yaml` |
 | pending | `ATTEMPT-009` | planned | `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-009/result.yaml` |

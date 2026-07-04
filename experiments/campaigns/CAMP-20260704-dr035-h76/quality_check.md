@@ -12,7 +12,8 @@ decision: pre_run_allow_after_freeze
 - [x] helper 新增 profile 已通过 `pytest` 和本地 debug plan 生成检查。
 - [ ] 本地 freeze commit 尚未写入。
 - [ ] 服务器尚未同步到 freeze commit。
-- [ ] ATTEMPT-008 / ATTEMPT-009 尚未启动。
+- [x] ATTEMPT-008 已完成并写回 result / manifest / quality。
+- [ ] ATTEMPT-009 正在运行，尚未写回最终 result。
 
 ## Decision Boundary
 
