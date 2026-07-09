@@ -22,9 +22,10 @@
 
 - synced_at: 2026-07-09
 - run_id: `RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu`
-- counts: completed=4, running=2, pending=4, failed=0
-- current_best: `DR-003` / `A015DR004` / H=74.84
-- decision: not restored; continue server runner
+- counts: completed=10, running=0, pending=0, failed=0, skipped=0
+- current_best: `DR-008` / `A015DR035` / H=74.85
+- decision: not restored; close as stopped_repeat_unstable
+- source candidates: `A015DR004` and `A015DR035` both reached 5/5 exact-repeat hard cap without reaching restore target.
 
 ## Memory And Verification
 
@@ -33,3 +34,4 @@
 - verified_against_current_repo: yes
 - verified_against_attempt_015_result: yes
 - verified_against_current_server_status: yes
+- verified_against_synced_runtime: yes

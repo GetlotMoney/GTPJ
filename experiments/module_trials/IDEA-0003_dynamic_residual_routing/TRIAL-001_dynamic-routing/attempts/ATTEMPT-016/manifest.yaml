@@ -4,7 +4,7 @@ attempt:
   trial_id: TRIAL-001
   idea_id: IDEA-0003
   name: H76 hotspot top2 exact-repeat restore campaign
-  status: running
+  status: completed_not_restored
   recorded_at: "2026-07-08"
 version:
   base_version: v5
@@ -22,12 +22,12 @@ run:
   server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
   local_batch_dir: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
   local_frozen_plan_status: generated
-  launch_status: running
+  launch_status: completed
   screen_session: GTPJ_ATTEMPT016_RESTORE10_R2
   latest_counts:
-    running: 2
-    pending: 4
-    completed: 4
+    running: 0
+    pending: 0
+    completed: 10
     failed: 0
     skipped: 0
   server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
@@ -83,8 +83,8 @@ local_frozen_plan:
       sha256: 268dd25d9712089d56c8a15bc0cb85c2b535980423b2161ff4eb859ef159c12c
     batch_status_json:
       path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/batch_status.json
-      size_bytes: 2377
-      sha256: 5236e93cc1d4f8a5e2ec2abacdd8b055bcecac42f5495ce34a2dd098cb516c5b
+      size_bytes: 9184
+      sha256: 98f7da75a6c21d50506f607e3a87c793299dbf1acc70eef716ff39ca9d5c4dc4
     run_dynamic_routing_batch_py:
       path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/run_dynamic_routing_batch.py
       size_bytes: 26943
@@ -98,7 +98,8 @@ local_frozen_plan:
       size_bytes: 391
       sha256: d0c8c4cdbafa5eff93ec35f8172207870cbd446df873bc09e3156ab7e5a3d198
 decision:
-  state: running
+  state: stopped_repeat_unstable
   promotion_decision: blocked
-  latest_status_note: "4/10 completed; best H=74.84 is below restore target H=75.04, so this is near_miss_not_restored and the runner should continue."
-  reason: "Server runner is still running; current best is not restored, so promotion remains blocked."
+  confirmation_decision: not_restored
+  latest_status_note: "10/10 completed; best H=74.85 is below all relevant H>=75 restore targets, so both source candidates are near_miss_not_restored."
+  reason: "A015DR004 and A015DR035 each reached the five-attempt exact-repeat hard cap without restoring their source H."

@@ -41,3 +41,30 @@ open / blocking
 - formal runner preflight 应检查服务器 tracked worktree 是否干净，并把允许的 runtime-only untracked 项列成白名单。
 - 历史复现 plan 中必须同时记录 `workflow_commit`、`training_commit`、`source_branch` 和 `base_config_source`。
 - 发现同类外部 Claude gate 问题再次出现时，优先沉淀为 helper 级 doctor/check，而不是只靠人工记忆。
+
+## 2026-07-09 当前状态整理：75+ 复现前置事实
+
+### 已确认状态
+
+- 本地仓库：`codex/attempt017-server-frozen-escape100`，HEAD `5be3c1f4ca12a1ab0e943b6bd40e9e0e54e06ee9`，工作树在检查时为 clean。
+- 干净服务器工作树：`/data/lby/projects/cv_project/GTPJ_worktrees/attempt017-repeat-71280275`，HEAD 与本地一致；仅有 runtime-only `data` symlink 未入库。
+- GPU 状态：GPU0/GPU1 空闲。
+- Claude Code gate：仍 blocked。`~/.claude/settings.json` 指向 `http://127.0.0.1:15721`，该端口未监听；当前进程、用户级、机器级环境变量均未提供可用 `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`。
+- 最新 strict-3 review pack 仍无法通过 `validate-ai-cross-review`，缺三轮 Claude Code pass 和最终 pass markers。
+
+### 75+ 来源候选消耗状态
+
+| Source candidate | Source attempt | Source H | Repeat attempt | Repeat status | Best repeat H | Decision |
+|---|---|---:|---|---|---:|---|
+| A017DR095 / DR-095 | ATTEMPT-017 | 75.11 | ATTEMPT-018 | 5/5 completed | 74.71 | not restored |
+| A015DR004 / DR-004 | ATTEMPT-015 | 75.04 | ATTEMPT-016 | 5/5 completed | 74.84 | not restored / near miss |
+| A015DR035 / DR-035 | ATTEMPT-015 | 75.00 | ATTEMPT-016 | 5/5 completed | 74.85 | not restored / near miss |
+| A011B01DR042 | ATTEMPT-011 | 75.00 | ATTEMPT-014 | 5/5 completed | 74.81 | not restored |
+| A011B04DR036 | ATTEMPT-011 | 75.00 | ATTEMPT-014 | 5/5 completed | 74.80 | not restored |
+
+### 下一轮约束
+
+- 不能把任一已 5/5 未还原候选继续追加 exact repeat 并仍称为 confirmation evidence。
+- 若 owner 要求“复现到 75+”，下一轮必须先定义新的 eligible source candidate；如果候选 source_H 低于 75，只能声明其自身 restore target，不得把它包装成已证明的 75+ 复现目标。
+- 在 strict-3 Claude Code gate 未恢复前，不能启动新的 formal Runner，也不能把新输出写成 keep / best / confirmation / promotion evidence。
+- 如果 owner 接受 debug-only 排障，可跑 `debug_smoke`，但结果不能进入正式复现账本。
