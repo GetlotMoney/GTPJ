@@ -17,6 +17,7 @@ docs/workflow/archive/issues/<最近日期>.md
 
 ## 最近问题
 
+- `docs/workflow/archive/issues/2026-07-09-historical-repeat-review-gate-and-server-sync.md`
 - `docs/workflow/archive/issues/2026-06-27-trial001-batch-runner-and-tag-boundary.md`
 - `docs/workflow/archive/issues/2026-06-26-trial001-sweep-preflight-and-runner.md`
 

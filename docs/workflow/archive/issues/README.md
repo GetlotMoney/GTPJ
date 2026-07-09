@@ -24,6 +24,7 @@ ISSUE-YYYYMMDD-001
 
 ## 当前最近文档
 
+- `2026-07-09-historical-repeat-review-gate-and-server-sync.md`
 - `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md`
 - `2026-06-28-trial002-reproducibility-diagnostics.md`
 - `2026-06-27-trial001-batch-runner-and-tag-boundary.md`
@@ -47,6 +48,7 @@ ISSUE-YYYYMMDD-001
 | ISSUE-20260628-012 | 2026-06-28 | Full innovation review is correct but too heavy for simple reruns | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | policy-clarified |
 | ISSUE-20260628-013 | 2026-06-28 | Agent summary and Review 3 drift after root sync | `2026-06-28-fae-memory-jepa-closeout-and-diagrams.md` | fixed |
 | ISSUE-20260628-014 | 2026-06-28 | Same-seed confirmation produced mixed results | `2026-06-28-trial002-reproducibility-diagnostics.md` | guarded |
+| ISSUE-20260709-015 | 2026-07-09 | Historical exact repeat blocked by Claude gate and server sync drift | `2026-07-09-historical-repeat-review-gate-and-server-sync.md` | open |
 
 ## 快速处置原则
 
