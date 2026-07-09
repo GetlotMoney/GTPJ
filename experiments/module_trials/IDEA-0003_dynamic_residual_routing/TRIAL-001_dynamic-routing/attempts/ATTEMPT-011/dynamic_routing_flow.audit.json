@@ -1,0 +1,35 @@
+{
+  "htmlFile": "D:\\backup\\Documents\\Myself\\GTPJ\\experiments\\module_trials\\IDEA-0003_dynamic_residual_routing\\TRIAL-001_dynamic-routing\\attempts\\ATTEMPT-011\\dynamic_routing_flow.html",
+  "browser": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "staticAudit": {
+    "returncode": 0,
+    "stdout": "diagram-static-audit-ok",
+    "stderr": ""
+  },
+  "renderAudits": [
+    {
+      "title": "ATTEMPT-011 Dynamic Routing Flow",
+      "viewport": {
+        "width": 1408,
+        "height": 1304
+      },
+      "devicePixelRatio": 1,
+      "svgCount": 1,
+      "nodeCount": 0,
+      "edgeCount": 16,
+      "nodeOverlaps": [],
+      "textClips": [],
+      "pathHits": [],
+      "horizontalScroll": {
+        "page": false,
+        "pageScrollWidth": 1408,
+        "pageClientWidth": 1408,
+        "wrappers": []
+      },
+      "browserStderr": "[24180:39660:0706/085438.207:ERROR:components\\edge_ess\\vbs_encoder.cc:100] LoadEnclaveImageW failed, error code 577\n[24180:19604:0706/085438.431:ERROR:chrome\\browser\\importer\\edge_china_browsers\\edge_qqbrowser_importer_utils_win.cc:165] QQBrowser user data path not found.",
+      "issues": []
+    }
+  ],
+  "issues": [],
+  "screenshot": "D:\\backup\\Documents\\Myself\\GTPJ\\experiments\\module_trials\\IDEA-0003_dynamic_residual_routing\\TRIAL-001_dynamic-routing\\attempts\\ATTEMPT-011\\dynamic_routing_flow.preview.png"
+}

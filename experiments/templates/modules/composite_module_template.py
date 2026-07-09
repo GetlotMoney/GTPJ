@@ -1,15 +1,13 @@
-"""Composite module template.
+"""Composite module（组合模块）模板。
 
-Use when a paper mechanism is inseparable across two or more module families,
-for example feature_adapter + fusion_gate. The training entry must see one
-standard composite slot instead of scattered edits across old code.
+当论文机制必须跨两个或更多 module family 才成立时使用，例如 feature_adapter + fusion_gate。
+训练入口只能看到一个标准 composite slot，不能在旧代码中散落多处分支。
 
-Protected semantics:
-- all components default to disabled
-- all-disabled behavior must match the selected base_version
-- feature/logit tensor shapes must stay unchanged unless the trial is marked
-  as a high-risk architecture change
-- split, label map, class order, and U/S/H/ZS semantics are read-only
+受保护语义：
+- 所有 components 默认关闭；
+- all-disabled 行为必须等价于选定的 base_version；
+- 除非 trial 被标记为高风险 architecture change，否则 feature/logit tensor shape 必须保持不变；
+- split、label map、class order 和 U/S/H/ZS 语义只读。
 """
 
 from __future__ import annotations
@@ -50,7 +48,7 @@ class CompositeComponentSpec:
 
 @dataclass(frozen=True)
 class CompositePlan:
-    """Trial-local plan for a composite innovation."""
+    """trial-local 的 composite innovation 计划。"""
 
     components: tuple[CompositeComponentSpec, ...]
     composition_mode: str
@@ -75,7 +73,7 @@ def assert_composite_plan(plan: CompositePlan) -> None:
 
 
 class TrialCompositeModule(nn.Module):
-    """One standard slot that owns multiple trial components."""
+    """一个标准 slot，内部管理多个 trial components。"""
 
     template_family = "composite"
 
@@ -112,7 +110,7 @@ class TrialCompositeModule(nn.Module):
             raise ValueError(f"{name} changed shape from {tuple(before.shape)} to {tuple(after.shape)}")
 
     def apply_feature_components(self, features: torch.Tensor) -> torch.Tensor:
-        """Apply feature-level components while preserving feature shape."""
+        """应用 feature-level components，并保持 feature shape 不变。"""
         if self.all_components_disabled():
             return features
         current = features
@@ -130,7 +128,7 @@ class TrialCompositeModule(nn.Module):
         candidate_scores: Mapping[str, torch.Tensor],
         sample_feature: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Fuse score-level components and keep logits shape [B, C]."""
+        """融合 score-level components，并保持 logits shape 为 [B（图片/样本数量）, C（类别数量）]。"""
         if self.all_components_disabled():
             return base_score
         current = base_score
@@ -147,7 +145,7 @@ class TrialCompositeModule(nn.Module):
         return current
 
     def auxiliary_losses(self, context: Mapping[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Collect auxiliary losses without changing the base total when weights are zero."""
+        """收集 auxiliary losses；权重为 0 时不改变 base total loss。"""
         if self.all_components_disabled():
             return {}
         loss_pack: dict[str, torch.Tensor] = {}
@@ -169,10 +167,9 @@ class TrialCompositeModule(nn.Module):
         context: Mapping[str, Any] | None = None,
         candidate_scores: Mapping[str, torch.Tensor] | None = None,
     ) -> dict[str, object]:
-        """Standard composite slot visible to the training framework.
+        """训练框架可见的标准 composite slot。
 
-        The caller should only consume `features`, `logits`, `losses`, and
-        `debug`, regardless of how many components are active internally.
+        无论内部启用多少 components，调用方只应读取 `features`、`logits`、`losses` 和 `debug`。
         """
         ctx: Mapping[str, Any] = context or {}
         debug: dict[str, object] = {
@@ -227,8 +224,7 @@ def assert_standard_trial_output(output: Mapping[str, object]) -> None:
 
 def composition_note() -> str:
     return (
-        "Use composite only when the mechanism cannot be split into separate trials. "
-        "The main training code should call one composite slot returning features, "
-        "logits, losses, and debug, and component switches must make the all-off "
-        "path equivalent to the recorded base_version."
+        "只有机制不能拆成多个独立 trial 时才使用 composite。"
+        "主训练代码只应调用一个 composite slot，并读取 features、logits、losses 和 debug；"
+        "所有 component switch 关闭时，路径必须等价于记录的 base_version。"
     )

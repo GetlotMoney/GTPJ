@@ -82,6 +82,17 @@ experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
 Campaign 目录只保存 routing index / scheduler index，不保存 authoritative result facts。
 正式 H/U/S/ZS 不得以 campaign 文件作为权威来源。`RESULT_INDEX.md` 只能引用各自归属
 subject 下的正式 `result.yaml`、`quality_check.md`、manifest 和 Warehouse artifact。
+同理，campaign 的 `WORK_ITEMS.md` / `RESULT_INDEX.md` 只能显示 derived pending 状态。
+如果某个 work item 要进入正式待跑清单，它必须回写到自身归属表格：
+
+```text
+version-level tune / ablation / confirmation -> experiments/vX/<type>/INDEX.md
+trial-internal attempt -> experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
+new innovation trial -> experiments/module_trials/INDEX.md + trial-local ATTEMPTS.md
+```
+
+只有归属表格中的行满足 `formal_pending`，才算正式待跑。没有归属表格行的 campaign work item
+或 `.gtpj_runtime` 目录都只能标为 `orphan_runtime_plan` 或 derived scheduler state。
 
 混合实验不能创建“组合实验正式分支”来单独做数。Coordinator 必须把每个 workstream / task
 路由回原本归属：
@@ -135,7 +146,7 @@ authority: derived_index_only
 
 ```yaml
 activation_mode: real_multi_agent
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 lifecycle: campaign_scoped | workstream_scoped | task_scoped | run_scoped
 ```
 
@@ -148,7 +159,7 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/campa
 python workflow/gtpj_workflow.py multi-agent-preflight --path experiments/campaigns/CAMP-xxx/agent_runtime.yaml
 ```
 
-如果侧边栏没有真实临时 agents，或 `agent_runtime.yaml` 没有记录真实实例 id，本 campaign
+如果左侧栏没有真实命名线程，或 `agent_runtime.yaml` 没有记录真实实例 id，本 campaign
 必须阻断正式 Runner。owner 只能把目标改成非正式 debug/smoke 或候选计划；不能把它们回填成
 正式 campaign evidence。
 
@@ -200,7 +211,7 @@ Coordinator 必须按下面顺序处理任意组合命令：
 1. Parse owner phrase into requested_mix.
 2. Run baseline/status preflight.
 3. Build campaign_manifest and workstreams.
-4. Spawn required right-sidebar temporary agents and write agent_runtime.yaml.
+4. Create or bind required left-sidebar named Codex threads and write agent_runtime.yaml.
 5. Validate agent_runtime.yaml before any formal Runner start.
 6. Freeze campaign plan before real runs.
 7. For each workstream, generate candidates or select ready ideas.
@@ -222,7 +233,8 @@ hypothesis_ready
 -> single_run_valid
 -> tune_promising
 -> ablation_supported
--> min3_confirmed
+-> exact_repeat_best_hit
+-> stable_confirmed
 -> promotion_candidate
 ```
 
@@ -236,7 +248,12 @@ hypothesis_ready
   并在 `WORK_ITEMS.md` 写明 `source_type: existing_trial_switch_probe`；不能冒充完整论文创新流程。
 - innovation 的代码准备可以和 tune 的 frozen runs 并行，但最终 GitHub ledger 只能由 Coordinator 写。
 - 任一 workstream 产生异常指标或接口疑点，必须暂停该 workstream，不能污染其它 workstream。
-- top candidates 才进入 repeat；默认 min3 repeat 后才允许正式结论。
+- top candidates 才进入 repeat；正式复现必须写 `repeat_type: exact_repeat`、`original_seed`、
+  `max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`
+  和 `near_miss_not_restored`。换 seed 的
+  `seed_sweep` / `score_search` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`。
+  只有任一 clean exact repeat 达到 `restore_target_H` 才能回答“已还原”，并停止后续 pending repeat。
+  接近但未达到目标只能写 `near_miss_not_restored`：有效果、还有希望，但不能 confirmation。同一候选不管有没有还原成功都最多 5 次，5 次未还原时不能继续加跑复现。
 
 ## 6. “跑10创新+100调参”的默认展开
 
@@ -305,7 +322,7 @@ Phase 4: consolidation
   每完成一个 batch 或一个 innovation attempt，解析日志、登记 artifact、更新 RESULT_INDEX。
 
 Phase 5: selection
-  选 top candidates，安排 min3 repeat、必要 ablation 或 confirmation。
+  选 top candidates，安排 exact repeat、必要 ablation 或 confirmation。
 
 Phase 6: closeout
   写 final_report、quality_check、agent_summary、decision log。
@@ -370,7 +387,7 @@ Campaign 总账本必须能回答：
 
 - 达到 owner 指定的数量、时间或算力预算；
 - 连续 N 个 batch 没有产生超过 reference 的候选；
-- top candidates 已完成 min3 repeat；
+- top candidates 已完成最多 5 次 exact repeat，或已触发 `early_stop_on_best_hit: true`；
 - hard gate 阻断；
 - GPU / server / data / artifact 状态不可恢复；
 - campaign 已达到 final deliverable 标准。

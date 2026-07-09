@@ -86,8 +86,8 @@ Paper intake 本身不启动训练，也不直接创建 module trial。
 - idea 未进入 selected queue。
 - 未选择 module template family，或缺少 `module_source.md`。
 - Interface Checker 不能判断接口影响。
-- 正式实验前缺少真实右侧 temporary agents、`agent_runtime.yaml`、preflight 或 cleanup plan。
-- 阶段结束时没有汇报 keep / close / unknown agents，或 completed agents 未关闭并记录 `close_result`。
+- 正式实验前缺少真实左侧命名 Codex 线程、`agent_runtime.yaml`、preflight 或 cleanup plan。
+- 阶段结束时没有汇报 keep / archive / unknown agents，或 completed threads 未归档并记录 `archive_result`。
 
 ## 启动口径
 

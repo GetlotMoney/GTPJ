@@ -1,7 +1,7 @@
-"""Auxiliary loss template.
+"""Auxiliary loss（辅助损失）模板。
 
-Use when the paper mechanism only adds an auxiliary objective. The total loss
-must be unchanged when lambda_trial_loss is zero.
+当论文机制只新增辅助目标时使用。
+当 `lambda_trial_loss` 为 0 时，total loss 必须保持不变。
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ class TrialAuxiliaryLoss(nn.Module):
         self.weight = float(weight)
 
     def forward(self, anchor: torch.Tensor, positive: torch.Tensor) -> dict[str, torch.Tensor]:
-        """Return a weighted auxiliary loss without changing existing losses."""
+        """返回加权后的辅助 loss，同时不改变既有 loss。"""
         raw = 1.0 - F.cosine_similarity(anchor, positive.detach(), dim=-1).mean()
         weighted = anchor.new_tensor(self.weight) * raw
         return {

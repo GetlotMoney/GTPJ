@@ -1,15 +1,14 @@
-"""Standard GZSL module framework template for GTPJ trials.
+"""GTPJ trial 的标准 GZSL module framework 模板。
 
-Copy this file into a trial branch only after `module_source.md` and
-`implementation.md` explain the source, base version, attachment point, and
-GZSL risk.
+只有在 `module_source.md` 和 `implementation.md` 已经解释来源、base version、
+attachment point 和 GZSL 风险之后，才能把本文件复制进 trial 分支。
 
-Protected semantics:
-- dataset split stays xlsa17 by default
-- train uses seen classes only
-- evaluation uses seen + unseen classes
-- logits stay [B (image/sample count), C (class count)]
-- metrics stay U, S, H, ZS
+受保护语义：
+- dataset split 默认保持 xlsa17；
+- train 只使用 seen classes；
+- evaluation 使用 seen + unseen classes；
+- logits 保持 [B（图片/样本数量）, C（类别数量）]；
+- metrics 保持 U、S、H、ZS。
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ class GZSLProtectedState:
 
 
 class GZSLModuleBase(nn.Module):
-    """Base class for trial modules that must not alter GZSL semantics."""
+    """trial module 的基类；不得改变 GZSL 语义。"""
 
     template_family = "base"
 
@@ -40,7 +39,7 @@ class GZSLModuleBase(nn.Module):
         self.enabled = bool(enabled)
 
     def baseline_off(self, value: torch.Tensor) -> torch.Tensor:
-        """Return the unchanged baseline value when the module is disabled."""
+        """模块关闭时返回未改变的 baseline value。"""
         return value
 
     @staticmethod
@@ -63,7 +62,7 @@ class GZSLModuleBase(nn.Module):
 
 
 def build_protected_state(dataloader) -> GZSLProtectedState:
-    """Build protected state from the existing dataloader; do not hand-write class order."""
+    """从既有 dataloader 构造 protected state；不要手写 class order。"""
     return GZSLProtectedState(
         dataset_name=getattr(dataloader, "dataset", "CUB"),
         split_name="xlsa17/att_splits.mat",

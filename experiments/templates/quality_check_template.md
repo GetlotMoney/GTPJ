@@ -1,4 +1,4 @@
-# Quality Check
+# Quality Check（质量检查）
 
 ```text
 runtime:
@@ -37,8 +37,8 @@ transition_id:
 - [ ] 正式 Runner 启动前已有 `agent_runtime.yaml`，并通过 `validate-agent-runtime` 和 `multi-agent-preflight`。
 - [ ] `formal_runner_allowed: true` 和 `formal_evidence_allowed: true` 有真实 agent 输出支撑。
 - [ ] `agent_status_refs` 和 `agent_output_refs` 指向可读取、非空、能关联 role / agent id 的文件。
-- [ ] `activation_mode: real_multi_agent` 时已记录真实右侧临时 agent ids；没有用单窗口 Coordinator 冒充多 agents。
-- [ ] 阶段结束前已运行 `agent-cleanup-plan`，completed agents 的关闭结果已写入 `closed_agents_record`。
+- [ ] `activation_mode: real_multi_agent` 时已记录真实左侧命名 Codex 线程 ids；没有用单窗口 Coordinator 冒充多 agents。
+- [ ] 阶段结束前已运行 `agent-cleanup-plan`，completed threads 的归档结果已写入 `archived_threads_record`。
 - [ ] 未发现一个 agent id 同时承担多个正式独立角色；如存在，已标记为历史限制或降级证据。
 - [ ] Runner start 之前 Interface/Quality/Runner Monitor 至少给出 allow/pass；缺失时本轮降级为 debug/smoke 或 blocked。
 - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
@@ -51,13 +51,21 @@ transition_id:
 - [ ] 已运行 `validate-ai-cross-review --path <review_pack>`，且 `unresolved_blocking_issues: 0`。
 - [ ] 若审核包 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
 
-## Promotion Gate（仅正式提升 vX 时填写）
+## Promotion Gate（升版门槛，仅正式提升 vX 时填写）
 
 - [ ] parent_version / parent_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
 - [ ] `evidence_level: baseline_grade`；如果只是 owner 激活，已标为 provisional /
   owner_activated_unconfirmed。
+- [ ] 复现任务写明 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、
+      `max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、
+      `near_miss_not_restored`，且未改 seed 或任何参数。
+- [ ] 同一候选无论是否还原成功都没有超过 5 次 exact repeat；5 次未达目标时已停止并记录 not restored / near miss。
+- [ ] 接近但未达到 `restore_target_H` 的结果只写为 `near_miss_not_restored`；
+      不能写成还原，不能触发 early stop。
+- [ ] `seed_sweep`、`score_search` 或 `multi_seed_stability` 已写 `not_confirmation_evidence: true`，
+      没有冒充复现或 confirmed evidence。
 - [ ] clean confirmation 或多 run 稳定性证据明确；单次最高 H 不直接 promotion。
 - [ ] U/S/ZS、best epoch、seed 明确。
 - [ ] 同 seed 对照明确；高风险改动已说明是否需要多 seed。

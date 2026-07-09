@@ -3,13 +3,13 @@
 ## 默认 agent 路由
 
 Router 默认把真实实验类任务路由到 `real_multi_agent`，并把正式角色实例路由到 workflow-scoped
-`temporary_subagent`。原因是不同角色共享同一上下文会污染证据和判断，而正式事实必须沉淀到文件和 artifact。
+`named_owner_thread`。如果目标是服务器 detached 连续训练、owner 明确不希望创建线程，允许走第二条正式路径：`role_only + formal_runtime_backend=server_detached_role_only`。无论哪条路径，正式事实都必须沉淀到文件和 artifact。
 
 默认 `real_multi_agent` 的范围包括：真实 Runner、正式 attempt/result/quality 证据、代码或配置语义变化、结果解释、best 选择、promotion、版本判断、论文实验路线或下一轮高成本实验决策。
 
-`role_only` 只允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或 debug/smoke 且结果不进入正式证据。
+`role_only` 默认只允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或 debug/smoke 且结果不进入正式证据。唯一正式例外是 `server_detached_role_only`：它要求独立 sequential role outputs、formal gate 和 detached server monitoring。
 
-`temporary_subagent` 是本轮 workflow / campaign 的活上下文默认形态。`persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或当前 campaign 的 Coordinator/Monitor 需要跨天保留连续上下文时启用。无论使用哪种活上下文，正式证据都必须写入 repo、Research、Warehouse、result、quality 和 agent summary。
+`named_owner_thread` 是本轮 workflow / campaign 的活上下文默认形态。`persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或当前 campaign 的 Coordinator/Monitor 需要跨天保留连续上下文时启用。若采用 `server_detached_role_only`，则不创建线程，改为 owner 当前线程 + 独立 role outputs + server status files 共同构成 formal gate。无论使用哪种形态，正式证据都必须写入 repo、Research、Warehouse、result、quality 和 agent summary。
 
 本文件是 GTPJ 的总教官。它不替代具体协议，而是在任何任务开始前先做路由判断：
 
@@ -137,6 +137,24 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 只切换创意树当前视图 | set-current-version | 使用已有 idea_tree | `idea_tree/idea_tree.json`、`idea_tree/versions/vX.md` | 不写 | `idea_tree_protocol.md` | 不切 main active code |
 | 切换 main 当前运行代码到某版本 | activate-version | 否 | `config/GTPJ_*.yaml` 等 active code/config | 不写 | `versioning.md`, `git_policy.md` | 必须 owner 明确要求 |
 | 创建或查看运行看板状态 | progress dashboard | 否 | 不写长期 GitHub 账本 | `.gtpj_runtime/` | `progress_dashboard.md` | 只读看板，不启动训练 |
+
+## 2.1 正式待跑表格
+
+当 owner 问“有哪些待跑实验”“表格中有没有”时，Coordinator 必须从正式表格回答，而不是从
+`.gtpj_runtime/` 目录数量回答。
+
+| 范围 | 正式表格 | 待跑行由什么决定 | runtime 的作用 |
+|---|---|---|---|
+| 版本级 tune | `experiments/vX/tune/INDEX.md` | `Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的实验行 | 只核对运行包和事件，不新增待跑事实 |
+| 版本级 ablation | `experiments/vX/ablation/INDEX.md` | 同上，且实验类型必须是 ablation | 只核对运行包和事件 |
+| 版本级 confirmation | `experiments/vX/confirmation/INDEX.md` | 同上，且目标必须是 baseline、candidate 或正式 config | 只核对运行包和事件 |
+| module trial 内部 attempt | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` | attempt 行含 `ATTEMPT-xxx`、run id 或目录，状态是 `planned/pending/pre_run/...` | 只核对 run 是否已启动、完成或失败 |
+| mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只列 work item；每个 work item 必须回指某个 version-level 或 trial-internal 正式表格行 | 只核对调度和 monitor 状态 |
+
+正式待跑的统一判定名为 `formal_pending`。如果 `.gtpj_runtime/batches/<run_id>` 存在，但上面任一正式表格都没有对应行，判为 `orphan_runtime_plan`。`orphan_runtime_plan` 只能作为历史参考、排障证据或重新登记新实验的输入，不能直接续跑，也不能进入 keep / best / confirmation / promotion。
+
+debug/smoke 不进入正式待跑表。若必须长期保留，只能写成 `evidence_level: debug_smoke`、
+`formal_evidence: false`，并放在对应实验目录的 debug 记录或 Warehouse 引用里。
 
 ## 3. 路由流程
 
@@ -286,7 +304,7 @@ Paper intake 的细化流程见 `docs/workflow/protocols/paper_intake.md`。论�
 Router 选择 agents 时必须先套用“最快合规路径”：
 
 - 能用 `role_only` 且不违反 hard gates 的任务，不启用 `real_multi_agent`。
-- 必须用 `real_multi_agent` 的任务，默认启动 workflow-scoped temporary agents，并把只读审查角色并行执行，不串行排队等待。
+- 必须用 `real_multi_agent` 的任务，默认启动 workflow-scoped named threads，并把只读审查角色并行执行，不串行排队等待。
 - Runner 串行并持有 GPU lock；同一代码路径只能有一个 Implementer；Coordinator 是最终账本 writer。
 - 被跳过的 agent 必须在启动卡 `agents.decision_basis.fastest_valid_path.skipped_agents` 中说明。
 - 如果启用了 persistent thread，启动卡必须列出 thread id 或可见 label；如果未启用，必须说明状态如何写回 campaign ledger、agent_summary、memory 或 issues。

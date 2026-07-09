@@ -7,7 +7,7 @@ baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt�
 不自动产生新版本。
 
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
-形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 3 次复现通过，也只能成为该
+形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该
 `vX` 下面的 confirmed config / confirmed tune record。
 
 只有存在框架/代码语义变化，且满足 `docs/workflow/protocols/promotion.md` 的自动 promotion gate，
@@ -107,8 +107,10 @@ evidence_level: debug_smoke | quick_local | valid_single_run | confirmation_grad
 result_status: debug | valid_observation | needs_confirmation | confirmed | blocked | rejected
 best_observed_H:
 confirmed_H:
-confirmation_target:
-confirmation_tolerance_H:
+max_attempts_hard_cap:
+restore_target_H:
+near_miss_tolerance_H:
+near_miss_not_restored:
 confirmation_status: not_applicable | pending | confirmed | failed
 ```
 
@@ -121,16 +123,25 @@ baseline、论文结论或下一步调参。
 debug_smoke          只用于环境/流程排障；formal_evidence=false，不能进入 keep/best/promotion/confirmation。
 quick_local          只用于本地快速复线或趋势观察；不能用于 promotion 或正式 baseline。
 valid_single_run     config、log、checkpoint、manifest、result、quality 完整；可记录 best_observed_H。
-confirmation_grade   从 clean pre-run freeze commit 启动，复现目标在容忍范围内；可确认某个结果。
+confirmation_grade   从 clean pre-run freeze commit 启动，clean exact repeat 达到 restore_target_H；可确认某个结果。
 baseline_grade       confirmation_grade 通过，或按质量门要求完成多 run 稳定性证据；可写成稳定 baseline。
 ```
 
 硬规则：
 
 - 单次最高结果只能写为 `best_observed_H`，不能直接写成 `confirmed_H`。
-- 若 3 次 clean reproduction / confirmation 全部通过，则正式结果取通过簇中 H 最高的那一次；
-  `confirmed_H` 写该最高 H，正式 U/S/ZS 取同一次 repeat，`H_mean` / `H_min` / `H_max`
-  作为稳定性证据保留。
+- 正式复现必须写 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、
+  `max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H` 和
+  `near_miss_not_restored`；原始 config、seed、代码 commit、
+  data/cache、epoch schedule、batch size 和评估口径都不能改。
+- 只有任一 clean exact repeat 达到 `restore_target_H` 时，才记录 `best_hit: true`、
+  `best_single_H`、`best_observed_H`，并停止后续 pending repeat。
+- 同一候选不管有没有还原成功都最多 5 次；5 次仍未达到 `restore_target_H` 时，必须收口为 not restored / near miss，不能继续加跑复现。
+- 落入 `near_miss_tolerance_H` 但未达到 `restore_target_H` 时，只能记录
+  `near_miss_not_restored`，表示实验有效果、还有希望；不能写成复现通过，不能停止后续 repeat。
+- 只有另行要求 `stable_confirm` 时，才把同一 `original_seed`、同一配置的多次 clean repeat
+  计算为 `H_mean` / `H_min` / `H_max` / range；`seed_sweep`、`score_search` 和
+  `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不能写成 exact-repeat confirmed。
 - 任意结果比较、`delta_H` 解释、promotion 或 tag 决策前，先运行或等价执行
   `python workflow/gtpj_workflow.py repro-status --version <vX>`。如果对照版本只有
   `best_observed_H` 且 `confirmed_H=pending`，它只能写成未确认参考，不能写成 confirmed baseline。
@@ -226,7 +237,7 @@ run_log_sha256   = log_sha256
 
 调参不生成新 `vY`。调参结果如果复现通过，可以成为当前 `vX` 下的 confirmed config
 或 confirmed reference，但不得创建新的正式框架版本。若调参过程中引入了模型/训练代码语义变化，
-必须改走 module trial / ablation / promotion 规则，而不是继续记为纯 tune。
+必须改走 innovation / module trial 规则，而不是继续记为纯 tune。
 
 ### 当前版本调参
 
@@ -271,11 +282,19 @@ experiments/v3/tune/INDEX.md
 
 不维护全局大调参表。
 
+版本级 `tune`、`ablation` 和 `confirmation` 的待跑入口都使用各自 `INDEX.md`。正式计划一旦被 owner 接受，必须先在对应表格写入一行，至少包含：
+
+```text
+experiment_id / type / status / directory / run_id 或计划说明 / formal_evidence / note
+```
+
+这种正式待跑统一标记为 `formal_pending`。`Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的正式行，表示该版本仍有待跑实验。`.gtpj_runtime/` 中的 batch 目录不能单独创建待跑事实；如果 runtime 目录没有对应 `INDEX.md` 行，统一视为 `orphan_runtime_plan`。debug/smoke 只能写 `formal_evidence: false`，不得混入正式待跑清单。
+
 建议列：
 
 ```text
-| Tune ID | 参数 | 原值 | 新值 | Seed | U | S | H | ZS | 结果 | 决策 | 目录 |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|
+| Tune ID | Status | Run ID | Formal | 参数 | 原值 | 新值 | Seed | U | S | H | ZS | 结果 | 决策 | 目录 |
+|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|
 ```
 
 调参前必须先生成建议清单，但不能自动执行。建议清单最多 3 个候选，每个候选说明：
@@ -300,10 +319,11 @@ Coordinator -> Reader -> 用户选择 -> Runner -> Log Analyst + Quality Checker
 
 ## 消融实验
 
-消融实验用于回答：某个模块、loss、分支、特征或约束是否真的有贡献。
+消融实验用于回答：既有模块、loss、分支、特征或约束是否真的有贡献。
 
-消融可以改代码，但只能是可解释的移除、关闭、旁路或替换为空路径。消融代码是临时实验代码，
-不自动进入 `main`，也不自动产生新版本。
+普通消融不创建新方法框架。它只能关闭、旁路或替换既有因素为空路径；如果需要新增或改写
+module、forward、loss、eval、data view 或接口语义，那已经是 innovation / module trial，
+不能继续记为普通 ablation。
 
 允许的消融代码形式：
 
@@ -311,7 +331,7 @@ Coordinator -> Reader -> 用户选择 -> Runner -> Log Analyst + Quality Checker
 - 绕过一个 loss；
 - 去掉一个 fusion 分支；
 - 替换为 identity、zero、detach 或固定 baseline path；
-- 增加 config 开关，使目标模块不生效。
+- 增加 config 开关，使既有目标模块不生效。
 
 硬规则：
 
@@ -323,6 +343,7 @@ Coordinator -> Reader -> 用户选择 -> Runner -> Log Analyst + Quality Checker
 - 必须写 `implementation.md`；
 - 必须写 `interface_check.md`；
 - 必须确认没有顺手改到其他结构。
+- 不要求新增 `framework_diagram.md`；如果本次改动需要新增或改写模块框架，必须转为 innovation / module trial，并补齐 `module_source.md`、`framework_diagram.md` 和 `Code Flow Diagram`。
 
 接口检查必须覆盖：
 
@@ -353,6 +374,7 @@ Coordinator -> Reader -> 用户选择 -> Runner -> Log Analyst + Quality Checker
 
 如果消融发现“去掉某模块更好”，也不能直接变成新版本。必须记录证据，然后通过
 `docs/workflow/protocols/promotion.md` 自动 promotion gate，把干净代码重新整理成正式 baseline。
+如果整理过程需要改写方法框架或模块代码，先开 innovation / module trial 记录框架来源和代码流。
 
 消融多 agent 编排：
 

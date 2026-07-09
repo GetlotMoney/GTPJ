@@ -32,7 +32,7 @@ docs/workflow/protocols/module_trial_protocol.md
 结果比较 (Result Comparator)
 ```
 
-正式 Runner 启动前必须写 `agent_runtime.yaml`，记录右侧临时 agents 的真实
+正式 Runner 启动前必须写 `agent_runtime.yaml`，记录左侧命名 Codex 线程的真实
 `agent_instance_id`，并通过 `validate-agent-runtime` 和 `multi-agent-preflight`。
 否则正式 tune 必须阻断。只有 owner 明确把目标改成非正式 `debug_smoke` 排障时，
 才允许继续；该结果不能进入 keep / best / confirmation / promotion。
@@ -58,7 +58,11 @@ raw logs 和 checkpoints 留在 Warehouse。
 
 只调参数带来的提升不能开新的 `vX`。
 
-重要 tuned config 必须 3 次 confirmation 后，才能作为正式数据表述。
+重要 tuned config 必须经过 `repeat_type: exact_repeat` 后，才能作为正式数据表述：
+锁定 `original_seed` 和原始配置，`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`，
+并声明 `restore_target_H`、`near_miss_tolerance_H` 和 `near_miss_not_restored`。接近但未达到目标
+只能说明有效果、还有希望，不能说还原；同一候选无论是否还原成功都最多 5 次，5 次未还原不能继续加跑复现。换 seed 的 `seed_sweep` / `multi_seed_stability`
+必须写 `not_confirmation_evidence: true`，只能作为搜索或稳定性诊断。
 
 tune transition 默认只能进入：
 

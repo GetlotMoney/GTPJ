@@ -47,9 +47,9 @@ multi_agent_preflight
 agent_instance_status
 agent_status_refs
 agent_output_refs
-right_sidebar_temporary_agents
-right_sidebar_retention_policy: current_stage_active_only
-close_completed_agents_on_stage_end
+left_sidebar_named_threads
+thread_archive_policy: archive_completed_threads_on_stage_end
+archive_completed_threads_on_stage_end
 ```
 
 The evidence state machine records state changes. The agent runtime gate decides whether

@@ -1,9 +1,13 @@
-# Module Template Selection Protocol
+# Module Template Selection Protocol（模块模板选择协议）
 
 本协议用于论文创新、用户想法或本地观察要落成 GTPJ module trial 时的模板选择。
 
 目标不是让 agent 自由发挥，而是把创新压进少数可审查的代码框架，保证标准数据集、
 标准评估和 GZSL 语义不被静默改变。
+
+文档语言边界：本协议和由它生成的 `module_source.md`、`implementation.md`、`README.md`、
+`framework_diagram.md`、`quality_check.md` 等正文必须使用中文。英文只作为字段名、文件名、
+代码标识、方法名、指标名、命令或 helper 依赖的结构 marker 保留；不能写整段英文说明。
 
 工程原则：
 
@@ -154,6 +158,11 @@ paper_writing_note:
 
 ## 标准代码框架
 
+框架记录的对象是“方法框架”和“代码模块接入方式”，不是仓库里的每个代码文件。
+只调参数、复现、或在同一实现假设下关闭既有模块的窄消融，不需要新增框架图。
+只要新增或改写 module、forward、loss、evaluation、data view、input/output、
+tensor flow、接口语义或模块分支逻辑，就必须归入创新 / module trial，并记录框架。
+
 所有模板必须继承或复制 `standard_gzsl_module_framework_template.py` 的保护思想：
 
 - config switch 默认关闭；
@@ -163,6 +172,17 @@ paper_writing_note:
 - eval 不改变 seen/unseen split、class order、label mapping、metric 语义；
 - 新 loss 的 `lambda=0` 不改变 total loss；
 - protected metadata 必须从 dataloader/model 读取，不手写重排。
+
+每个有代码模块变动的 trial 必须回答：
+
+```text
+这个模块来自哪里？
+它对应论文/官方代码/用户想法中的哪一段机制？
+它接到标准训练流程的哪个位置？
+它读取什么 tensor，输出什么 tensor？
+关闭它时如何回到 base_version？
+它是否改变 split、label mapping、class order、logits shape 或 U/S/H/ZS？
+```
 
 ## 标准训练入口
 

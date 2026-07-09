@@ -1,4 +1,4 @@
-﻿# Agent Summary
+# Agent Summary（智能体总结）
 
 ```text
 experiment_id:
@@ -22,17 +22,22 @@ required_roles:
 required_real_agents:
 agent_persistent_threads:
 agent_runtime_gate:
-temporary_subagent_ids:
+named_thread_ids:
 agent_instance_status:
 agent_status_refs:
 agent_output_refs:
+role_file_plan:
+  input_refs:
+  files_reviewed_expected:
+  output_ref:
+  not_checked_allowed:
 agent_cleanup:
   cleanup_plan_command:
   keep_agents:
-  close_agents:
-  close_results:
+  archive_agents:
+  archive_results:
   unknown_ui_agents:
-  closed_agents_record:
+  archived_threads_record:
 ai_cross_review:
   required:
   review_pack:
@@ -44,7 +49,7 @@ ai_cross_review:
   validate_command:
   validate_result:
 multi_agent_preflight:
-  required_agents_spawned:
+  required_threads_created:
   agent_instance_ids_present:
   agent_status_refs_valid:
   independent_outputs_present:
@@ -54,16 +59,16 @@ multi_agent_preflight:
 ui_visibility:
 runner_start_gate:
 pre_run_required_checks:
-right_sidebar_retention_policy:
-close_completed_agents_on_stage_end:
-closed_agents_record:
+thread_archive_policy:
+archive_completed_threads_on_stage_end:
+archived_threads_record:
 active_agents_after_closeout:
-closed_agents_after_closeout:
+archived_agents_after_closeout:
 agent_set:
 serial_agents:
 parallel_agents:
 disabled_agents:
-temporary_subagents:
+named_threads:
 tool_support:
 memory_policy:
 memory_used:
@@ -80,7 +85,7 @@ review_rounds:
 temporary_agents:
 ```
 
-## Evidence Routing
+## Evidence Routing（证据路由）
 
 ```text
 subject_id:
@@ -88,7 +93,11 @@ transition_id:
 role_key:
 agent_instance_id:
 lifecycle:
+input_refs:
+files_reviewed:
 checked_inputs:
+output_ref:
+independence_scope:
 rule_checks:
 authority_refs:
 decision: propose | allow | block | warn
@@ -98,7 +107,7 @@ not_checked:
 reason_summary:
 ```
 
-## Coordinator
+## Coordinator（总控）
 
 ```text
 role:
@@ -110,7 +119,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -133,7 +142,7 @@ review_round:
 blocking_issues:
 ```
 
-## Reader/Planner
+## Reader/Planner（阅读与规划）
 
 仅在 paper intake、idea discovery、tune suggestion、innovation/module trial 或需要读取论文/来源证据时填写。
 
@@ -147,7 +156,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -170,7 +179,7 @@ review_round:
 blocking_issues:
 ```
 
-## Implementer
+## Implementer（实现者）
 
 仅在代码、配置、模块开关、loss、eval 或数据流发生实现改动时填写。
 
@@ -184,7 +193,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -207,7 +216,7 @@ review_round:
 blocking_issues:
 ```
 
-## Runner
+## Runner（运行者）
 
 ```text
 role:
@@ -219,7 +228,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -242,7 +251,7 @@ review_round:
 blocking_issues:
 ```
 
-## Log Analyst
+## Log Analyst（日志分析）
 
 ```text
 role:
@@ -254,7 +263,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -277,7 +286,7 @@ review_round:
 blocking_issues:
 ```
 
-## Quality Checker
+## Quality Checker（质量检查）
 
 ```text
 role:
@@ -289,7 +298,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -312,7 +321,7 @@ review_round:
 blocking_issues:
 ```
 
-## Interface Checker
+## Interface Checker（接口检查）
 
 仅在代码、接口、loss、eval、label mapping、seen/unseen split、class order、logits shape 或 metric semantics 可能变化时填写。
 
@@ -326,7 +335,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -349,7 +358,7 @@ review_round:
 blocking_issues:
 ```
 
-## Result Analyst
+## Result Analyst（结果分析）
 
 在 tune、ablation、confirmation、innovation/module trial 或 promotion 需要结果比较时填写。
 
@@ -363,7 +372,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -386,7 +395,7 @@ review_round:
 blocking_issues:
 ```
 
-## Reviewer
+## Reviewer（复核者）
 
 仅在 innovation、争议结果、promotion 或 owner 明确要求独立 review 时填写。
 
@@ -400,7 +409,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:

@@ -1,5 +1,5 @@
-# Trial-local config template for paper-derived GTPJ modules.
-# Defaults must preserve the selected base version.
+# paper-derived GTPJ module 的 trial-local config 模板。
+# 默认值必须保持选定 base version 的行为。
 
 trial_id:
   value: TRIAL-xxx
@@ -59,11 +59,11 @@ eval_every_epochs:
 top_k_checkpoints:
   value: 3
 
-# Keep lambda at zero until the module is explicitly enabled for an attempt.
+# 在某个 attempt 明确启用模块前，lambda 保持为 0。
 lambda_trial_loss:
   value: 0.0
 
-# Protected GZSL semantics. Do not change inside a normal module trial.
+# 受保护的 GZSL 语义；普通 module trial 内不得改变。
 protect_seen_unseen_split:
   value: true
 protect_class_order:

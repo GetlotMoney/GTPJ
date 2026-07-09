@@ -1,6 +1,6 @@
 # AI 交叉审核协议
 
-本协议定义 GTPJ 中代码、workflow、helper、模板、训练入口、评估语义和实验结论相关改动的 AI 审核门。目标不是增加仪式感，而是让重要改动在被信任前，先经过机器验证、临时 Codex 预审和必要的 Claude Code 只读审核。
+本协议定义 GTPJ 中代码、workflow、helper、模板、训练入口、评估语义和实验结论相关改动的 AI 审核门。目标不是增加仪式感，而是让重要改动在被信任前，先经过机器验证、命名 Codex 线程预审和必要的 Claude Code 只读审核。
 
 ## 不可跳过规则
 
@@ -9,6 +9,8 @@
 - Codex 负责实现、修复、反驳、重跑验证和写回证据。
 - owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
 - `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
+- 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须先在专用代码审核分支完成本协议。
+- 如果改动已经先发生在旧脏分支，后补切分支只能算草稿隔离；正式 Runner 前必须重新从干净基线切专用分支，迁移最小 diff，通过本协议和机器验证后再做 `pre-run freeze commit`。
 
 ## 审核分层
 
@@ -22,37 +24,37 @@ strict-3: 3 轮 Claude Code
 
 使用规则：
 
-- `fast` 只允许 `risk_level: low` 的普通文档或轻量 workflow 修补；仍必须有机器验证通过和临时 Codex agent 预审通过。
+- `fast` 只允许 `risk_level: low` 的普通文档或轻量 workflow 修补；仍必须有机器验证通过和命名 Codex 线程预审通过。
 - `review-1` 用于普通 workflow/helper/template 修补，不直接改变正式实验结论、训练入口、评估语义、promotion 或论文 claim。
 - `strict-3` 只用于会污染正式实验结论的改动，包括训练入口、forward/loss/evaluation、data/split/label/class order/logits/metric、Runner、Warehouse、confirmation、promotion、baseline claim 和论文 claim。
 - `risk_level: high` 或 scope/title/reason 中出现正式实验结论风险时，低于 `strict-3` 必须被 helper 拦截。
 
-## 临时 Codex 预审
+## 命名 Codex 线程预审
 
-Claude Code 之前必须先启动一个临时 Codex agent 做只读预审。该 agent 只检查当前 diff、验证证据和结论风险，不改文件、不启动训练。
+Claude Code 之前必须先创建或绑定一个命名 Codex 线程做只读预审。该线程只检查当前 diff、验证证据和结论风险，不改文件、不启动训练。
 
-预审完成后必须立刻关闭该 agent，并写入：
+预审完成后必须立刻归档该线程，并写入：
 
 ```text
-02_codex_temp_agent_pre_review.md
+02_codex_named_thread_pre_review.md
 ```
 
 必需字段：
 
 ```text
-codex_temp_agent_pre_review: pass
-temporary_agent_required: true
-agent_instance_id: <真实 agent id>
-ui_display_name: <右侧栏显示名>
-lifecycle: completed_closed
-closed_before_claude: true
-close_result_confirms_completion: true
-close_result: <close_agent 返回内容或包含 agent_id、previous_status=completed、closed:true 的摘要>
+codex_named_thread_pre_review: pass
+named_thread_required: true
+thread_id: <真实 thread id>
+thread_title: <左侧栏线程标题>
+lifecycle: completed_archived
+archived_before_claude: true
+archive_result_confirms_completion: true
+archive_result: <archive 返回内容或包含 thread_id、previous_status=completed、archived:true 的摘要>
 verdict: pass
 ```
 
-如果临时 agent 未关闭、没有真实 id、没有 UI 显示名、没有 close_result，或者 verdict 不是 `pass`，审核包必须 blocked。
-`close_result` 不能只写 `closed`、`pass`、`done` 这类普通字符串；helper 会校验其中的 agent id、`previous_status`、`completed` 和 `closed:true`。
+如果命名线程未归档、没有真实 id、没有 UI 显示名、没有 archive_result，或者 verdict 不是 `pass`，审核包必须 blocked。
+`archive_result` 不能只写 `archived`、`pass`、`done` 这类普通字符串；helper 会校验其中的 thread id、`previous_status`、`completed` 和 `archived:true`。
 
 ## 验证 Profile
 
@@ -93,7 +95,7 @@ docs/agent_reviews/YYYY-MM-DD-task-name/
 ```text
 00_task.md
 01_codex_actions.md
-02_codex_temp_agent_pre_review.md
+02_codex_named_thread_pre_review.md
 02_diff.patch
 02_focused_diff.md
 02_review_brief.md
@@ -142,8 +144,8 @@ review_tier: fast | review-1 | strict-3
 claude_rounds_required: 0 | 1 | 3
 claude_rounds_completed: 0 | 1 | 3
 claude_code_read_only: true
-codex_temp_agent_pre_review: pass
-codex_temp_agent_lifecycle: completed_closed
+codex_named_thread_pre_review: pass
+codex_named_thread_lifecycle: completed_archived
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
@@ -166,7 +168,7 @@ prompt_profile: focused
 review_mode: blocking-only
 ```
 
-`focused` 模式下，Claude Code 默认只读 `CLAUDE.md`、`docs/workflow/CLAUDE_CONTEXT.md`、`02_codex_temp_agent_pre_review.md`、`02_review_brief.md`、`02_focused_diff.md`、`03_validation.md` 和 `04_claims.md`。完整 `02_diff.patch` 必须保留，但只在 focused diff 无法定位问题时读取。
+`focused` 模式下，Claude Code 默认只读 `CLAUDE.md`、`docs/workflow/CLAUDE_CONTEXT.md`、`02_codex_named_thread_pre_review.md`、`02_review_brief.md`、`02_focused_diff.md`、`03_validation.md` 和 `04_claims.md`。完整 `02_diff.patch` 必须保留，但只在 focused diff 无法定位问题时读取。
 
 `blocking-only` 模式下，Claude Code 只报告会导致行为错误、证据污染、验证失败或正式实验结论不可靠的 blocking issues。
 

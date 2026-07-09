@@ -1,8 +1,7 @@
-"""Feature adapter template.
+"""Feature adapter（特征适配）模板。
 
-Use when the mechanism changes visual, text, or class-prototype features before
-the existing scorer. The adapter must preserve feature compatibility with the
-base scorer and must not alter class order or label mapping.
+当机制要在既有 scorer 之前改变 visual/text/class-prototype feature 时使用。
+adapter 必须保持与 base scorer 的特征兼容性，且不能改变 class order 或 label mapping。
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ class TrialFeatureAdapter(nn.Module):
         self.scale = nn.Parameter(torch.tensor(0.0))
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
-        """Return features with shape unchanged, e.g. [B, D] or [C, D]."""
+        """返回 shape 不变的 features，例如 [B（图片/样本数量）, D（特征维度）] 或 [C（类别数量）, D（特征维度）]。"""
         if not self.enabled:
             return features
         delta = self.adapter(features)
@@ -35,6 +34,6 @@ class TrialFeatureAdapter(nn.Module):
 
 def integration_note() -> str:
     return (
-        "Attach after existing feature construction and before the scorer. "
-        "Switch off must return the exact input tensor."
+        "接在既有 feature 构造之后、scorer 之前。"
+        "关闭开关时必须原样返回输入 tensor。"
     )

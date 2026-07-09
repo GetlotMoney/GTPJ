@@ -20,12 +20,12 @@ docs/workflow/archive/issues/YYYY-MM-DD-*.md
 运行期 agent 实例可以是：
 
 ```text
-temporary_subagent   # 本轮 workflow / campaign 的活上下文
+named_owner_thread   # 本轮 workflow / campaign 的活上下文
 persistent_thread    # 跨 workflow 的活上下文，可选
 role_only            # 主 agent 按角色清单执行，没有独立活上下文
 ```
 
-`temporary_subagent` 可以在整个 workflow 或 campaign 阶段内持续存在。它不是“短到只能做一次性检查”的工具，而是本轮独立上下文。
+`named_owner_thread` 可以在整个 workflow 或 campaign 阶段内持续存在。它不是“短到只能做一次性检查”的工具，而是本轮独立上下文。
 
 `persistent_thread` 负责跨 workflow 保留角色自己的连续对话经验和可见追踪过程，但它可能压缩、漂移或丢失局部细节，所以不能单独作为正式证据。
 
@@ -36,7 +36,7 @@ role_only            # 主 agent 按角色清单执行，没有独立活上下�
 ```yaml
 agents:
   activation_mode: real_multi_agent
-  agent_instance_mode: temporary_subagent
+  agent_instance_mode: named_owner_thread
   lifecycle: workflow_scoped
 ```
 
@@ -93,11 +93,11 @@ Coordinator 激活某个角色时，必须让该角色读取或显式接收：
 Task Start Card 和 Agent Summary 必须记录：
 
 ```text
-agent_instance_mode: temporary_subagent | persistent_thread | role_only
+agent_instance_mode: named_owner_thread | persistent_thread | role_only
 lifecycle: workflow_scoped | campaign_scoped | cross_workflow | role_only
 persistent_thread_id: <id/label> 或 not_used
 persistent_thread_reused: yes | no | not_applicable
-temporary_subagent_reason:
+named_thread_reason:
 output_locations:
 ```
 
@@ -117,7 +117,7 @@ output_locations:
 - 新问题出现 1 次，先写 issue 或本次 `agent_summary.md`。
 - 同类问题出现 2 次，写入对应角色 memory。
 - 同类手工后处理出现 3 次，升级成 helper 或自动校验。
-- 临时 agent 关闭前必须把可复用发现写回上述位置之一。
+- 命名线程 关闭前必须把可复用发现写回上述位置之一。
 
 ## 证据边界
 
@@ -143,5 +143,5 @@ server batch_status / logs
 - 本地 `gtpj-workflow` skill 镜像这些文件。
 - Task Start Card 和 Agent Summary 记录实际读取了哪些 profile / memory 文件。
 - 如果使用 persistent thread，记录 thread id 或 visible label。
-- 如果使用 workflow-scoped temporary agents，记录 lifecycle、independence scope 和 output locations。
+- 如果使用 workflow-scoped named threads，记录 lifecycle、independence scope 和 output locations。
 - 如果 GitHub 和本地 skill 不一致，GitHub 为准，并阻断正式实验或先同步 skill 镜像。

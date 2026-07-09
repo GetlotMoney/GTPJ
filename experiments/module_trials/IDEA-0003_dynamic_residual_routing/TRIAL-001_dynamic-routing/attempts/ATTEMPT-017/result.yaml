@@ -1,0 +1,93 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-017
+status: completed
+run_id: RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+profile: h76-escape100-supported-routing
+planned_jobs: 100
+completed_jobs: 100
+failed_jobs: 0
+skipped_jobs: 0
+running_jobs: 0
+pending_jobs: 0
+server_batch_status: completed
+server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+evidence:
+  evidence_level: valid_single_run
+  source_attempt: ATTEMPT-015
+  source_result_ref: attempts/ATTEMPT-015/result.yaml
+  source_quality_ref: attempts/ATTEMPT-015/quality_check.md
+  summary_csv_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-csv
+  summary_jsonl_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-jsonl
+  batch_status_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:batch-status-json
+  events_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:events-jsonl
+  server_status_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:server-status-json
+metrics:
+  U: 73.00
+  S: 77.36
+  H: 75.11
+  ZS: 82.12
+  best_epoch: 48
+  seed: 5
+  source: best_single_completed_job
+  metric_semantics: GZSL U/S/H/ZS from protected evaluator
+  best_single:
+    job_id: DR-095
+    group: h76_escape_ablate_mechanism
+    name: a015dr035_weight_plus_0.01
+    H: 75.11
+    U: 73.00
+    S: 77.36
+    ZS: 82.12
+    best_epoch: 48
+    source_run_id: RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+  h_ge_75_jobs:
+    - DR-095
+  h_ge_76_jobs: []
+  exact_repeat_candidate:
+    source_candidate_id: A017DR095
+    source_job_id: DR-095
+    repeat_type: exact_repeat
+    original_seed: 5
+    restore_target_H: 75.11
+    max_attempts: 5
+    max_attempts_hard_cap: true
+    early_stop_on_best_hit: true
+    near_miss_tolerance_H: 0.2
+    near_miss_not_restored: true
+    config_updates:
+      use_dynamic_routing: true
+      dynamic_local_mode: fixed
+      dynamic_icsa_mode: fixed
+      dynamic_direction_mode: sample
+      dynamic_pse_mode: fixed
+      dynamic_gate_hidden: 48
+      dynamic_gate_anchor_lambda: 0.0035
+      weight_s2v: 0.535
+      random_seed: 5
+summary:
+  completed_jobs: 100
+  failed_jobs: 0
+  skipped_jobs: 0
+  h_ge_75_count: 1
+  h_ge_76_count: 0
+  top5:
+    - {job_id: DR-095, name: a015dr035_weight_plus_0.01, H: 75.11, U: 73.00, S: 77.36, ZS: 82.12, best_epoch: 48}
+    - {job_id: DR-022, name: a015ridge_direction_sample_h48_w0.512_a0.00265, H: 74.92, U: 72.90, S: 77.06, ZS: 81.98, best_epoch: 37}
+    - {job_id: DR-025, name: a015ridge_direction_sample_h48_w0.5165_a0.00215, H: 74.90, U: 72.49, S: 77.48, ZS: 81.82, best_epoch: 48}
+    - {job_id: DR-018, name: a015dr035_direction_sample_h48_w0.528_a0.00385, H: 74.86, U: 73.07, S: 76.73, ZS: 81.92, best_epoch: 37}
+    - {job_id: DR-021, name: a015ridge_direction_sample_h48_w0.512_a0.00215, H: 74.86, U: 72.56, S: 77.31, ZS: 81.88, best_epoch: 50}
+  group_summary:
+    - {group: h76_escape_direction_micro, jobs: 30, best_job: DR-022, best_H: 74.92, mean_H: 74.689, min_H: 74.42, max_H: 74.92}
+    - {group: h76_escape_hidden_sweep, jobs: 15, best_job: DR-041, best_H: 74.56, mean_H: 74.295, min_H: 73.83, max_H: 74.56}
+    - {group: h76_escape_local_sample_tune, jobs: 15, best_job: DR-057, best_H: 73.68, mean_H: 72.897, min_H: 71.79, max_H: 73.68}
+    - {group: h76_escape_pse_class_tune, jobs: 15, best_job: DR-065, best_H: 73.85, mean_H: 73.557, min_H: 73.39, max_H: 73.85}
+    - {group: h76_escape_icsa_guarded_tune, jobs: 10, best_job: DR-077, best_H: 64.00, mean_H: 58.531, min_H: 51.81, max_H: 64.00}
+    - {group: h76_escape_ablate_mechanism, jobs: 10, best_job: DR-095, best_H: 75.11, mean_H: 74.733, min_H: 74.56, max_H: 75.11}
+    - {group: h76_escape_sentinel_control, jobs: 5, best_job: DR-099, best_H: 74.68, mean_H: 74.506, min_H: 74.37, max_H: 74.68}
+  note: "ATTEMPT-017 completed 100/100. DR-095 is a tune_search/narrow-ablation best single at H=75.11. It is not confirmation evidence; next action is exact_repeat with the same config and original seed."
+result_state: completed
+decision:
+  status: rerun
+  reason: "DR-095 is a valid best single and must be exact-repeat reproduced before any confirmed or promotion-facing claim."
+promotion_decision: blocked
+confirmation_decision: not_confirmation_evidence

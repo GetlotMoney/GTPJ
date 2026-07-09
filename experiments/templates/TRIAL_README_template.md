@@ -1,4 +1,4 @@
-# TRIAL
+# TRIAL（实验试验记录）
 
 ```text
 trial_id:
@@ -49,12 +49,12 @@ confirmation_status:
 
 `code_branch` 从当前 `main` 切出。`base_code_tag` 是真实代码来源。
 
-## Changed Files
+## Changed Files（代码变更文件）
 
-| File | Change | Code layer |
+| 文件 | 变更 | 代码层 |
 |---|---|---|
 
-## Module Source
+## Module Source（模块来源）
 
 ```text
 path: module_source.md
@@ -80,18 +80,19 @@ paper_writing_note:
 ```
 
 新的 module trial 不能省略 source 和 template mapping。历史 baselines 可以作为 legacy records 保留。
+本 README 记录 trial/root 的方法框架；`attempts/ATTEMPT-xxx/` 只记录同一框架下的配置、运行和结果。
 
-## Result
+## Result（结果）
 
 | Attempt ID | Dataset | Seed | U | S | H | ZS | Best epoch | Log artifact |
 |---|---|---:|---:|---:|---:|---:|---:|---|
 
-## Attempts
+## Attempts（尝试记录）
 
 详细 attempt 记录放在 `ATTEMPTS.md`。除非这是 legacy single-attempt trial，否则每个 attempt
 的可复现证据应放在 `attempts/ATTEMPT-xxx/`。
 
-## Trial Flow
+## Trial Flow（试验流程）
 
 ```mermaid
 flowchart TD
@@ -107,7 +108,7 @@ flowchart TD
   Review3 --> Decision["trial_decision / promotion_decision"]
 ```
 
-## Framework Diagram
+## Framework Diagram（框架图）
 
 ```text
 path: framework_diagram.md
@@ -118,25 +119,27 @@ code_vs_intent:
 
 `framework_diagram.md` 必须包含：
 
-- variable glossary：每个图中变量的来源、shape、含义、gradient/detach 状态和 train/eval 差异。
-- method glossary：每个图中 method/module 的代码位置、输入、输出、职责、config switch 和 baseline-off behavior。
-- embedded loss flow：每个 loss 都要贴到它读取的 tensor 上，不能只在末尾列 loss 名。
-- line semantics：每条箭头都要说明是 data flow、supervision/target、read-only reference 还是 config/control。
-- code vs intent note：显式说明实现路径是否符合 idea/design。
+- variable glossary（变量表）：每个图中变量的来源、shape（形状）、含义、gradient/detach 状态和 train/eval 差异。
+- method glossary（方法表）：每个图中 method/module 的代码位置、输入、输出、职责、config switch 和 baseline-off behavior。
+- embedded loss flow（嵌入式损失流程）：每个 loss 都要贴到它读取的 tensor 上，不能只在末尾列 loss 名。
+- line semantics（连线语义）：每条箭头都要说明是 data flow、supervision/target、read-only reference 还是 config/control。
+- code vs intent note（代码与意图对照）：显式说明实现路径是否符合 idea/design。
 
-## Code Flow Diagram
+## Code Flow Diagram（代码流程图）
 
-当该 Trial 改变 forward、loss、evaluation、input/output、tensor flow 或 code branching logic
-时必须填写。README 中的图要让 owner 能快速读懂；完整变量和方法细节放在 `framework_diagram.md`。
+当该 Trial 新增或改写 module、forward、loss、evaluation、data view、input/output、
+tensor flow、接口语义或 code branching logic 时必须填写。README 中的图要让 owner
+能快速读懂；完整变量和方法细节放在 `framework_diagram.md`。调参、复现、只关闭既有组件的
+窄消融不新增本图。
 
 ```mermaid
 flowchart TD
-  Input["input tensors"] --> Changed["changed code path / module"]
-  Changed --> Output["outputs: logits [B (image/sample count), C (class count)]"]
+  Input["输入 tensors"] --> Changed["变更代码路径 / module"]
+  Changed --> Output["输出 logits [B（图片/样本数量）, C（类别数量）]"]
   Output --> Metric["loss / U-S-H-ZS metrics"]
 ```
 
-## Innovation Code Review
+## Innovation Code Review（创新代码审核）
 
 ```text
 Review 0: idea_intent_check.md
@@ -147,9 +150,9 @@ activation_mode: real_multi_agent
 ai_cross_review: 重要代码/决策改动必须执行；使用 validate-ai-cross-review 校验
 ```
 
-## Promotion Gate
+## Promotion Gate（升版门槛）
 
-Fill only when `trial_decision: promote`:
+仅当 `trial_decision: promote` 时填写：
 
 ```text
 parent_version:

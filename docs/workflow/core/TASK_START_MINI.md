@@ -16,6 +16,7 @@ python workflow/gtpj_workflow.py start --phrase "开新模块"
 ```yaml
 owner_phrase:
 task_type:
+workflow_mode:
 base_version:
 target:
 subject_id:
@@ -35,6 +36,10 @@ blocked_reason:
 next_action:
 ```
 
+`workflow_mode` 必填：`live_multi_agent_monitor` 表示动态多 agents 监控工作流；
+`server_frozen_runner` 表示本地规划、冻结计划、服务器 detached 训练工作流。
+owner 只说“用工作流”但没有说明哪一种时，必须先确认这一项，不能由 Coordinator 猜测。
+
 字段含义：
 
 | 字段 | 含义 |
@@ -47,7 +52,7 @@ next_action:
 | `evidence_state` | 当前证据成熟度；正式状态必须能由 `TRANSITIONS.jsonl` 派生。 |
 | `writes` | 本次会写哪里；只读任务写 `none`。 |
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
-| `agent_instance_mode` | `role_only`、`temporary_subagent` 或 `persistent_thread`；正式实验默认 workflow-scoped `temporary_subagent`，跨 workflow 连续追踪才启用 `persistent_thread`。 |
+| `agent_instance_mode` | `role_only`、`named_owner_thread` 或 `persistent_thread`；正式实验默认 workflow-scoped `named_owner_thread`，跨 workflow 连续追踪才启用 `persistent_thread`。 |
 | `runner_scope` | `none`、`debug_smoke` 或 `formal_runner`；只有 `formal_runner` 能产出正式实验证据。 |
 | `formal_runner_allowed` | 正式 Runner 是否允许启动；没有真实多 agent preflight 时必须是 `false`。 |
 | `formal_evidence_allowed` | 本轮输出是否允许进入 keep / best / confirmation / promotion / version 判断。 |
@@ -89,11 +94,11 @@ subject_id: pending until trial is created
 evidence_state: hypothesis_ready
 writes: idea_tree + experiments/module_trials + Warehouse after run
 agent_mode: real_multi_agent，因为新模块代码改动需要 Review 0-3
-agent_instance_mode: temporary_subagent, lifecycle workflow_scoped
+agent_instance_mode: named_owner_thread, lifecycle workflow_scoped
 runner_scope: formal_runner
 formal_runner_allowed: false until multi_agent_preflight pass
 formal_evidence_allowed: false until formal Runner completes with evidence chain
-agent_runtime_gate: required before Runner; must record right_sidebar_temporary_agents
+agent_runtime_gate: required before Runner; must record left_sidebar_named_threads
 multi_agent_preflight: required before formal Runner
 owner_monitor_mode: true; visible reports must name active agents and actions
 agent_activity_stream: required before formal Runner
@@ -113,7 +118,7 @@ subject_id: confirmation subject selected after repro-status
 evidence_state: single_run_valid or confirmation target state
 writes: none until owner confirms run and evidence level
 agent_mode: 正式运行用 real_multi_agent；Runner 启动前的准备可以 role_only
-agent_instance_mode: 正式运行用 temporary_subagent；跨 workflow 追踪才用 persistent_thread
+agent_instance_mode: 正式运行用 named_owner_thread；跨 workflow 追踪才用 persistent_thread
 runner_scope: formal_runner if confirmation will enter evidence; none for read-only repro-status
 formal_runner_allowed: false until multi_agent_preflight pass
 formal_evidence_allowed: false until formal Runner and result review pass
@@ -124,7 +129,19 @@ agent_activity_stream: required before formal Runner
 gates: baseline_repro_status, metric_semantics, evidence_level, artifact_boundary
 blocked_reason: none for read-only; missing real_multi_agent gate blocks formal rerun
 next_action: run repro-status, then decide quick_local vs formal confirmation target
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: must match source result
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: must be reached to count as reproduced
+  near_miss_tolerance_H: default 0.2, records hope only
+  near_miss_not_restored: true
+  seed_sweep_or_multi_seed_stability: not_confirmation_evidence
 ```
+
+同一候选不管是否还原成功，exact repeat 最多 5 次；命中 `restore_target_H` 可提前停止，5 次未命中则收口为 not restored / near miss。
 
 ### 试这个
 
@@ -137,7 +154,7 @@ subject_id: pending until hypothesis/trial registration
 evidence_state: hypothesis_ready if accepted for triage
 writes: Research/idea_tree only if owner asks to register; no code until ready
 agent_mode: 纯 triage 用 role_only；变成代码或正式证据后用 real_multi_agent
-agent_instance_mode: 纯 triage 用 role_only；进入正式证据后用 temporary_subagent
+agent_instance_mode: 纯 triage 用 role_only；进入正式证据后用 named_owner_thread
 runner_scope: none for triage; formal_runner only after gate passes
 formal_runner_allowed: false until real_multi_agent gate passes
 formal_evidence_allowed: false during triage
@@ -159,7 +176,7 @@ subject_id: campaign id after campaign creation
 evidence_state: hypothesis_ready for first accepted subjects
 writes: campaign ledger + idea_tree + experiments + Research + Warehouse
 agent_mode: real_multi_agent，因为 workflow 会调度多类实验并产出最终证据
-agent_instance_mode: temporary_subagent, lifecycle workflow_scoped; persistent_thread optional for cross-workflow coordinator/monitor
+agent_instance_mode: named_owner_thread, lifecycle workflow_scoped; persistent_thread optional for cross-workflow coordinator/monitor
 runner_scope: formal_runner per formal batch
 formal_runner_allowed: false until campaign/workstream/run preflight passes
 formal_evidence_allowed: false for any batch without real_multi_agent evidence chain
@@ -183,7 +200,7 @@ subject_id: campaign id after campaign creation
 evidence_state: campaign planning, then per-task evidence_state
 writes: experiments/campaigns + each workstream's canonical experiment directory + Warehouse
 agent_mode: real_multi_agent，因为多个 workstream 需要隔离规划、运行、分析和质量检查
-agent_instance_mode: temporary_subagent, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
+agent_instance_mode: named_owner_thread, lifecycle campaign_scoped/workstream_scoped/task_scoped/run_scoped
 runner_scope: formal_runner per formal batch
 formal_runner_allowed: false until campaign/workstream/run preflight passes
 formal_evidence_allowed: false for any batch without real_multi_agent evidence chain

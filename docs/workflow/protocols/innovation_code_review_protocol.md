@@ -30,7 +30,7 @@
 `real_multi_agent`。这类任务必须阻断正式 run、promotion 或 best 结论，除非 owner 明确接受
 本次只作为 debug/smoke 降级；debug/smoke 结果不能补签为正式 evidence。
 
-正式创新审查默认使用 workflow-scoped `temporary_subagent`。如果某个角色需要跨多个 workflow 连续追踪，才启用 `persistent_thread`，并在 task-start card 和 `agent_summary.md` 写明 thread id 或可见 label。无论使用哪种活上下文，正式结论必须写入 review 文件、`agent_summary.md`、result、quality 或 artifact evidence。
+正式创新审查默认使用 workflow-scoped `named_owner_thread`。如果某个角色需要跨多个 workflow 连续追踪，才启用 `persistent_thread`，并在 task-start card 和 `agent_summary.md` 写明 thread id 或可见 label。无论使用哪种活上下文，正式结论必须写入 review 文件、`agent_summary.md`、result、quality 或 artifact evidence。
 
 ## 2. 最小审查轮次
 
@@ -131,11 +131,11 @@ agent_summary.md
 
 如果结果要进入 promotion，还必须转入 `promotion.md` 的 promotion gate。
 
-## 3. 临时 agents 与长期 agents
+## 3. 命名线程 与长期 agents
 
 长期 agent 由文件化角色身份和历史凭证构成：`profile.md`、`memory.md`、by-experiment 调用规则、review 文件、`agent_summary.md` 和 issues。`persistent_thread` 只是跨 workflow 的可选活上下文，不是正式证据源。
 
-临时 sub-agent 是本轮 innovation workflow 的默认独立活上下文。Coordinator 启动临时 agent 时必须显式传入：
+命名线程 是本轮 innovation workflow 的默认独立活上下文。Coordinator 启动命名线程 时必须显式传入：
 
 - 对应 `shared_roles/<role>/profile.md`；
 - 对应 `shared_roles/<role>/memory.md`；
@@ -145,7 +145,7 @@ agent_summary.md
 - 本轮需要审查的具体文件列表；
 - 期望输出文件与结论格式。
 
-临时 agent 结束后，经验只在下列位置持久化：
+命名线程 结束后，经验只在下列位置持久化：
 
 ```text
 agent_summary.md
@@ -155,10 +155,10 @@ shared_roles/<role>/memory.md
 workflow/gtpj_workflow.py helper 或 sync check
 ```
 
-临时 agent 的隐藏上下文不能作为实验证据。进入 `result.yaml`、`quality_check.md`、promotion evidence 或正式结论前，
+命名线程 的隐藏上下文不能作为实验证据。进入 `result.yaml`、`quality_check.md`、promotion evidence 或正式结论前，
 必须回到当前 repo、Research、Warehouse artifact 或日志重新验证。
 
-正式 best、promotion 或 owner 明确要求多 agent 时，不能只保留临时 agent 的对话结论；必须把结论收口到文件化 evidence。若启用了 persistent thread，也可以同步一份可见总结，但不能替代文件证据。
+正式 best、promotion 或 owner 明确要求多 agent 时，不能只保留命名线程 的对话结论；必须把结论收口到文件化 evidence。若启用了 persistent thread，也可以同步一份可见总结，但不能替代文件证据。
 
 ## 4. Writer / Reviewer 边界
 
@@ -240,7 +240,7 @@ role:
 agent_instance_mode:
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 inputs_checked:
 independence_scope:
 findings:
@@ -253,7 +253,7 @@ memory_sources:
 verified_against_current_repo:
 ```
 
-`agent_summary.md` 必须汇总四轮 review 的结论，并说明是否有临时 agents、长期角色 thread 是否复用、长期角色记忆是否加载、
+`agent_summary.md` 必须汇总四轮 review 的结论，并说明是否有命名线程、长期角色 thread 是否复用、长期角色记忆是否加载、
 哪些文件被独立审查、哪些 blocking issue 已解决。
 
 ## 8. 与其他协议的关系

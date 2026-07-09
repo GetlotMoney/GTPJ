@@ -32,7 +32,7 @@
 | `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
 | `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
 | `core/TASK_START_CARD.md` | 正式写入或运行前的完整 Coordinator 启动卡。 |
-| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的真实右侧临时 agents 硬门。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的左侧命名 Codex 线程硬门。 |
 
 ## 执行卡 Playbooks
 
@@ -83,6 +83,17 @@ START_HERE.md
 -> multi-agent-preflight
 -> Runner
 ```
+
+正式待跑实验的最短查询链是：
+
+```text
+experiments/vX/<type>/INDEX.md
+或 experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
+-> attempts/ATTEMPT-xxx/manifest.yaml
+-> .gtpj_runtime/batches/<run_id> 只核对执行状态
+```
+
+`.gtpj_runtime` 不是正式待跑表；没有正式表格行的运行目录统一视为 `orphan_runtime_plan`。
 
 组合实验用同一个入口自动路由：
 

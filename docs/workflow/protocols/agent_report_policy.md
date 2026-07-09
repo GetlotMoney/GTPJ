@@ -73,14 +73,14 @@ agent_set:
 serial_agents:
 parallel_agents:
 disabled_agents:
-temporary_subagents:
+named_threads:
 agent_instance_status:
 agent_status_refs:
 agent_output_refs:
 multi_agent_preflight:
-right_sidebar_retention_policy:
-close_completed_agents_on_stage_end:
-closed_agents_record:
+thread_archive_policy:
+archive_completed_threads_on_stage_end:
+archived_threads_record:
 tool_support:
 memory_policy:
 memory_used:
@@ -107,7 +107,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -135,12 +135,33 @@ blocking_issues:
 - Interface Checker 在 label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清时必须阻断。
 - 多个 agents 不得同时写同一个 GitHub 账本文件。
 - `real_multi_agent` 必须保留各 agent 的独立输入、发现和结论；如果当前工具不可用，只能在 `tool_support.fallback_mode` 记录 `role_only_with_independent_sequential_review`，并阻断正式证据，不能冒充真实多 agent。
-- 正式 `real_multi_agent` 默认记录 `agent_instance_mode: temporary_subagent` 和 `lifecycle: workflow_scoped`；长周期 campaign 可写 `campaign_scoped`。
+- 正式 `real_multi_agent` 默认记录 `agent_instance_mode: named_owner_thread` 和 `lifecycle: workflow_scoped`；长周期 campaign 可写 `campaign_scoped`。
 - `persistent_thread` 是跨 workflow 的可选活上下文；如启用，必须保存 thread id 或可见 label，但 thread 本身不是正式证据源。
-- `temporary_subagent` 可以覆盖本轮 workflow 或 campaign 阶段；它必须把正式输出写入 `agent_summary.md`、result、quality、issues、memory、Research、Warehouse 或 campaign ledger。
-- 每轮 workflow 结束或阶段结束时，Coordinator 必须关闭已完成且结论已入账的 temporary agents；右侧栏默认只保留当前阶段 active agents。
+- `named_owner_thread` 可以覆盖本轮 workflow 或 campaign 阶段；它必须把正式输出写入 `agent_summary.md`、result、quality、issues、memory、Research、Warehouse 或 campaign ledger。
+- 每轮 workflow 结束或阶段结束时，Coordinator 必须归档已完成且结论已入账的 named threads；左侧栏默认只保留当前阶段 active agents。
 - memory 只能用于定位和背景提醒；没有被当前 repo、日志或 artifact 验证的 memory-derived fact 不能写入正式结果、质量门或 promotion 证据。
 - 长期 agent 记忆来自 `docs/workflow/agents/shared_roles/<role>/memory.md`；每次真实实验必须记录读取了哪些角色记忆、是否启用 persistent thread，以及是否需要写回更新。
+
+## Live Monitor 报告
+
+`live_multi_agent_monitor` 必须持续面向 owner 报告，而不是只在批次结束后汇总。每个新增 completed job 至少记录：
+
+```text
+event: job_completed_report
+job_id:
+H:
+U:
+S:
+ZS:
+current_best_job_id:
+current_best_H:
+h_ge_75:
+h_ge_76:
+evidence_refs:
+next_action:
+```
+
+这些事件写入 `AGENT_ACTIVITY.md`，并可由 `monitor-workflow --report-new-completions --activity-log ...` 自动追加。接近、命中、失败或异常都必须按 job 粒度可追踪；final result 只在 closeout 时聚合。
 
 ## 入账时机
 
@@ -151,8 +172,8 @@ blocking_issues:
 - `activation_mode`、`agent_instance_mode`、`agent_instance_type`、`lifecycle`、`runner_scope`、`formal_runner_allowed`、`formal_evidence_allowed`、`multi_agent_preflight`、`persistent_thread_id`、`independence_scope`、`output_locations` 和 memory 字段已填写；
 - blocking issue 已处理或结果被标记为 blocked/rerun/reject；
 - 需要长期保存的完整报告已经进入 Warehouse，GitHub 只记录 artifact id/URI。
-- 已完成 agents 的输出已入账，关闭名单和保留名单已写入 `AGENT_ACTIVITY.md` 或 closeout summary；
-  右侧栏只留下当前阶段 active agents。
+- 已完成 agents 的输出已入账，归档名单和保留名单已写入 `AGENT_ACTIVITY.md` 或 closeout summary；
+  左侧栏只留下当前阶段 active agents。
 
 当 attempt evidence 存在时，module trial attempt closeout 必须使用 helper 路径：
 

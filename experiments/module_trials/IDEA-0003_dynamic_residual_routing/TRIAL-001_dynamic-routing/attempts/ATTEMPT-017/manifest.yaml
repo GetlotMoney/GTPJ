@@ -1,0 +1,162 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-017
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 escape100 supported routing server frozen campaign
+  status: completed
+  recorded_at: "2026-07-09"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-015
+  source_result_ref: attempts/ATTEMPT-015/result.yaml
+  source_quality_ref: attempts/ATTEMPT-015/quality_check.md
+  running_context_attempt: ATTEMPT-016
+  source_note: "ATTEMPT-015 supplied tune-search hotspot evidence. ATTEMPT-017 is not confirmation; it produces a new exact-repeat candidate."
+run:
+  run_id: RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+  profile: h76-escape100-supported-routing
+  jobs: 100
+  execution_mode: server_frozen_runner
+  training_backend: lab4090_screen_detached
+  server_runner_started: true
+  queued_after_attempt: ATTEMPT-016
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+  local_batch_dir: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+  local_frozen_plan_status: generated
+  launch_status: completed
+  screen_session: GTPJ_ATTEMPT017_ESCAPE100_WAIT
+  local_commit: a884fea429a302fecc42ba8cddf9e6e66f5d07c8
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  git_remote: none
+  python: /data/lby/.conda/envs/dvsr_gpu/bin/python
+  latest_monitor:
+    checked_at_utc: "2026-07-09T03:14:50+00:00"
+    completed: 100
+    running: 0
+    pending: 0
+    failed: 0
+    skipped: 0
+    best_single:
+      job_id: DR-095
+      H: 75.11
+      U: 73.00
+      S: 77.36
+      ZS: 82.12
+      best_epoch: 48
+    h_ge_75_count: 1
+    h_ge_76_count: 0
+policy:
+  experiment_type: tune_search_plus_narrow_ablation
+  confirmation_evidence: false
+  not_confirmation_evidence: true
+  seed: 5
+  unsupported_dynamic_pse_sample_allowed: false
+gate:
+  workflow_mode: server_frozen_runner
+  activation_mode: role_only
+  agent_instance_mode: role_only
+  formal_runtime_backend: server_detached_role_only
+  thread_creation_allowed: false
+  formal_runner_allowed: true
+decision:
+  state: completed
+  evidence_level: valid_single_run
+  promotion_decision: blocked
+  confirmation_decision: not_confirmation_evidence
+  reason: "Search and narrow ablation only; DR-095 H=75.11 must be exact-repeat reproduced before any confirmation or promotion claim."
+artifacts:
+  server_summary_csv:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-csv
+    role: server_summary_csv
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/summary.csv
+    sha256: bb39140a7b01ce0f9af1968a182d4dcdc7f813375257e341759f941e2c9a16bf
+    size_bytes: 46666
+    status: available
+  server_summary_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-jsonl
+    role: server_summary_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/summary.jsonl
+    sha256: a435e4f8da70c4e46cfee0f9a0f387feea3b51a7360a997144517e98f5577008
+    size_bytes: 101179
+    status: available
+  server_batch_status_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:batch-status-json
+    role: server_batch_status_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/batch_status.json
+    sha256: 41854484220355c64947bae1657c2281c4ee99c7abe7aa2875c1480e11d88f3c
+    size_bytes: 88592
+    status: available
+  server_events_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:events-jsonl
+    role: server_events_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/events.jsonl
+    sha256: 0bbc6b534c56863c3cc53549c8a2b55cb184ce2456b643cc92d4cfe4809f3714
+    size_bytes: 45992
+    status: available
+  server_status_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:server-status-json
+    role: server_status_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/ATTEMPT017_SERVER_STATUS.json
+    sha256: 80a6aa225f37a8062f80315f24b560bf42e07004dd12dacc042ee3ef2f6e088c
+    size_bytes: 498
+    status: available
+  server_plan_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:plan-json
+    role: server_plan_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/plan.json
+    sha256: 894a0b052ac34bb62f6d06039a4db41f9a759a1dd66b210ae2188ce6f1d66357
+    size_bytes: 71912
+    status: available
+local_frozen_plan:
+  config_count: 100
+  files:
+    plan_json:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/plan.json
+      size_bytes: 71912
+      sha256: 894a0b052ac34bb62f6d06039a4db41f9a759a1dd66b210ae2188ce6f1d66357
+    batch_status_json:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/batch_status.json
+      size_bytes: 88592
+      sha256: 41854484220355c64947bae1657c2281c4ee99c7abe7aa2875c1480e11d88f3c
+    summary_csv:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/summary.csv
+      size_bytes: 46666
+      sha256: bb39140a7b01ce0f9af1968a182d4dcdc7f813375257e341759f941e2c9a16bf
+    summary_jsonl:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/summary.jsonl
+      size_bytes: 101179
+      sha256: a435e4f8da70c4e46cfee0f9a0f387feea3b51a7360a997144517e98f5577008
+    events_jsonl:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/events.jsonl
+      size_bytes: 45992
+      sha256: 0bbc6b534c56863c3cc53549c8a2b55cb184ce2456b643cc92d4cfe4809f3714
+    run_dynamic_routing_batch_py:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/run_dynamic_routing_batch.py
+      size_bytes: 26943
+      sha256: 609bcee227ede155861f19809e254b1d36ade6b034fca36e5bb377e587920eaf
+    start_batch_sh:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/start_batch.sh
+      size_bytes: 312
+      sha256: 23364bfc4939e109321f1b6dbe980abb6cd61f4fba1ab1bb7938cbc3583a6316
+    workflow_state_json:
+      path: .gtpj_runtime/batches/RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu/workflow_state.json
+      size_bytes: 3587
+      sha256: fc5ddf935ac0577956b7a6303c4dba4c1453d9ee7a565fdf9d6608e4dfe7f031
+campaign:
+  experiment_type: tune_search_plus_narrow_ablation
+  planned_jobs: 100
+  seed_policy: fixed_seed_5
+  target_metric: GZSL_H
+  target_single_threshold_H: 75.0
+  promotion_allowed: false
+  confirmation_allowed: false
+  followup_if_hit: exact_repeat_same_seed_same_config
+  next_exact_repeat_candidate:
+    source_candidate_id: A017DR095
+    source_job_id: DR-095
+    restore_target_H: 75.11
+    max_attempts: 5
+    original_seed: 5

@@ -21,4 +21,19 @@ v5/                      GTPJ-v5 owner-activated active mainline 记录
 
 旧的 `experiments/v1/` 到 `experiments/v4/` 不删除。`main` 保存全部版本账本，代码快照靠对应 tag 回滚。
 
+## 正式表格地图
+
+以后查询“现在有哪些待跑实验”，先看正式表格，不从 `.gtpj_runtime/` 目录反推。
+
+| 问题 | 先看哪张表 | 说明 |
+|---|---|---|
+| 全局有哪些版本和已登记实验 | `EXPERIMENT_REGISTRY.md` | 全局索引，辅助定位，不替代各类型正式表格。 |
+| 某个 baseline 的调参待跑 | `vX/tune/INDEX.md` | `Status` 为 `planned/pending/pre_run/pre_run_gated/ready_to_run` 的行是正式待跑。 |
+| 某个 baseline 的消融待跑 | `vX/ablation/INDEX.md` | 同上。 |
+| 某个 baseline 的复现/确认待跑 | `vX/confirmation/INDEX.md` | 同上。 |
+| 某个新模块 trial 内部还有什么待跑 | `module_trials/.../TRIAL-xxx/ATTEMPTS.md` | trial 内部调参、窄消融、rerun、confirmation 都看这里。 |
+| 混合 campaign 里任务如何分配 | `campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只是 derived index；正式结果和正式待跑仍回到各自归属表格。 |
+
+正式待跑统一叫 `formal_pending`。没有正式表格行、只有 `.gtpj_runtime/batches/<run_id>` 的目录，统一叫 `orphan_runtime_plan`；它只能作为历史参考或排障线索，不能自动续跑，也不能进入 keep / best / confirmation / promotion。
+
 不要在这里保存大型数据集、checkpoint、原始日志或 cache 文件。

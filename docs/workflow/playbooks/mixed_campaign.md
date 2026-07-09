@@ -30,10 +30,20 @@ campaign
 
 不要给每个 run 创建一个永久 agent。
 
-但 campaign / workstream / task 级正式角色必须是真实右侧临时 agents，并在
+但 campaign / workstream / task 级正式角色必须是真实左侧命名 Codex 线程，并在
 `agent_runtime.yaml` 中记录实例 id。没有通过 `validate-agent-runtime` 和
 `multi-agent-preflight` 的 campaign 不能启动正式 Runner；不能用 sequential review
 替代正式 campaign evidence。
+
+生成 campaign manifest、batch 或 runner plan 前，先运行只读规划门：
+
+```bash
+python workflow/gtpj_workflow.py plan-experiments --phrase "<owner 组合口令>"
+```
+
+规划必须根据当前 repo、baseline、正式待跑 ledger 和已完成 result/quality 自动生成
+Evidence Summary、Candidate Decision、Current Run Plan 三张表；`.gtpj_runtime` 只能作
+debug context。
 
 每个 campaign task 必须有：
 
@@ -89,12 +99,16 @@ Warehouse 登记 (Warehouse Registrar)
 
 运行监控 (Runner Monitor) 负责 GPU/服务器执行和失败隔离。
 
-结果比较 (Result Comparator) 根据 evidence 决定哪些方向需要 3-repeat confirmation。
+结果比较 (Result Comparator) 根据 evidence 决定哪些方向需要 exact-repeat confirmation：
+`repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、
+`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、
+`near_miss_not_restored`。接近但未达到目标只能说明有效果、还有希望，不能说还原；同一候选无论是否还原成功都最多 5 次，5 次未还原不能继续加跑复现。换 seed 的
+`seed_sweep` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`。
 
 调度按 evidence state machine，不按 run 数硬排：
 
 ```text
-hypothesis_ready -> interface_precheck_passed -> smoke_passed -> single_run_valid -> tune_promising -> ablation_supported -> min3_confirmed
+hypothesis_ready -> interface_precheck_passed -> smoke_passed -> single_run_valid -> tune_promising -> ablation_supported -> exact_repeat_best_hit -> stable_confirmed
 ```
 
 ## 必要 Campaign 汇报

@@ -1,0 +1,101 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: ATTEMPT-018
+subject_type: attempt
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: named_owner_thread
+lifecycle: workflow_scoped
+formal_runtime_backend: named_owner_thread
+ui_visibility: left_sidebar_named_threads
+tool_support_real_multi_agent_available: true
+thread_management_tool: codex_app.create_thread
+single_agent_execution: false
+real_multi_agent_required: true
+thread_creation_allowed: true
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+thread_archive_policy: archive_completed_threads_on_stage_end
+archive_completed_threads_on_stage_end: true
+current_stage_status: pre_run_gate_ready
+archive_after_closeout_only: true
+active_named_threads_visible_until_closeout: true
+report_new_completions: true
+monitor_command: monitor-workflow --report-new-completions
+archived_threads_record: AGENT_ACTIVITY.md
+
+named_thread_ids:
+  reviewer: 019f4509-51a5-7ba1-9b64-0d6ed5df4464
+  runner_monitor: 019f4509-712b-7142-b443-9bbbc7675124
+  interface_checker: 019f4509-926b-7c20-b9aa-5e9cb09438c1
+  evidence_quality_checker: 019f4509-9f62-7260-a4df-61738d7fde9a
+  log_analyst: 019f4509-aaca-7c42-8467-adc20316e355
+  result_analyst: 019f4509-b77c-7503-9547-5ca0fc620067
+
+named_thread_titles:
+  reviewer: ATTEMPT-018 | Reviewer
+  runner_monitor: ATTEMPT-018 | Runner Monitor
+  interface_checker: ATTEMPT-018 | Interface Checker
+  evidence_quality_checker: ATTEMPT-018 | Evidence Quality Checker
+  log_analyst: ATTEMPT-018 | Log Analyst
+  result_analyst: ATTEMPT-018 | Result Analyst
+
+agent_instance_status:
+  reviewer: completed
+  runner_monitor: completed
+  interface_checker: completed
+  evidence_quality_checker: completed
+  log_analyst: completed
+  result_analyst: completed
+
+agent_status_refs:
+  reviewer: AGENT_ACTIVITY.md
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+  log_analyst: AGENT_ACTIVITY.md
+  result_analyst: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  reviewer: agent_outputs/reviewer.md
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+  log_analyst: agent_outputs/log_analyst.md
+  result_analyst: agent_outputs/result_analyst.md
+
+pre_run_required_checks:
+  reviewer: allow
+  runner_monitor: allow
+  interface_checker: allow
+  evidence_quality_checker: allow
+  log_analyst: allow
+  result_analyst: allow
+
+multi_agent_preflight:
+  required_threads_created: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+  threads_archivable: true
+
+authority_refs:
+  task_start_card: task_start_card.md
+  pre_run_plan: pre_run_plan.md
+  work_items: WORK_ITEMS.md
+  manifest: manifest.yaml
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md
+  monitor_handoff: monitor_handoff.md

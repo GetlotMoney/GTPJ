@@ -38,7 +38,7 @@ final_deliverables:
 | `paper_sources` | 论文 PDF、论文列表、代码仓库、项目页或 owner 给出的来源入口。 |
 | `evaluation_standard` | 主要指标、数据集、split、repeat 要求、promotion 门槛和可接受波动。 |
 | `safety_boundaries` | 不允许做的事，例如不 push、不删数据、不改远端、不污染评估语义。 |
-| `experiment_standard` | 每类实验的最小证据要求，例如 min3 repeat、ablation、quality gate。 |
+| `experiment_standard` | 每类实验的最小证据要求，例如 exact repeat、ablation、quality gate。 |
 | `compute_budget` | GPU、batch 数、最大并发、checkpoint retention 和失败隔离策略。 |
 | `time_budget` | 运行 10 天、20 天或直到触发 stop condition。 |
 | `final_deliverables` | 最终代码、结果表、复现说明、best config、失败总结和下一步建议。 |
@@ -124,14 +124,14 @@ Warehouse 保存 raw logs、checkpoints、figures、完整 runner 报告和长�
 ```yaml
 agents:
   activation_mode: real_multi_agent
-  agent_instance_mode: temporary_subagent
+  agent_instance_mode: named_owner_thread
   lifecycle: workflow_scoped
   evidence_source: files_and_artifacts
 ```
 
 含义：
 
-- `temporary_subagent` 是本轮 workflow / campaign 的活上下文，可以在整个 campaign 阶段内持续存在。
+- `named_owner_thread` 是本轮 workflow / campaign 的活上下文，可以在整个 campaign 阶段内持续存在。
 - `persistent_thread` 是跨 workflow 的活上下文，只在确实需要跨多轮持续追踪时启用。
 - 长期 agent 不是永久聊天窗口；长期 agent 是 `profile.md`、`memory.md`、调用协议、历史 `agent_summary.md` 和 issues。
 - 正式事实永远来自 repo、Research、Warehouse、manifest、result、quality 和 agent summary，不来自任何隐藏聊天上下文。
@@ -180,8 +180,16 @@ Coordinator 在 campaign 中反复执行下面循环：
 workflow 可以自行安排具体实验，但必须遵守：
 
 - 单次最好结果不能直接当正式结论。
-- 候选要成为正式数据，默认必须进行 3 次 clean repeat。
-- 复现实验通过时，正式行可以使用 3 次 repeat 中最高 H 对应的 U/S/ZS，同时保留 mean/min/max 作为稳定性证据。
+- 候选要成为正式数据，默认必须进行 `repeat_type: exact_repeat`：锁定 `original_seed`、
+  原始 config、代码 commit、数据/缓存、训练日程和评估口径，`max_attempts: 5`、
+  `max_attempts_hard_cap: true`、
+  `early_stop_on_best_hit: true`，并声明 `restore_target_H`、`near_miss_tolerance_H` 和
+  `near_miss_not_restored`。
+- 只有任一 clean exact repeat 达到 `restore_target_H` 才可记录 `best_hit`；接近但未达到只能记录
+  `near_miss_not_restored`，表示实验有效果、还有希望，不能说还原。同一候选无论是否还原成功都最多 5 次；5 次未还原必须收口为 not restored / near miss。如果需要稳定性结论，
+  再报告同一 `original_seed`、同一配置下的 mean/min/max/range。
+- `seed_sweep`、`score_search` 和 `multi_seed_stability` 只能作为搜索或稳定性诊断，必须写
+  `not_confirmation_evidence: true`，不能冒充复现。
 - tune-only 不能开新 `vX` 框架版本。
 - 代码语义或评估语义变化才可能进入新 trial 或新 framework version。
 - ICSA、direction、PSE、local 等方向由结果证据驱动，不靠先验偏好。
@@ -210,7 +218,7 @@ GitHub campaign ledger / result index / quality  # 正式轻量事实
 workflow agents / temporary contexts              # 当前阶段执行上下文
 ```
 
-本地电脑关闭、对话窗口关闭或临时 agent 结束，都不应导致 campaign 状态丢失。恢复时以 GitHub 账本、Warehouse artifact 和服务器 batch 状态为准。
+本地电脑关闭、对话窗口关闭或命名线程 结束，都不应导致 campaign 状态丢失。恢复时以 GitHub 账本、Warehouse artifact 和服务器 batch 状态为准。
 
 ## 9. Checkpoint Retention
 
@@ -230,7 +238,7 @@ campaign 不应该无限跑。满足任一条件时必须停下并汇报：
 
 - 达到 owner 的 time budget 或 compute budget；
 - 连续若干轮没有超过 baseline / confirmed reference；
-- top candidates 已完成 min3 repeat 且结论稳定；
+- top candidates 已完成最多 5 次 exact repeat，或已触发 `early_stop_on_best_hit: true`；
 - 出现 hard gate blocker；
 - 服务器、数据、评估或代码状态无法恢复到可审计状态；
 - 已达到 promotion 或 final deliverable 标准。
@@ -256,7 +264,8 @@ Warehouse artifact index
 - 形成了哪些 idea；
 - 跑了哪些实验类型；
 - best single 是什么；
-- min3 repeat 结果是什么；
+- exact repeat 的 `best_hit`、`best_single_H`、`restore_target_H`、`near_miss_tolerance_H`、
+  `near_miss_not_restored` 和稳定性结果是什么；
 - U/S/ZS 是否稳定；
 - 哪些方向失败，为什么；
 - 哪个代码 commit 和 config 可复现最终结果；
@@ -271,7 +280,7 @@ Warehouse artifact index
 
 - 按现有 workflow 手动或半自动调度 paper intake、tune、ablation、confirmation、module trial、promotion；
 - 用 `workflow/gtpj_workflow.py` 做结构校验、状态检查、batch planning、result analysis 和 ledger closeout；
-- 用 workflow-scoped temporary agents 保持角色上下文隔离；
+- 用 workflow-scoped named threads 保持角色上下文隔离；
 - 把 campaign 状态写入 GitHub 轻量账本和 Warehouse。
 
 后续要产品化的部分：

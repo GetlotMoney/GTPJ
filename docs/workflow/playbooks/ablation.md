@@ -1,6 +1,7 @@
 # 执行卡：消融 Ablation
 
-用于移除、替换、关闭或隔离某个组件。
+用于移除、替换、关闭或隔离既有组件。普通消融不新增方法模块；如果需要新增或改写
+module、forward、loss、eval、data view 或接口语义，必须改走 innovation / module trial。
 
 ## 必读
 
@@ -34,7 +35,8 @@ docs/workflow/protocols/module_trial_protocol.md
 结果比较 (Result Comparator)
 ```
 
-只有需要改代码时才加入 `实现者 (Implementer)`。
+只有需要添加关闭开关、旁路或空路径时才加入 `实现者 (Implementer)`。如果实现者要新增或改写
+方法模块，本任务必须停止并重新路由为 innovation / module trial。
 
 正式 Runner 启动前必须写 `agent_runtime.yaml` 并通过 `validate-agent-runtime` 和
 `multi-agent-preflight`。
@@ -44,6 +46,7 @@ Interface / Quality / Runner Monitor 没有独立 allow/pass 时，不得把消�
 
 - label mapping、seen/unseen split、class order、logits shape 或 metric semantics 不清楚。
 - 消融暗中改变了目标组件之外的东西。
+- 消融需要新增或改写模块代码、forward、loss、eval、data view 或接口语义；这种情况不是普通消融。
 - 要和 unconfirmed baseline 比较，却没有标出这个边界。
 
 ablation 只有在组件贡献证据成立时才能进入 `ablation_supported`；如果消融不支持贡献，必须记录

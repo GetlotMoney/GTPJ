@@ -9,14 +9,14 @@ GTPJ 正式实验默认使用 `real_multi_agent`，但默认 agent 实例不再�
 ```yaml
 agents:
   activation_mode: real_multi_agent
-  agent_instance_mode: temporary_subagent
+  agent_instance_mode: named_owner_thread
   lifecycle: workflow_scoped
   evidence_source: files_and_artifacts
 ```
 
 含义：
 
-- `temporary_subagent` 是本轮 workflow / campaign 的活上下文，可以在整个 workflow 或 campaign 阶段内持续存在。
+- `named_owner_thread` 是本轮 workflow / campaign 的活上下文，可以在整个 workflow 或 campaign 阶段内持续存在。
 - `persistent_thread` 是跨 workflow 的活上下文，只在 owner 明确要求可见长期追踪、或某角色需要跨多轮连续上下文时启用。
 - 长期 agent 不是永久在线聊天窗口。长期 agent 是 `profile.md`、`memory.md`、by-experiment 调用规则、历史 `agent_summary.md` 和 issues。
 - 正式证据永远来自 repo、Research、Warehouse、manifest、result、quality 和 agent summary，不来自任何隐藏聊天上下文。
@@ -48,7 +48,7 @@ agents:
 docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
 ```
 
-这条硬门要求真实右侧临时 agents 已经启动，并在 `agent_runtime.yaml` 中记录
+这条硬门要求真实左侧命名 Codex 线程 已经启动，并在 `agent_runtime.yaml` 中记录
 `agent_instance_id`、`ui_visibility`、`pre_run_required_checks`、`runner_start_allowed`、
 `formal_runner_allowed`、`formal_evidence_allowed` 和 `multi_agent_preflight`。
 Coordinator 单窗口按角色清单顺序执行，不等于 `real_multi_agent`。
@@ -89,6 +89,26 @@ docs/workflow/agents/
 
 `by_experiment/` 定义某类实验如何调用共享角色，不重复定义角色本身。
 
+## 分文件复核规则
+
+owner 明确要求多 agents、反复确认规范或避免遗漏时，Coordinator 必须把复核拆给多个独立角色。每个角色只读自己负责的文件组，并在自己的输出中写明：
+
+```yaml
+role:
+agent_instance_id:
+files_reviewed:
+decision:
+uncovered_scope:
+```
+
+常用拆分：
+
+- Owner Entry Reviewer：`START_HERE.md`、`QUICK_START.md`、`WORKFLOW_KERNEL.md`。
+- Runtime Gate Reviewer：`AGENT_RUNTIME_HARD_GATE.md`、`agent_orchestration.md`、`TASK_START_CARD.md`。
+- Consistency Reviewer：`workflow/gtpj_workflow.py`、`tests/test_gtpj_workflow.py`、本地 `gtpj-workflow` skill 镜像。
+
+Coordinator 负责整合和写入最终补丁，但不能把一个角色的结论复制成多个输出，也不能漏掉 active docs、helper tests、skill mirror 三个同步面。
+
 ## 本地 Skill 镜像目录
 
 本地 skill 必须镜像 GitHub 权威目录：
@@ -108,10 +128,10 @@ C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
 role_only
   没有独立 agent 实例；主 agent 按角色清单执行。
 
-workflow_scoped temporary_subagent
+workflow_scoped named_owner_thread
   本轮 workflow 的独立活上下文；正式实验默认值。
 
-campaign_scoped temporary_subagent
+campaign_scoped named_owner_thread
   长周期 campaign 阶段内的独立活上下文；适合 10 到 20 天研究 campaign。
 
 persistent_thread
@@ -129,24 +149,24 @@ shared_roles/<role>/memory.md
 Research / Warehouse / campaign ledger
 ```
 
-## 右侧栏保留策略
+## 左侧栏保留策略
 
-右侧栏不是历史档案柜，只显示当前正在工作的角色。每轮 workflow 结束、campaign 阶段结束、
+左侧栏不是历史档案柜，只显示当前正在工作的角色。每轮 workflow 结束、campaign 阶段结束、
 或某个角色完成本阶段职责时，Coordinator 必须执行 agent cleanup：
 
-1. 列出保留名单和关闭名单。
-2. 确认待关闭 agent 的结论已写入 `agent_summary.md`、`AGENT_ACTIVITY.md`、result、
+1. 列出保留名单和归档名单。
+2. 确认待归档线程的结论已写入 `agent_summary.md`、`AGENT_ACTIVITY.md`、result、
    quality、issues、memory、Research、Warehouse 或 campaign ledger。
-3. 关闭已完成且不再 active 的 temporary agents。
-4. 在 `AGENT_ACTIVITY.md` 或 closeout summary 中记录关闭时间、agent id、角色和输出位置。
-5. 右侧栏默认只保留当前阶段 active agents；历史结论靠文件和 artifact 查，不靠打开的旧窗口查。
+3. 归档已完成且不再 active 的 named threads。
+4. 在 `AGENT_ACTIVITY.md` 或 closeout summary 中记录归档时间、thread id、角色和输出位置。
+5. 左侧栏默认只保留当前阶段 active agents；历史结论靠文件和 artifact 查，不靠打开的旧窗口查。
 
 正式 `agent_runtime.yaml` 必须声明：
 
 ```yaml
-right_sidebar_retention_policy: current_stage_active_only
-close_completed_agents_on_stage_end: true
-closed_agents_record: AGENT_ACTIVITY.md
+thread_archive_policy: archive_completed_threads_on_stage_end
+archive_completed_threads_on_stage_end: true
+archived_threads_record: AGENT_ACTIVITY.md
 ```
 
 阶段结束前必须运行只读 cleanup 计划：
@@ -155,7 +175,7 @@ closed_agents_record: AGENT_ACTIVITY.md
 python workflow/gtpj_workflow.py agent-cleanup-plan --path <agent_runtime.yaml>
 ```
 
-然后 Coordinator 按 `docs/workflow/protocols/agent_cleanup_protocol.md` 汇报 keep / close / unknown。重复 agent id
+然后 Coordinator 按 `docs/workflow/protocols/agent_cleanup_protocol.md` 汇报 keep / archive / unknown。重复 agent id
 不能算独立角色；如果历史记录中一个 id 同时承担多个正式角色，该 runtime gate 必须标记为限制或降级，不能冒充完整
 `real_multi_agent` 证据。
 
@@ -236,7 +256,11 @@ transition_id
 role_key
 agent_instance_id
 lifecycle
+input_refs
+files_reviewed
 checked_inputs
+output_ref
+independence_scope
 rule_checks
 authority_refs
 decision: propose | allow | block | warn
@@ -245,6 +269,8 @@ non_blocking_warnings
 not_checked
 reason_summary
 ```
+
+缺少 `input_refs`、`files_reviewed`、`output_ref` 或 `independence_scope` 时，该角色输出只能算 `not_checked` 或不完整，不能支撑 `multi_agent_preflight.independent_outputs_present: true`。
 
 Quality Checker 默认 `task_scoped`，只有 campaign final audit 才可
 `campaign_scoped`，避免长上下文污染质量判断。
@@ -256,7 +282,7 @@ Quality Checker 默认 `task_scoped`，只有 campaign final audit 才可
 ```yaml
 agents:
   activation_mode: role_only | real_multi_agent
-  agent_instance_mode: role_only | temporary_subagent | persistent_thread
+  agent_instance_mode: role_only | named_owner_thread | persistent_thread
   lifecycle: role_only | workflow_scoped | campaign_scoped | cross_workflow
   runner_scope: none | debug_smoke | formal_runner
   formal_runner_allowed:
@@ -273,7 +299,7 @@ agents:
     thread_ids:
     missing:
     reused:
-  temporary_subagents:
+  named_threads:
     allowed:
     reason:
     debug_only:
@@ -295,7 +321,7 @@ agents:
     formal_runner_allowed:
     formal_evidence_allowed:
     multi_agent_preflight:
-      required_agents_spawned:
+      required_threads_created:
       agent_instance_ids_present:
       agent_status_refs_valid:
       independent_outputs_present:
@@ -303,9 +329,9 @@ agents:
       pre_run_allow_checks_passed:
       agent_runtime_validated:
     ui_visibility:
-    right_sidebar_retention_policy:
-    close_completed_agents_on_stage_end:
-    closed_agents_record:
+    thread_archive_policy:
+    archive_completed_threads_on_stage_end:
+    archived_threads_record:
     pre_run_required_checks:
   tool_support:
     real_multi_agent_available:
@@ -332,14 +358,14 @@ agents:
 `agent_instance_mode` 含义：
 
 - `role_only`：没有独立 agent 实例，只适用于允许 `role_only` 的任务。
-- `temporary_subagent`：本轮 workflow 或 campaign 的独立 agent 实例；正式实验默认值。
+- `named_owner_thread`：本轮 workflow 或 campaign 的独立 agent 实例；正式实验默认值。
 - `persistent_thread`：跨 workflow 的可见连续上下文；只在需要跨轮追踪时启用。
 
-`temporary_subagent` 作为实例模式时，启动卡和 `agent_runtime.yaml` 还必须列出真实
-`temporary_subagents.instances`。如果只写“temporary_subagent”但没有实例 id，Runner
+`named_owner_thread` 作为实例模式时，启动卡和 `agent_runtime.yaml` 还必须列出真实
+`named_threads.instances`。如果只写“named_owner_thread”但没有实例 id，Runner
 必须阻断。
 
-右侧栏显示名必须同步写入 `temporary_subagent_display_names`，并使用严格格式：
+左侧栏显示名必须同步写入 `named_thread_titles`，并使用严格格式：
 
 ```text
 <subject_id> | <Role Label>
@@ -347,7 +373,7 @@ agents:
 
 例如 `ATTEMPT-007 | Runner Monitor`、`ATTEMPT-007 | Interface Checker`、
 `ATTEMPT-007 | Evidence Quality Checker`。不要使用随机英文昵称或只写泛角色名；显示名必须能让
-owner 在右侧栏直接看出该 agent 属于哪个任务、承担哪个角色。
+owner 在左侧栏直接看出该 agent 属于哪个任务、承担哪个角色。
 
 ## 最快合规路径
 
@@ -355,7 +381,7 @@ Coordinator 默认必须选择“满足上下文隔离的最小有效路径”�
 
 - 纯只读、状态检查、配置查看、pre-run triage、debug/smoke、机械账本整理，默认 `role_only`。
 - Runner 产出的结果会进入正式 evidence、best 选择、confirmation、promotion 或下一轮高成本实验决策，默认 `real_multi_agent`。
-- 正式 `real_multi_agent` 默认 workflow-scoped `temporary_subagent`。
+- 正式 `real_multi_agent` 默认 workflow-scoped `named_owner_thread`。如果目标是服务器 detached 连续训练、owner 明确不想创建线程，可改走 `role_only + formal_runtime_backend: server_detached_role_only`。
 - 正式 Runner start 前必须运行 `validate-agent-runtime --path <agent_runtime.yaml>` 和
   `multi-agent-preflight --path <agent_runtime.yaml>`。
 - 跨多天 campaign 可以让 `Workflow Coordinator`、`Runner Monitor`、`Result Comparator` 使用 `persistent_thread`，但这不是证据源。
@@ -364,6 +390,7 @@ Coordinator 默认必须选择“满足上下文隔离的最小有效路径”�
 - Coordinator 是最终 GitHub 账本唯一 writer。
 - Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行。
 - 未被 hard gate 要求、也不影响当前结论的角色必须跳过，并在启动卡里写明 `skipped_agents`。
+- 最快合规路径不等于反复确认。只有危险动作、模式冲突、权限不明或 hard gate 阻断时才追问；明确只读或明确授权执行的任务应直接进入对应检查或执行路径。
 
 启动卡里的 `agents.decision_basis` 必须包含：
 
@@ -378,7 +405,7 @@ fastest_valid_path:
   agent_instance_mode:
   lifecycle:
   persistent_threads:
-  temporary_subagent_reason:
+  named_thread_reason:
 ```
 
 ## 启用矩阵
@@ -387,19 +414,19 @@ fastest_valid_path:
 |---|---|---|---|
 | 只读解释、定位文件、查看配置、普通状态汇报 | `role_only` | `role_only` | 不产生实验事实，不改代码，不改变结论。 |
 | 训练前候选建议 | `role_only` | `role_only` | 只提出候选，不启动 Runner。 |
-| 单一 Runner 按 frozen config 串行训练 | `real_multi_agent` | `temporary_subagent` | Runner 串行；Log、Quality、Result 等证据角色仍需独立上下文。 |
+| 单一 Runner 按 frozen config 串行训练 | `real_multi_agent` 或 `role_only` | `named_owner_thread` 或 `role_only` | 默认仍是 named threads；若采用 `server_detached_role_only`，必须补齐独立 sequential role outputs、formal gate 和 detached server status。 |
 | debug/smoke | `role_only` | `role_only` | 结果不作为 keep / best / promote / confirmation evidence。 |
-| owner 明确要求“多 agents”“独立 review” | `real_multi_agent` | `temporary_subagent` 或 `persistent_thread` | owner 已要求独立分工；是否跨轮由启动卡决定。 |
-| 修改模型结构、forward、loss、eval 或数据流 | `real_multi_agent` | `temporary_subagent` | 代码语义变化需要实现、接口、质量独立复核。 |
-| 涉及 label mapping、seen/unseen split、class order、logits shape 或 metric semantics | `real_multi_agent` | `temporary_subagent` | 这些是 GZSL 有效性硬门。 |
-| 新 module trial 的实现、接口检查或 promotion 前复核 | `real_multi_agent` | `temporary_subagent` | 会影响 trial 结论或版本提升。 |
-| 结果异常、争议大、owner 质疑解释 | `real_multi_agent` | `temporary_subagent` | 需要独立复核日志、配置、代码和质量证据。 |
-| 准备写 `promotion_decision: promote`、创建 `vX` 或打 tag | `real_multi_agent` | `temporary_subagent` | 版本事实不可由单一视角确认。 |
-| 10 到 20 天 autonomous research campaign | `real_multi_agent` | `temporary_subagent` + optional `persistent_thread` | workflow 自行调度多实验类型和最终交付。 |
-| 任意组合 mixed experiment campaign | `real_multi_agent` | `temporary_subagent` with campaign/workstream/task/run lifecycle | 根据 requested_mix 拆分多个 workstream，不按实验数量开永久 agent。 |
+| owner 明确要求“多 agents”“独立 review” | `real_multi_agent` | `named_owner_thread` 或 `persistent_thread` | owner 已要求独立分工；是否跨轮由启动卡决定。 |
+| 修改模型结构、forward、loss、eval 或数据流 | `real_multi_agent` | `named_owner_thread` | 代码语义变化需要实现、接口、质量独立复核。 |
+| 涉及 label mapping、seen/unseen split、class order、logits shape 或 metric semantics | `real_multi_agent` | `named_owner_thread` | 这些是 GZSL 有效性硬门。 |
+| 新 module trial 的实现、接口检查或 promotion 前复核 | `real_multi_agent` | `named_owner_thread` | 会影响 trial 结论或版本提升。 |
+| 结果异常、争议大、owner 质疑解释 | `real_multi_agent` | `named_owner_thread` | 需要独立复核日志、配置、代码和质量证据。 |
+| 准备写 `promotion_decision: promote`、创建 `vX` 或打 tag | `real_multi_agent` | `named_owner_thread` | 版本事实不可由单一视角确认。 |
+| 10 到 20 天 autonomous research campaign | `real_multi_agent` | `named_owner_thread` + optional `persistent_thread` | workflow 自行调度多实验类型和最终交付。 |
+| 任意组合 mixed experiment campaign | `real_multi_agent` | `named_owner_thread` with campaign/workstream/task/run lifecycle | 根据 requested_mix 拆分多个 workstream，不按实验数量开永久 agent。 |
 
 所有涉及 Runner 的 `real_multi_agent` 场景都必须有 `agent_runtime.yaml`，并且
-`ui_visibility: right_sidebar_temporary_agents`。
+`ui_visibility: left_sidebar_named_threads`。
 
 ## 按任务选角色
 
@@ -485,7 +512,7 @@ Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须�
 - Runner 并行抢同一块 GPU。
 - 非 Coordinator 删除分支、合并分支、创建 tag。
 - 非用户明确要求时 push 到 GitHub。
-- 把 persistent thread、临时 agent 上下文或 Codex memory 当成正式实验事实。
+- 把 persistent thread、命名线程 上下文或 Codex memory 当成正式实验事实。
 - 为了显得规范而启动不影响 hard gate 的多余 agent。
 
 ## 进度看板联动
@@ -498,6 +525,18 @@ Reviewer、Log Analyst 和 Result Analyst 默认只读。代码修复后必须�
 ```
 
 网页看板只读这些状态和 GitHub 账本，不直接启动训练、删除分支、打 tag、执行 promotion 或 push。
+
+## Live Monitor 协作
+
+`live_multi_agent_monitor` 运行期的 active named threads 不是临时启动痕迹，而是 owner 可见的工作流监控面板。Runner 仍有 running/pending job 时，Runner Monitor、Log Analyst、Result Analyst、Quality Checker、Interface Checker 等本阶段 active 线程必须保留在左侧栏；只有 closeout/handoff 完成、输出写入 `agent_summary.md` / `result.md` / `quality_check.md` / `AGENT_ACTIVITY.md` 后才归档。
+
+Coordinator 每次刷新状态时必须识别新增 completed job，并用：
+
+```powershell
+python workflow\gtpj_workflow.py monitor-workflow --run-dir <run_dir> --report-new-completions --activity-log <attempt_dir>\AGENT_ACTIVITY.md
+```
+
+把逐 job 事件写回活动流。`monitor_seen_completed_jobs.json` 只用于本地去重，正式事实仍以 `summary.csv/jsonl`、`batch_status.json`、logs 和账本为准。
 
 ## 同步规则
 

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATTEMPT-011 Dynamic Routing Flow</title>
+  <style>
+    :root {
+      --ink: #18202b;
+      --muted: #5e6a7a;
+      --line: #6f7c8d;
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --blue: #dcecff;
+      --blue-line: #2d6cdf;
+      --green: #dff4e8;
+      --green-line: #23965d;
+      --amber: #fff0d6;
+      --amber-line: #c37a14;
+      --rose: #ffe2e2;
+      --rose-line: #cf4848;
+      --violet: #ece5ff;
+      --violet-line: #7c5bd6;
+      --gray: #eef1f5;
+      --gray-line: #8190a3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 1540px;
+      margin: 0 auto;
+      padding: 28px 28px 36px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .diagram-shell {
+      background: var(--panel);
+      border: 1px solid #d9dee7;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(26, 38, 56, 0.08);
+      overflow-x: auto;
+    }
+
+    svg {
+      display: block;
+      width: 1480px;
+      height: 1120px;
+    }
+
+    .lane {
+      fill: #fafbfe;
+      stroke: #dfe5ee;
+      stroke-width: 1.5;
+    }
+
+    .lane-title {
+      fill: #667386;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .node rect {
+      stroke-width: 2;
+      rx: 8;
+      ry: 8;
+    }
+
+    .node-title {
+      font-size: 17px;
+      font-weight: 700;
+      fill: var(--ink);
+    }
+
+    .node-text {
+      font-size: 13px;
+      fill: #2d3644;
+    }
+
+    .tiny {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+
+    .metric {
+      font-size: 13px;
+      font-weight: 700;
+      fill: #172235;
+    }
+
+    .edge {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 2.2;
+      marker-end: url(#arrow);
+    }
+
+    .edge-blue {
+      stroke: var(--blue-line);
+    }
+
+    .edge-green {
+      stroke: var(--green-line);
+    }
+
+    .edge-amber {
+      stroke: var(--amber-line);
+    }
+
+    .edge-dashed {
+      stroke-dasharray: 8 7;
+    }
+
+    .legend {
+      margin: 14px 2px 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(190px, 1fr));
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 12px;
+      border-radius: 3px;
+      border: 2px solid;
+      flex: 0 0 auto;
+    }
+
+    .notes {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+
+    .note-card {
+      background: var(--panel);
+      border: 1px solid #d9dee7;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .note-card h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+
+    .note-card p {
+      margin: 6px 0;
+      color: #344052;
+      font-size: 14px;
+    }
+
+    code {
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.95em;
+      background: #eef2f7;
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>ATTEMPT-011：动态残差路由直观流程图</h1>
+  <p class="subtitle">这张图解释当前 200 组服务器实验到底在比什么：不是换大模型，而是在同一个 GTPJ 主干里测试不同动态门配置。</p>
+
+  <section class="diagram-shell" aria-label="Dynamic routing flow diagram">
+    <svg viewBox="0 0 1480 1120" role="img" aria-labelledby="diagram-title diagram-desc">
+      <title id="diagram-title">GTPJ dynamic residual routing flow</title>
+      <desc id="diagram-desc">Flow diagram from image and text features through baseline scoring, dynamic gates, experiment branches, and ATTEMPT-011 results.</desc>
+
+      <defs>
+        <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+          <path d="M2,2 L10,6 L2,10 Z" fill="#6f7c8d"></path>
+        </marker>
+        <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="130%">
+          <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#172033" flood-opacity="0.13"></feDropShadow>
+        </filter>
+      </defs>
+
+      <rect class="lane" x="20" y="25" width="1440" height="120"></rect>
+      <rect class="lane" x="20" y="170" width="1440" height="240"></rect>
+      <rect class="lane" x="20" y="435" width="1440" height="315"></rect>
+      <rect class="lane" x="20" y="775" width="1440" height="210"></rect>
+      <rect class="lane" x="20" y="1010" width="1440" height="80"></rect>
+
+      <text class="lane-title" x="38" y="55">输入</text>
+      <text class="lane-title" x="38" y="200">GTPJ 主干与固定打分</text>
+      <text class="lane-title" x="38" y="465">动态残差路由：可动的门</text>
+      <text class="lane-title" x="38" y="805">ATTEMPT-011 三类实验路线</text>
+      <text class="lane-title" x="38" y="1040">输出与证据</text>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="90" y="65" width="220" height="60" fill="var(--blue)" stroke="var(--blue-line)"></rect>
+        <text class="node-title" x="112" y="91">图像特征</text>
+        <text class="node-text" x="112" y="113">patch / visual token</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="365" y="65" width="220" height="60" fill="var(--blue)" stroke="var(--blue-line)"></rect>
+        <text class="node-title" x="387" y="91">文本原型</text>
+        <text class="node-text" x="387" y="113">class text prototype</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="650" y="55" width="300" height="80" fill="var(--gray)" stroke="var(--gray-line)"></rect>
+        <text class="node-title" x="674" y="85">GTPJ v5 主干</text>
+        <text class="node-text" x="674" y="108">数据、split、类别顺序、评价口径不变</text>
+      </g>
+
+      <path class="edge edge-blue" d="M310,95 H650"></path>
+      <path class="edge edge-blue" d="M585,95 H650"></path>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="90" y="240" width="260" height="95" fill="var(--gray)" stroke="var(--gray-line)"></rect>
+        <text class="node-title" x="112" y="268">BVSA 双向对齐</text>
+        <text class="node-text" x="112" y="292">score_s2v：语义到视觉</text>
+        <text class="node-text" x="112" y="314">score_v2s：视觉到语义</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="410" y="240" width="270" height="95" fill="var(--gray)" stroke="var(--gray-line)"></rect>
+        <text class="node-title" x="432" y="268">固定混合系数</text>
+        <text class="node-text" x="432" y="292">local_score = w * s2v</text>
+        <text class="node-text" x="432" y="314">+ (1 - w) * v2s</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="740" y="225" width="320" height="125" fill="var(--green)" stroke="var(--green-line)"></rect>
+        <text class="node-title" x="762" y="254">四个可路由位置</text>
+        <text class="node-text" x="762" y="278">local gate：局部分数残差</text>
+        <text class="node-text" x="762" y="300">ICSA gate：图像条件文本</text>
+        <text class="node-text" x="762" y="322">direction gate：BVSA 方向混合</text>
+        <text class="node-text" x="762" y="344">PSE gate：原型自增强</text>
+      </g>
+
+      <path class="edge" d="M800,135 V225"></path>
+      <path class="edge" d="M350,288 H410"></path>
+      <path class="edge edge-green" d="M680,288 H740"></path>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="1085" y="225" width="305" height="125" fill="var(--amber)" stroke="var(--amber-line)"></rect>
+        <text class="node-title" x="1107" y="254">动态门如何工作</text>
+        <text class="node-text" x="1107" y="278">fixed：沿用固定系数</text>
+        <text class="node-text" x="1107" y="300">sample：每张图一个门值</text>
+        <text class="node-text" x="1107" y="322">class：每个类别一个门值</text>
+        <text class="node-text" x="1107" y="344">anchor：限制门别乱漂</text>
+      </g>
+
+      <path class="edge edge-green" d="M1060,288 H1085"></path>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="90" y="500" width="300" height="150" fill="var(--gray)" stroke="var(--gray-line)"></rect>
+        <text class="node-title" x="112" y="530">控制组</text>
+        <text class="node-text" x="112" y="556">static_v5_control</text>
+        <text class="node-text" x="112" y="580">use_dynamic_routing=false</text>
+        <text class="metric" x="112" y="608">当前 best H=74.60</text>
+        <text class="tiny" x="112" y="632">用途：判断动态路由是否真有增益</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="435" y="475" width="345" height="200" fill="var(--green)" stroke="var(--green-line)"></rect>
+        <text class="node-title" x="458" y="506">当前最强：direction_sample</text>
+        <text class="node-text" x="458" y="532">只打开 direction gate</text>
+        <text class="node-text" x="458" y="556">local / ICSA / PSE 都保持 fixed</text>
+        <text class="node-text" x="458" y="580">dynamic_direction_mode=sample</text>
+        <text class="metric" x="458" y="610">当前 best single H=75.00</text>
+        <text class="node-text" x="458" y="636">例：h48, w0.515, a0.004</text>
+        <text class="tiny" x="458" y="660">注意：仍是 search 单次结果，需 repeat 确认</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="825" y="500" width="300" height="150" fill="var(--amber)" stroke="var(--amber-line)"></rect>
+        <text class="node-title" x="847" y="530">direction + PSE</text>
+        <text class="node-text" x="847" y="556">direction gate + PSE class gate</text>
+        <text class="node-text" x="847" y="580">名字通常是 dp_h..._p...</text>
+        <text class="metric" x="847" y="608">目前均值偏弱</text>
+        <text class="tiny" x="847" y="632">U 常能上去，但 S 掉得更多</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="1170" y="500" width="235" height="150" fill="var(--violet)" stroke="var(--violet-line)"></rect>
+        <text class="node-title" x="1192" y="530">后续批次</text>
+        <text class="node-text" x="1192" y="556">b03 / b04</text>
+        <text class="node-text" x="1192" y="580">repeat + ablation</text>
+        <text class="node-text" x="1192" y="604">决定是否稳定</text>
+        <text class="tiny" x="1192" y="632">不是现在就 promotion</text>
+      </g>
+
+      <path class="edge edge-dashed" d="M900,350 C900,430 240,430 240,500"></path>
+      <path class="edge edge-green" d="M900,350 C900,420 607,420 607,475"></path>
+      <path class="edge edge-amber" d="M900,350 C900,420 975,420 975,500"></path>
+      <path class="edge" d="M1125,575 H1170"></path>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="95" y="830" width="310" height="105" fill="var(--blue)" stroke="var(--blue-line)"></rect>
+        <text class="node-title" x="118" y="860">参数怎么读</text>
+        <text class="node-text" x="118" y="886">h48 = gate MLP hidden=48</text>
+        <text class="node-text" x="118" y="908">w0.515 = weight_s2v=0.515</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="455" y="830" width="310" height="105" fill="var(--blue)" stroke="var(--blue-line)"></rect>
+        <text class="node-title" x="478" y="860">正则和 PSE</text>
+        <text class="node-text" x="478" y="886">a0.004 = anchor lambda=0.004</text>
+        <text class="node-text" x="478" y="908">p0.55 = pse_outer_ratio=0.55</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="815" y="815" width="590" height="135" fill="var(--rose)" stroke="var(--rose-line)"></rect>
+        <text class="node-title" x="838" y="845">当前读数应该怎么理解</text>
+        <text class="node-text" x="838" y="872">能说明：direction_sample 这条子路线值得继续追。</text>
+        <text class="node-text" x="838" y="898">不能说明：已经可以升版本、写最终论文结论。</text>
+        <text class="node-text" x="838" y="924">下一步：等 b02 完成，再用 repeat/ablation 验证稳定性。</text>
+      </g>
+
+      <path class="edge edge-green" d="M607,675 V735 C607,795 250,795 250,830"></path>
+      <path class="edge edge-green" d="M607,675 V735 C607,795 610,795 610,830"></path>
+      <path class="edge edge-amber" d="M975,650 V735 C975,795 1110,795 1110,815"></path>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="200" y="1035" width="340" height="40" fill="var(--green)" stroke="var(--green-line)"></rect>
+        <text class="node-text" x="222" y="1061">服务器证据：summary.csv / events.jsonl / batch_status.json</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="625" y="1035" width="340" height="40" fill="var(--gray)" stroke="var(--gray-line)"></rect>
+        <text class="node-text" x="647" y="1061">正式结论：写回 ATTEMPT-011 result / quality</text>
+      </g>
+
+      <g class="node" filter="url(#soft-shadow)">
+        <rect x="1050" y="1035" width="255" height="40" fill="var(--rose)" stroke="var(--rose-line)"></rect>
+        <text class="node-text" x="1072" y="1061">promotion：当前仍 blocked</text>
+      </g>
+
+      <path class="edge" d="M1110,950 V1010 H370 V1035"></path>
+      <path class="edge" d="M540,1055 H625"></path>
+      <path class="edge" d="M965,1055 H1050"></path>
+    </svg>
+  </section>
+
+  <section class="legend" aria-label="Legend">
+    <div class="legend-item"><span class="swatch" style="background: var(--gray); border-color: var(--gray-line);"></span><span>固定主干或控制组</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--green); border-color: var(--green-line);"></span><span>当前最强路线：direction_sample</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--amber); border-color: var(--amber-line);"></span><span>组合路线：direction + PSE</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--rose); border-color: var(--rose-line);"></span><span>风险、边界或尚未确认的结论</span></div>
+  </section>
+
+  <section class="notes">
+    <article class="note-card">
+      <h2>一句话版本</h2>
+      <p>ATTEMPT-011 不是在比较多个全新大模型，而是在同一个 GTPJ v5 主干里测试“哪些残差路由门应该动、动多少”。目前最值得追的是 <code>direction_sample</code>。</p>
+    </article>
+    <article class="note-card">
+      <h2>当前最强配置的读法</h2>
+      <p><code>direction_sample_h48_w0.515_a0.004</code> 表示：只让 direction gate 按样本动态调整，gate 隐藏层是 48，BVSA 方向混合权重是 0.515，anchor 正则强度是 0.004。</p>
+      <p>若后续图里出现形状，<code>B</code> 表示图片数量或样本数量，<code>C</code> 表示类别数量或特征维度，具体含义会随节点说明写清楚。</p>
+    </article>
+  </section>
+</main>
+</body>
+</html>

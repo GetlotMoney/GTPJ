@@ -1,0 +1,49 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-016
+status: running
+run_id: RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
+profile: h76-hotspot-top2-restore10-exact-repeat
+planned_jobs: 10
+completed_jobs: 4
+failed_jobs: 0
+skipped_jobs: 0
+running_jobs: 2
+pending_jobs: 4
+previous_failed_launch:
+  run_id: RUN-20260708-0004-h76-hotspot-top2-restore10-exact-repeat-2gpu
+  status: runner_environment_failed_before_training
+  method_evidence: false
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: per_job_source_H
+  per_job_restore_target_H: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+  not_confirmation_evidence: false
+best_single:
+  job_id: DR-003
+  source_candidate_id: A015DR004
+  name: a015dr004_direction_sample_h48_w0.495_a0.003_s5_r03
+  H: 74.84
+  U: 72.82
+  S: 76.97
+  ZS: 81.91
+  best_epoch: 50
+  restore_target_H: 75.04
+  restored: false
+restored_candidates: []
+near_miss_not_restored:
+  - source_candidate_id: A015DR004
+    best_job_id: DR-003
+    best_H: 74.84
+    restore_target_H: 75.04
+    completed_repeats: 4
+    pending_or_running_repeats: 1
+    decision: continue_exact_repeat
+result_state: pending
+promotion_decision: blocked

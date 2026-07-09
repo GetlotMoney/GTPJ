@@ -16,7 +16,7 @@ long_term_memory.md # 长期 agent 记忆协议
 - 实验类型目录只写调用顺序、启用角色、禁用角色和关键检查，不复制角色定义。
 - 本地 `gtpj-workflow` skill 必须镜像本目录。
 - 长期 agent = `profile.md` + `memory.md` + 调用协议 + 历史 `agent_summary.md` + issues。
-- 临时 sub-agent / reviewer 实例是本轮 workflow 或 campaign 的活上下文；正式结果解释、best 选择和 promotion 必须回到文件化证据。
+- 命名线程 / reviewer 实例是本轮 workflow 或 campaign 的活上下文；正式结果解释、best 选择和 promotion 必须回到文件化证据。
 - `persistent_thread` 是跨 workflow 的可选活上下文，不是正式证据源。
 
 角色别名必须映射到稳定 `role_key`，避免侧栏显示名、summary 名称和规范名互相漂移：

@@ -1,5 +1,13 @@
 # Task Start Card
 
+启动卡必须显式写 `workflow_mode`，只能是：
+- `live_multi_agent_monitor`：动态多 agents 监控工作流，要求 `activation_mode: real_multi_agent`、`agent_instance_mode: named_owner_thread`。
+- `server_frozen_runner`：本地规划、冻结计划、服务器 detached 训练工作流，要求 `activation_mode: role_only`、`formal_runtime_backend: server_detached_role_only`、`thread_creation_allowed: false`。
+
+如果 owner 只说“用工作流”，Coordinator 必须先确认是哪一种；不能默认把任务冻结到服务器跑，也不能自动创建命名线程。
+
+如果 owner 已经说“开启多agents智能体工作流”“多agents智能体工作流，开始”“跑N轮”或“做N轮实验”，启动卡必须直接写 `workflow_mode: live_multi_agent_monitor`，不得反复确认 workflow 模式或启动意图。只有模式冲突、侧边栏干净状态缺失且无法验证、硬门失败或安全边界动作，才允许再问一次。包含“开始/跑N轮/做N轮实验”的请求视为执行授权；通过 hard gate 后必须继续到 runner 计划和启动动作，而不是停在 planning gate。
+
 ## 默认真实多 Agent 策略
 
 启动卡默认应为真实实验写：
@@ -7,7 +15,7 @@
 ```yaml
 agents:
   activation_mode: real_multi_agent
-  agent_instance_mode: temporary_subagent
+  agent_instance_mode: named_owner_thread
   lifecycle: workflow_scoped
   formal_runner_allowed: true
   formal_evidence_allowed: true
@@ -16,7 +24,7 @@ agents:
 ```
 
 原因是不同角色必须拥有独立上下文，避免规划、执行、日志解析、质量检查、结果解释和复核互相污染。
-`temporary_subagent` 在这里不是“一次性几分钟工具”，而是本轮 workflow / campaign 的活上下文。
+`named_owner_thread` 在这里不是“一次性几分钟工具”，而是本轮 workflow / campaign 的活上下文。
 `persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或长周期 campaign 的 Coordinator/Monitor 需要跨天连续上下文时启用。
 
 只有以下场景允许 `role_only`：
@@ -40,7 +48,7 @@ python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.ya
 python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
 ```
 
-如果没有真实右侧临时 agents、没有 `temporary_subagents.instances`、没有 pre-run allow/check，
+如果没有真实左侧命名 Codex 线程、没有 `named_threads.instances`、没有 pre-run allow/check，
 Runner 必须阻断；状态机账本和服务器离线训练都不能单独算完整 workflow。
 
 Owner 是默认监控者。任何正式 Runner 启动后，Coordinator 必须持续提供 owner 可见汇报，
@@ -201,11 +209,30 @@ evidence_routing:
   authority_refs:
   next_allowed_transitions:
 
+experiment_planning:
+  required_before_formal_runner: true
+  plan_id:
+  auto_state_scan:
+    repo_state:
+    baseline_repro_status:
+    formal_pending_ledgers:
+    completed_result_quality_refs:
+    runtime_cache_context_only:
+  evidence_summary_table:
+  candidate_decision_table:
+  current_run_plan_table:
+  runner_start_allowed: false until plan accepted and hard gates pass
+
+workflow_mode:
+workflow_mode_reason:
+
 agents:
   activation_mode:
   agent_instance_mode:
   lifecycle:
   runner_scope:
+  formal_runtime_backend:
+  thread_creation_allowed:
   formal_runner_allowed:
   formal_evidence_allowed:
   activation_reason:
@@ -219,19 +246,26 @@ agents:
       serialized_roles:
       agent_instance_mode:
       persistent_threads:
-      temporary_subagent_reason:
+      named_thread_reason:
   required_roles:
   disabled_roles:
   required_real_agents:
   agent_instance_status:
   agent_status_refs:
   agent_output_refs:
+  role_file_plan:
+    <role_key>:
+      input_refs:
+      files_reviewed_expected:
+      output_ref:
+      not_checked_allowed: false
+      uncovered_scope_policy:
   persistent_threads:
     required:
     thread_ids:
     missing:
     reused:
-  temporary_subagents:
+  named_threads:
     allowed:
     reason:
     debug_only:
@@ -252,7 +286,7 @@ agents:
     formal_runner_allowed:
     formal_evidence_allowed:
     multi_agent_preflight:
-      required_agents_spawned:
+      required_threads_created:
       agent_instance_ids_present:
       agent_status_refs_valid:
       independent_outputs_present:
@@ -378,11 +412,11 @@ real_multi_agent
 
 ```text
 role_only
-temporary_subagent
+named_owner_thread
 persistent_thread
 ```
 
-正式 `real_multi_agent` 默认使用 workflow-scoped `temporary_subagent`。`persistent_thread` 是跨 workflow 活上下文，用于 owner 明确要求可见长期追踪、跨天 campaign coordinator/monitor，或某角色需要跨多个 workflow 复用连续上下文时。
+正式 `real_multi_agent` 默认使用 workflow-scoped `named_owner_thread`。`persistent_thread` 是跨 workflow 活上下文，用于 owner 明确要求可见长期追踪、跨天 campaign coordinator/monitor，或某角色需要跨多个 workflow 复用连续上下文时。
 
 `agents.lifecycle` 必须选择或描述：
 
@@ -428,6 +462,8 @@ owner 明确接受 debug/smoke 降级，必须同时写 `formal_evidence: false`
 - 只做账本格式整理且不改变实验结论。
 
 如果选择 `role_only`，启动卡必须写明为什么不启用真实多 agents，以及哪些角色由主 agent 代执行。
+
+真实 `real_multi_agent` 的启动卡必须列出分文件复核计划：每个角色负责哪些文件、输出到哪个 `agent_output_refs` 文件、哪些范围未覆盖。缺少 `files_reviewed`、独立输出或未覆盖范围说明时，不能把本轮记为完整多 agents 复核。
 
 `agents.decision_basis.fastest_valid_path` 必须说明本次为什么选择最快合规路径：
 
@@ -534,6 +570,12 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 证据等级目标：`debug_smoke`、`quick_local`、`valid_single_run`、`confirmation_grade` 或 `baseline_grade`；
 - `best_observed_H` 和 `confirmed_H` 的当前状态；
 - confirmation target、tolerance 和失败时的降级规则；
+- `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、
+  `restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`，并确认不改 seed、不改任何参数；
+- `max_attempts_hard_cap` 表示同一候选无论是否还原成功最多 5 次，5 次未达 `restore_target_H` 时收口为 not restored / near miss；
+- `near_miss_not_restored` 只能说明实验有效果、还有希望；不能写成还原，不能触发 early stop；
+- 若是 `seed_sweep`、`score_search` 或 `multi_seed_stability`，必须写
+  `not_confirmation_evidence: true`，不得登记为复现；
 - 将被锁定的 `run_commit`；
 - 这次 confirmation 是从哪个 `pre-run freeze commit` 启动。
 
@@ -567,7 +609,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 是否触发 `innovation_code_review_protocol.md`；
 - `idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md`、
   `review_round_2.md` 的计划位置；
-- 临时 agents 是否允许，哪些角色必须由真实独立 agents 执行；
+- 命名线程 是否允许，哪些角色必须由真实独立 agents 执行；
 - Review 0-3 的阻断条件和当前状态。
 
 ### Promotion
@@ -598,7 +640,8 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 按规则应使用 `real_multi_agent`，但启动卡写成 `role_only`；
 - owner 明确要求多 agents，但启动卡没有写 `real_multi_agent`；
 - 正式 evidence、best、promotion 或 owner 明确要求多 agents，但启动卡没有写各角色独立输入、独立输出和持久化位置；
-- 使用 `temporary_subagent` 却没有写 lifecycle、独立输出位置和本轮结束后的 agent_summary / memory / issues 写回规则；
+- 正式 evidence、best、promotion 或 owner 要求多 agents，但缺少各角色 `files_reviewed` / `input_refs` / `agent_output_refs` / 独立输出文件；
+- 使用 `named_owner_thread` 却没有写 lifecycle、独立输出位置和本轮结束后的 agent_summary / memory / issues 写回规则；
 - 工具不可用但任务硬门要求 `real_multi_agent`，却仍试图启动正式 Runner；debug/smoke 只能在 owner 改目标后另走非正式路径；
 - 正式 Runner 启动卡没有 `formal_runner_allowed: true`、`formal_evidence_allowed: true` 和通过的 `multi_agent_preflight`；
 - `agents.activation_mode` 写成了 `role_only_with_independent_sequential_review`；
@@ -631,7 +674,7 @@ blocked_reason: real_multi_agent_unavailable
 formal_runner_allowed: false
 formal_evidence_allowed: false
 next_action: >
-  use multi_agent_v1.spawn_agent for runner_monitor and evidence_quality_checker,
+  use codex_app.create_thread for runner_monitor and evidence_quality_checker,
   write agent_instance_status / agent_status_refs / agent_output_refs,
   then run python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
 ```
@@ -653,6 +696,7 @@ agents.decision_basis.fastest_valid_path：
 agents.required_roles：
 agents.required_real_agents：
 agents.tool_support：
+分角色文件阅读/输出计划：
 owner_monitor.enabled：
 owner_monitor.report_channel：
 owner_monitor.agent_activity_stream：
@@ -661,6 +705,7 @@ evidence_routing.current_state：
 transition_permissions：
 硬门：
 当前阻塞：
+是否需要再次确认及原因：dangerous_action | mode_ambiguous | gate_blocked | none
 pre-run freeze commit：
 run_commit：
 post-run result commit：

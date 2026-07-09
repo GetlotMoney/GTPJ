@@ -1,16 +1,16 @@
-"""Standard GZSL training-entry template for GTPJ module trials.
+"""GTPJ module trial 的标准 GZSL training-entry 模板。
 
-This is a trial-local scaffold, not runnable baseline evidence by itself.
-Copy it into a trial branch only after the owner has named the base version
-and `module_source.md` explains the paper/source-to-code mapping.
+这是 trial-local 脚手架，本身不是可运行 baseline evidence。
+只有 owner 指定 base version，并且 `module_source.md` 已解释 paper/source-to-code mapping 后，
+才能把它复制进 trial 分支。
 
-Protected semantics:
-- dataset split stays xlsa17/att_splits.mat by default
-- train uses seen classes only
-- evaluation uses seen + unseen classes
-- logits stay [B (image/sample count), C (class count)]
-- metrics stay U, S, H, ZS under standard_gzsl_u_s_h_zs
-- best_observed_H is a run-local observation until confirmation evidence exists
+受保护语义：
+- dataset split 默认保持 xlsa17/att_splits.mat；
+- train 只使用 seen classes；
+- evaluation 使用 seen + unseen classes；
+- logits 保持 [B（图片/样本数量）, C（类别数量）]；
+- metrics 在 standard_gzsl_u_s_h_zs 下保持 U、S、H、ZS；
+- 在 confirmation evidence 存在前，best_observed_H 只是 run-local observation。
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ import yaml
 
 @dataclass(frozen=True)
 class StandardGZSLTrainingRun:
-    """Owner-visible run contract for one formal module-trial training entry."""
+    """一个正式 module-trial training entry 的 owner 可见运行契约。"""
 
     trial_id: str
     base_version: str
@@ -57,7 +57,7 @@ class StandardGZSLTrainingRun:
 
 @dataclass
 class GZSLMetrics:
-    """Standard metric packet returned by evaluation."""
+    """evaluation 返回的标准 metric packet。"""
 
     U: float
     S: float
@@ -68,7 +68,7 @@ class GZSLMetrics:
 
 @dataclass(frozen=True)
 class LossPack:
-    """Training-step output with an explicit scalar optimization loss."""
+    """training-step 输出，必须包含明确的标量优化 loss。"""
 
     loss: torch.Tensor
     extras: Mapping[str, torch.Tensor] | None = None
@@ -81,7 +81,7 @@ class LossPack:
 
 
 def flatten_yaml_values(raw: Mapping[str, Any]) -> dict[str, Any]:
-    """Accept both plain YAML and GTPJ `{key: {value: ...}}` config style."""
+    """同时接受 plain YAML 和 GTPJ `{key: {value: ...}}` config 风格。"""
     flat: dict[str, Any] = {}
     for key, value in raw.items():
         if isinstance(value, Mapping) and "value" in value:

@@ -9,6 +9,31 @@ docs/workflow/WORKFLOW_KERNEL.md
 
 本文件只作为 owner 人话短语速查表。
 
+## Owner 三句入口
+
+| owner 口令 | 含义 |
+|---|---|
+| `本地正式，干净` | 启动 `live_multi_agent_monitor`；确认侧边栏干净，并授权创建本轮左侧命名 Codex 线程；不启动服务器 runner。 |
+| `开启多agents智能体工作流，开始` / `开启多agents智能体工作流，跑N轮` | 启动 `live_multi_agent_monitor`；不再反复确认 workflow 模式或启动意图；通过硬门后继续创建角色、生成计划并启动对应 runner。 |
+| `服务器冻结，开始` | 启动 `server_frozen_runner`；不创建命名线程，允许走服务器 detached runner。 |
+| `只做本地规划` | 使用 `role_only`；只做本地计划、账本、状态和 debug/smoke，不进入正式证据。 |
+
+如果 owner 只说 `本地正式`，Coordinator 只问：`侧边栏干净吗？回复：干净。`
+
+如果 owner 已经说 `开启多agents智能体工作流`、`开始`、`跑N轮` 或 `做N轮实验`，Coordinator 不得再要求长授权模板，也不得把任务停在“只规划”。只有模式不明、侧边栏未确认且无法验证、硬门失败或安全边界动作，才允许再问一次。
+
+## 通用话入口
+
+| 你可以直接说 | Coordinator 必须做 |
+|---|---|
+| `规划下一轮实验` / `下一轮怎么跑` | 运行 `plan-experiments`，自动读当前 repo、ledger、result/quality 和 runtime context，输出三张规划表。 |
+| `批量规划50轮实验` / `给我规划50轮` | 运行 `plan-experiments --max-jobs 50`；只规划，不启动 Runner。 |
+| `规划10创新+100调参` / `跑10创新+100调参` | 解析成 mixed campaign workstreams，先出规划表，再进入 campaign gate。 |
+| `按这个计划开多agents工作流` | 解释为 `live_multi_agent_monitor`；通过 agent_runtime 和 preflight 后才能启动正式 Runner。 |
+| `按这个计划服务器冻结跑` | 解释为 `server_frozen_runner`；训练运行期不创建命名线程，走服务器 detached gate。若涉及代码/helper/template 改动，先完成代码审核门。 |
+
+代码审核不被 `server_frozen_runner` 豁免：改代码、workflow、helper、模板或训练配置生成逻辑时，必须先切专用代码审核分支，再做命名 Codex 线程预审、Claude Code 只读审核、机器验证和 `validate-ai-cross-review`。
+
 | 用户短语 | 路由 |
 |---|---|
 | `汇报`, `查状态` | 只读状态检查。除非明确要求，不写 evidence。 |
@@ -26,7 +51,7 @@ docs/workflow/WORKFLOW_KERNEL.md
 
 ```yaml
 activation_mode: real_multi_agent
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 lifecycle: workflow_scoped
 ```
 

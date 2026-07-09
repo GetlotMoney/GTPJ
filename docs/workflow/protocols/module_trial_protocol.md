@@ -93,12 +93,29 @@ experiments/module_trials/IDEA-xxxx_short_name/
 - `trial_decision`
 - `promotion_decision`
 
+框架记录只放在 trial/root 层，不在每个 attempt 里重复。`ATTEMPT-xxx` 只记录同一实现假设下的
+参数、配置、运行、结果和质量证据。只要新增或改写 module、forward、loss、evaluation、
+data view、input/output、tensor flow、接口语义或模块分支逻辑，就不是普通 attempt 变体，
+必须新开或更新对应 innovation / module trial，并维护 trial/root 的框架与来源记录。
+
 ## Trial-internal attempts
 
 同一个 module trial 可以包含多个 attempts，但这些 attempts 必须保持在同一个实现假设内。
 
 使用 `ATTEMPTS.md` 作为 trial-internal 参数调优、窄范围后续消融、confirmation/rerun
 和 debug-fix rerun 的人读索引。
+
+`ATTEMPTS.md` 也是 trial-internal formal_pending 的唯一 owner-facing 表格。只要某个
+trial 内部实验已经被正式计划为后续运行，表格里必须有一行能让 owner 看出：
+
+```text
+attempt_id / type / run_id 或计划目录 / formal_evidence / status / evidence_state / decision / directory
+```
+
+状态为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的正式行，表示
+这个 trial 下仍有待跑实验。已经完成、失败、替代、拒绝或只作为 debug_smoke 的行，不算正式待跑。
+`.gtpj_runtime/batches/<run_id>` 只能作为 runner 缓存核对；没有 `ATTEMPTS.md` 行的 runtime
+目录必须标为 `orphan_runtime_plan`，不得自动续跑。
 
 Trial-internal tuning and ablation are required parts of judging whether a new module is useful. They stay inside the trial because they answer:
 
@@ -114,7 +131,7 @@ baseline-version 实验，否则不要记录到 `experiments/vX/tune/`、`experi
 
 推荐表格：
 ```text
-| Attempt ID | Type | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
+| Attempt ID | Type | Run ID | Formal | Status | Evidence state | Parameter / Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log artifact | Decision | Directory |
 ```
 
 推荐 `Type` 取值：
@@ -187,7 +204,8 @@ AI 交叉审核 -> 重要代码/决策改动使用 docs/workflow/protocols/ai_cr
 临时或较大的 HTML 进入 `GTPJ_Warehouse/diagrams/`，`framework_diagram.md` 记录
 `file:///D:/...` 链接、artifact id、哈希或说明。
 
-如果创新代码改变了 forward、loss、evaluation、输入输出、张量流向或模块分支逻辑，
+如果创新代码新增或改写 module、forward、loss、evaluation、data view、输入输出、
+张量流向、接口语义或模块分支逻辑，
 `README.md` 还必须包含 `## Code Flow Diagram`。这张图优先服务 owner 快速读懂代码实际怎么走：
 
 - 从输入张量开始，标出图像、文本、类别原型、配置开关等入口；
@@ -270,6 +288,11 @@ attempt 完成后、result bookkeeping 被认为完成前，必须执行 checkpo
   `mixed_confirmation`。下一次 attempt 必须先做可复现诊断或确定性 confirmation，不能直接开 10-run tune sweep。
   保持模型语义冻结；只能暴露或启用 `strict_determinism`、`use_dedicated_batch_rng`、
   `batch_sampling_seed` 等控制项，并确保训练日志打印这些 runtime states。
+- trial-internal 复现必须写 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、
+  `max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H` 和
+  `near_miss_not_restored`；原始 config、seed、代码 commit、
+  data/cache、epoch schedule、batch size 和评估口径都不能改。`seed_sweep`、`score_search` 和
+  `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，只能作为搜索或稳定性诊断。
 
 `trial_decision`：
 
@@ -286,8 +309,13 @@ not_applicable / promote / blocked / rejected
 只有 `trial_decision: promote` 且 `promotion_decision: promote` 时，trial 才会进入
 `docs/workflow/protocols/promotion.md` 的自动 promotion gate。
 `H` 提升但证据不完整时，必须写 `revise`、`blocked` 或 `rejected`，不能写 `promote`。
-单次最高 attempt 必须记录为 `best_observed_H`；只有 clean confirmation 或质量门要求的
-多 run 稳定性通过后，才能升级为 `confirmed_H` 或 `baseline_grade`。
+单次最高 attempt 必须记录为 `best_observed_H`；复现任务还必须显式记录
+`best_hit` / `best_single_H`，用于回答“有没有复现到目标分数”。只有 clean exact repeat
+达到 `restore_target_H` 时才是有效还原，并停止后续 pending repeat。落入
+`near_miss_tolerance_H` 但未达到目标时只能写 `near_miss_not_restored`，表示有效果、还有希望。只有 clean confirmation
+或质量门要求的多 run 稳定性通过后，才能写 `stable_confirm: true`，并升级为
+`confirmed_H` 或 `baseline_grade`。
+`max_attempts_hard_cap: true` 表示同一候选不管有没有还原成功最多 5 次；5 次未达到目标时必须停止复现并记录 not restored / near miss。
 `mixed_confirmation` 状态下，`best_observed_H` 可以保留，但 `confirmed_H` 必须保持 `pending`。
 
 Promotion 必填证据：

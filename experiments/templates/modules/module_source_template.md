@@ -1,4 +1,4 @@
-# Module Source
+# Module Source（模块来源）
 
 ```text
 idea_id:
@@ -16,7 +16,7 @@ selected_training_entry:
 legacy_module_migration: not_required | required | completed
 ```
 
-## Source
+## Source（来源）
 
 ```text
 source_type: paper | official_code | user | observation | hybrid
@@ -28,9 +28,9 @@ official_code_path:
 official_code_commit:
 ```
 
-## Mechanism Claim
+## Mechanism Claim（机制主张）
 
-What the source claims:
+来源材料声称的机制是什么：
 
 ```text
 mechanism_claim:
@@ -38,7 +38,7 @@ target_signal:
 expected_effect_on_gzsl:
 ```
 
-## Adaptation To GTPJ
+## Adaptation To GTPJ（适配到 GTPJ）
 
 ```text
 what_is_copied:
@@ -48,7 +48,7 @@ why_fit_gtpj:
 not_implemented_from_source:
 ```
 
-## Template Mapping
+## Template Mapping（模板映射）
 
 ```text
 template_family:
@@ -75,9 +75,9 @@ selected_training_entry:
 legacy_module_migration:
 ```
 
-## Paper Writing Note
+## Paper Writing Note（论文写作备注）
 
-Use this section later when writing the paper:
+后续写论文时使用本节：
 
 ```text
 module_origin_sentence:

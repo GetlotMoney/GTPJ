@@ -18,11 +18,56 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+LOCAL_GTPJ_WORKFLOW_SKILL_PATH = Path.home() / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
+CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS = 5
+CONFIRMATION_RULE_DEFAULT_NEAR_MISS_TOLERANCE_H = 0.2
+CONFIRMATION_RULE_REQUIRED_MARKERS = [
+    "repeat_type: exact_repeat",
+    "original_seed",
+    "max_attempts: 5",
+    "max_attempts_hard_cap",
+    "early_stop_on_best_hit: true",
+    "restore_target_H",
+    "near_miss_tolerance_H",
+    "near_miss_not_restored",
+    "seed_sweep",
+    "multi_seed_stability",
+    "not_confirmation_evidence",
+]
+CONFIRMATION_RULE_REPO_SYNC_FILES = [
+    "AGENTS.md",
+    "docs/workflow/WORKFLOW_KERNEL.md",
+    "docs/workflow/playbooks/confirmation.md",
+    "docs/workflow/playbooks/tune.md",
+    "docs/workflow/playbooks/mixed_campaign.md",
+    "docs/workflow/playbooks/innovation.md",
+    "docs/workflow/protocols/experiment_protocol.md",
+    "docs/workflow/protocols/module_trial_protocol.md",
+    "docs/workflow/protocols/mixed_experiment_campaign_protocol.md",
+    "docs/workflow/protocols/autonomous_research_campaign.md",
+    "docs/workflow/protocols/promotion.md",
+    "docs/workflow/core/TASK_START_CARD.md",
+    "docs/workflow/core/TASK_START_MINI.md",
+    "docs/workflow/CLAUDE_CONTEXT.md",
+    "experiments/templates/quality_check_template.md",
+    "experiments/templates/TRIAL_ATTEMPTS_template.md",
+    "experiments/templates/run_receipt_template.yaml",
+]
+CONFIRMATION_RULE_SKILL_REFERENCE_FILES = [
+    "references/workflow_kernel.md",
+    "references/playbooks/confirmation.md",
+    "references/experiment_protocol.md",
+    "references/autonomous_research_campaign.md",
+    "references/mixed_experiment_campaign_protocol.md",
+    "references/promotion.md",
+    "references/playbooks/mixed_campaign.md",
+    "references/playbooks/tune.md",
+]
 FORBIDDEN_PATTERNS = [
     "D" + "VSR-Lab",
     "TUNE-" + "024",
@@ -125,6 +170,8 @@ EVIDENCE_ROUTING_STATES = {
     "single_run_valid",
     "tune_promising",
     "ablation_supported",
+    "exact_repeat_best_hit",
+    "stable_confirmed",
     "min3_confirmed",
     "promotion_candidate",
     "promoted",
@@ -161,13 +208,32 @@ EVIDENCE_ADVANCING_TRANSITIONS = {"advance", "promote"}
 AGENT_RUNTIME_ALLOW_DECISIONS = {"allow", "pass"}
 AGENT_RUNTIME_BLOCKING_DECISIONS = {"", "block", "blocked", "fail", "failed", "not_checked", "pending"}
 AGENT_RUNTIME_PREFLIGHT_KEYS = {
-    "required_agents_spawned",
+    "required_threads_created",
     "agent_instance_ids_present",
     "agent_status_refs_valid",
     "independent_outputs_present",
     "agent_output_refs_valid",
     "pre_run_allow_checks_passed",
     "agent_runtime_validated",
+    "threads_archivable",
+}
+AGENT_RUNTIME_SERVER_DETACHED_PREFLIGHT_KEYS = {
+    "role_plan_recorded",
+    "independent_outputs_present",
+    "pre_run_allow_checks_passed",
+    "agent_runtime_validated",
+    "server_detached_ready",
+    "stop_mechanism_ready",
+    "cleanup_not_required",
+}
+AGENT_RUNTIME_REQUIRED_FORMAL_ROLES = {
+    "runner_monitor",
+    "interface_checker",
+    "evidence_quality_checker",
+}
+WORKFLOW_MODES = {
+    "live_multi_agent_monitor",
+    "server_frozen_runner",
 }
 AGENT_RUNTIME_ALLOWED_INSTANCE_STATUSES = {
     "spawned",
@@ -199,6 +265,11 @@ AGENT_RUNTIME_INVALID_INSTANCE_IDS = {
     "current_thread",
     "current session",
     "workflow_helper",
+}
+AGENT_RUNTIME_INVALID_INSTANCE_ID_FRAGMENTS = {
+    "spawn_agent",
+    "temporary_subagent",
+    "right_sidebar",
 }
 SOURCE_STATUS_RANK = {
     "verified": 3,
@@ -423,8 +494,9 @@ def result_evidence_defaults(kind_name: str, h_value: str, decision: str, git_di
             "best_observed_H": "",
             "confirmed_H": "",
             "confirmation_status": "pending" if kind_name == "confirmation" else "not_applicable",
-            "confirmation_target": "",
-            "confirmation_tolerance_H": "",
+            "restore_target_H": "",
+            "near_miss_tolerance_H": "",
+            "near_miss_not_restored": "false",
         }
 
     if git_dirty == "true" or decision in {"blocked", "debug", "rerun", "reject", "rejected"}:
@@ -449,8 +521,9 @@ def result_evidence_defaults(kind_name: str, h_value: str, decision: str, git_di
         "best_observed_H": best_observed_h,
         "confirmed_H": "pending",
         "confirmation_status": "pending" if kind_name == "confirmation" else "not_applicable",
-        "confirmation_target": h_value if kind_name == "confirmation" else "",
-        "confirmation_tolerance_H": "",
+        "restore_target_H": h_value if kind_name == "confirmation" else "",
+        "near_miss_tolerance_H": "",
+        "near_miss_not_restored": "false",
     }
 
 
@@ -606,6 +679,92 @@ def display_path(path: Path) -> str:
         return path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
     except ValueError:
         return str(path)
+
+
+def repo_relative_path(path: Path, label: str) -> str:
+    try:
+        return path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+    except ValueError as exc:
+        raise WorkflowError(f"{label} must be inside repository: {path}") from exc
+
+
+def read_text_at_commit(commit: str, relative_path: str) -> str:
+    result = subprocess.run(
+        ["git", "show", f"{commit}:{relative_path}"],
+        cwd=REPO_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip()
+        raise WorkflowError(
+            f"Cannot read {relative_path} at commit {commit}: {detail}"
+        )
+    return result.stdout
+
+
+def confirmation_rule_sync_paths() -> list[Path]:
+    paths = [REPO_ROOT / path_text for path_text in CONFIRMATION_RULE_REPO_SYNC_FILES]
+    if LOCAL_GTPJ_WORKFLOW_SKILL_PATH.exists():
+        paths.append(LOCAL_GTPJ_WORKFLOW_SKILL_PATH)
+        skill_root = LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent
+        references_dir = skill_root / "references"
+        if references_dir.exists():
+            paths.extend(skill_root / path_text for path_text in CONFIRMATION_RULE_SKILL_REFERENCE_FILES)
+    return paths
+
+
+def confirmation_policy_for_profile(
+    profile: str,
+    *,
+    target_h: str = "",
+    tolerance_h: str = "",
+) -> dict[str, object]:
+    near_miss_tolerance = tolerance_h or str(CONFIRMATION_RULE_DEFAULT_NEAR_MISS_TOLERANCE_H)
+    if profile == "h76-followup50-multiseed":
+        return {
+            "repeat_type": "multi_seed_stability",
+            "formal_confirmation_evidence": False,
+            "not_confirmation_evidence": True,
+            "seed_change_allowed": True,
+            "reason": "seed_sweep/multi_seed_stability is not exact_repeat reproduction",
+        }
+    per_job_restore_profiles = {
+        "h76-restore100-exact-repeat",
+        "h76-hotspot-top2-restore10-exact-repeat",
+        "h76-a017dr095-restore5-exact-repeat",
+    }
+    if profile in {
+        "h76-top4-min5-repeat",
+        "h76-restore100-exact-repeat",
+        "h76-hotspot-top2-restore10-exact-repeat",
+        "h76-a017dr095-restore5-exact-repeat",
+        "dr035-min3-confirm",
+        "dr035-max5-confirm",
+    }:
+        return {
+            "repeat_type": "exact_repeat",
+            "formal_confirmation_evidence": True,
+            "original_seed": 5,
+            "max_attempts": CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
+            "max_attempts_hard_cap": True,
+            "early_stop_on_best_hit": True,
+            "restore_target_H": target_h or ("per_job_source_H" if profile in per_job_restore_profiles else ""),
+            "per_job_restore_target_H": profile in per_job_restore_profiles,
+            "near_miss_tolerance_H": near_miss_tolerance,
+            "near_miss_not_restored": True,
+            "seed_change_allowed": False,
+            "not_confirmation_evidence": False,
+        }
+    return {
+        "repeat_type": "not_confirmation",
+        "formal_confirmation_evidence": False,
+        "not_confirmation_evidence": True,
+    }
 
 
 def runtime_lock_file() -> Path:
@@ -1099,6 +1258,83 @@ def require_clean_worktree(command_name: str) -> None:
             f"Working tree must be clean before {command_name} creates files:\n"
             f"{porcelain}"
         )
+
+
+FORMAL_DYNAMIC_ROUTING_FINGERPRINT_PATHS = [
+    "train_GTPJ_CUB.py",
+    "model",
+    "config",
+    "tools",
+    "workflow/gtpj_workflow.py",
+]
+
+
+def require_formal_dynamic_routing_source_control(args: argparse.Namespace, base_config: Path) -> dict[str, object]:
+    """Require formal batch plans to be generated from the exact clean training commit."""
+
+    require_clean_worktree("formal dynamic routing batch planning")
+    head_commit = resolve_commit("HEAD")
+    requested_commit_ref = str(args.commit or "HEAD")
+    requested_commit = resolve_commit(requested_commit_ref)
+    current = current_branch()
+    allow_historical = bool(getattr(args, "allow_historical_training_commit", False))
+    if requested_commit != head_commit and not allow_historical:
+        raise WorkflowError(
+            "Formal dynamic routing batch requires --commit to equal the clean local HEAD. "
+            f"HEAD={head_commit}; requested {requested_commit_ref}={requested_commit}. "
+            "Use --allow-historical-training-commit only for an explicit exact repeat of an older source commit."
+        )
+
+    if requested_commit != head_commit:
+        if not args.branch:
+            raise WorkflowError(
+                "Formal historical training commit requires --branch to name the original branch."
+            )
+        branch_ref = f"refs/heads/{args.branch}"
+        branch_tip = git(["rev-parse", "--verify", f"{branch_ref}^{{commit}}"], check=False)
+        if not branch_tip:
+            raise WorkflowError(
+                f"Formal historical training commit requires a local branch ref for --branch {args.branch}."
+            )
+        require_ancestor(
+            requested_commit,
+            branch_tip,
+            "Formal historical training commit must be contained in the requested branch",
+        )
+    elif args.branch and args.branch != current:
+        raise WorkflowError(
+            "Formal dynamic routing batch requires --branch to match the current branch. "
+            f"current_branch={current or '(detached)'}; requested_branch={args.branch}. "
+            "Check out the original branch before planning an exact repeat."
+        )
+
+    paths = list(FORMAL_DYNAMIC_ROUTING_FINGERPRINT_PATHS)
+    base_config_rel = repo_relative_path(base_config, "Formal dynamic routing base config")
+    if base_config_rel not in paths:
+        paths.append(base_config_rel)
+    object_ids: dict[str, str] = {}
+    missing_paths: list[str] = []
+    for relative in paths:
+        object_id = git(["rev-parse", "--verify", f"{requested_commit}:{relative}"], check=False)
+        if object_id:
+            object_ids[relative] = object_id
+        else:
+            missing_paths.append(relative)
+
+    return {
+        "source_control_policy": (
+            "formal_explicit_historical_training_commit"
+            if requested_commit != head_commit
+            else "formal_same_clean_head"
+        ),
+        "plan_generation_commit": head_commit,
+        "plan_generation_branch": current,
+        "training_commit": requested_commit,
+        "training_branch_label": args.branch or current,
+        "dirty_state": "clean",
+        "fingerprint_paths": object_ids,
+        "missing_fingerprint_paths": missing_paths,
+    }
 
 
 def current_branch() -> str:
@@ -1756,29 +1992,75 @@ def cmd_validate(_: argparse.Namespace) -> int:
         raise WorkflowError("Missing required files:\n" + "\n".join(missing))
 
     marker_requirements = {
-        "docs/workflow/START_HERE.md": ["baseline_repro_status", "comparison_reference", "debug_smoke", "multi_agent_preflight"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["temporary_subagent", "debug_smoke", "Top-3", "TRANSITIONS.jsonl", "validate-agent-runtime", "multi-agent-preflight"],
+        "docs/workflow/START_HERE.md": [
+            "baseline_repro_status",
+            "comparison_reference",
+            "debug_smoke",
+            "multi_agent_preflight",
+            "formal_pending",
+            "orphan_runtime_plan",
+            "明确入口硬规则",
+            "执行授权",
+            "不得反复确认",
+            "pre_run_planned",
+            "report-new-completions",
+        ],
+        "docs/workflow/WORKFLOW_KERNEL.md": [
+            "named_owner_thread",
+            "debug_smoke",
+            "Top-3",
+            "TRANSITIONS.jsonl",
+            "validate-agent-runtime",
+            "multi-agent-preflight",
+            "formal_pending",
+            "orphan_runtime_plan",
+            "开启多agents智能体工作流",
+            "planning gate",
+            "files_reviewed",
+            "独立输出文件",
+            "allow/block/propose",
+            "report-new-completions",
+        ],
         "docs/workflow/protocols/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
         "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
-            "right_sidebar_temporary_agents",
+            "left_sidebar_named_threads",
             "agent_runtime.yaml",
             "validate-agent-runtime",
             "multi-agent-preflight",
             "single_agent_execution",
             "formal_runner_allowed",
             "agent_output_refs",
+            "files_reviewed",
+            "report-new-completions",
         ],
         "docs/workflow/reference/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
         "docs/workflow/reference/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
         "docs/workflow/core/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
         "docs/workflow/core/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
         "docs/workflow/core/QUICK_START.md": ["repro-status", "baseline_repro_status"],
-        "docs/workflow/core/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key"],
-        "docs/workflow/core/TASK_START_MINI.md": ["baseline_repro_status", "temporary_subagent", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
-        "docs/workflow/core/TASK_START_CARD.md": ["subject_id", "transition_permissions", "authority_refs", "agent_runtime_gate", "multi_agent_preflight"],
+        "docs/workflow/core/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key", "formal_pending", "orphan_runtime_plan"],
+        "docs/workflow/core/TASK_START_MINI.md": ["baseline_repro_status", "named_owner_thread", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
+        "docs/workflow/core/TASK_START_CARD.md": [
+            "subject_id",
+            "transition_permissions",
+            "authority_refs",
+            "agent_runtime_gate",
+            "multi_agent_preflight",
+            "开启多agents智能体工作流",
+            "files_reviewed",
+        ],
         "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
-        "docs/workflow/protocols/agent_orchestration.md": ["Agent Runtime Protocol", "propose", "apply transition", "agent_runtime.yaml", "multi_agent_preflight"],
-        "docs/workflow/protocols/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml"],
+        "docs/workflow/protocols/agent_orchestration.md": [
+            "Agent Runtime Protocol",
+            "propose",
+            "apply transition",
+            "agent_runtime.yaml",
+            "multi_agent_preflight",
+            "files_reviewed",
+            "分文件复核",
+            "report-new-completions",
+        ],
+        "docs/workflow/protocols/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml", "formal_pending", "orphan_runtime_plan"],
         "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
         "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
         "docs/workflow/playbooks/tune.md": ["tune_promising", "stopped_no_gain"],
@@ -1786,8 +2068,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "docs/workflow/playbooks/confirmation.md": ["promotion_compare_metric", "confirmed_H"],
         "docs/workflow/reference/artifact_policy.md": ["Top-3", "pruned"],
         "docs/workflow/protocols/promotion.md": ["must not push", "explicitly asks"],
-        "docs/workflow/protocols/experiment_protocol.md": ["mixed_confirmation", "strict_determinism"],
-        "docs/workflow/protocols/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng"],
+        "docs/workflow/protocols/experiment_protocol.md": ["mixed_confirmation", "strict_determinism", "formal_pending", "orphan_runtime_plan"],
+        "docs/workflow/protocols/module_trial_protocol.md": ["mixed_confirmation", "use_dedicated_batch_rng", "formal_pending", "orphan_runtime_plan"],
         "docs/workflow/archive/runbooks/runbook.md": ["mixed_confirmation", "batch_sampling_seed"],
         "docs/workflow/archive/issues/README.md": ["ISSUE-20260628-014"],
         "workflow/README.md": ["repro-status", "confirmed_H"],
@@ -1833,7 +2115,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "agent_instance_mode:",
         "lifecycle:",
         "persistent_thread_id:",
-        "temporary_subagent_reason:",
+        "named_thread_reason:",
         "agent_instance_id:",
         "agent_runtime_gate:",
         "runner_scope:",
@@ -1844,7 +2126,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "agent_status_refs:",
         "agent_output_refs:",
         "ai_cross_review:",
-        "temporary_subagent_ids:",
+        "named_thread_ids:",
         "runner_start_gate:",
         "pre_run_required_checks:",
         "output_locations:",
@@ -1854,6 +2136,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "rule_checks:",
         "authority_refs:",
         "not_checked:",
+        "files_reviewed:",
     ]:
         if marker not in agent_template:
             raise WorkflowError(f"agent_summary_template.md missing agent evidence field: {marker}")
@@ -2138,7 +2421,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "Review 2",
         "Review 3",
         "ai_cross_review_protocol.md",
-        "临时 agents",
+        "命名线程",
         "正式 run 前硬阻断",
     ]:
         if marker not in innovation_review:
@@ -2153,6 +2436,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "temporary_agents",
         "review_rounds",
         "ai_cross_review",
+        "job_completed_report",
     ]:
         if marker not in agent_report_policy:
             raise WorkflowError(f"agent_report_policy.md missing field: {marker}")
@@ -2376,8 +2660,9 @@ evidence_level: pending
 result_status: pending
 best_observed_H:
 confirmed_H:
-confirmation_target:
-confirmation_tolerance_H:
+restore_target_H:
+near_miss_tolerance_H:
+near_miss_not_restored:
 confirmation_status: pending
 status: planned
 ```
@@ -2534,7 +2819,7 @@ base_version: {version}
 code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
 code_commit:
 activation_mode:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 lifecycle: workflow_scoped
 activation_reason:
 required_roles:
@@ -2544,7 +2829,7 @@ agent_set: {agent_set}
 serial_agents: {serial_agents}
 parallel_agents: {parallel_agents}
 disabled_agents: {disabled_agents}
-temporary_subagents: workflow-scoped role contexts
+named_threads: workflow-scoped named Codex role threads
 tool_support:
 memory_policy:
 memory_used:
@@ -2565,10 +2850,10 @@ temporary_agents:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2594,10 +2879,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2623,10 +2908,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2650,10 +2935,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2677,10 +2962,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2704,10 +2989,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2733,10 +3018,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2762,10 +3047,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2791,10 +3076,10 @@ blocking_issues:
 
 ```text
 role:
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 lifecycle: workflow_scoped
 independence_scope:
 output_locations:
@@ -2962,8 +3247,9 @@ evidence:
   best_observed_H: {yaml_scalar(evidence_defaults["best_observed_H"])}
   confirmed_H: {yaml_scalar(evidence_defaults["confirmed_H"])}
   confirmation_status: {yaml_scalar(evidence_defaults["confirmation_status"])}
-  confirmation_target: {yaml_scalar(evidence_defaults["confirmation_target"])}
-  confirmation_tolerance_H: {yaml_scalar(evidence_defaults["confirmation_tolerance_H"])}
+  restore_target_H: {yaml_scalar(evidence_defaults["restore_target_H"])}
+  near_miss_tolerance_H: {yaml_scalar(evidence_defaults["near_miss_tolerance_H"])}
+  near_miss_not_restored: {yaml_scalar(evidence_defaults["near_miss_not_restored"])}
   log_artifact_id: {yaml_scalar(log_artifact_id)}
   manifest: {yaml_scalar("manifest.yaml")}
   agent_summary: {yaml_scalar("agent_summary.md")}
@@ -3023,7 +3309,7 @@ def append_version_experiment_registry(
     experiment_name = f"{exp_id}_{slug}"
     row = (
         f"| `{experiment_name}` | `{version}` | `{kind.name}` | planned | "
-        f"`{rel(folder)}` | 由结构 helper 创建。 |"
+        f"`{rel(folder)}` | 由结构 helper 创建；正式待跑以 `experiments/{version}/{kind.folder}/INDEX.md` 行为准。 |"
     )
     if experiment_name in content:
         return
@@ -3080,8 +3366,8 @@ def append_kind_index(
         if "| 暂无 |" not in line and "当前还没有新仓库内启动的" not in line
     ]
     content = "\n".join(lines).rstrip()
-    section = "\n\n## 实验记录\n\n| 实验 | 状态 | 目录 | 说明 |\n|---|---|---|---|\n"
-    row = f"| `{experiment_name}` | planned | `{rel(folder)}` | 由结构 helper 创建。 |"
+    section = "\n\n## 实验记录\n\n| 实验 | 状态 | Run ID | Formal | 目录 | 说明 |\n|---|---|---|---|---|---|\n"
+    row = f"| `{experiment_name}` | planned | pending | true | `{rel(folder)}` | 由结构 helper 创建；formal_pending 由本 INDEX 行决定，`.gtpj_runtime` 只作运行缓存。 |"
     if "## 实验记录" not in content:
         content = content + section + row + "\n"
     else:
@@ -3400,8 +3686,9 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         "result_status": evidence_defaults["result_status"],
         "best_observed_H": evidence_defaults["best_observed_H"],
         "confirmed_H": evidence_defaults["confirmed_H"],
-        "confirmation_target": evidence_defaults["confirmation_target"],
-        "confirmation_tolerance_H": evidence_defaults["confirmation_tolerance_H"],
+        "restore_target_H": evidence_defaults["restore_target_H"],
+        "near_miss_tolerance_H": evidence_defaults["near_miss_tolerance_H"],
+        "near_miss_not_restored": evidence_defaults["near_miss_not_restored"],
         "confirmation_status": evidence_defaults["confirmation_status"],
         "status": "recorded",
     }
@@ -4195,7 +4482,7 @@ base_version: {version}
 code_branch: {code_branch}
 code_commit: {code_commit}
 activation_mode: real_multi_agent
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 lifecycle: workflow_scoped
 activation_reason: module trial closeout requires Review 0-3 evidence and artifact boundary checks
 required_roles: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, Log Analyst, Quality Checker, Result Analyst, Reviewer
@@ -4205,7 +4492,7 @@ agent_set: Coordinator, Reader/Planner, Implementer, Interface Checker, Runner, 
 serial_agents: Coordinator -> Review 0 -> Review 1 -> Implementer -> Review 2 -> Runner -> Review 3 -> Coordinator
 parallel_agents: Interface Checker + Quality Checker + Reviewer in Review 2; Log Analyst + Quality Checker + Result Analyst + Reviewer in Review 3
 disabled_agents: none
-temporary_subagents: workflow-scoped closeout roles; helper-generated summary records their required evidence slots
+named_threads: workflow-scoped named Codex role threads; helper-generated summary records their required evidence slots
 tool_support: workflow_helper generated current-attempt closeout summary
 memory_policy: hidden/session memory is orientation only; formal facts come from current repo ledgers and Warehouse artifact identities
 memory_used: no
@@ -4228,11 +4515,11 @@ recorded_at: {recorded_at}
 
 ```text
 role: Coordinator
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: workflow_helper
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: closeout summary generated from current repo evidence
+named_thread_reason: closeout summary generated from current repo evidence
 independence_scope: final ledger writer
 output_locations: manifest.yaml; result.yaml; result.md; quality_check.md; review_round_2.md; agent_summary.md
 inputs_checked: README.md; ATTEMPTS.md; attempts/{attempt_upper}/manifest.yaml; attempts/{attempt_upper}/result.yaml; attempts/{attempt_upper}/quality_check.md
@@ -4255,11 +4542,11 @@ blocking_issues: none
 
 ```text
 role: Runner
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: recorded_run
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: recorded serial GPU run evidence
+named_thread_reason: recorded serial GPU run evidence
 independence_scope: serial GPU owner
 output_locations: attempts/{attempt_upper}/manifest.yaml; Warehouse artifacts
 inputs_checked: command and config recorded in attempts/{attempt_upper}/manifest.yaml
@@ -4282,11 +4569,11 @@ blocking_issues: none
 
 ```text
 role: Log Analyst
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: workflow_helper
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: parse current attempt result evidence
+named_thread_reason: parse current attempt result evidence
 independence_scope: parse metrics from registered attempt result
 output_locations: agent_summary.md; result.md
 inputs_checked: attempts/{attempt_upper}/result.yaml
@@ -4309,11 +4596,11 @@ blocking_issues: none
 
 ```text
 role: Quality Checker
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: workflow_helper
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: check artifact boundary and ledger consistency
+named_thread_reason: check artifact boundary and ledger consistency
 independence_scope: artifact boundary and ledger consistency
 output_locations: review_round_2.md; quality_check.md; agent_summary.md
 inputs_checked: attempt manifest/result/quality; Warehouse artifact ids
@@ -4336,11 +4623,11 @@ blocking_issues: none
 
 ```text
 role: Result Analyst
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: workflow_helper
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: compare current attempt metrics against recorded references
+named_thread_reason: compare current attempt metrics against recorded references
 independence_scope: result interpretation from current attempt metrics
 output_locations: result.md; agent_summary.md
 inputs_checked: attempts/{attempt_upper}/result.yaml; baseline reproducibility fields in root result
@@ -4363,11 +4650,11 @@ blocking_issues: none
 
 ```text
 role: Reviewer
-agent_instance_mode: temporary_subagent
+agent_instance_mode: named_owner_thread
 agent_instance_type: workflow_helper
 lifecycle: workflow_scoped
 persistent_thread_id: none
-temporary_subagent_reason: final closeout evidence consistency review
+named_thread_reason: final closeout evidence consistency review
 independence_scope: final evidence consistency check
 output_locations: review_round_2.md; agent_summary.md
 inputs_checked: review_round_2.md; agent_summary.md; result.yaml; quality_check.md
@@ -5604,6 +5891,8 @@ def valid_runtime_agent_instance_id(value: str) -> bool:
     normalized = value.strip().lower()
     if normalized in AGENT_RUNTIME_INVALID_INSTANCE_IDS:
         return False
+    if any(fragment in normalized for fragment in AGENT_RUNTIME_INVALID_INSTANCE_ID_FRAGMENTS):
+        return False
     if len(normalized) < 8:
         return False
     if not re.search(r"[0-9]", normalized):
@@ -5674,10 +5963,10 @@ def role_display_label(role: str) -> str:
     return " ".join(part.capitalize() for part in role.split("_") if part)
 
 
-def validate_agent_display_name(subject_id: str, role: str, display_name: str) -> str | None:
-    normalized = display_name.strip()
+def validate_agent_thread_title(subject_id: str, role: str, thread_title: str) -> str | None:
+    normalized = thread_title.strip()
     if not normalized:
-        return f"temporary_subagent_display_names.{role} is missing"
+        return f"named_thread_titles.{role} is missing"
     legacy_random_names = {
         "herschel",
         "epicurus",
@@ -5699,16 +5988,16 @@ def validate_agent_display_name(subject_id: str, role: str, display_name: str) -
         "feynman",
     }
     if normalized.lower() in legacy_random_names:
-        return f"temporary_subagent_display_names.{role} uses a random legacy nickname: {display_name}"
+        return f"named_thread_titles.{role} uses a random legacy nickname: {thread_title}"
     if subject_id and subject_id.lower() not in normalized.lower():
-        return f"temporary_subagent_display_names.{role} must include subject_id: {subject_id}"
+        return f"named_thread_titles.{role} must include subject_id: {subject_id}"
     display_words = normalized.lower().replace("_", " ").replace("-", " ").replace("|", " ")
     missing_role_words = [part for part in role.split("_") if part and part.lower() not in display_words]
     if missing_role_words:
         expected = role_display_label(role)
-        return f"temporary_subagent_display_names.{role} must include role label words: {expected}"
+        return f"named_thread_titles.{role} must include role label words: {expected}"
     if "|" not in normalized:
-        return f"temporary_subagent_display_names.{role} must use '<subject_id> | <Role Label>' format"
+        return f"named_thread_titles.{role} must use '<subject_id> | <Role Label>' format"
     return None
 
 
@@ -5716,17 +6005,39 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     errors: list[str] = []
     scalars, maps = read_simple_yaml_maps(gate_path)
     gate_name = rel(gate_path)
-    required_scalars = [
+
+    common_required_scalars = [
         "schema_version",
         "subject_id",
         "subject_type",
         "formal_evidence",
         "activation_mode",
         "agent_instance_mode",
+    ]
+    for field in common_required_scalars:
+        if field not in scalars or scalars[field] == "":
+            errors.append(f"{gate_name} missing {field}")
+
+    formal = truthy(scalars.get("formal_evidence", ""))
+    if not formal:
+        evidence_level = scalars.get("evidence_level", "")
+        debug_smoke = truthy(scalars.get("debug_smoke", ""))
+        if scalars.get("activation_mode") != "role_only":
+            errors.append(f"{gate_name} non-formal runtime gate requires activation_mode: role_only")
+        if scalars.get("agent_instance_mode") != "role_only":
+            errors.append(f"{gate_name} non-formal runtime gate requires agent_instance_mode: role_only")
+        if evidence_level not in NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS and not debug_smoke:
+            errors.append(
+                f"{gate_name} non-formal runtime gate must declare evidence_level: "
+                f"{'/'.join(sorted(NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS))}"
+            )
+        return errors
+
+    required_scalars = [
         "lifecycle",
         "ui_visibility",
         "tool_support_real_multi_agent_available",
-        "spawn_tool",
+        "thread_management_tool",
         "single_agent_execution",
         "runner_start_allowed",
         "formal_runner_allowed",
@@ -5738,43 +6049,25 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         "report_interval_minutes",
         "agent_activity_stream",
         "monitor_handoff_on_pause",
-        "right_sidebar_retention_policy",
-        "close_completed_agents_on_stage_end",
-        "closed_agents_record",
+        "thread_archive_policy",
+        "archive_completed_threads_on_stage_end",
+        "archived_threads_record",
     ]
     for field in required_scalars:
         if field not in scalars or scalars[field] == "":
             errors.append(f"{gate_name} missing {field}")
 
-    formal = truthy(scalars.get("formal_evidence", ""))
-    if not formal:
-        evidence_level = scalars.get("evidence_level", "")
-        debug_smoke = truthy(scalars.get("debug_smoke", ""))
-        if evidence_level not in NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS and not debug_smoke:
-            errors.append(
-                f"{gate_name} non-formal runtime gate must declare evidence_level: "
-                f"{'/'.join(sorted(NON_FORMAL_AGENT_RUNTIME_EVIDENCE_LEVELS))}"
-            )
-        return errors
-
-    if scalars.get("activation_mode") != "real_multi_agent":
-        errors.append(f"{gate_name} formal evidence requires activation_mode: real_multi_agent")
-    if scalars.get("agent_instance_mode") not in {"temporary_subagent", "persistent_thread"}:
-        errors.append(f"{gate_name} formal evidence requires temporary_subagent or persistent_thread")
-    if "right_sidebar" not in scalars.get("ui_visibility", ""):
-        errors.append(f"{gate_name} must declare ui_visibility: right_sidebar_temporary_agents")
-    if not truthy(scalars.get("tool_support_real_multi_agent_available", "")):
-        errors.append(f"{gate_name} must confirm real multi-agent tool support")
-    if truthy(scalars.get("single_agent_execution", "")):
-        errors.append(f"{gate_name} single_agent_execution cannot be true for formal evidence")
+    formal_backend = scalars.get("formal_runtime_backend", "").strip() or "named_owner_thread"
+    activation_mode = scalars.get("activation_mode", "")
+    agent_instance_mode = scalars.get("agent_instance_mode", "")
+    if activation_mode == "role_only" and agent_instance_mode == "role_only" and formal_backend == "named_owner_thread":
+        errors.append(f"{gate_name} formal role_only gate must declare formal_runtime_backend: server_detached_role_only")
     if not truthy(scalars.get("runner_start_allowed", "")):
         errors.append(f"{gate_name} runner_start_allowed must be true before formal Runner starts")
     if not truthy(scalars.get("formal_runner_allowed", "")):
         errors.append(f"{gate_name} formal_runner_allowed must be true before formal Runner starts")
     if not truthy(scalars.get("formal_evidence_allowed", "")):
         errors.append(f"{gate_name} formal_evidence_allowed must be true for formal evidence")
-    if scalars.get("spawn_tool") in {"", "role_only", "manual"}:
-        errors.append(f"{gate_name} spawn_tool must name the real sub-agent tool")
     if not truthy(scalars.get("owner_monitor_mode", "")):
         errors.append(f"{gate_name} owner_monitor_mode must be true for formal Runner visibility")
     if scalars.get("owner_role") != "monitor":
@@ -5791,47 +6084,139 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         errors.append(f"{gate_name} report_interval_minutes must be between 1 and 60")
     if scalars.get("monitor_handoff_on_pause") != "required":
         errors.append(f"{gate_name} monitor_handoff_on_pause must be required")
-    if scalars.get("right_sidebar_retention_policy") != "current_stage_active_only":
-        errors.append(f"{gate_name} right_sidebar_retention_policy must be current_stage_active_only")
-    if not truthy(scalars.get("close_completed_agents_on_stage_end", "")):
-        errors.append(f"{gate_name} close_completed_agents_on_stage_end must be true")
     activity_stream = scalars.get("agent_activity_stream", "")
     if not validate_agent_runtime_ref(activity_stream, gate_path):
         errors.append(f"{gate_name} agent_activity_stream points to missing activity log: {activity_stream}")
-    closed_agents_record = scalars.get("closed_agents_record", "")
-    if not validate_agent_runtime_ref(closed_agents_record, gate_path):
-        errors.append(f"{gate_name} closed_agents_record points to missing closeout log: {closed_agents_record}")
+    archived_threads_record = scalars.get("archived_threads_record", "")
+    if not validate_agent_runtime_ref(archived_threads_record, gate_path):
+        errors.append(f"{gate_name} archived_threads_record points to missing archive log: {archived_threads_record}")
 
-    agent_ids = maps.get("temporary_subagent_ids", {})
+    output_refs = maps.get("agent_output_refs", {})
+    pre_run_checks = maps.get("pre_run_required_checks", {})
+    authority_refs = maps.get("authority_refs", {})
+    for key, value in authority_refs.items():
+        if not validate_agent_runtime_ref(value, gate_path):
+            errors.append(f"{gate_name} authority_refs.{key} points to missing authority ref: {value}")
+
+    if formal_backend == "server_detached_role_only":
+        if activation_mode != "role_only":
+            errors.append(f"{gate_name} server_detached formal gate requires activation_mode: role_only")
+        if agent_instance_mode != "role_only":
+            errors.append(f"{gate_name} server_detached formal gate requires agent_instance_mode: role_only")
+        if scalars.get("ui_visibility") != "current_owner_thread_only":
+            errors.append(f"{gate_name} server_detached formal gate must declare ui_visibility: current_owner_thread_only")
+        if not truthy(scalars.get("single_agent_execution", "")):
+            errors.append(f"{gate_name} server_detached formal gate requires single_agent_execution: true")
+        if truthy(scalars.get("real_multi_agent_required", "")):
+            errors.append(f"{gate_name} server_detached formal gate requires real_multi_agent_required: false")
+        if truthy(scalars.get("thread_creation_allowed", "")):
+            errors.append(f"{gate_name} server_detached formal gate requires thread_creation_allowed: false")
+        if scalars.get("thread_management_tool") not in {"not_used", "role_only"}:
+            errors.append(f"{gate_name} server_detached formal gate must declare thread_management_tool: not_used")
+        if scalars.get("thread_archive_policy") != "not_applicable_no_named_threads":
+            errors.append(f"{gate_name} server_detached formal gate must declare thread_archive_policy: not_applicable_no_named_threads")
+        if truthy(scalars.get("archive_completed_threads_on_stage_end", "")):
+            errors.append(f"{gate_name} server_detached formal gate must declare archive_completed_threads_on_stage_end: false")
+        if maps.get("named_thread_ids", {}):
+            errors.append(f"{gate_name} server_detached formal gate must not declare named_thread_ids")
+        if maps.get("named_thread_titles", {}):
+            errors.append(f"{gate_name} server_detached formal gate must not declare named_thread_titles")
+        if maps.get("agent_instance_status", {}):
+            errors.append(f"{gate_name} server_detached formal gate must not declare agent_instance_status")
+        if maps.get("agent_status_refs", {}):
+            errors.append(f"{gate_name} server_detached formal gate must not declare agent_status_refs")
+        if not output_refs:
+            errors.append(f"{gate_name} missing agent_output_refs")
+        output_paths: dict[str, Path] = {}
+        output_fingerprints: dict[str, str] = {}
+        for role in sorted(AGENT_RUNTIME_REQUIRED_FORMAL_ROLES):
+            ref_errors, output_path, output_text = validate_agent_runtime_role_ref(
+                gate_name=gate_name,
+                gate_path=gate_path,
+                role=role,
+                instance_id=role,
+                refs=output_refs,
+                ref_name="agent_output_refs",
+            )
+            errors.extend(ref_errors)
+            if output_path is not None:
+                output_paths[role] = output_path.resolve()
+            if output_text:
+                output_fingerprints[role] = normalized_text_fingerprint(output_text)
+        if len(set(output_paths.values())) < len(output_paths):
+            errors.append(f"{gate_name} agent_output_refs must use independent files per role")
+        seen_fingerprints: dict[str, str] = {}
+        for role, fingerprint in output_fingerprints.items():
+            other_role = seen_fingerprints.get(fingerprint)
+            if other_role and other_role != role:
+                errors.append(f"{gate_name} agent_output_refs.{role} duplicates output content from {other_role}")
+            else:
+                seen_fingerprints[fingerprint] = role
+        if not pre_run_checks:
+            errors.append(f"{gate_name} missing pre_run_required_checks")
+        for role in sorted(AGENT_RUNTIME_REQUIRED_FORMAL_ROLES):
+            normalized = pre_run_checks.get(role, "").strip().lower()
+            if normalized not in AGENT_RUNTIME_ALLOW_DECISIONS:
+                errors.append(f"{gate_name} pre_run_required_checks.{role} must be allow/pass before Runner starts")
+        for role in sorted(pre_run_checks):
+            if role not in AGENT_RUNTIME_REQUIRED_FORMAL_ROLES:
+                errors.append(f"{gate_name} pre_run_required_checks.{role} is not a supported server_detached role")
+        preflight = maps.get("sequential_role_preflight", {})
+        if not preflight:
+            errors.append(f"{gate_name} missing sequential_role_preflight")
+        for key in sorted(AGENT_RUNTIME_SERVER_DETACHED_PREFLIGHT_KEYS):
+            value = preflight.get(key, "")
+            if not truthy(value):
+                errors.append(f"{gate_name} sequential_role_preflight.{key} must be true before formal Runner starts")
+        return errors
+
+    if activation_mode != "real_multi_agent":
+        errors.append(f"{gate_name} formal evidence requires activation_mode: real_multi_agent")
+    if agent_instance_mode != "named_owner_thread":
+        errors.append(f"{gate_name} formal evidence requires agent_instance_mode: named_owner_thread")
+    if scalars.get("ui_visibility") != "left_sidebar_named_threads":
+        errors.append(f"{gate_name} must declare ui_visibility: left_sidebar_named_threads")
+    if scalars.get("thread_archive_policy") != "archive_completed_threads_on_stage_end":
+        errors.append(f"{gate_name} thread_archive_policy must be archive_completed_threads_on_stage_end")
+    if not truthy(scalars.get("archive_completed_threads_on_stage_end", "")):
+        errors.append(f"{gate_name} archive_completed_threads_on_stage_end must be true")
+    if not truthy(scalars.get("tool_support_real_multi_agent_available", "")):
+        errors.append(f"{gate_name} must confirm real multi-agent tool support")
+    if truthy(scalars.get("single_agent_execution", "")):
+        errors.append(f"{gate_name} single_agent_execution cannot be true for formal evidence")
+    if scalars.get("thread_management_tool") in {"", "role_only", "manual", "multi_agent_v1.spawn_agent", "not_used"}:
+        errors.append(f"{gate_name} thread_management_tool must name the named Codex thread tool")
+
+    agent_ids = maps.get("named_thread_ids", {})
     if not agent_ids:
-        errors.append(f"{gate_name} missing temporary_subagent_ids")
+        errors.append(f"{gate_name} missing named_thread_ids")
     for role, instance_id in agent_ids.items():
         if not valid_runtime_agent_instance_id(instance_id):
-            errors.append(f"{gate_name} temporary_subagent_ids.{role} is not a real agent/thread id")
-    display_names = maps.get("temporary_subagent_display_names", {})
-    if not display_names:
-        errors.append(f"{gate_name} missing temporary_subagent_display_names")
+            errors.append(f"{gate_name} named_thread_ids.{role} is not a real agent/thread id")
+    thread_titles = maps.get("named_thread_titles", {})
+    if not thread_titles:
+        errors.append(f"{gate_name} missing named_thread_titles")
     for role in agent_ids:
-        display_error = validate_agent_display_name(scalars.get("subject_id", ""), role, display_names.get(role, ""))
-        if display_error:
-            errors.append(f"{gate_name} {display_error}")
-    extra_display_roles = sorted(set(display_names) - set(agent_ids))
-    for role in extra_display_roles:
-        errors.append(f"{gate_name} temporary_subagent_display_names.{role} has no matching temporary_subagent_ids entry")
+        title_error = validate_agent_thread_title(scalars.get("subject_id", ""), role, thread_titles.get(role, ""))
+        if title_error:
+            errors.append(f"{gate_name} {title_error}")
+    extra_title_roles = sorted(set(thread_titles) - set(agent_ids))
+    for role in extra_title_roles:
+        errors.append(f"{gate_name} named_thread_titles.{role} has no matching named_thread_ids entry")
     instance_to_roles: dict[str, list[str]] = {}
     for role, instance_id in agent_ids.items():
         instance_to_roles.setdefault(instance_id.strip(), []).append(role)
     for instance_id, roles in sorted(instance_to_roles.items()):
         if len(roles) > 1:
             errors.append(
-                f"{gate_name} temporary_subagent_ids reuse one agent id for multiple roles: "
+                f"{gate_name} named_thread_ids reuse one agent id for multiple roles: "
                 f"{instance_id} -> {', '.join(sorted(roles))}"
             )
 
     if not has_any_role(agent_ids, {"runner_monitor", "runner"}):
-        errors.append(f"{gate_name} missing Runner Monitor temporary subagent id")
+        errors.append(f"{gate_name} missing Runner Monitor named thread id")
     if not has_any_role(agent_ids, {"evidence_quality_checker", "quality_checker"}):
-        errors.append(f"{gate_name} missing Quality Checker temporary subagent id")
+        errors.append(f"{gate_name} missing Quality Checker named thread id")
 
     instance_status = maps.get("agent_instance_status", {})
     if not instance_status:
@@ -5846,7 +6231,6 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
     status_refs = maps.get("agent_status_refs", {})
     if not status_refs:
         errors.append(f"{gate_name} missing agent_status_refs")
-    output_refs = maps.get("agent_output_refs", {})
     if not output_refs:
         errors.append(f"{gate_name} missing agent_output_refs")
     output_paths: dict[str, Path] = {}
@@ -5884,7 +6268,6 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         else:
             seen_fingerprints[fingerprint] = role
 
-    pre_run_checks = maps.get("pre_run_required_checks", {})
     if not pre_run_checks:
         errors.append(f"{gate_name} missing pre_run_required_checks")
     for role, decision in pre_run_checks.items():
@@ -5892,7 +6275,7 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         if normalized not in AGENT_RUNTIME_ALLOW_DECISIONS:
             errors.append(f"{gate_name} pre_run_required_checks.{role} must be allow/pass before Runner starts")
         if role not in agent_ids:
-            errors.append(f"{gate_name} pre_run_required_checks.{role} has no matching temporary_subagent_ids entry")
+            errors.append(f"{gate_name} pre_run_required_checks.{role} has no matching named_thread_ids entry")
 
     if not has_any_role(pre_run_checks, {"runner_monitor", "runner"}):
         errors.append(f"{gate_name} missing Runner Monitor pre-run allow")
@@ -5906,11 +6289,6 @@ def validate_agent_runtime_gate_file(gate_path: Path) -> list[str]:
         value = preflight.get(key, "")
         if not truthy(value):
             errors.append(f"{gate_name} multi_agent_preflight.{key} must be true before formal Runner starts")
-
-    authority_refs = maps.get("authority_refs", {})
-    for key, value in authority_refs.items():
-        if not validate_agent_runtime_ref(value, gate_path):
-            errors.append(f"{gate_name} authority_refs.{key} points to missing authority ref: {value}")
     return errors
 
 
@@ -5946,8 +6324,11 @@ def cmd_multi_agent_preflight(args: argparse.Namespace) -> int:
     if errors:
         raise WorkflowError("Multi-agent preflight failed:\n" + "\n".join(errors))
     scalars, maps = read_simple_yaml_maps(gate_path)
-    agent_count = len(maps.get("temporary_subagent_ids", {}))
-    print(f"multi-agent-preflight-ok path={display_path(gate_path)} agents={agent_count}")
+    backend = scalars.get("formal_runtime_backend", "").strip() or "named_owner_thread"
+    role_count = len(maps.get("named_thread_ids", {}))
+    if backend == "server_detached_role_only":
+        role_count = len(maps.get("agent_output_refs", {}))
+    print(f"multi-agent-preflight-ok path={display_path(gate_path)} agents={role_count} backend={backend}")
     print(f"formal_runner_allowed={scalars.get('formal_runner_allowed', '')}")
     print(f"formal_evidence_allowed={scalars.get('formal_evidence_allowed', '')}")
     return 0
@@ -6087,12 +6468,30 @@ def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
     if not gate_path.exists():
         raise WorkflowError(f"Missing agent runtime gate: {display_path(gate_path)}")
     scalars, maps = read_simple_yaml_maps(gate_path)
-    agent_ids = maps.get("temporary_subagent_ids", {})
+    backend = scalars.get("formal_runtime_backend", "").strip() or "named_owner_thread"
+    if backend == "server_detached_role_only":
+        output_refs = maps.get("agent_output_refs", {})
+        print(f"agent-cleanup-plan path={display_path(gate_path)}")
+        print(f"subject_id={scalars.get('subject_id', '')}")
+        print(f"thread_archive_policy={scalars.get('thread_archive_policy', '')}")
+        print(f"archived_threads_record={scalars.get('archived_threads_record', '')}")
+        print("cleanup_mode=not_applicable_no_named_threads")
+        print(f"role_output_count={len(output_refs)}")
+        print("keep_count=0")
+        print("archive_count=0")
+        print("unknown_count=0")
+        print("duplicate_instance_ids=0")
+        return 0
+    agent_ids = maps.get("named_thread_ids", {})
     statuses = maps.get("agent_instance_status", {})
     output_refs = maps.get("agent_output_refs", {})
+    current_stage_status = scalars.get("current_stage_status", "").strip().lower()
+    archive_after_closeout_only = truthy(scalars.get("archive_after_closeout_only", ""))
+    closeout_statuses = {"closed_out", "closeout_complete", "completed", "failed", "stopped", "cancelled"}
+    archive_deferred = archive_after_closeout_only and current_stage_status not in closeout_statuses
 
     keep: list[tuple[str, str, str]] = []
-    close: list[tuple[str, str, str]] = []
+    archive: list[tuple[str, str, str]] = []
     unknown: list[tuple[str, str, str]] = []
     instance_to_roles: dict[str, list[str]] = {}
     for role, instance_id in sorted(agent_ids.items()):
@@ -6102,30 +6501,36 @@ def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
         if status in AGENT_CLEANUP_KEEP_STATUSES:
             keep.append(row)
         elif status in AGENT_CLEANUP_CLOSE_STATUSES:
-            close.append(row)
+            if archive_deferred:
+                keep.append((role, instance_id, f"{status}:archive_deferred_until_closeout"))
+            else:
+                archive.append(row)
         else:
             unknown.append(row)
 
     print(f"agent-cleanup-plan path={display_path(gate_path)}")
     print(f"subject_id={scalars.get('subject_id', '')}")
-    print(f"retention_policy={scalars.get('right_sidebar_retention_policy', '')}")
-    print(f"closed_agents_record={scalars.get('closed_agents_record', '')}")
+    print(f"thread_archive_policy={scalars.get('thread_archive_policy', '')}")
+    print(f"archived_threads_record={scalars.get('archived_threads_record', '')}")
+    print(f"current_stage_status={current_stage_status}")
+    print(f"archive_after_closeout_only={str(archive_after_closeout_only).lower()}")
+    print(f"archive_deferred_until_closeout={str(archive_deferred).lower()}")
     print(f"keep_count={len(keep)}")
     for role, instance_id, status in keep:
         print(f"KEEP role={role} id={instance_id} status={status}")
-    print(f"close_count={len(close)}")
-    for role, instance_id, status in close:
+    print(f"archive_count={len(archive)}")
+    for role, instance_id, status in archive:
         output_ref = output_refs.get(role, "")
-        print(f"CLOSE role={role} id={instance_id} status={status} output_ref={output_ref}")
+        print(f"ARCHIVE role={role} thread_id={instance_id} status={status} output_ref={output_ref}")
     print(f"unknown_count={len(unknown)}")
     for role, instance_id, status in unknown:
-        print(f"UNKNOWN role={role} id={instance_id} status={status}")
+        print(f"UNKNOWN role={role} thread_id={instance_id} status={status}")
     duplicate_instances = {instance_id: roles for instance_id, roles in instance_to_roles.items() if len(roles) > 1}
     print(f"duplicate_instance_ids={len(duplicate_instances)}")
     for instance_id, roles in sorted(duplicate_instances.items()):
         print(f"DUPLICATE id={instance_id} roles={','.join(sorted(roles))}")
     if unknown:
-        raise WorkflowError("Agent cleanup plan has unknown agent statuses; do not close blindly")
+        raise WorkflowError("Agent cleanup plan has unknown thread statuses; do not archive blindly")
     return 0
 
 
@@ -6238,28 +6643,187 @@ def cmd_list_workflow_files(_: argparse.Namespace) -> int:
     return 1 if errors else 0
 
 
+ENGLISH_DOC_PROSE_PATTERNS = [
+    "Use when ",
+    "Must not change",
+    "Training entry modes",
+    "What the source claims",
+    "Use this section",
+    "Fill only when",
+    "Shape must be written",
+    "Protected semantics",
+    "Defaults must preserve",
+    "Do not change inside",
+]
+
+
+def is_english_only_heading(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped.startswith("#"):
+        return False
+    if re.search(r"[\u4e00-\u9fff]", stripped):
+        return False
+    # 允许纯机器标识短标题，但模板文档的英文-only 说明标题应当给中文释义。
+    return bool(re.search(r"[A-Za-z]{3,}", stripped))
+
+
+def doc_language_policy_errors() -> list[str]:
+    errors: list[str] = []
+    language_marker_requirements = {
+        "docs/workflow/START_HERE.md": ["正文必须使用中文", "不允许整段英文说明"],
+        "docs/workflow/WORKFLOW_KERNEL.md": ["文档语言硬规则", "正文必须使用中文"],
+        "docs/workflow/protocols/module_template_selection.md": ["文档语言边界", "不能写整段英文说明"],
+        "experiments/templates/modules/README.md": ["训练入口模式", "不允许改变"],
+    }
+    for path_text, markers in language_marker_requirements.items():
+        path = REPO_ROOT / path_text
+        if not path.exists():
+            errors.append(f"missing language policy file: {path_text}")
+            continue
+        text = read_text(path)
+        for marker in markers:
+            if marker not in text:
+                errors.append(f"{path_text} missing Chinese document language marker: {marker}")
+
+    scan_roots = [
+        REPO_ROOT / "docs" / "workflow" / "START_HERE.md",
+        REPO_ROOT / "docs" / "workflow" / "WORKFLOW_KERNEL.md",
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "module_template_selection.md",
+        REPO_ROOT / "experiments" / "templates",
+    ]
+    candidates: list[Path] = []
+    for root in scan_roots:
+        if root.is_file():
+            candidates.append(root)
+        elif root.exists():
+            candidates.extend(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in {".md", ".yaml", ".yml", ".py"})
+
+    for path in sorted(set(candidates)):
+        if "/archive/" in ("/" + rel(path).replace("\\", "/")):
+            continue
+        text = read_text(path)
+        in_fence = False
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            if path.suffix.lower() == ".md" and is_english_only_heading(line):
+                errors.append(f"{rel(path)}:{line_number} has English-only heading; add Chinese wording")
+            for phrase in ENGLISH_DOC_PROSE_PATTERNS:
+                if phrase in line:
+                    errors.append(f"{rel(path)}:{line_number} contains English prose phrase: {phrase}")
+    return errors
+
+
+def local_gtpj_workflow_skill_errors() -> list[str]:
+    errors: list[str] = []
+    skill_path = LOCAL_GTPJ_WORKFLOW_SKILL_PATH
+    if not skill_path.exists():
+        errors.append(f"missing local gtpj-workflow skill mirror: {skill_path}")
+        return errors
+    text = read_text(skill_path)
+    required_marker = "代码审核不被 `server_frozen_runner` 豁免"
+    for marker in [
+        "GitHub documentation is canonical",
+        "local skill mirrors the repository rules",
+        "docs/workflow/START_HERE.md",
+        "docs/workflow/WORKFLOW_KERNEL.md",
+        "same GitHub truth source",
+        "开启多agents智能体工作流",
+        "不得反复确认",
+        "files_reviewed",
+        "report-new-completions",
+        required_marker,
+    ]:
+        if marker not in text:
+            errors.append(f"local gtpj-workflow skill mirror missing marker: {marker}")
+    for ref_name in ["start_here.md", "workflow_kernel.md", "quick_start.md"]:
+        ref_path = skill_path.parent / "references" / ref_name
+        if not ref_path.exists():
+            errors.append(f"local gtpj-workflow skill reference missing: references/{ref_name}")
+            continue
+        if required_marker not in read_text(ref_path):
+            errors.append(f"local gtpj-workflow skill reference references/{ref_name} missing marker: {required_marker}")
+    return errors
+
+
 def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
     errors.extend(workflow_manifest_errors())
+    errors.extend(doc_language_policy_errors())
+    errors.extend(local_gtpj_workflow_skill_errors())
     required_markers = {
-        "docs/workflow/START_HERE.md": ["formal_runner_allowed", "multi_agent_preflight", "review_tier", "review-1", "strict-3"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["multi-agent-preflight", "formal_evidence_allowed", "review_tier", "review-1", "strict-3"],
+        "docs/workflow/START_HERE.md": [
+            "formal_runner_allowed",
+            "multi_agent_preflight",
+            "review_tier",
+            "review-1",
+            "strict-3",
+            "正文必须使用中文",
+            "框架记录只跟",
+            "formal_pending",
+            "orphan_runtime_plan",
+            "明确入口硬规则",
+            "执行授权",
+            "不得反复确认",
+            "pre_run_planned",
+            "report-new-completions",
+            "代码审核不被 `server_frozen_runner` 豁免",
+        ],
+        "docs/workflow/WORKFLOW_KERNEL.md": [
+            "multi-agent-preflight",
+            "formal_evidence_allowed",
+            "review_tier",
+            "review-1",
+            "strict-3",
+            "文档语言硬规则",
+            "框架记录绑定",
+            "formal_pending",
+            "orphan_runtime_plan",
+            "开启多agents智能体工作流",
+            "live_multi_agent_monitor",
+            "planning gate",
+            "files_reviewed",
+            "独立输出文件",
+            "allow/block/propose",
+            "skill 镜像",
+            "active docs",
+            "helper 测试",
+            "report-new-completions",
+            "代码审核不被 `server_frozen_runner` 豁免",
+        ],
         "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
             "agent_output_refs",
             "agent-cleanup-plan",
-            "temporary_subagent_display_names",
+            "named_thread_titles",
             "<subject_id> | <Role Label>",
+            "files_reviewed",
+            "report-new-completions",
         ],
         "docs/workflow/core/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
-        "docs/workflow/core/TASK_START_CARD.md": ["multi_agent_preflight", "formal_evidence_allowed", "agent_status_refs"],
+        "docs/workflow/core/TASK_START_CARD.md": [
+            "multi_agent_preflight",
+            "formal_evidence_allowed",
+            "agent_status_refs",
+            "role_file_plan",
+            "files_reviewed",
+            "是否需要再次确认",
+        ],
+        "docs/workflow/core/WORKFLOW_ROUTER.md": ["formal_pending", "orphan_runtime_plan"],
         "docs/workflow/protocols/agent_orchestration.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
             "agent_output_refs",
             "agent-cleanup-plan",
             "<subject_id> | <Role Label>",
+            "files_reviewed",
+            "分文件复核",
+            "report-new-completions",
         ],
         "docs/workflow/protocols/ai_cross_review_protocol.md": [
             "owner_participation: not_required",
@@ -6268,9 +6832,9 @@ def workflow_consistency_errors() -> list[str]:
             "fast",
             "review-1",
             "strict-3",
-            "02_codex_temp_agent_pre_review.md",
-            "completed_closed",
-            "close_result_confirms_completion",
+            "02_codex_named_thread_pre_review.md",
+            "completed_archived",
+            "archive_result_confirms_completion",
             "validation_profile",
             "claude_rounds_required",
             "run-ai-cross-review",
@@ -6279,6 +6843,7 @@ def workflow_consistency_errors() -> list[str]:
             "02_focused_diff.md",
             "prompt_profile",
             "blocking-only",
+            "代码审核不被 `server_frozen_runner` 豁免",
         ],
         "docs/workflow/protocols/module_template_selection.md": [
             "feature_adapter_template.py",
@@ -6289,7 +6854,12 @@ def workflow_consistency_errors() -> list[str]:
             "base_code_tag",
             "standard_gzsl_training_template.py",
             "strict_template_entry",
+            "文档语言边界",
+            "框架记录的对象",
         ],
+        "docs/workflow/protocols/experiment_protocol.md": ["formal_pending", "orphan_runtime_plan"],
+        "docs/workflow/protocols/module_trial_protocol.md": ["formal_pending", "orphan_runtime_plan"],
+        "docs/workflow/protocols/mixed_experiment_campaign_protocol.md": ["formal_pending", "orphan_runtime_plan"],
         "docs/workflow/playbooks/innovation.md": [
             "探索 / 正式分界",
             "formal_evidence_allowed",
@@ -6307,6 +6877,7 @@ def workflow_consistency_errors() -> list[str]:
             "multi_agent_preflight:",
             "formal_runner_allowed:",
             "agent_output_refs:",
+            "files_reviewed:",
             "agent_cleanup:",
             "ai_cross_review:",
         ],
@@ -6320,9 +6891,9 @@ def workflow_consistency_errors() -> list[str]:
             "fast",
             "review-1",
             "strict-3",
-            "02_codex_temp_agent_pre_review.md",
-            "completed_closed",
-            "close_result_confirms_completion",
+            "02_codex_named_thread_pre_review.md",
+            "completed_archived",
+            "archive_result_confirms_completion",
             "validation_profile",
             "claude_rounds_required",
             "02_review_brief.md",
@@ -6336,6 +6907,7 @@ def workflow_consistency_errors() -> list[str]:
             "unresolved_blocking_issues: 0",
         ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
+        "experiments/templates/TRIAL_ATTEMPTS_template.md": ["formal_pending", "orphan_runtime_plan", "Status", "Formal"],
         "experiments/templates/modules/README.md": [
             "standard_gzsl_module_framework_template.py",
             "standard_gzsl_training_template.py",
@@ -6354,6 +6926,15 @@ def workflow_consistency_errors() -> list[str]:
         for marker in markers:
             if marker not in text:
                 errors.append(f"{path_text} missing marker: {marker}")
+
+    for path in confirmation_rule_sync_paths():
+        if not path.exists():
+            errors.append(f"missing confirmation rule sync file: {display_path(path)}")
+            continue
+        text = read_text(path)
+        for marker in CONFIRMATION_RULE_REQUIRED_MARKERS:
+            if marker not in text:
+                errors.append(f"{display_path(path)} missing confirmation rule marker: {marker}")
 
     stale_ai_review_phrases = [
         "三轮 AI 交叉审核包",
@@ -6405,6 +6986,21 @@ def cmd_validate_workflow_consistency(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_confirmation_rule_map(_: argparse.Namespace) -> int:
+    print("confirmation-rule-map")
+    print("required_markers:")
+    for marker in CONFIRMATION_RULE_REQUIRED_MARKERS:
+        print(f"- {marker}")
+    print("repo_sync_files:")
+    for path_text in CONFIRMATION_RULE_REPO_SYNC_FILES:
+        print(f"- {path_text}")
+    print("skill_sync_files:")
+    for path in confirmation_rule_sync_paths():
+        if path == LOCAL_GTPJ_WORKFLOW_SKILL_PATH or str(path).startswith(str(LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent)):
+            print(f"- {display_path(path)}")
+    return 0
+
+
 def resolve_ai_cross_review_path(path_text: str) -> Path:
     path = Path(path_text)
     if not path.is_absolute():
@@ -6434,7 +7030,7 @@ def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], 
         return [
             "00_task.md",
             "01_codex_actions.md",
-            "02_codex_temp_agent_pre_review.md",
+            "02_codex_named_thread_pre_review.md",
             "02_diff.patch",
             "02_focused_diff.md",
             "02_review_brief.md",
@@ -6445,7 +7041,7 @@ def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], 
     required = [
         "00_task.md",
         "01_codex_actions.md",
-        "02_codex_temp_agent_pre_review.md",
+        "02_codex_named_thread_pre_review.md",
         "02_diff.patch",
         "02_focused_diff.md",
         "02_review_brief.md",
@@ -6501,23 +7097,23 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             elif verdict_match.group(1).strip().lower() != "pass":
                 errors.append(f"{filename} verdict must be pass")
 
-    pre_review_path = pack_dir / "02_codex_temp_agent_pre_review.md"
+    pre_review_path = pack_dir / "02_codex_named_thread_pre_review.md"
     if tiered_pack and pre_review_path.is_file():
         pre_text = read_text(pre_review_path)
         for marker in [
-            "temporary_agent_required: true",
+            "named_thread_required: true",
             "verdict: pass",
-            "lifecycle: completed_closed",
-            "closed_before_claude: true",
-            "close_result_confirms_completion: true",
+            "lifecycle: completed_archived",
+            "archived_before_claude: true",
+            "archive_result_confirms_completion: true",
         ]:
             if marker not in pre_text:
-                errors.append(f"02_codex_temp_agent_pre_review.md missing marker: {marker}")
-        pre_agent_id = scalar_from_text(pre_text, "agent_instance_id")
-        pre_close_result = scalar_from_text(pre_text, "close_result")
-        if not codex_pre_review_close_result_text_valid(pre_agent_id, pre_close_result):
+                errors.append(f"02_codex_named_thread_pre_review.md missing marker: {marker}")
+        pre_thread_id = scalar_from_text(pre_text, "thread_id")
+        pre_archive_result = scalar_from_text(pre_text, "archive_result")
+        if not codex_pre_review_archive_result_text_valid(pre_thread_id, pre_archive_result):
             errors.append(
-                "02_codex_temp_agent_pre_review.md close_result must include matching agent id, previous_status=completed, and closed: true"
+                "02_codex_named_thread_pre_review.md archive_result must include matching thread id, previous_status=completed, and archived: true"
             )
 
     final_path = pack_dir / "10_final_decision.md"
@@ -6547,8 +7143,8 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             for marker in [
                 "review_tier:",
                 "claude_rounds_required:",
-                "codex_temp_agent_pre_review: pass",
-                "codex_temp_agent_lifecycle: completed_closed",
+                "codex_named_thread_pre_review: pass",
+                "codex_named_thread_lifecycle: completed_archived",
             ]:
                 if marker not in final_text:
                     errors.append(f"10_final_decision.md missing marker: {marker}")
@@ -6754,7 +7350,7 @@ claude_code_read_only: true
 {chr(10).join(f"- `{item}`" for item in context_files) if context_files else "- 未找到 Claude 项目上下文文件"}
 - `00_task.md`
 - `01_codex_actions.md`
-- `02_codex_temp_agent_pre_review.md`
+- `02_codex_named_thread_pre_review.md`
 - `02_review_brief.md`
 - `02_focused_diff.md`
 - `03_validation.md`
@@ -6852,7 +7448,7 @@ def build_claude_prompt_ascii(
         *existing_claude_context_files(),
         "00_task.md",
         "01_codex_actions.md",
-        "02_codex_temp_agent_pre_review.md",
+        "02_codex_named_thread_pre_review.md",
         "02_review_brief.md",
         "02_focused_diff.md",
         "03_validation.md",
@@ -6958,7 +7554,7 @@ inputs_checked:
 - docs/workflow/CLAUDE_CONTEXT.md
 - 00_task.md
 - 01_codex_actions.md
-- 02_codex_temp_agent_pre_review.md
+- 02_codex_named_thread_pre_review.md
 - 02_review_brief.md
 - 02_focused_diff.md
 - 03_validation.md
@@ -7007,51 +7603,51 @@ remaining_blocking_issues: {remaining}
 """
 
 
-def codex_pre_review_close_result_text_valid(agent_id: str, close_result: str) -> bool:
-    text = close_result.strip()
+def codex_pre_review_archive_result_text_valid(thread_id: str, archive_result: str) -> bool:
+    text = archive_result.strip()
     lower = text.lower()
     return (
-        bool(agent_id)
-        and agent_id in text
+        bool(thread_id)
+        and thread_id in text
         and "previous_status" in lower
         and "completed" in lower
-        and ("closed: true" in lower or '"closed": true' in lower or "closed=true" in lower)
+        and ("archived: true" in lower or '"archived": true' in lower or "archived=true" in lower)
     )
 
 
-def codex_temp_pre_review_passed(args: argparse.Namespace) -> bool:
-    close_result_confirms_completion = codex_pre_review_close_result_valid(args)
+def codex_named_thread_pre_review_passed(args: argparse.Namespace) -> bool:
+    archive_result_confirms_completion = codex_pre_review_archive_result_valid(args)
     return (
         args.codex_pre_review_verdict == "pass"
-        and bool(args.codex_pre_review_agent_id.strip())
-        and bool(args.codex_pre_review_agent_name.strip())
-        and args.codex_pre_review_lifecycle == "completed_closed"
-        and close_result_confirms_completion
+        and bool(args.codex_pre_review_thread_id.strip())
+        and bool(args.codex_pre_review_thread_title.strip())
+        and args.codex_pre_review_lifecycle == "completed_archived"
+        and archive_result_confirms_completion
     )
 
 
-def codex_pre_review_close_result_valid(args: argparse.Namespace) -> bool:
-    return codex_pre_review_close_result_text_valid(
-        args.codex_pre_review_agent_id.strip(),
-        args.codex_pre_review_close_result.strip(),
+def codex_pre_review_archive_result_valid(args: argparse.Namespace) -> bool:
+    return codex_pre_review_archive_result_text_valid(
+        args.codex_pre_review_thread_id.strip(),
+        args.codex_pre_review_archive_result.strip(),
     )
 
 
-def make_codex_temp_agent_pre_review_md(args: argparse.Namespace) -> str:
-    passed = codex_temp_pre_review_passed(args)
-    close_result_confirms_completion = codex_pre_review_close_result_valid(args)
-    return f"""codex_temp_agent_pre_review: {"pass" if passed else "blocked"}
-temporary_agent_required: true
-agent_instance_id: {args.codex_pre_review_agent_id or "missing"}
-ui_display_name: {args.codex_pre_review_agent_name or "missing"}
+def make_codex_named_thread_pre_review_md(args: argparse.Namespace) -> str:
+    passed = codex_named_thread_pre_review_passed(args)
+    archive_result_confirms_completion = codex_pre_review_archive_result_valid(args)
+    return f"""codex_named_thread_pre_review: {"pass" if passed else "blocked"}
+named_thread_required: true
+thread_id: {args.codex_pre_review_thread_id or "missing"}
+thread_title: {args.codex_pre_review_thread_title or "missing"}
 lifecycle: {args.codex_pre_review_lifecycle}
-closed_before_claude: {str(close_result_confirms_completion).lower()}
-close_result_confirms_completion: {str(close_result_confirms_completion).lower()}
-close_result: {args.codex_pre_review_close_result or "missing"}
+archived_before_claude: {str(archive_result_confirms_completion).lower()}
+archive_result_confirms_completion: {str(archive_result_confirms_completion).lower()}
+archive_result: {args.codex_pre_review_archive_result or "missing"}
 verdict: {args.codex_pre_review_verdict}
 blocking_issues:
-{"" if passed else "- missing passing temporary Codex pre-review agent evidence or close_result"}
-notes: {args.codex_pre_review_notes or "temporary agent must be closed before Claude Code review starts"}
+{"" if passed else "- missing passing named Codex pre-review thread evidence or archive_result"}
+notes: {args.codex_pre_review_notes or "named Codex thread must be archived before Claude Code review starts"}
 """
 
 
@@ -7133,7 +7729,7 @@ def validate_ai_cross_review_tier_args(args: argparse.Namespace, changed_files: 
 
 
 def ai_cross_review_claude_evidence_refs(rounds_required: int) -> str:
-    refs = ["02_codex_temp_agent_pre_review.md"]
+    refs = ["02_codex_named_thread_pre_review.md"]
     for index in range(rounds_required):
         claude_file, codex_file = AI_CROSS_REVIEW_CLAUDE_ROUND_FILES[index]
         refs.append(claude_file)
@@ -7166,8 +7762,8 @@ rounds_completed: {len(verdicts)}
 claude_rounds_required: {rounds_required}
 claude_rounds_completed: {len(verdicts)}
 claude_code_read_only: true
-codex_temp_agent_pre_review: {"pass" if pre_review_passed else "blocked"}
-codex_temp_agent_lifecycle: completed_closed
+codex_named_thread_pre_review: {"pass" if pre_review_passed else "blocked"}
+codex_named_thread_lifecycle: completed_archived
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: {str(validation_passed).lower()}
 unresolved_blocking_issues: {unresolved}
@@ -7188,7 +7784,7 @@ def cmd_run_ai_cross_review(args: argparse.Namespace) -> int:
     if not commands:
         raise WorkflowError("run-ai-cross-review requires machine validation; keep defaults or pass --validation-command")
     rounds_required = AI_CROSS_REVIEW_TIER_ROUNDS[args.review_tier]
-    pre_review_passed = codex_temp_pre_review_passed(args)
+    pre_review_passed = codex_named_thread_pre_review_passed(args)
 
     write_review_file(
         pack_dir,
@@ -7205,7 +7801,7 @@ claude_rounds_required: {rounds_required}
 review_reason: {args.review_reason or "重要代码/工作流改动需要按 review_tier 执行 AI 交叉审核。"}
 acceptance_gates:
 - machine_gates_passed: true
-- codex_temp_agent_pre_review: pass
+- codex_named_thread_pre_review: pass
 - claude_rounds_required: {rounds_required}
 - unresolved_blocking_issues: 0
 """,
@@ -7229,8 +7825,8 @@ risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制�
     )
     write_review_file(
         pack_dir,
-        "02_codex_temp_agent_pre_review.md",
-        make_codex_temp_agent_pre_review_md(args),
+        "02_codex_named_thread_pre_review.md",
+        make_codex_named_thread_pre_review_md(args),
         overwrite=args.overwrite,
     )
     write_review_file(pack_dir, "02_diff.patch", build_ai_cross_review_diff(exclude_prefixes=review_exclude_prefixes), overwrite=args.overwrite)
@@ -7266,9 +7862,9 @@ claim: 机器验证命令已运行。
 status: {"verified" if validation_passed else "false"}
 evidence_ref: 03_validation.md
 
-claim: Claude Code 前置临时 Codex agent 已完成预审并关闭。
+claim: Claude Code 前置命名 Codex 线程已完成预审并归档。
 status: {"verified" if pre_review_passed else "false"}
-evidence_ref: 02_codex_temp_agent_pre_review.md
+evidence_ref: 02_codex_named_thread_pre_review.md
 """,
         overwrite=True,
     )
@@ -7606,8 +8202,6 @@ MIXED_EXPERIMENT_LABELS = {
 
 def parse_mixed_experiment_phrase(phrase: str) -> dict[str, int]:
     normalized = phrase.strip().lower().replace("，", "+").replace(",", "+").replace("、", "+")
-    if not normalized.startswith("跑"):
-        return {}
     requested: dict[str, int] = {}
     for count_text, label in re.findall(r"(\d+)\s*([a-zA-Z]+|[\u4e00-\u9fff]+)", normalized):
         kind = MIXED_EXPERIMENT_LABELS.get(label)
@@ -7620,6 +8214,20 @@ def parse_mixed_experiment_phrase(phrase: str) -> dict[str, int]:
 def format_requested_mix(requested: dict[str, int]) -> str:
     order = ["innovation", "tune", "ablation", "confirmation", "debug"]
     return ", ".join(f"{kind}={requested[kind]}" for kind in order if requested.get(kind))
+
+
+def extract_requested_job_count(phrase: str) -> int:
+    matches = re.findall(r"(\d+)\s*(?:轮|组|个|次|jobs?|runs?)", phrase, flags=re.IGNORECASE)
+    return int(matches[-1]) if matches else 0
+
+
+def is_generic_experiment_planning_phrase(phrase: str) -> bool:
+    normalized = phrase.strip().lower().rstrip("。")
+    if any(token in normalized for token in ["规划", "计划", "下一轮", "下轮", "后续实验", "实验清单"]):
+        return "实验" in normalized or "工作流" in normalized or "跑" in normalized
+    if re.search(r"(做|跑|开|来)\s*\d+\s*(轮|组|个|次)\s*实验", normalized):
+        return True
+    return False
 
 
 def owner_phrase_base_version(phrase: str) -> str | None:
@@ -7646,7 +8254,7 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
     base_version = current_active_version(data)
     normalized = phrase.strip().rstrip("。")
     requested_mix = parse_mixed_experiment_phrase(normalized)
-    if len(requested_mix) >= 2:
+    if requested_mix and (len(requested_mix) >= 2 or is_generic_experiment_planning_phrase(normalized)):
         return {
             "owner_phrase": normalized,
             "task_type": "mixed experiment campaign",
@@ -7660,6 +8268,33 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "closed_loop": "plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync",
             "gates": "campaign_manifest, work_items, agent_runtime, multi_agent_preflight, artifact_boundary, cleanup",
             "next_action": "create campaign manifest and agent_runtime.yaml after owner approval",
+        }
+    if is_generic_experiment_planning_phrase(normalized):
+        requested_jobs = extract_requested_job_count(normalized)
+        target = "next experiment plan"
+        if requested_jobs:
+            target = f"next experiment plan with requested budget {requested_jobs}"
+        return {
+            "owner_phrase": normalized,
+            "task_type": "experiment planning",
+            "base_version": base_version,
+            "target": target,
+            "writes": "none; planning gate is read-only until owner accepts a plan",
+            "agent_mode": "role_only for planning; real_multi_agent only after formal run is selected",
+            "agent_instance_mode": "role_only",
+            "playbook": "docs/workflow/START_HERE.md + relevant playbook after task type is selected",
+            "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> plan-experiments",
+            "closed_loop": "status -> planning gate -> owner accepts plan -> agent_runtime/preflight -> runner",
+            "runner_scope": "none",
+            "formal_runner_allowed": "false until experiment_type, evidence_ref, and agent_runtime gate are clear",
+            "formal_evidence_allowed": "false during planning",
+            "agent_runtime_gate": "not_required for read-only planning",
+            "multi_agent_preflight": "not_required for read-only planning",
+            "owner_monitor_mode": "not_required until formal Runner",
+            "agent_activity_stream": "not_required until formal Runner",
+            "gates": "formal ledger, baseline_repro_status, evidence_ref, claim_scope, budget, stop_condition",
+            "blocked_reason": "runner blocked until planning table selects concrete experiment types and formal evidence refs",
+            "next_action": "run plan-experiments to produce Evidence Summary, Candidate Decision, and Current Run Plan",
         }
     if normalized in {"读论文", "找创新点", "提取创新", "从论文读取获得创新"}:
         return {
@@ -7718,7 +8353,7 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
             "target": "paper-derived idea pipeline",
             "writes": "Research first; GitHub idea_tree after source/mechanism gate; experiments only after selected idea and owner approval",
             "agent_mode": "role_only for intake/triage; real_multi_agent when code starts or formal trial evidence is planned",
-            "agent_instance_mode": "role_only until formal trial uses temporary_subagent",
+            "agent_instance_mode": "role_only until formal trial uses named_owner_thread",
             "playbook": "docs/workflow/playbooks/paper_to_experiment.md",
             "daily_read_chain": "START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/paper_to_experiment.md",
             "closed_loop": "paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue -> trial_preflight -> runner_evidence -> idea_feedback",
@@ -7873,7 +8508,7 @@ def fill_mini_card_defaults(card: dict[str, str]) -> dict[str, str]:
         filled.setdefault("owner_monitor_mode", "not_required")
         filled.setdefault("agent_activity_stream", "not_required")
         filled.setdefault("blocked_reason", "none")
-    filled.setdefault("agent_instance_mode", "temporary_subagent" if formal_intent else "role_only")
+    filled.setdefault("agent_instance_mode", "named_owner_thread" if formal_intent else "role_only")
     filled.setdefault("requested_mix", "not_applicable")
     filled.setdefault("playbook", "not_applicable")
     filled.setdefault("daily_read_chain", "START_HERE.md -> WORKFLOW_KERNEL.md")
@@ -7913,6 +8548,324 @@ def cmd_start(args: argparse.Namespace) -> int:
     return 0
 
 
+FORMAL_PENDING_STATUSES = {"planned", "pending", "pre_run", "pre_run_gated", "ready_to_run"}
+
+
+def markdown_table_rows(text: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|") or not stripped.endswith("|"):
+            continue
+        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
+        if not cells or all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+            continue
+        if cells and cells[0].lower() in {"id", "tune id", "attempt", "experiment"}:
+            continue
+        rows.append(cells)
+    return rows
+
+
+def collect_formal_pending_rows(limit: int = 8) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for version_dir in sorted((REPO_ROOT / "experiments").glob("v*")):
+        if not version_dir.is_dir():
+            continue
+        for kind in ["tune", "ablation", "confirmation"]:
+            index_path = version_dir / kind / "INDEX.md"
+            if not index_path.exists():
+                continue
+            for cells in markdown_table_rows(read_text(index_path)):
+                lowered = [cell.lower() for cell in cells]
+                status = next((cell for cell in lowered if cell in FORMAL_PENDING_STATUSES), "")
+                if status:
+                    rows.append(
+                        {
+                            "subject": cells[0],
+                            "type": f"{version_dir.name}/{kind}",
+                            "status": status,
+                            "ref": rel(index_path),
+                        }
+                    )
+                    if len(rows) >= limit:
+                        return rows
+    attempts_root = REPO_ROOT / "experiments" / "module_trials"
+    for attempts_path in sorted(attempts_root.glob("**/ATTEMPTS.md")):
+        for cells in markdown_table_rows(read_text(attempts_path)):
+            lowered = [cell.lower() for cell in cells]
+            status = next((cell for cell in lowered if cell in FORMAL_PENDING_STATUSES), "")
+            subject = next((cell for cell in cells if cell.startswith("ATTEMPT-")), cells[0] if cells else "")
+            if status and subject:
+                rows.append(
+                    {
+                        "subject": subject,
+                        "type": "trial-internal",
+                        "status": status,
+                        "ref": rel(attempts_path),
+                    }
+                )
+                if len(rows) >= limit:
+                    return rows
+    return rows
+
+
+def runtime_batch_count() -> int:
+    batches = REPO_ROOT / ".gtpj_runtime" / "batches"
+    if not batches.exists():
+        return 0
+    return sum(1 for item in batches.iterdir() if item.is_dir())
+
+
+def planning_candidate_decision(task_type: str, requested_mix: dict[str, int], base_version: str, evidence: dict[str, str]) -> list[list[str]]:
+    rows: list[list[str]] = []
+    confirmed = evidence.get("confirmation_status") == "confirmed" and evidence.get("confirmed_H") not in {"", "pending"}
+    if requested_mix.get("confirmation") or task_type == "confirmation":
+        rows.append(
+            [
+                f"{base_version}:best_or_baseline",
+                "confirmation_target",
+                f"baseline_repro_status:{base_version}",
+                "none" if evidence.get("best_observed_H") else "missing_best_observed_H",
+                "exact_repeat",
+                "only exact restoration if H reaches restore_target_H",
+                "plan up to 5 same-seed exact repeats",
+            ]
+        )
+    if requested_mix.get("tune") or task_type == "tune":
+        rows.append(
+            [
+                f"{base_version}:tune_space",
+                "search_candidate",
+                f"config:{base_version}",
+                "comparison reference is unconfirmed" if not confirmed else "none",
+                "keep_for_search",
+                "search direction only; not confirmation or promotion",
+                "generate config-only tune jobs from current config",
+            ]
+        )
+    if requested_mix.get("innovation") or "innovation" in task_type:
+        idea = next_ready_trial_idea(load_idea_tree(), base_version)
+        rows.append(
+            [
+                str(idea.get("idea_id", "no_ready_idea")) if idea else "no_ready_idea",
+                "innovation_candidate",
+                "idea_tree selected queue",
+                "none" if idea else "missing selected ready idea",
+                "start_trial" if idea else "blocked",
+                "new method/trial evidence only after source and interface gates",
+                "create or bind trial before runner",
+            ]
+        )
+    if requested_mix.get("ablation") or task_type == "ablation":
+        rows.append(
+            [
+                f"{base_version}:controlled_factor",
+                "ablation_candidate",
+                "formal subject result/quality",
+                "target factor must be named",
+                "run_ablation_after_interface_gate",
+                "single-factor contribution only",
+                "ask/derive exact factor before batch",
+            ]
+        )
+    if not rows:
+        rows.append(
+            [
+                f"{base_version}:current_state",
+                "state_review",
+                "repo + formal ledgers",
+                "experiment type missing",
+                "blocked",
+                "no scientific claim",
+                "choose tune / ablation / confirmation / innovation",
+            ]
+        )
+    return rows
+
+
+def planning_run_plan_rows(task_type: str, requested_mix: dict[str, int], base_version: str, max_jobs: int) -> list[list[str]]:
+    rows: list[list[str]] = []
+    total_requested = sum(requested_mix.values())
+    default_jobs = max_jobs if max_jobs > 0 else 1
+    if requested_mix:
+        for kind in ["innovation", "tune", "ablation", "confirmation", "debug"]:
+            count = requested_mix.get(kind, 0)
+            if not count:
+                continue
+            work_item_id = {
+                "innovation": "INNOV",
+                "tune": "TUNE",
+                "ablation": "ABL",
+                "confirmation": "CONFIRM",
+                "debug": "DEBUG",
+            }[kind]
+            if kind == "confirmation":
+                budget = f"max {min(count, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS)} exact repeats per candidate"
+                fingerprint = "exact_repeat: code/config/data/eval/seed unchanged"
+                stop = "stop on H >= restore_target_H or after 5 attempts"
+                ledger = f"experiments/{base_version}/confirmation/INDEX.md or trial ATTEMPTS.md"
+            elif kind == "tune":
+                budget = f"max {count} tune jobs"
+                fingerprint = "changed_config_not_exact_repeat"
+                stop = "stop at budget or if quality/interface gate blocks"
+                ledger = f"experiments/{base_version}/tune/INDEX.md"
+            elif kind == "innovation":
+                budget = f"max {count} innovation work items"
+                fingerprint = "new_trial_candidate"
+                stop = "stop if source/interface/code review blocks"
+                ledger = "experiments/module_trials/INDEX.md + trial ATTEMPTS.md"
+            elif kind == "ablation":
+                budget = f"max {count} ablation jobs"
+                fingerprint = "single_factor_change_not_exact_repeat"
+                stop = "stop if target factor or interface semantics are unclear"
+                ledger = f"experiments/{base_version}/ablation/INDEX.md or trial ATTEMPTS.md"
+            else:
+                budget = f"max {count} debug jobs"
+                fingerprint = "debug_only"
+                stop = "stop after pipeline proof or first blocking failure"
+                ledger = "debug record only; formal_evidence=false"
+            rows.append([work_item_id, kind, f"{base_version}:{kind}", "canonical evidence required before freeze", fingerprint, budget, stop, ledger])
+        return rows
+    if task_type == "confirmation":
+        rows.append(
+            [
+                "CONFIRM-001",
+                "confirmation",
+                f"{base_version}:best_or_baseline",
+                "baseline_repro_status",
+                "exact_repeat: code/config/data/eval/seed unchanged",
+                f"max {min(default_jobs, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS)} exact repeats",
+                "stop on H >= restore_target_H or after 5 attempts",
+                f"experiments/{base_version}/confirmation/INDEX.md or trial ATTEMPTS.md",
+            ]
+        )
+    elif task_type == "tune":
+        rows.append(
+            [
+                "TUNE-001",
+                "tune",
+                f"{base_version}:tune_space",
+                f"experiments/{base_version}/config.yaml",
+                "changed_config_not_exact_repeat",
+                f"max {default_jobs} tune jobs",
+                "stop at budget or quality gate block",
+                f"experiments/{base_version}/tune/INDEX.md",
+            ]
+        )
+    else:
+        rows.append(
+            [
+                "PLAN-001",
+                task_type,
+                f"{base_version}:current_state",
+                "repo + formal ledgers",
+                "declare before runner",
+                f"max {default_jobs} jobs after type is resolved",
+                "blocked until experiment type and evidence_ref are clear",
+                "formal ledger for resolved type",
+            ]
+        )
+    return rows
+
+
+def cmd_plan_experiments(args: argparse.Namespace) -> int:
+    phrase = args.phrase.strip()
+    requested_mix = parse_mixed_experiment_phrase(phrase)
+    requested_max_jobs = int(args.max_jobs or 0) or extract_requested_job_count(phrase)
+    try:
+        card = fill_mini_card_defaults(mini_card_for_phrase(phrase))
+        task_type = card["task_type"]
+        base_version = card["base_version"]
+    except WorkflowError:
+        data = load_idea_tree()
+        task_type = "mixed experiment campaign" if requested_mix else "experiment planning"
+        base_version = current_active_version(data)
+    evidence = baseline_evidence(base_version) if base_version in CANONICAL_BASELINES else {
+        "evidence_level": "unknown",
+        "best_observed_H": "",
+        "confirmed_H": "pending",
+        "confirmation_status": "needs_confirmation",
+        "status": "unknown",
+    }
+    branch = current_branch() or "(detached)"
+    head = git(["rev-parse", "--short", "HEAD"], check=False)
+    dirty = "true" if git(["status", "--short"], check=False) else "false"
+    pending = collect_formal_pending_rows()
+    plan_id = "EXPPLAN-" + normalized_text_fingerprint(f"{phrase}|{head}|{base_version}|{len(pending)}")[:12]
+    confirmed = evidence.get("confirmation_status") == "confirmed" and evidence.get("confirmed_H") not in {"", "pending"}
+    score = evidence.get("confirmed_H") if confirmed else evidence.get("best_observed_H")
+    evidence_type = "confirmed_baseline" if confirmed else ("best_single_unconfirmed" if score else "status_only")
+    valid_for = "baseline_grade,promotion_reference" if confirmed else "search_reference,planning_context"
+    invalid_for = "none" if confirmed else "confirmation,promotion,baseline_claim"
+
+    print(f"experiment_planning_gate: {plan_id}")
+    print(f"owner_phrase: {phrase}")
+    print(f"task_type: {task_type}")
+    print(f"base_version: {base_version}")
+    if requested_max_jobs:
+        print(f"requested_budget_jobs: {requested_max_jobs}")
+    print("auto_state_scan:")
+    print(f"- branch: {branch}")
+    print(f"- head: {head}")
+    print(f"- dirty: {dirty}")
+    print(f"- baseline_repro_status: {evidence.get('confirmation_status')}")
+    print(f"- formal_pending_count: {len(pending)}")
+    print(f"- runtime_batch_count_debug_only: {runtime_batch_count()}")
+    print("- authority_order: formal ledger > result/quality reports > reconciled runner outputs > runtime/debug context")
+
+    print("\n## Evidence Summary")
+    evidence_rows = [
+        [
+            f"baseline:{base_version}",
+            "baseline_repro_status",
+            "-",
+            f"{base_version}:baseline",
+            score or "-",
+            "-",
+            evidence_type,
+            valid_for,
+            invalid_for,
+        ]
+    ]
+    for row in pending[:3]:
+        evidence_rows.append(
+            [
+                row["ref"],
+                "formal_pending",
+                "-",
+                row["subject"],
+                "-",
+                "-",
+                row["type"],
+                "planning_priority",
+                "scientific_claim_until_completed",
+            ]
+        )
+    for line in render_table(
+        ["evidence_ref", "source", "run_id", "candidate_id", "score", "seed", "evidence_type", "valid_for", "invalid_for"],
+        evidence_rows,
+    ):
+        print(line)
+
+    print("\n## Candidate Decision")
+    for line in render_table(
+        ["candidate_id", "tier", "source_evidence", "blocker", "decision", "claim_scope", "next_action"],
+        planning_candidate_decision(task_type, requested_mix, base_version, evidence),
+    ):
+        print(line)
+
+    print("\n## Current Run Plan")
+    for line in render_table(
+        ["work_item_id", "experiment_type", "candidate_id", "evidence_ref", "fingerprint_policy", "budget", "stop_condition", "ledger_target"],
+        planning_run_plan_rows(task_type, requested_mix, base_version, requested_max_jobs),
+    ):
+        print(line)
+
+    print("\nrunner_start_allowed: false")
+    print("note: plan-experiments is read-only; use run-workflow only after this plan is accepted and formal gates pass.")
+    return 0
+
+
 def yaml_quote(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
@@ -7940,7 +8893,7 @@ def build_start_card_skeleton(args: argparse.Namespace) -> str:
         "formal_evidence_allowed: false",
         "agents:",
         f"  activation_mode: {'real_multi_agent' if formal else 'role_only'}",
-        f"  agent_instance_mode: {'temporary_subagent' if formal else 'role_only'}",
+        f"  agent_instance_mode: {'named_owner_thread' if formal else 'role_only'}",
         f"  lifecycle: {'workflow_scoped' if formal else 'role_only'}",
     ]
     if formal:
@@ -7966,7 +8919,7 @@ def build_start_card_skeleton(args: argparse.Namespace) -> str:
                 "    formal_runner_allowed: false",
                 "    formal_evidence_allowed: false",
                 "    multi_agent_preflight:",
-                "      required_agents_spawned: false",
+                "      required_threads_created: false",
                 "      agent_instance_ids_present: false",
                 "      agent_status_refs_valid: false",
                 "      independent_outputs_present: false",
@@ -8619,7 +9572,7 @@ agent_instance_mode:
 agent_instance_type:
 lifecycle:
 persistent_thread_id:
-temporary_subagent_reason:
+named_thread_reason:
 independence_scope:
 output_locations:
 inputs_checked:
@@ -9358,7 +10311,7 @@ def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, obj
             specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
 
     add_repeats(
-        20,
+        CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
         "direction_confirmation",
         "dr009_direction_sample_h48_w0.45_a0.005",
         _dynamic_updates(
@@ -9369,7 +10322,7 @@ def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, obj
         ),
     )
     add_repeats(
-        10,
+        CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
         "direction_neighbor",
         "dr008_direction_sample_h48_w0.5_a0.005",
         _dynamic_updates(
@@ -9380,7 +10333,7 @@ def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, obj
         ),
     )
     add_repeats(
-        10,
+        CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
         "direction_neighbor",
         "dr010_direction_sample_h64_w0.5_a0.01",
         _dynamic_updates(
@@ -9392,6 +10345,46 @@ def _direction_repeat_confirmation_specs() -> list[tuple[str, str, dict[str, obj
     )
     add_repeats(5, "sanity_control", "static_v5_control", {"use_dynamic_routing": False})
     add_repeats(5, "sanity_control", "dynamic_fixed_all", _dynamic_updates())
+
+    for hidden, weight_s2v, anchor in [
+        (40, 0.42, 0.003),
+        (40, 0.45, 0.003),
+        (40, 0.45, 0.005),
+        (40, 0.48, 0.005),
+        (40, 0.50, 0.007),
+        (48, 0.42, 0.003),
+        (48, 0.45, 0.003),
+        (48, 0.45, 0.007),
+        (48, 0.48, 0.003),
+        (48, 0.48, 0.005),
+        (48, 0.50, 0.005),
+        (48, 0.52, 0.005),
+        (56, 0.42, 0.005),
+        (56, 0.45, 0.005),
+        (56, 0.48, 0.007),
+        (56, 0.50, 0.007),
+        (56, 0.52, 0.010),
+        (64, 0.42, 0.005),
+        (64, 0.45, 0.007),
+        (64, 0.48, 0.007),
+        (64, 0.50, 0.010),
+        (64, 0.52, 0.010),
+        (72, 0.45, 0.010),
+        (72, 0.50, 0.010),
+        (72, 0.52, 0.010),
+    ]:
+        specs.append(
+            (
+                "direction_local_refine",
+                f"direction_refine_h{hidden}_w{weight_s2v:g}_a{anchor:g}",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            )
+        )
 
     if len(specs) != 50:
         raise WorkflowError(f"Direction repeat confirmation plan must contain 50 jobs, got {len(specs)}")
@@ -9406,7 +10399,7 @@ def _direction_exploit_followup_specs() -> list[tuple[str, str, dict[str, object
             specs.append((group, f"{name}_r{repeat_index:02d}", dict(updates)))
 
     add_repeats(
-        6,
+        CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
         "must_reproduce",
         "dr009_direction_sample_h48_w0.45_a0.005",
         _dynamic_updates(
@@ -9470,6 +10463,7 @@ def _direction_exploit_followup_specs() -> list[tuple[str, str, dict[str, object
         (32, 0.48, 0.005),
         (72, 0.45, 0.010),
         (72, 0.50, 0.010),
+        (72, 0.52, 0.010),
     ]:
         specs.append(
             (
@@ -10003,6 +10997,11 @@ def _workflow_v2_2innov_8tune_specs() -> list[tuple[str, str, dict[str, object]]
 
 
 def _dr035_confirm_specs(repeat_count: int) -> list[tuple[str, str, dict[str, object]]]:
+    if repeat_count > CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS:
+        raise WorkflowError(
+            "Exact-repeat confirmation is capped at max_attempts: 5; "
+            f"requested {repeat_count} repeats."
+        )
     specs: list[tuple[str, str, dict[str, object]]] = []
     source_seed = 5
     for repeat_index in range(1, repeat_count + 1):
@@ -10029,8 +11028,8 @@ def _dr035_min3_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
     return _dr035_confirm_specs(3)
 
 
-def _dr035_min6_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
-    return _dr035_confirm_specs(6)
+def _dr035_max5_confirm_specs() -> list[tuple[str, str, dict[str, object]]]:
+    return _dr035_confirm_specs(CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS)
 
 
 def _h76_existing_routing_100_specs() -> list[tuple[str, str, dict[str, object]]]:
@@ -10201,6 +11200,767 @@ def _h76_existing_routing_100_specs() -> list[tuple[str, str, dict[str, object]]
     return specs
 
 
+def _h76_top4_min5_repeat_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+
+    def add_repeats(source_job: str, name: str, weight_s2v: float, anchor: float) -> None:
+        for repeat_index in range(1, 6):
+            specs.append(
+                (
+                    "h76_top4_same_seed_repeat",
+                    f"{source_job.lower()}_{name}_s{source_seed}_r{repeat_index}",
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                        random_seed=source_seed,
+                    ),
+                )
+            )
+
+    add_repeats("DR020", "direction_sample_h48_w0.525_a0.003", 0.525, 0.003)
+    add_repeats("DR051", "direction_sample_h48_w0.545_a0.004", 0.545, 0.004)
+    add_repeats("DR041", "direction_sample_h48_w0.515_a0.002", 0.515, 0.002)
+    add_repeats("DR047", "direction_sample_h48_w0.535_a0.002", 0.535, 0.002)
+
+    if len(specs) != 20:
+        raise WorkflowError(f"H=76 top4 min5 repeat plan must contain 20 jobs, got {len(specs)}")
+    return specs
+
+
+H76_TOP4_CANDIDATES: list[tuple[str, str, float, float]] = [
+    ("DR020", "direction_sample_h48_w0.525_a0.003", 0.525, 0.003),
+    ("DR051", "direction_sample_h48_w0.545_a0.004", 0.545, 0.004),
+    ("DR041", "direction_sample_h48_w0.515_a0.002", 0.515, 0.002),
+    ("DR047", "direction_sample_h48_w0.535_a0.002", 0.535, 0.002),
+]
+
+
+def _h76_mixed200_search_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs = list(_h76_existing_routing_100_specs())
+    for weight_s2v in [0.515, 0.525, 0.535, 0.545, 0.555]:
+        for anchor in [0.0015, 0.0025, 0.0035, 0.0045]:
+            specs.append(
+                (
+                    "h76_mixed200_search_tune_plus",
+                    f"direction_sample_h48_w{weight_s2v:g}_a{anchor:g}",
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                    ),
+                )
+            )
+
+    for source_job, candidate_name, weight_s2v, anchor in H76_TOP4_CANDIDATES:
+        prefix = f"{source_job.lower()}_{candidate_name}"
+        for variant_name, updates in [
+            (
+                "w_minus_0.005",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=round(weight_s2v - 0.005, 6),
+                ),
+            ),
+            (
+                "w_plus_0.005",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=round(weight_s2v + 0.005, 6),
+                ),
+            ),
+            (
+                "anchor_minus_0.0005",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=max(round(anchor - 0.0005, 6), 0.0),
+                    weight_s2v=weight_s2v,
+                ),
+            ),
+            (
+                "anchor_plus_0.0005",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=round(anchor + 0.0005, 6),
+                    weight_s2v=weight_s2v,
+                ),
+            ),
+            (
+                "hidden52",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=52,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                ),
+            ),
+        ]:
+            specs.append(("h76_mixed200_search_local_refine", f"{prefix}_{variant_name}", updates))
+
+    if len(specs) != 140:
+        raise WorkflowError(f"H=76 mixed200 search plan must contain 140 jobs, got {len(specs)}")
+    return specs
+
+
+def _h76_mixed200_repeat_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+    for source_job, candidate_name, weight_s2v, anchor in H76_TOP4_CANDIDATES:
+        for repeat_index in range(1, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS + 1):
+            specs.append(
+                (
+                    "h76_mixed200_top4_same_seed_repeat",
+                    f"{source_job.lower()}_{candidate_name}_s{source_seed}_r{repeat_index:02d}",
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                        random_seed=source_seed,
+                    ),
+                )
+            )
+
+    if len(specs) != 20:
+        raise WorkflowError(f"H=76 mixed200 repeat plan must contain 20 jobs, got {len(specs)}")
+    return specs
+
+
+def _h76_mixed200_ablation_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+    for source_job, candidate_name, weight_s2v, anchor in H76_TOP4_CANDIDATES:
+        prefix = f"{source_job.lower()}_{candidate_name}"
+        variants: list[tuple[str, dict[str, object]]] = [
+            (
+                "direction_fixed",
+                _dynamic_updates(
+                    dynamic_direction_mode="fixed",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "anchor_zero",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=0.0,
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "anchor_half",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=round(anchor / 2.0, 6),
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "anchor_double",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=round(anchor * 2.0, 6),
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "weight_minus_0.01",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=round(weight_s2v - 0.01, 6),
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "weight_plus_0.01",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=round(weight_s2v + 0.01, 6),
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "hidden40",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=40,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "hidden56",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=56,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "plus_pse_class_p0.55",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_pse_mode="class",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    pse_outer_ratio=0.55,
+                    random_seed=source_seed,
+                ),
+            ),
+            (
+                "plus_local_sample_l0.06",
+                _dynamic_updates(
+                    dynamic_local_mode="sample",
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    local_weight=0.06,
+                    weight_s2v=weight_s2v,
+                    random_seed=source_seed,
+                ),
+            ),
+        ]
+        for variant_name, updates in variants:
+            specs.append(("h76_mixed200_ablate_top4", f"{prefix}_{variant_name}", updates))
+
+    if len(specs) != 40:
+        raise WorkflowError(f"H=76 mixed200 ablation plan must contain 40 jobs, got {len(specs)}")
+    return specs
+
+
+def _h76_mixed200_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs = _h76_mixed200_search_specs() + _h76_mixed200_repeat_specs() + _h76_mixed200_ablation_specs()
+    if len(specs) != 200:
+        raise WorkflowError(f"H=76 mixed200 plan must contain 200 jobs, got {len(specs)}")
+    return specs
+
+
+def _h76_mixed200_batch_specs(profile: str) -> list[tuple[str, str, dict[str, object]]]:
+    search = _h76_mixed200_search_specs()
+    repeat = _h76_mixed200_repeat_specs()
+    ablate = _h76_mixed200_ablation_specs()
+    batches = {
+        "h76-mixed200-b01-search50": search[:50],
+        "h76-mixed200-b02-search50": search[50:100],
+        "h76-mixed200-b03-search20-repeat20-ablate10": search[100:120] + repeat[:20] + ablate[:10],
+        "h76-mixed200-b04-search20-ablate30": search[120:140] + ablate[10:40],
+    }
+    if profile not in batches:
+        raise WorkflowError(f"Unsupported H=76 mixed200 batch profile: {profile}")
+    specs = batches[profile]
+    if len(specs) != 50:
+        raise WorkflowError(f"H=76 mixed200 batch {profile} must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
+H76_FOLLOWUP50_MULTI_SEED_CANDIDATES: list[tuple[str, str, float, float]] = [
+    ("DR047", "direction_sample_h48_w0.535_a0.002", 0.535, 0.002),
+    ("DR020", "direction_sample_h48_w0.525_a0.003", 0.525, 0.003),
+    ("DR041", "direction_sample_h48_w0.515_a0.002", 0.515, 0.002),
+    ("A011DR042", "direction_sample_h48_w0.515_a0.004", 0.515, 0.004),
+    ("A011DR020", "direction_sample_h48_w0.555_a0.0045", 0.555, 0.0045),
+]
+
+
+def _h76_followup50_multiseed_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    for source_job, candidate_name, weight_s2v, anchor in H76_FOLLOWUP50_MULTI_SEED_CANDIDATES:
+        for source_seed in range(6, 16):
+            specs.append(
+                (
+                    "h76_followup50_multiseed_stability",
+                    f"{source_job.lower()}_{candidate_name}_s{source_seed:02d}",
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                        random_seed=source_seed,
+                    ),
+                )
+            )
+    if len(specs) != 50:
+        raise WorkflowError(f"H=76 followup50 multiseed plan must contain 50 jobs, got {len(specs)}")
+    return specs
+
+
+H76_RESTORE100_CANDIDATES: list[tuple[str, str, str, str, float, float, str]] = [
+    ("A011B01DR042", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-042", "direction_sample_h48_w0.515_a0.004", 0.515, 0.004, "75.00"),
+    ("A011B04DR036", "RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu", "DR-036", "direction_sample_h48_w0.525_a0.002", 0.525, 0.002, "75.00"),
+    ("A011B03DR020", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-020", "direction_sample_h48_w0.555_a0.0045", 0.555, 0.0045, "74.98"),
+    ("A011B01DR023", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-023", "direction_sample_h48_w0.55_a0.003", 0.55, 0.003, "74.96"),
+    ("A011B01DR017", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-017", "direction_sample_h48_w0.5_a0.003", 0.5, 0.003, "74.89"),
+    ("A011B01DR021", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-021", "direction_sample_h48_w0.525_a0.005", 0.525, 0.005, "74.85"),
+    ("A011B01DR024", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-024", "direction_sample_h48_w0.55_a0.005", 0.55, 0.005, "74.83"),
+    ("A011B01DR026", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-026", "direction_sample_h48_w0.575_a0.003", 0.575, 0.003, "74.82"),
+    ("A011B03DR009", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-009", "direction_sample_h48_w0.535_a0.0015", 0.535, 0.0015, "74.82"),
+    ("A011B03DR010", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-010", "direction_sample_h48_w0.535_a0.0025", 0.535, 0.0025, "74.82"),
+    ("A011B04DR035", "RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu", "DR-035", "direction_sample_h48_w0.505_a0.002", 0.505, 0.002, "74.81"),
+    ("A011B03DR017", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-017", "direction_sample_h48_w0.555_a0.0015", 0.555, 0.0015, "74.80"),
+    ("A011B01DR049", "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu", "DR-049", "direction_sample_h48_w0.535_a0.006", 0.535, 0.006, "74.79"),
+    ("A011B03DR013", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-013", "direction_sample_h48_w0.545_a0.0015", 0.545, 0.0015, "74.79"),
+    ("A011B03DR042", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-042", "direction_sample_h48_w0.525_a0.0", 0.525, 0.0, "74.78"),
+    ("A011B03DR001", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-001", "direction_sample_h48_w0.515_a0.0015", 0.515, 0.0015, "74.77"),
+    ("A011B03DR044", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-044", "direction_sample_h48_w0.525_a0.006", 0.525, 0.006, "74.77"),
+    ("A011B03DR018", "RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu", "DR-018", "direction_sample_h48_w0.555_a0.0025", 0.555, 0.0025, "74.75"),
+    ("A011B04DR023", "RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu", "DR-023", "direction_sample_h48_w0.545_a0.002", 0.545, 0.002, "74.72"),
+    ("A011B04DR043", "RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu", "DR-043", "direction_sample_h48_w0.535_a0.001", 0.535, 0.001, "74.70"),
+]
+
+
+def _h76_restore100_exact_repeat_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+    for source_candidate_id, source_run, source_job, candidate_name, weight_s2v, anchor, source_h in H76_RESTORE100_CANDIDATES:
+        for repeat_index in range(1, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS + 1):
+            specs.append(
+                (
+                    "h76_restore100_exact_repeat",
+                    f"{source_candidate_id.lower()}_{candidate_name}_s{source_seed}_r{repeat_index:02d}",
+                    {
+                        **_dynamic_updates(
+                            dynamic_direction_mode="sample",
+                            dynamic_gate_hidden=48,
+                            dynamic_gate_anchor_lambda=anchor,
+                            weight_s2v=weight_s2v,
+                            random_seed=source_seed,
+                        ),
+                        "__source_candidate_id": source_candidate_id,
+                        "__source_run_id": source_run,
+                        "__source_job_id": source_job,
+                        "__source_H": source_h,
+                        "__restore_target_H": source_h,
+                        "__repeat_index": repeat_index,
+                        "__repeat_max_attempts": CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
+                    },
+                )
+            )
+
+    if len(specs) != 100:
+        raise WorkflowError(f"H=76 restore100 exact-repeat plan must contain 100 jobs, got {len(specs)}")
+    return specs
+
+
+H76_HOTSPOT_TOP2_RESTORE10_CANDIDATES: list[tuple[str, str, str, str, float, float, str]] = [
+    (
+        "A015DR004",
+        "RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu",
+        "DR-004",
+        "direction_sample_h48_w0.495_a0.003",
+        0.495,
+        0.003,
+        "75.04",
+    ),
+    (
+        "A015DR035",
+        "RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu",
+        "DR-035",
+        "direction_sample_h48_w0.525_a0.0035",
+        0.525,
+        0.0035,
+        "75.00",
+    ),
+]
+
+
+def _h76_hotspot_top2_restore10_exact_repeat_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+    for source_candidate_id, source_run, source_job, candidate_name, weight_s2v, anchor, source_h in H76_HOTSPOT_TOP2_RESTORE10_CANDIDATES:
+        for repeat_index in range(1, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS + 1):
+            specs.append(
+                (
+                    "h76_hotspot_top2_exact_repeat",
+                    f"{source_candidate_id.lower()}_{candidate_name}_s{source_seed}_r{repeat_index:02d}",
+                    {
+                        **_dynamic_updates(
+                            dynamic_direction_mode="sample",
+                            dynamic_gate_hidden=48,
+                            dynamic_gate_anchor_lambda=anchor,
+                            weight_s2v=weight_s2v,
+                            random_seed=source_seed,
+                        ),
+                        "__source_candidate_id": source_candidate_id,
+                        "__source_run_id": source_run,
+                        "__source_job_id": source_job,
+                        "__source_H": source_h,
+                        "__restore_target_H": source_h,
+                        "__repeat_index": repeat_index,
+                        "__repeat_max_attempts": CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
+                    },
+                )
+            )
+
+    if len(specs) != 10:
+        raise WorkflowError(f"H=76 hotspot top2 restore plan must contain 10 jobs, got {len(specs)}")
+    return specs
+
+
+H76_A017DR095_RESTORE5_CANDIDATE: tuple[str, str, str, str, float, float, str] = (
+    "A017DR095",
+    "RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu",
+    "DR-095",
+    "a015dr035_weight_plus_0.01",
+    0.535,
+    0.0035,
+    "75.11",
+)
+
+
+def _h76_a017dr095_restore5_exact_repeat_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+    source_seed = 5
+    source_candidate_id, source_run, source_job, candidate_name, weight_s2v, anchor, source_h = H76_A017DR095_RESTORE5_CANDIDATE
+    for repeat_index in range(1, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS + 1):
+        specs.append(
+            (
+                "h76_a017dr095_exact_repeat",
+                f"{source_candidate_id.lower()}_{candidate_name}_s{source_seed}_r{repeat_index:02d}",
+                {
+                    **_dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                        random_seed=source_seed,
+                    ),
+                    "__source_candidate_id": source_candidate_id,
+                    "__source_run_id": source_run,
+                    "__source_job_id": source_job,
+                    "__source_H": source_h,
+                    "__restore_target_H": source_h,
+                    "__repeat_index": repeat_index,
+                    "__repeat_max_attempts": CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS,
+                },
+            )
+        )
+
+    if len(specs) != CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS:
+        raise WorkflowError(f"H=76 A017DR095 restore plan must contain 5 jobs, got {len(specs)}")
+    return specs
+
+
+def _h76_hotspot100_tune_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def add(group: str, weight_s2v: float, anchor: float, *, suffix: str = "") -> None:
+        name = f"direction_sample_h48_w{weight_s2v:g}_a{anchor:g}{suffix}"
+        specs.append(
+            (
+                group,
+                name,
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=anchor,
+                    weight_s2v=weight_s2v,
+                    random_seed=5,
+                ),
+            )
+        )
+
+    for weight_s2v in [0.495, 0.5, 0.505, 0.51, 0.515, 0.52, 0.525, 0.53, 0.535, 0.54, 0.545, 0.55, 0.555]:
+        for anchor in [0.0015, 0.002, 0.0025, 0.003, 0.0035]:
+            add("h76_hotspot100_primary_grid", weight_s2v, anchor)
+
+    for weight_s2v in [0.4975, 0.5025, 0.5425, 0.5475, 0.5525]:
+        for anchor in [0.00225, 0.00275, 0.00325, 0.00375]:
+            add("h76_hotspot100_micro_grid", weight_s2v, anchor)
+
+    for weight_s2v in [0.525, 0.53, 0.535, 0.54, 0.545]:
+        for anchor in [0.0005, 0.001, 0.00125]:
+            add("h76_hotspot100_low_anchor_ridge", weight_s2v, anchor)
+
+    if len(specs) != 100:
+        raise WorkflowError(f"H=76 hotspot100 tune plan must contain 100 jobs, got {len(specs)}")
+    return specs
+
+
+H76_ESCAPE100_CENTERS: list[tuple[str, float, float]] = [
+    ("a015dr004", 0.495, 0.003),
+    ("a015dr035", 0.525, 0.0035),
+    ("a015ridge", 0.515, 0.0025),
+]
+
+
+def _h76_escape100_supported_routing_specs() -> list[tuple[str, str, dict[str, object]]]:
+    specs: list[tuple[str, str, dict[str, object]]] = []
+
+    def name(prefix: str, weight_s2v: float, anchor: float, suffix: str = "") -> str:
+        tail = f"_w{weight_s2v:g}_a{anchor:g}"
+        return f"{prefix}{tail}{suffix}"
+
+    micro_offsets = [
+        (-0.003, -0.00035),
+        (-0.003, 0.00015),
+        (-0.0015, -0.00015),
+        (-0.0015, 0.00035),
+        (0.0015, -0.00035),
+        (0.0015, 0.00015),
+        (0.003, -0.00015),
+        (0.003, 0.00035),
+        (-0.0045, 0.0),
+        (0.0045, 0.0),
+    ]
+    for center_id, center_w, center_a in H76_ESCAPE100_CENTERS:
+        for w_delta, a_delta in micro_offsets:
+            weight_s2v = round(center_w + w_delta, 6)
+            anchor = max(round(center_a + a_delta, 6), 0.0)
+            specs.append(
+                (
+                    "h76_escape_direction_micro",
+                    name(f"{center_id}_direction_sample_h48", weight_s2v, anchor),
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=anchor,
+                        weight_s2v=weight_s2v,
+                        random_seed=5,
+                    ),
+                )
+            )
+
+    for center_id, center_w, center_a in H76_ESCAPE100_CENTERS:
+        for hidden in [40, 44, 52, 56, 64]:
+            specs.append(
+                (
+                    "h76_escape_hidden_sweep",
+                    name(f"{center_id}_direction_sample_h{hidden}", center_w, center_a),
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=hidden,
+                        dynamic_gate_anchor_lambda=center_a,
+                        weight_s2v=center_w,
+                        random_seed=5,
+                    ),
+                )
+            )
+
+    for center_id, center_w, center_a in H76_ESCAPE100_CENTERS:
+        for local_weight in [0.02, 0.04, 0.06, 0.08, 0.10]:
+            specs.append(
+                (
+                    "h76_escape_local_sample_tune",
+                    name(f"{center_id}_local_sample_l{local_weight:g}_direction_h48", center_w, center_a),
+                    _dynamic_updates(
+                        dynamic_local_mode="sample",
+                        dynamic_direction_mode="sample",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=center_a,
+                        local_weight=local_weight,
+                        weight_s2v=center_w,
+                        random_seed=5,
+                    ),
+                )
+            )
+
+    for center_id, center_w, center_a in H76_ESCAPE100_CENTERS:
+        for pse_outer_ratio in [0.35, 0.45, 0.55, 0.65, 0.75]:
+            specs.append(
+                (
+                    "h76_escape_pse_class_tune",
+                    name(f"{center_id}_pse_class_p{pse_outer_ratio:g}_direction_h48", center_w, center_a),
+                    _dynamic_updates(
+                        dynamic_direction_mode="sample",
+                        dynamic_pse_mode="class",
+                        dynamic_gate_hidden=48,
+                        dynamic_gate_anchor_lambda=center_a,
+                        pse_outer_ratio=pse_outer_ratio,
+                        weight_s2v=center_w,
+                        random_seed=5,
+                    ),
+                )
+            )
+
+    icsa_variants = [
+        ("a015dr004", 0.495, 0.003, "sample", 48, 0.001),
+        ("a015dr004", 0.495, 0.003, "class", 48, 0.001),
+        ("a015dr004", 0.495, 0.003, "sample", 52, 0.002),
+        ("a015dr004", 0.495, 0.003, "class", 52, 0.002),
+        ("a015dr035", 0.525, 0.0035, "sample", 48, 0.001),
+        ("a015dr035", 0.525, 0.0035, "class", 48, 0.001),
+        ("a015dr035", 0.525, 0.0035, "sample", 52, 0.002),
+        ("a015dr035", 0.525, 0.0035, "class", 52, 0.002),
+        ("a015ridge", 0.515, 0.0025, "sample", 48, 0.001),
+        ("a015ridge", 0.515, 0.0025, "class", 52, 0.002),
+    ]
+    for center_id, center_w, center_a, icsa_mode, hidden, icsa_ratio in icsa_variants:
+        specs.append(
+            (
+                "h76_escape_icsa_guarded_tune",
+                name(f"{center_id}_icsa_{icsa_mode}_r{icsa_ratio:g}_h{hidden}", center_w, center_a),
+                _dynamic_updates(
+                    dynamic_icsa_mode=icsa_mode,
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=hidden,
+                    dynamic_gate_anchor_lambda=center_a,
+                    icsa_ratio=icsa_ratio,
+                    conditional_text_ratio=icsa_ratio,
+                    weight_s2v=center_w,
+                    random_seed=5,
+                ),
+            )
+        )
+
+    for center_id, center_w, center_a, weight_shift_name, weight_shift in [
+        ("a015dr004", 0.495, 0.003, "weight_minus_0.01", -0.01),
+        ("a015dr035", 0.525, 0.0035, "weight_plus_0.01", 0.01),
+    ]:
+        for variant_name, updates in [
+            (
+                "direction_fixed",
+                _dynamic_updates(
+                    dynamic_direction_mode="fixed",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=center_a,
+                    weight_s2v=center_w,
+                    random_seed=5,
+                ),
+            ),
+            (
+                "anchor_zero",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=0.0,
+                    weight_s2v=center_w,
+                    random_seed=5,
+                ),
+            ),
+            (
+                "anchor_half",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=round(center_a / 2.0, 6),
+                    weight_s2v=center_w,
+                    random_seed=5,
+                ),
+            ),
+            (
+                "anchor_double",
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=round(center_a * 2.0, 6),
+                    weight_s2v=center_w,
+                    random_seed=5,
+                ),
+            ),
+            (
+                weight_shift_name,
+                _dynamic_updates(
+                    dynamic_direction_mode="sample",
+                    dynamic_gate_hidden=48,
+                    dynamic_gate_anchor_lambda=center_a,
+                    weight_s2v=round(center_w + weight_shift, 6),
+                    random_seed=5,
+                ),
+            ),
+        ]:
+            specs.append(("h76_escape_ablate_mechanism", f"{center_id}_{variant_name}", updates))
+
+    for group, job_name, updates in [
+        ("h76_escape_sentinel_control", "static_v5_control", {"use_dynamic_routing": False, "random_seed": 5}),
+        (
+            "h76_escape_sentinel_control",
+            "a015dr004_direction_fixed_h48_w0.495_a0.003",
+            _dynamic_updates(
+                dynamic_direction_mode="fixed",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.003,
+                weight_s2v=0.495,
+                random_seed=5,
+            ),
+        ),
+        (
+            "h76_escape_sentinel_control",
+            "a015dr035_direction_fixed_h48_w0.525_a0.0035",
+            _dynamic_updates(
+                dynamic_direction_mode="fixed",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.0035,
+                weight_s2v=0.525,
+                random_seed=5,
+            ),
+        ),
+        (
+            "h76_escape_sentinel_control",
+            "bridge_direction_sample_h48_w0.5_a0.003",
+            _dynamic_updates(
+                dynamic_direction_mode="sample",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.003,
+                weight_s2v=0.5,
+                random_seed=5,
+            ),
+        ),
+        (
+            "h76_escape_sentinel_control",
+            "bridge_direction_sample_h48_w0.535_a0.002",
+            _dynamic_updates(
+                dynamic_direction_mode="sample",
+                dynamic_gate_hidden=48,
+                dynamic_gate_anchor_lambda=0.002,
+                weight_s2v=0.535,
+                random_seed=5,
+            ),
+        ),
+    ]:
+        specs.append((group, job_name, updates))
+
+    if len(specs) != 100:
+        raise WorkflowError(f"H=76 escape100 supported-routing plan must contain 100 jobs, got {len(specs)}")
+    return specs
+
+
+def validate_exact_repeat_hard_cap(jobs: list[dict[str, object]]) -> None:
+    exact_repeat_group_tokens = ("confirm", "same_seed_repeat", "exact_repeat", "must_reproduce")
+    repeated_configs: dict[tuple[str, str], list[str]] = {}
+    for job in jobs:
+        group = str(job.get("group", ""))
+        if not any(token in group for token in exact_repeat_group_tokens):
+            continue
+        updates = job.get("config_updates", {})
+        config_key = json.dumps(updates, ensure_ascii=False, sort_keys=True, default=str)
+        key = (group, config_key)
+        repeated_configs.setdefault(key, []).append(str(job.get("job_id", "")))
+
+    for (group, _config_key), job_ids in sorted(repeated_configs.items()):
+        if len(job_ids) <= CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS:
+            continue
+        raise WorkflowError(
+            "Exact-repeat confirmation exceeds max_attempts: 5 hard cap: "
+            f"group={group} count={len(job_ids)} job_ids={','.join(job_ids)}"
+        )
+
+
 def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressive") -> list[dict[str, object]]:
     if profile == "balanced-aggressive":
         specs = _balanced_aggressive_dynamic_routing_specs()
@@ -10230,10 +11990,39 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         specs = _dr035_min3_confirm_specs()
         repeat_source_ranks = []
     elif profile == "dr035-min6-confirm":
-        specs = _dr035_min6_confirm_specs()
+        raise WorkflowError(
+            "Profile 'dr035-min6-confirm' is deprecated: exact-repeat confirmation "
+            "has max_attempts: 5 as a hard cap; use 'dr035-max5-confirm'."
+        )
+    elif profile == "dr035-max5-confirm":
+        specs = _dr035_max5_confirm_specs()
         repeat_source_ranks = []
     elif profile == "h76-existing-routing-100":
         specs = _h76_existing_routing_100_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-top4-min5-repeat":
+        specs = _h76_top4_min5_repeat_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-restore100-exact-repeat":
+        specs = _h76_restore100_exact_repeat_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-hotspot-top2-restore10-exact-repeat":
+        specs = _h76_hotspot_top2_restore10_exact_repeat_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-a017dr095-restore5-exact-repeat":
+        specs = _h76_a017dr095_restore5_exact_repeat_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-hotspot100-tune":
+        specs = _h76_hotspot100_tune_specs()
+        repeat_source_ranks = []
+    elif profile == "h76-escape100-supported-routing":
+        specs = _h76_escape100_supported_routing_specs()
+        repeat_source_ranks = []
+    elif profile.startswith("h76-mixed200-b"):
+        specs = _h76_mixed200_batch_specs(profile)
+        repeat_source_ranks = []
+    elif profile == "h76-followup50-multiseed":
+        specs = _h76_followup50_multiseed_specs()
         repeat_source_ranks = []
     else:
         raise WorkflowError(f"Unsupported dynamic routing batch profile: {profile}")
@@ -10258,6 +12047,7 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
     work_item_counts: dict[str, int] = {}
     for index, (group, name, updates) in enumerate(specs, start=1):
         updates = dict(updates)
+        metadata = {key[2:]: updates.pop(key) for key in list(updates) if key.startswith("__")}
         pse_mode = updates.get("dynamic_pse_mode")
         if pse_mode not in (None, "fixed", "class"):
             raise WorkflowError(
@@ -10268,20 +12058,20 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
         updates["random_seed"] = job_seed
         prefix = work_item_prefix(group)
         work_item_counts[prefix] = work_item_counts.get(prefix, 0) + 1
-        jobs.append(
-            {
-                "job_id": f"DR-{index:03d}",
-                "work_item_id": f"{prefix}-{work_item_counts[prefix]:03d}",
-                "attempt_id": f"ATTEMPT-{index:03d}",
-                "phase": "explore",
-                "group": group,
-                "name": name,
-                "seed": job_seed,
-                "source_rank": 0,
-                "gpu_slot": (index - 1) % 2,
-                "config_updates": updates,
-            }
-        )
+        job = {
+            "job_id": f"DR-{index:03d}",
+            "work_item_id": f"{prefix}-{work_item_counts[prefix]:03d}",
+            "attempt_id": f"ATTEMPT-{index:03d}",
+            "phase": "explore",
+            "group": group,
+            "name": name,
+            "seed": job_seed,
+            "source_rank": 0,
+            "gpu_slot": (index - 1) % 2,
+            "config_updates": updates,
+        }
+        job.update(metadata)
+        jobs.append(job)
 
     for repeat_index, source_rank in enumerate(repeat_source_ranks):
         index = 41 + repeat_index
@@ -10304,7 +12094,19 @@ def build_dynamic_routing_jobs(seed: int = 5, profile: str = "balanced-aggressiv
                 },
             }
         )
+    validate_exact_repeat_hard_cap(jobs)
     return jobs
+
+
+def limit_dynamic_routing_jobs(jobs: list[dict[str, object]], limit_jobs: int = 0) -> list[dict[str, object]]:
+    if limit_jobs <= 0:
+        return jobs
+    if limit_jobs > len(jobs):
+        raise WorkflowError(f"--limit-jobs={limit_jobs} exceeds profile job count {len(jobs)}")
+    limited = [dict(job) for job in jobs[:limit_jobs]]
+    for index, job in enumerate(limited, start=1):
+        job["job_id"] = f"DR-{index:03d}"
+    return limited
 
 
 def _format_config_value(value: object) -> str:
@@ -10381,6 +12183,23 @@ def run(cmd, cwd=None, env=None, log_path=None):
         return subprocess.run(cmd, cwd=cwd, env=env, text=True, stdout=handle, stderr=subprocess.STDOUT)
 
 
+def git_output(args, cwd):
+    result = subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"git {' '.join(args)} failed in {cwd}: {detail}")
+    return result.stdout.strip()
+
+
 def parse_metrics(log_path):
     text = log_path.read_text(encoding="utf-8", errors="replace")
     best_start = text.rfind("Best Results")
@@ -10431,6 +12250,165 @@ def update_job(run_dir, job_id, **fields):
     locked(run_dir, inner)
 
 
+def stop_file_path(run_dir):
+    return run_dir / "STOP_REQUESTED"
+
+
+def stop_requested(run_dir):
+    return stop_file_path(run_dir).exists()
+
+
+def stop_request_reason(run_dir):
+    path = stop_file_path(run_dir)
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace").strip()
+    return text or "STOP_REQUESTED"
+
+
+def request_stop(run_dir, reason):
+    path = stop_file_path(run_dir)
+    if not path.exists():
+        path.write_text(reason.strip() + "\n", encoding="utf-8")
+    append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": "stop_requested", "reason": reason})
+
+
+def maybe_stop_after_confirmation_hit(run_dir, plan, row):
+    policy = plan.get("confirmation_policy") or {}
+    if policy.get("repeat_type") != "exact_repeat":
+        return
+    if not policy.get("early_stop_on_best_hit"):
+        return
+    target = str(row.get("restore_target_H") or row.get("source_H") or "").strip()
+    if not target and not policy.get("per_job_restore_target_H"):
+        target = str(policy.get("restore_target_H", "")).strip()
+    if not target:
+        return
+    try:
+        h_value = float(row.get("H") or "")
+        target_value = float(target)
+    except (TypeError, ValueError):
+        return
+    if h_value >= target_value:
+        reason = (
+            "early_stop_on_best_hit: "
+            f"{row.get('job_id')} H={h_value:.2f} >= restore_target_H={target_value:.2f}"
+        )
+        source_candidate_id = str(row.get("source_candidate_id", "")).strip()
+        if source_candidate_id:
+            skip_candidate_remaining_repeats(run_dir, plan, source_candidate_id, str(row.get("job_id")), reason)
+            append_jsonl(
+                run_dir / "events.jsonl",
+                {
+                    "time": utc_now(),
+                    "event": "candidate_exact_repeat_best_hit",
+                    "source_candidate_id": source_candidate_id,
+                    "job_id": row.get("job_id"),
+                    "H": row.get("H"),
+                    "restore_target_H": f"{target_value:.2f}",
+                    "decision": "skip_remaining_candidate_repeats",
+                },
+            )
+            return
+        request_stop(run_dir, reason)
+        return
+    try:
+        near_miss_tolerance = float(policy.get("near_miss_tolerance_H", 0.2))
+    except (TypeError, ValueError):
+        near_miss_tolerance = 0.2
+    if h_value >= target_value - near_miss_tolerance:
+        append_jsonl(
+            run_dir / "events.jsonl",
+            {
+                "time": utc_now(),
+                "event": "near_miss_not_restored",
+                "job_id": row.get("job_id"),
+                "H": row.get("H"),
+                "restore_target_H": f"{target_value:.2f}",
+                "near_miss_tolerance_H": f"{near_miss_tolerance:.2f}",
+                "decision": "continue_exact_repeat",
+            },
+        )
+
+
+def mark_job_skipped_due_candidate_hit(run_dir, job_id, reason, source_candidate_id):
+    def inner():
+        status_path = run_dir / "batch_status.json"
+        data = load_json(status_path)
+        job_status = data.setdefault("jobs", {}).setdefault(job_id, {})
+        if job_status.get("status") in {"completed", "failed", "skipped", "running"}:
+            return False
+        job_status.update(
+            {
+                "status": "skipped",
+                "skip_reason": "candidate_restore_hit",
+                "stop_reason": reason,
+                "source_candidate_id": source_candidate_id,
+                "stopped_at": utc_now(),
+            }
+        )
+        job_status["updated_at"] = utc_now()
+        write_json(status_path, data)
+        return True
+    return locked(run_dir, inner)
+
+
+def skip_candidate_remaining_repeats(run_dir, plan, source_candidate_id, hit_job_id, reason):
+    skipped = 0
+    for job in plan.get("jobs", []):
+        if str(job.get("source_candidate_id", "")).strip() != source_candidate_id:
+            continue
+        if str(job.get("job_id", "")) == hit_job_id:
+            continue
+        if not mark_job_skipped_due_candidate_hit(run_dir, job["job_id"], reason, source_candidate_id):
+            continue
+        row = {
+            **job,
+            "status": "skipped",
+            "gpu": job.get("gpu_slot", ""),
+            "resolved_from_job_id": "",
+            "log_path": "",
+            "warehouse_dir": "",
+        }
+        append_summary(run_dir, row)
+        append_jsonl(
+            run_dir / "events.jsonl",
+            {
+                "time": utc_now(),
+                "event": "job_skipped_candidate_restored",
+                "job_id": job["job_id"],
+                "source_candidate_id": source_candidate_id,
+                "hit_job_id": hit_job_id,
+                "reason": reason,
+            },
+        )
+        skipped += 1
+    if skipped:
+        refresh_batch_status(run_dir)
+    return skipped
+
+
+def mark_job_skipped_due_stop(run_dir, job_id, reason):
+    def inner():
+        status_path = run_dir / "batch_status.json"
+        data = load_json(status_path)
+        job_status = data.setdefault("jobs", {}).setdefault(job_id, {})
+        if job_status.get("status") in {"completed", "failed", "skipped", "running"}:
+            return False
+        job_status.update(
+            {
+                "status": "skipped",
+                "skip_reason": "STOP_REQUESTED",
+                "stop_reason": reason,
+                "stopped_at": utc_now(),
+            }
+        )
+        job_status["updated_at"] = utc_now()
+        write_json(status_path, data)
+        return True
+    return locked(run_dir, inner)
+
+
 def append_jsonl(path, obj):
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(obj, ensure_ascii=False) + "\n")
@@ -10468,6 +12446,39 @@ def all_explore_finished(run_dir, plan):
     jobs = status.get("jobs", {})
     explore = [job for job in plan["jobs"] if job["phase"] == "explore"]
     return all(jobs.get(job["job_id"], {}).get("status") in {"completed", "failed", "skipped"} for job in explore)
+
+
+def skip_remaining_due_stop(run_dir, assigned, gpu, phase):
+    reason = stop_request_reason(run_dir)
+    skipped = 0
+    for job in assigned:
+        if job["phase"] != phase:
+            continue
+        if not mark_job_skipped_due_stop(run_dir, job["job_id"], reason):
+            continue
+        row = {
+            **job,
+            "status": "skipped",
+            "gpu": gpu,
+            "resolved_from_job_id": "",
+            "log_path": "",
+            "warehouse_dir": "",
+        }
+        append_summary(run_dir, row)
+        append_jsonl(
+            run_dir / "events.jsonl",
+            {
+                "time": utc_now(),
+                "event": "job_skipped_stop_requested",
+                "job_id": job["job_id"],
+                "gpu": gpu,
+                "reason": reason,
+            },
+        )
+        skipped += 1
+    if skipped:
+        refresh_batch_status(run_dir)
+    return skipped
 
 
 def refresh_batch_status(run_dir):
@@ -10524,6 +12535,34 @@ def link_runtime_resources(plan, worktree):
         os.symlink(source, target, target_is_directory=source.is_dir())
 
 
+def status_path_from_porcelain(line):
+    path = line[3:].strip() if len(line) > 3 else line.strip()
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    return path.rstrip("/")
+
+
+def assert_worktree_matches_plan(plan, worktree):
+    expected_commit = str(plan["commit"])
+    actual_commit = git_output(["rev-parse", "HEAD"], worktree)
+    if actual_commit != expected_commit:
+        raise RuntimeError(
+            "worktree HEAD mismatch before training: "
+            f"worktree={worktree} expected={expected_commit} actual={actual_commit}"
+        )
+    allowed_dirty_paths = set(str(name).strip("/").rstrip("/") for name in plan.get("runtime_resource_links", ["data"]))
+    status = git_output(["status", "--short"], worktree)
+    unexpected = [
+        line for line in status.splitlines()
+        if status_path_from_porcelain(line) not in allowed_dirty_paths
+    ]
+    if unexpected:
+        raise RuntimeError(
+            "worktree has unexpected dirty files before training: "
+            + "; ".join(unexpected[:20])
+        )
+
+
 def ensure_worktree(plan, gpu):
     server_repo = Path(plan["server_repo"])
     worktree_root = Path(plan["worktree_root"])
@@ -10533,10 +12572,13 @@ def ensure_worktree(plan, gpu):
     sha7 = commit[:7]
     worktree = worktree_root / f"dynroute_{sha7}_gpu{gpu}"
     worktree_root.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "-C", str(server_repo), "fetch", str(git_remote), branch], check=False)
+    if git_remote and str(git_remote).lower() not in {"none", "local", "no_fetch"}:
+        subprocess.run(["git", "-C", str(server_repo), "fetch", str(git_remote), branch], check=False)
+    git_output(["cat-file", "-e", f"{commit}^{{commit}}"], server_repo)
     if not worktree.exists():
         subprocess.run(["git", "-C", str(server_repo), "worktree", "add", str(worktree), commit], check=True)
     link_runtime_resources(plan, worktree)
+    assert_worktree_matches_plan(plan, worktree)
     return worktree
 
 
@@ -10715,6 +12757,8 @@ def run_job(run_dir, plan, job, gpu):
         update_job(run_dir, job_id, status=status, returncode=code, log_path=str(log_path), resolved_from_job_id=resolved_from, metrics=metrics, warehouse_dir=warehouse_dir)
         append_summary(run_dir, row)
         append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": f"job_{status}", "job_id": job_id, "gpu": gpu, "metrics": metrics, "warehouse_dir": warehouse_dir})
+        if status == "completed":
+            maybe_stop_after_confirmation_hit(run_dir, plan, row)
     except Exception as exc:
         error_path = log_dir / f"{job_id}_gpu{gpu}.error.txt"
         error_path.write_text(traceback.format_exc(), encoding="utf-8")
@@ -10774,24 +12818,39 @@ def main():
     for job in assigned:
         if job["phase"] != "explore":
             continue
+        if stop_requested(run_dir):
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "explore")
+            break
         status = load_json(run_dir / "batch_status.json").get("jobs", {}).get(job["job_id"], {}).get("status")
         if status in {"completed", "failed", "skipped", "running"}:
             continue
         run_job(run_dir, plan, job, args.gpu)
         refresh_batch_status(run_dir)
+        if stop_requested(run_dir):
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "explore")
+            break
 
     while not all_explore_finished(run_dir, plan):
         refresh_batch_status(run_dir)
+        if stop_requested(run_dir):
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "explore")
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "repeat")
         time.sleep(30)
 
     for job in assigned:
         if job["phase"] != "repeat":
             continue
+        if stop_requested(run_dir):
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "repeat")
+            break
         status = load_json(run_dir / "batch_status.json").get("jobs", {}).get(job["job_id"], {}).get("status")
         if status in {"completed", "failed", "skipped", "running"}:
             continue
         run_job(run_dir, plan, job, args.gpu)
         refresh_batch_status(run_dir)
+        if stop_requested(run_dir):
+            skip_remaining_due_stop(run_dir, assigned, args.gpu, "repeat")
+            break
     refresh_batch_status(run_dir)
 
 
@@ -10837,6 +12896,24 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     elif gate_path is not None:
         warehouse_attempt_id = infer_attempt_id_from_path(gate_path)
 
+    formal_evidence = not bool(args.debug_smoke)
+    if formal_evidence:
+        source_control = require_formal_dynamic_routing_source_control(args, base_config)
+        branch = str(source_control["training_branch_label"])
+        commit = str(source_control["training_commit"])
+    else:
+        branch = args.branch or current_branch()
+        commit = resolve_commit(args.commit or "HEAD")
+        source_control = {
+            "source_control_policy": "debug_smoke_no_formal_freeze",
+            "plan_generation_commit": resolve_commit("HEAD"),
+            "training_commit": commit,
+            "branch": branch,
+            "dirty_state": git(["status", "--short"], check=False) or "not_checked_clean",
+            "fingerprint_paths": {},
+            "missing_fingerprint_paths": [],
+        }
+
     run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
     run_dir = run_root / run_id
@@ -10852,20 +12929,22 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     if not gpus:
         raise WorkflowError("At least one GPU id is required.")
     jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
+    jobs = limit_dynamic_routing_jobs(jobs, int(getattr(args, "limit_jobs", 0) or 0))
     if int(args.jobs) != len(jobs):
         raise WorkflowError(f"Dynamic routing batch profile {args.profile!r} expects {len(jobs)} jobs, got --jobs {args.jobs}.")
+    if warehouse_attempt_id:
+        for job in jobs:
+            job["attempt_id"] = warehouse_attempt_id
     for index, job in enumerate(jobs):
         job["gpu_slot"] = index % len(gpus)
 
-    branch = args.branch or current_branch()
-    commit = args.commit or git(["rev-parse", "HEAD"], check=False)
     trial_id, _trial_slug = parse_trial_folder_name(trial_dir)
     base_version = args.base_version
     plan = {
         "run_id": run_id,
         "profile": args.profile,
         "created_at": utc_now(),
-        "formal_evidence": not bool(args.debug_smoke),
+        "formal_evidence": formal_evidence,
         "evidence_level": "debug_smoke" if args.debug_smoke else "formal_pre_run",
         "agent_runtime_gate": agent_runtime_gate,
         "trial_dir": display_path(trial_dir),
@@ -10874,6 +12953,10 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "trial_id": trial_id,
         "branch": branch,
         "commit": commit,
+        "source_control": source_control,
+        "plan_generation_commit": str(source_control["plan_generation_commit"]),
+        "formal_source_clean": formal_evidence,
+        "commit_policy": str(source_control["source_control_policy"]),
         "git_remote": args.git_remote,
         "gpus": gpus,
         "server_repo": args.server_repo,
@@ -10881,6 +12964,11 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "warehouse_root": args.warehouse_root,
         "warehouse_scope": "attempt_run" if warehouse_attempt_id else "legacy_job_attempt",
         "warehouse_attempt_id": warehouse_attempt_id,
+        "confirmation_policy": confirmation_policy_for_profile(
+            args.profile,
+            target_h=str(getattr(args, "restore_target_h", "") or ""),
+            tolerance_h=str(getattr(args, "near_miss_tolerance_h", "") or ""),
+        ),
         "runtime_resource_links": ["data"],
         "conda_env": args.conda_env,
         "python": args.python,
@@ -10888,7 +12976,13 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     }
     write_new(run_dir / "plan.json", json.dumps(plan, ensure_ascii=False, indent=2))
 
-    base_text = read_text(base_config)
+    if formal_evidence:
+        base_text = read_text_at_commit(
+            commit,
+            repo_relative_path(base_config, "Formal dynamic routing base config"),
+        )
+    else:
+        base_text = read_text(base_config)
     for job in jobs:
         config_text = render_config_with_updates(base_text, job["config_updates"])
         write_new(run_dir / "configs" / f"{job['job_id']}.yaml", config_text)
@@ -10927,6 +13021,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\nmkdir -p logs pids runtime_configs\n"
         + "\n".join(gpu_lines),
     )
+    server_run_dir = PurePosixPath(str(args.server_repo)) / ".gtpj_runtime" / "batches" / run_id
     write_new(
         run_dir / "README.md",
         f"""# {run_id}
@@ -10944,7 +13039,7 @@ gpus: {','.join(str(gpu) for gpu in gpus)}
 Start on server:
 
 ```bash
-cd {run_dir.as_posix()}
+cd {server_run_dir.as_posix()}
 bash start_batch.sh
 ```
 
@@ -10956,6 +13051,11 @@ Outputs:
 - `events.jsonl`
 - `logs/`
 - `runtime_configs/`
+
+Stop policy:
+
+- Create `STOP_REQUESTED` in this run directory to prevent controllers from starting new jobs.
+- Jobs already running are allowed to finish; pending jobs assigned to each controller are marked `skipped`.
 """,
     )
     print(f"dynamic-routing-plan-created: {display_path(run_dir)}")
@@ -11040,6 +13140,442 @@ def cmd_analyze_dynamic_routing_batch(args: argparse.Namespace) -> int:
     return 0
 
 
+DEFAULT_DYNAMIC_ROUTING_TRIAL_DIR = (
+    "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+)
+WORKFLOW_STATES = [
+    "requested",
+    "routed",
+    "planned",
+    "launched",
+    "running",
+    "stopped",
+    "completed",
+    "failed",
+    "blocked",
+    "parsed",
+    "quality_checked",
+    "closed_out",
+    "synced",
+    "candidate",
+    "rejected",
+    "confirmed",
+    "promotion_blocked",
+    "promote_ready",
+]
+
+
+def infer_workflow_route(phrase: str, workflow_kind: str = "") -> dict[str, object]:
+    normalized = phrase.lower()
+    kind = workflow_kind
+    if not kind:
+        if any(token in normalized for token in ["dr-035", "dr035", "h=76", "h76", "dynamic", "动态"]):
+            kind = "dynamic-routing"
+        else:
+            raise WorkflowError("Only dynamic-routing workflow routing is implemented in the minimal dispatcher.")
+    if kind != "dynamic-routing":
+        raise WorkflowError(f"Unsupported workflow kind in minimal dispatcher: {kind}")
+    return {
+        "workflow_kind": "dynamic-routing",
+        "experiment_type": "trial_internal_tune",
+        "subject_type": "run",
+        "trial_dir": DEFAULT_DYNAMIC_ROUTING_TRIAL_DIR,
+        "profile": "h76-existing-routing-100",
+        "required_roles": [
+            "Runner Monitor",
+            "Log Analyst",
+            "Result Analyst",
+            "Evidence Quality Checker",
+        ],
+        "state_flow": WORKFLOW_STATES,
+        "next_helper": "run-workflow",
+    }
+
+
+def workflow_run_dir(run_dir_arg: str) -> Path:
+    run_dir = Path(run_dir_arg)
+    if not run_dir.is_absolute():
+        run_dir = REPO_ROOT / run_dir
+    return run_dir
+
+
+def write_workflow_transition(run_dir: Path, transition: str, state: str, note: str = "") -> None:
+    record = {
+        "at": utc_now(),
+        "transition": transition,
+        "state": state,
+        "note": note,
+    }
+    with (run_dir / "TRANSITIONS.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def write_workflow_state(run_dir: Path, state: str, extra: dict[str, object] | None = None) -> None:
+    plan_path = run_dir / "plan.json"
+    plan = json.loads(read_text(plan_path)) if plan_path.exists() else {}
+    state_path = run_dir / "workflow_state.json"
+    previous: dict[str, object] = {}
+    if state_path.exists():
+        try:
+            previous = json.loads(read_text(state_path))
+        except json.JSONDecodeError:
+            previous = {}
+    data: dict[str, object] = {
+        "subject_id": plan.get("run_id", run_dir.name),
+        "subject_type": "run",
+        "workflow_kind": "dynamic-routing",
+        "current_state": state,
+        "allowed_next_states": WORKFLOW_STATES,
+        "updated_at": utc_now(),
+    }
+    for key, value in previous.items():
+        if key not in data:
+            data[key] = value
+    if extra:
+        data.update(extra)
+    state_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def dynamic_routing_status_snapshot(run_dir: Path) -> dict[str, object]:
+    status_path = run_dir / "batch_status.json"
+    if not status_path.exists():
+        raise WorkflowError(f"Missing batch_status.json: {display_path(status_path)}")
+    status = json.loads(read_text(status_path))
+    rows = _read_summary_rows(run_dir)
+    counts: dict[str, int] = {}
+    for job in status.get("jobs", {}).values():
+        state = str(job.get("status", "unknown"))
+        counts[state] = counts.get(state, 0) + 1
+    completed_by_summary_order = [row for row in rows if row.get("status") == "completed" and row.get("H")]
+    completed = list(completed_by_summary_order)
+    completed.sort(key=lambda row: float(row["H"]), reverse=True)
+    terminal_states = {"completed", "failed", "skipped"}
+    all_terminal = bool(status.get("jobs")) and all(
+        str(job.get("status", "unknown")) in terminal_states for job in status.get("jobs", {}).values()
+    )
+    failed = counts.get("failed", 0)
+    batch_status = str(status.get("status", "unknown"))
+    if batch_status == "stopped":
+        workflow_state = "stopped"
+    elif all_terminal and failed:
+        workflow_state = "failed"
+    elif all_terminal:
+        workflow_state = "completed"
+    elif counts.get("running", 0):
+        workflow_state = "running"
+    else:
+        workflow_state = str(status.get("status", "unknown"))
+    return {
+        "run_id": status.get("run_id", run_dir.name),
+        "batch_status": batch_status,
+        "workflow_state": workflow_state,
+        "counts": counts,
+        "summary_rows": len(rows),
+        "completed": completed,
+        "completed_by_summary_order": completed_by_summary_order,
+        "best": completed[0] if completed else None,
+    }
+
+
+def monitor_seen_jobs_path(run_dir: Path, seen_jobs_file: str = "") -> Path:
+    if seen_jobs_file:
+        path = Path(seen_jobs_file)
+        if not path.is_absolute():
+            path = REPO_ROOT / path
+        return path
+    return run_dir / "monitor_seen_completed_jobs.json"
+
+
+def load_seen_completed_jobs(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        data = json.loads(read_text(path))
+    except json.JSONDecodeError:
+        return set()
+    if isinstance(data, list):
+        return {str(item) for item in data}
+    if isinstance(data, dict):
+        value = data.get("completed_job_ids", [])
+        if isinstance(value, list):
+            return {str(item) for item in value}
+    return set()
+
+
+def save_seen_completed_jobs(path: Path, completed_job_ids: set[str]) -> None:
+    ensure_dir(path.parent)
+    path.write_text(
+        json.dumps(
+            {
+                "updated_at": utc_now(),
+                "completed_job_ids": sorted(completed_job_ids),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def resolve_monitor_activity_log(value: str) -> Path:
+    path = Path(value)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    return path
+
+
+def append_monitor_activity_log(activity_log: Path, snapshot: dict[str, object], new_rows: list[dict[str, str]]) -> None:
+    if not new_rows:
+        return
+    ensure_dir(activity_log.parent)
+    if not activity_log.exists():
+        activity_log.write_text(
+            "# Agent Activity\n\n"
+            "| Time | Workflow display name | Role key | Agent instance | UI mode | Status | Action | Evidence | Next |\n"
+            "|---|---|---|---|---|---|---|---|---|\n",
+            encoding="utf-8",
+        )
+    counts = snapshot.get("counts", {})
+    best = snapshot.get("best")
+    best_text = "best=none"
+    if isinstance(best, dict):
+        best_text = f"best={best.get('job_id')} H={best.get('H')}"
+    count_text = ", ".join(f"{key}={value}" for key, value in sorted(counts.items())) if isinstance(counts, dict) else ""
+    with activity_log.open("a", encoding="utf-8") as handle:
+        for row in new_rows:
+            job_id = row.get("job_id", "")
+            action = (
+                f"Completed {job_id}: {row.get('name')} "
+                f"H={row.get('H')} U={row.get('U')} S={row.get('S')} "
+                f"ZS={row.get('ZS')} epoch={row.get('best_epoch')}; "
+                f"{best_text}; counts: {count_text}."
+            )
+            handle.write(
+                f"| {utc_now()} | current owner thread | runner_monitor | current_owner_thread | owner_thread | "
+                f"job_completed_report | {action} | "
+                "`summary.csv` / `batch_status.json` / `events.jsonl` | Continue live monitor until closeout. |\n"
+            )
+
+
+def cmd_route_experiment(args: argparse.Namespace) -> int:
+    route = infer_workflow_route(args.phrase, args.workflow_kind)
+    print(f"workflow_kind: {route['workflow_kind']}")
+    print(f"experiment_type: {route['experiment_type']}")
+    print(f"subject_type: {route['subject_type']}")
+    print(f"trial_dir: {route['trial_dir']}")
+    print(f"profile: {route['profile']}")
+    print("required_roles: " + ", ".join(str(role) for role in route["required_roles"]))
+    print("agent_instances: not_started_by_route")
+    print("state_flow: " + " -> ".join(str(state) for state in route["state_flow"]))
+    print(f"next_helper: {route['next_helper']}")
+    return 0
+
+
+def cmd_run_workflow(args: argparse.Namespace) -> int:
+    if bool(args.debug_smoke) == bool(args.formal):
+        raise WorkflowError("run-workflow requires exactly one of --debug-smoke or --formal")
+    if args.formal and not args.agent_runtime_gate:
+        raise WorkflowError("run-workflow --formal requires --agent-runtime-gate <agent_runtime.yaml>")
+    workflow_mode = str(args.workflow_mode or "").strip()
+    if not workflow_mode:
+        raise WorkflowError(
+            "run-workflow requires --workflow-mode "
+            "live_multi_agent_monitor or server_frozen_runner; do not guess"
+        )
+    gate_backend = ""
+    if args.formal and args.agent_runtime_gate:
+        gate_path = resolve_agent_runtime_gate_path(args.agent_runtime_gate)
+        gate_data = read_shallow_yaml(gate_path)
+        gate_backend = str(gate_data.get("formal_runtime_backend", "")).strip() or "named_owner_thread"
+        if workflow_mode == "live_multi_agent_monitor" and gate_backend == "server_detached_role_only":
+            raise WorkflowError(
+                "workflow_mode=live_multi_agent_monitor requires named-owner-thread agent_runtime gate, "
+                "not server_detached_role_only"
+            )
+        if workflow_mode == "server_frozen_runner" and gate_backend != "server_detached_role_only":
+            raise WorkflowError(
+                "workflow_mode=server_frozen_runner requires formal_runtime_backend: server_detached_role_only"
+            )
+    run_mode = "debug_smoke" if args.debug_smoke else "formal"
+    if args.debug_smoke:
+        activation_mode = "role_only"
+        agent_instance_mode = "role_only"
+        formal_backend = "not_applicable_debug_smoke"
+    elif workflow_mode == "server_frozen_runner":
+        activation_mode = "role_only"
+        agent_instance_mode = "role_only"
+        formal_backend = "server_detached_role_only"
+    else:
+        activation_mode = "real_multi_agent"
+        agent_instance_mode = "named_owner_thread"
+        formal_backend = gate_backend or "named_owner_thread"
+    route = infer_workflow_route(args.phrase, args.workflow_kind)
+    profile = args.profile or str(route["profile"])
+    run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-workflow-dynroute"
+    profile_jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=profile)
+    expected_jobs = int(args.jobs or args.limit_jobs or len(profile_jobs))
+    plan_args = argparse.Namespace(
+        trial_dir=args.trial_dir or str(route["trial_dir"]),
+        base_config=args.base_config,
+        run_id=run_id,
+        attempt_id=args.attempt_id,
+        jobs=expected_jobs,
+        limit_jobs=int(args.limit_jobs or 0),
+        profile=profile,
+        base_version=args.base_version,
+        seed=int(args.seed),
+        gpus=args.gpus,
+        branch=args.branch,
+        commit=args.commit,
+        git_remote=args.git_remote,
+        server_repo=args.server_repo,
+        worktree_root=args.worktree_root,
+        warehouse_root=args.warehouse_root,
+        conda_env=args.conda_env,
+        python=args.python,
+        controller_python=args.controller_python,
+        agent_runtime_gate=args.agent_runtime_gate,
+        allow_historical_training_commit=bool(getattr(args, "allow_historical_training_commit", False)),
+        restore_target_h=args.restore_target_h,
+        near_miss_tolerance_h=args.near_miss_tolerance_h,
+        debug_smoke=(run_mode == "debug_smoke"),
+    )
+    cmd_plan_dynamic_routing_batch(plan_args)
+    run_dir = REPO_ROOT / ".gtpj_runtime" / "batches" / run_id
+    state = "planned"
+    write_workflow_state(
+        run_dir,
+        state,
+        {
+            "run_mode": run_mode,
+            "workflow_mode": workflow_mode,
+            "activation_mode": activation_mode,
+            "agent_instance_mode": agent_instance_mode,
+            "formal_runtime_backend": formal_backend,
+            "required_roles": route["required_roles"],
+            "real_agent_instances_started_by_helper": False,
+            "real_agent_instances_verified_by_gate": bool(args.formal and workflow_mode == "live_multi_agent_monitor"),
+            "agent_runtime_gate_satisfied": bool(args.formal),
+            "formal_evidence": not bool(args.debug_smoke),
+            "thread_creation_allowed": bool(args.formal and workflow_mode == "live_multi_agent_monitor"),
+            "server_detached_expected": bool(args.formal and workflow_mode == "server_frozen_runner"),
+            "route": route,
+        },
+    )
+    write_workflow_transition(run_dir, "route", "routed", args.phrase)
+    write_workflow_transition(run_dir, "plan", "planned", f"profile={profile} jobs={expected_jobs}")
+    if args.launch:
+        subprocess.run(["bash", "start_batch.sh"], cwd=run_dir, check=True)
+        state = "launched"
+        write_workflow_state(run_dir, state, {"launched_at": utc_now()})
+        write_workflow_transition(run_dir, "launch", "launched", "start_batch.sh")
+    print(f"workflow-run-dir: {display_path(run_dir)}")
+    print(f"workflow_state: {state}")
+    print("next_helper: monitor-workflow")
+    return 0
+
+
+def cmd_monitor_workflow(args: argparse.Namespace) -> int:
+    run_dir = workflow_run_dir(args.run_dir)
+    max_polls = max(1, int(args.max_polls))
+    report_new_completions = bool(getattr(args, "report_new_completions", False))
+    seen_jobs_path = monitor_seen_jobs_path(run_dir, getattr(args, "seen_jobs_file", "")) if report_new_completions else None
+    activity_log = (
+        resolve_monitor_activity_log(getattr(args, "activity_log", ""))
+        if report_new_completions and getattr(args, "activity_log", "")
+        else None
+    )
+    for poll_index in range(max_polls):
+        if poll_index and int(args.poll_seconds) > 0:
+            time.sleep(int(args.poll_seconds))
+        snapshot = dynamic_routing_status_snapshot(run_dir)
+        state = str(snapshot["workflow_state"])
+        state_extra: dict[str, object] = {}
+        new_rows: list[dict[str, str]] = []
+        if report_new_completions and seen_jobs_path is not None:
+            seen_jobs = load_seen_completed_jobs(seen_jobs_path)
+            completed_by_summary_order = snapshot.get("completed_by_summary_order", [])
+            if isinstance(completed_by_summary_order, list):
+                new_rows = [
+                    row
+                    for row in completed_by_summary_order
+                    if isinstance(row, dict) and str(row.get("job_id", "")) not in seen_jobs
+                ]
+                all_completed_ids = {
+                    str(row.get("job_id", ""))
+                    for row in completed_by_summary_order
+                    if isinstance(row, dict) and row.get("job_id")
+                }
+                save_seen_completed_jobs(seen_jobs_path, seen_jobs | all_completed_ids)
+            state_extra["last_new_completed_count"] = len(new_rows)
+            state_extra["last_new_completed_jobs"] = [row.get("job_id", "") for row in new_rows]
+            if activity_log is not None:
+                append_monitor_activity_log(activity_log, snapshot, new_rows)
+        write_workflow_state(run_dir, state, state_extra if state_extra else None)
+        write_workflow_transition(run_dir, "monitor", state, f"poll={poll_index + 1}")
+        counts = snapshot["counts"]
+        best = snapshot["best"]
+        print(f"run_id: {snapshot['run_id']}")
+        print(f"workflow_state: {state}")
+        print("counts: " + ", ".join(f"{key}={value}" for key, value in sorted(counts.items())))
+        print(f"summary_rows: {snapshot['summary_rows']}")
+        if best:
+            h_value = float(best["H"])
+            print(
+                "best_single: "
+                f"{best.get('job_id')} {best.get('name')} H={best.get('H')} "
+                f"U={best.get('U')} S={best.get('S')} ZS={best.get('ZS')}"
+            )
+            print(f"hit_h75: {str(h_value >= 75.0).lower()}")
+            print(f"hit_h76: {str(h_value >= 76.0).lower()}")
+        else:
+            print("best_single: none")
+            print("hit_h75: false")
+            print("hit_h76: false")
+        if report_new_completions:
+            print(f"new_completed_count: {len(new_rows)}")
+            for row in new_rows:
+                print(
+                    f"new_completed: {row.get('job_id')} group={row.get('group')} "
+                    f"name={row.get('name')} H={row.get('H')} U={row.get('U')} "
+                    f"S={row.get('S')} ZS={row.get('ZS')} epoch={row.get('best_epoch')}"
+                )
+            print(f"seen_jobs_file: {display_path(seen_jobs_path) if seen_jobs_path else ''}")
+            if activity_log is not None:
+                print(f"activity_log: {display_path(activity_log)}")
+        completed = snapshot["completed"]
+        for row in completed[: int(args.top_k)]:
+            print(
+                f"rank: {row.get('job_id')} group={row.get('group')} name={row.get('name')} "
+                f"H={row.get('H')} U={row.get('U')} S={row.get('S')} ZS={row.get('ZS')} "
+                f"epoch={row.get('best_epoch')}"
+            )
+        next_action = "closeout-workflow" if state in {"completed", "failed"} else "monitor-workflow"
+        print(f"next_helper: {next_action}")
+    return 0
+
+
+def cmd_closeout_workflow(args: argparse.Namespace) -> int:
+    run_dir = workflow_run_dir(args.run_dir)
+    snapshot = dynamic_routing_status_snapshot(run_dir)
+    state = str(snapshot["workflow_state"])
+    if state not in {"completed", "failed"} and not args.allow_incomplete:
+        raise WorkflowError(f"Workflow is {state}; use monitor-workflow or --allow-incomplete for a dry closeout summary.")
+    closeout_state = "closed_out" if state in {"completed", "failed"} else state
+    write_workflow_state(run_dir, closeout_state)
+    write_workflow_transition(run_dir, "closeout", closeout_state, "minimal closeout summary")
+    best = snapshot["best"]
+    print(f"run_id: {snapshot['run_id']}")
+    print(f"workflow_state: {closeout_state}")
+    print("counts: " + ", ".join(f"{key}={value}" for key, value in sorted(snapshot["counts"].items())))
+    if best:
+        print(f"best_single: {best.get('job_id')} {best.get('name')} H={best.get('H')}")
+    print("formal_result_written: false")
+    print("note: minimal dispatcher closeout does not replace record-module-attempt/sync-trial-summary.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -11071,12 +13607,15 @@ def build_parser() -> argparse.ArgumentParser:
     multi_agent_preflight.add_argument("--path", required=True)
     multi_agent_preflight.set_defaults(func=cmd_multi_agent_preflight)
 
-    agent_cleanup = sub.add_parser("agent-cleanup-plan", help="只读列出右侧临时 agents 的保留/关闭计划")
+    agent_cleanup = sub.add_parser("agent-cleanup-plan", help="只读列出命名线程的保留/归档计划")
     agent_cleanup.add_argument("--path", required=True)
     agent_cleanup.set_defaults(func=cmd_agent_cleanup_plan)
 
     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
+
+    confirmation_rule_map = sub.add_parser("confirmation-rule-map", help="列出复现规则同步字典和必备标记")
+    confirmation_rule_map.set_defaults(func=cmd_confirmation_rule_map)
 
     validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 分层 AI 交叉审核证据包")
     validate_ai_cross_review.add_argument("--path", required=True)
@@ -11099,10 +13638,10 @@ def build_parser() -> argparse.ArgumentParser:
         default="default-core",
         choices=["default-core", "custom-debug", "custom-full-equivalent"],
     )
-    run_ai_cross_review.add_argument("--codex-pre-review-agent-id", default="")
-    run_ai_cross_review.add_argument("--codex-pre-review-agent-name", default="")
-    run_ai_cross_review.add_argument("--codex-pre-review-lifecycle", default="completed_closed", choices=["completed_closed"])
-    run_ai_cross_review.add_argument("--codex-pre-review-close-result", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-thread-id", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-thread-title", default="")
+    run_ai_cross_review.add_argument("--codex-pre-review-lifecycle", default="completed_archived", choices=["completed_archived"])
+    run_ai_cross_review.add_argument("--codex-pre-review-archive-result", default="")
     run_ai_cross_review.add_argument("--codex-pre-review-verdict", default="blocked", choices=["pass", "needs_fix", "blocked"])
     run_ai_cross_review.add_argument("--codex-pre-review-notes", default="")
     run_ai_cross_review.add_argument("--validation-command", action="append", default=[])
@@ -11130,6 +13669,11 @@ def build_parser() -> argparse.ArgumentParser:
     start = sub.add_parser("start", help="按 owner 人话口令只读输出 mini 启动卡")
     start.add_argument("--phrase", required=True)
     start.set_defaults(func=cmd_start)
+
+    plan_experiments = sub.add_parser("plan-experiments", help="只读根据当前项目状态生成 Experiment Planning Gate")
+    plan_experiments.add_argument("--phrase", required=True)
+    plan_experiments.add_argument("--max-jobs", type=int, default=0)
+    plan_experiments.set_defaults(func=cmd_plan_experiments)
 
     start_card = sub.add_parser("start-card", help="生成完整启动卡骨架")
     start_card.add_argument("--type", dest="task_type", required=True)
@@ -11308,6 +13852,7 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--run-id", default="")
     dyn_plan.add_argument("--attempt-id", default="")
     dyn_plan.add_argument("--jobs", type=int, default=50)
+    dyn_plan.add_argument("--limit-jobs", type=int, default=0)
     dyn_plan.add_argument("--profile", default="balanced-aggressive")
     dyn_plan.add_argument("--base-version", default="v5")
     dyn_plan.add_argument("--seed", type=int, default=5)
@@ -11322,6 +13867,13 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--python", default="python")
     dyn_plan.add_argument("--controller-python", default="python3")
     dyn_plan.add_argument("--agent-runtime-gate", default="")
+    dyn_plan.add_argument("--allow-historical-training-commit", action="store_true")
+    dyn_plan.add_argument("--restore-target-h", dest="restore_target_h", default="")
+    dyn_plan.add_argument(
+        "--near-miss-tolerance-h",
+        dest="near_miss_tolerance_h",
+        default=str(CONFIRMATION_RULE_DEFAULT_NEAR_MISS_TOLERANCE_H),
+    )
     dyn_plan.add_argument("--debug-smoke", action="store_true")
     dyn_plan.set_defaults(func=cmd_plan_dynamic_routing_batch)
 
@@ -11333,6 +13885,62 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_analyze.add_argument("--run-dir", required=True)
     dyn_analyze.add_argument("--top-k", type=int, default=5)
     dyn_analyze.set_defaults(func=cmd_analyze_dynamic_routing_batch)
+
+    route_exp = sub.add_parser("route-experiment", help="按 owner 短语输出最小机器路由")
+    route_exp.add_argument("--phrase", required=True)
+    route_exp.add_argument("--workflow-kind", default="")
+    route_exp.set_defaults(func=cmd_route_experiment)
+
+    run_workflow = sub.add_parser("run-workflow", help="最小统一调度入口：route -> plan -> optional launch")
+    run_workflow.add_argument("--phrase", required=True)
+    run_workflow.add_argument("--workflow-mode", choices=sorted(WORKFLOW_MODES), default="")
+    run_workflow.add_argument("--workflow-kind", default="")
+    run_workflow.add_argument("--trial-dir", default="")
+    run_workflow.add_argument("--base-config", default="")
+    run_workflow.add_argument("--run-id", default="")
+    run_workflow.add_argument("--attempt-id", default="")
+    run_workflow.add_argument("--jobs", type=int, default=0)
+    run_workflow.add_argument("--limit-jobs", type=int, default=0)
+    run_workflow.add_argument("--profile", default="")
+    run_workflow.add_argument("--base-version", default="v5")
+    run_workflow.add_argument("--seed", type=int, default=5)
+    run_workflow.add_argument("--gpus", default="0,1")
+    run_workflow.add_argument("--branch", default="")
+    run_workflow.add_argument("--commit", default="")
+    run_workflow.add_argument("--git-remote", default="none")
+    run_workflow.add_argument("--server-repo", default="/data/lby/projects/cv_project/GTPJ")
+    run_workflow.add_argument("--worktree-root", default="/data/lby/projects/cv_project/GTPJ_worktrees")
+    run_workflow.add_argument("--warehouse-root", default="/data/lby/projects/cv_project/GTPJ_Warehouse")
+    run_workflow.add_argument("--conda-env", default="dvsr_gpu")
+    run_workflow.add_argument("--python", default="python")
+    run_workflow.add_argument("--controller-python", default="python3")
+    run_workflow.add_argument("--agent-runtime-gate", default="")
+    run_workflow.add_argument("--allow-historical-training-commit", action="store_true")
+    run_workflow.add_argument("--restore-target-h", dest="restore_target_h", default="")
+    run_workflow.add_argument(
+        "--near-miss-tolerance-h",
+        dest="near_miss_tolerance_h",
+        default=str(CONFIRMATION_RULE_DEFAULT_NEAR_MISS_TOLERANCE_H),
+    )
+    run_workflow.add_argument("--debug-smoke", action="store_true")
+    run_workflow.add_argument("--formal", action="store_true")
+    run_workflow.add_argument("--launch", action="store_true")
+    run_workflow.set_defaults(func=cmd_run_workflow)
+
+    monitor_workflow = sub.add_parser("monitor-workflow", help="最小统一监控入口：短轮询读取状态和 top-k")
+    monitor_workflow.add_argument("--run-dir", required=True)
+    monitor_workflow.add_argument("--top-k", type=int, default=5)
+    monitor_workflow.add_argument("--poll-seconds", type=int, default=0)
+    monitor_workflow.add_argument("--max-polls", type=int, default=1)
+    monitor_workflow.add_argument("--report-new-completions", action="store_true")
+    monitor_workflow.add_argument("--seen-jobs-file", default="")
+    monitor_workflow.add_argument("--activity-log", default="")
+    monitor_workflow.set_defaults(func=cmd_monitor_workflow)
+
+    closeout_workflow = sub.add_parser("closeout-workflow", help="最小统一收口入口")
+    closeout_workflow.add_argument("--run-dir", required=True)
+    closeout_workflow.add_argument("--allow-incomplete", action="store_true")
+    closeout_workflow.set_defaults(func=cmd_closeout_workflow)
 
     return parser
 

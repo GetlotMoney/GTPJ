@@ -14,6 +14,19 @@ from pathlib import Path
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "workflow" / "gtpj_workflow.py"
+CONFIRMATION_RULE_MARKERS_TEXT = (
+    "repeat_type: exact_repeat\n"
+    "original_seed\n"
+    "max_attempts: 5\n"
+    "max_attempts_hard_cap\n"
+    "early_stop_on_best_hit: true\n"
+    "restore_target_H\n"
+    "near_miss_tolerance_H\n"
+    "near_miss_not_restored\n"
+    "seed_sweep\n"
+    "multi_seed_stability\n"
+    "not_confirmation_evidence\n"
+)
 
 
 def load_helper():
@@ -32,6 +45,36 @@ class WorkflowHelperTest(unittest.TestCase):
         self.repo = Path(self.tmp.name)
         self.module = load_helper()
         self.module.REPO_ROOT = self.repo
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH = self.repo / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        skill_reference_dir = self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / "references"
+        skill_reference_dir.mkdir(parents=True, exist_ok=True)
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
+            "GitHub documentation is canonical\n"
+            "local skill mirrors the repository rules\n"
+            "docs/workflow/START_HERE.md\n"
+            "docs/workflow/WORKFLOW_KERNEL.md\n"
+            "same GitHub truth source\n"
+            "开启多agents智能体工作流\n"
+            "不得反复确认\n"
+            "files_reviewed\n"
+            "report-new-completions\n"
+            "代码审核不被 `server_frozen_runner` 豁免\n"
+            + CONFIRMATION_RULE_MARKERS_TEXT,
+            encoding="utf-8",
+        )
+        for reference_name in ["start_here.md", "workflow_kernel.md", "quick_start.md"]:
+            (skill_reference_dir / reference_name).write_text(
+                "代码审核不被 `server_frozen_runner` 豁免\n",
+                encoding="utf-8",
+            )
+        for reference_path in self.module.CONFIRMATION_RULE_SKILL_REFERENCE_FILES:
+            path = self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / reference_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_text(CONFIRMATION_RULE_MARKERS_TEXT, encoding="utf-8")
+            elif CONFIRMATION_RULE_MARKERS_TEXT not in path.read_text(encoding="utf-8"):
+                path.write_text(path.read_text(encoding="utf-8") + "\n" + CONFIRMATION_RULE_MARKERS_TEXT, encoding="utf-8")
         self.module.CANONICAL_BASELINES = {
             "v1": {
                 "name": "GTPJ-v1",
@@ -85,10 +128,22 @@ class WorkflowHelperTest(unittest.TestCase):
             check=True,
         )
 
+    def _commit_all(self, message: str = "commit test fixture") -> None:
+        self._git("add", ".")
+        if self._git("status", "--short").stdout.strip():
+            self._git("commit", "-m", message)
+
     def _write(self, relative: str, content: str) -> None:
         path = self.repo / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
+
+    def _add_confirmation_rule_markers(self) -> None:
+        for relative in self.module.CONFIRMATION_RULE_REPO_SYNC_FILES:
+            path = self.repo / relative
+            existing = path.read_text(encoding="utf-8") if path.exists() else ""
+            if CONFIRMATION_RULE_MARKERS_TEXT not in existing:
+                self._write(relative, existing + "\n" + CONFIRMATION_RULE_MARKERS_TEXT)
 
     def _write_minimal_repo(self) -> None:
         self._write(
@@ -162,12 +217,12 @@ class WorkflowHelperTest(unittest.TestCase):
 
     def _passing_codex_pre_review_args(self) -> list[str]:
         return [
-            "--codex-pre-review-agent-id",
-            "agent-test-001",
-            "--codex-pre-review-agent-name",
-            "Temp Review Agent",
-            "--codex-pre-review-close-result",
-            "agent_id=agent-test-001 previous_status=completed closed: true",
+            "--codex-pre-review-thread-id",
+            "thread-test-001",
+            "--codex-pre-review-thread-title",
+            "ATTEMPT-REVIEW | Codex Pre Review",
+            "--codex-pre-review-archive-result",
+            "thread_id=thread-test-001 previous_status=completed archived: true",
             "--codex-pre-review-verdict",
             "pass",
         ]
@@ -341,7 +396,7 @@ class WorkflowHelperTest(unittest.TestCase):
         include_owner_monitor: bool = True,
         include_preflight: bool = True,
         duplicate_agent_id: bool = False,
-        bad_display_name: bool = False,
+        bad_thread_title: bool = False,
     ) -> Path:
         gate_path = self.repo / path
         self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
@@ -362,32 +417,32 @@ class WorkflowHelperTest(unittest.TestCase):
         }.items():
             self._write(
                 str((gate_path.parent / "agent_outputs" / f"{role}.md").relative_to(self.repo)).replace("\\", "/"),
-                f"# {role}\nrole_key: {role}\nagent_instance_id: {instance_id}\noutput: {role} checked test gate.\n",
+                f"# {role}\nrole_key: {role}\nthread_id: {instance_id}\noutput: {role} checked test gate.\n",
             )
         agent_ids = (
-            "temporary_subagent_ids:\n"
+            "named_thread_ids:\n"
             "  runner_monitor: 019f1111-1111-7111-8111-111111111111\n"
             "  interface_checker: 019f2222-2222-7222-8222-222222222222\n"
             "  evidence_quality_checker: 019f3333-3333-7333-8333-333333333333\n"
         )
         if duplicate_agent_id:
             agent_ids = (
-                "temporary_subagent_ids:\n"
+                "named_thread_ids:\n"
                 "  runner_monitor: 019f1111-1111-7111-8111-111111111111\n"
                 "  interface_checker: 019f2222-2222-7222-8222-222222222222\n"
                 "  evidence_quality_checker: 019f2222-2222-7222-8222-222222222222\n"
             )
         if not include_agent_ids:
-            agent_ids = "temporary_subagent_ids:\n  runner_monitor: temporary_subagent\n"
-        display_names = (
-            "temporary_subagent_display_names:\n"
+            agent_ids = "named_thread_ids:\n  runner_monitor: temporary_subagent\n"
+        thread_titles = (
+            "named_thread_titles:\n"
             "  runner_monitor: ATTEMPT-001 | Runner Monitor\n"
             "  interface_checker: ATTEMPT-001 | Interface Checker\n"
             "  evidence_quality_checker: ATTEMPT-001 | Evidence Quality Checker\n"
         )
-        if bad_display_name:
-            display_names = (
-                "temporary_subagent_display_names:\n"
+        if bad_thread_title:
+            thread_titles = (
+                "named_thread_titles:\n"
                 "  runner_monitor: Galileo\n"
                 "  interface_checker: ATTEMPT-001 | Interface Checker\n"
                 "  evidence_quality_checker: ATTEMPT-001 | Evidence Quality Checker\n"
@@ -400,21 +455,22 @@ class WorkflowHelperTest(unittest.TestCase):
             "report_interval_minutes: 15\n"
             "agent_activity_stream: AGENT_ACTIVITY.md\n"
             "monitor_handoff_on_pause: required\n"
-            "right_sidebar_retention_policy: current_stage_active_only\n"
-            "close_completed_agents_on_stage_end: true\n"
-            "closed_agents_record: AGENT_ACTIVITY.md\n"
+            "thread_archive_policy: archive_completed_threads_on_stage_end\n"
+            "archive_completed_threads_on_stage_end: true\n"
+            "archived_threads_record: AGENT_ACTIVITY.md\n"
         )
         if not include_owner_monitor:
             owner_monitor = ""
         preflight = (
             "multi_agent_preflight:\n"
-            "  required_agents_spawned: true\n"
+            "  required_threads_created: true\n"
             "  agent_instance_ids_present: true\n"
             "  agent_status_refs_valid: true\n"
             "  independent_outputs_present: true\n"
             "  agent_output_refs_valid: true\n"
             "  pre_run_allow_checks_passed: true\n"
             "  agent_runtime_validated: true\n"
+            "  threads_archivable: true\n"
         )
         if not include_preflight:
             preflight = ""
@@ -425,18 +481,18 @@ class WorkflowHelperTest(unittest.TestCase):
             "subject_type: attempt\n"
             "formal_evidence: true\n"
             "activation_mode: real_multi_agent\n"
-            "agent_instance_mode: temporary_subagent\n"
+            "agent_instance_mode: named_owner_thread\n"
             "lifecycle: workflow_scoped\n"
-            "ui_visibility: right_sidebar_temporary_agents\n"
+            "ui_visibility: left_sidebar_named_threads\n"
             "tool_support_real_multi_agent_available: true\n"
-            "spawn_tool: multi_agent_v1.spawn_agent\n"
+            "thread_management_tool: codex_app.create_thread\n"
             "single_agent_execution: false\n"
             "runner_start_allowed: true\n"
             "formal_runner_allowed: true\n"
             "formal_evidence_allowed: true\n"
             f"{owner_monitor}"
             f"{agent_ids}"
-            f"{display_names}"
+            f"{thread_titles}"
             "agent_instance_status:\n"
             "  runner_monitor: running\n"
             "  interface_checker: completed\n"
@@ -454,6 +510,82 @@ class WorkflowHelperTest(unittest.TestCase):
             "  interface_checker: allow\n"
             f"  evidence_quality_checker: {quality_decision}\n"
             f"{preflight}"
+            "authority_refs:\n"
+            "  manifest: manifest.yaml\n"
+            "  agent_summary: agent_summary.md\n"
+            "  quality_check: quality_check.md\n"
+            "  transitions: TRANSITIONS.jsonl\n"
+            "  agent_activity: AGENT_ACTIVITY.md\n",
+        )
+        return gate_path
+
+    def _write_server_detached_formal_gate(
+        self,
+        *,
+        path: str = "experiments/v1/tune/TUNE-001_ok/server_detached_agent_runtime.yaml",
+        runner_decision: str = "allow",
+        quality_decision: str = "allow",
+    ) -> Path:
+        gate_path = self.repo / path
+        self._write(str((gate_path.parent / "manifest.yaml").relative_to(self.repo)).replace("\\", "/"), "schema_version: gtpj-manifest/v1\n")
+        self._write(str((gate_path.parent / "agent_summary.md").relative_to(self.repo)).replace("\\", "/"), "# Agent Summary\n")
+        self._write(str((gate_path.parent / "quality_check.md").relative_to(self.repo)).replace("\\", "/"), "# Quality\n")
+        self._write(str((gate_path.parent / "TRANSITIONS.jsonl").relative_to(self.repo)).replace("\\", "/"), "")
+        self._write(
+            str((gate_path.parent / "AGENT_ACTIVITY.md").relative_to(self.repo)).replace("\\", "/"),
+            "# Agent Activity\n"
+            "current_owner_thread role_only formal server_detached\n",
+        )
+        for role in ("runner_monitor", "interface_checker", "evidence_quality_checker"):
+            self._write(
+                str((gate_path.parent / "agent_outputs" / f"{role}.md").relative_to(self.repo)).replace("\\", "/"),
+                f"# {role}\nrole_key: {role}\nexecution_mode: role_only\noutput: {role} checked server_detached formal gate.\n",
+            )
+        self._write(
+            path,
+            "schema_version: gtpj.agent_runtime_gate.v0\n"
+            "subject_id: ATTEMPT-011\n"
+            "subject_type: attempt\n"
+            "formal_evidence: true\n"
+            "activation_mode: role_only\n"
+            "agent_instance_mode: role_only\n"
+            "lifecycle: server_detached_formal\n"
+            "formal_runtime_backend: server_detached_role_only\n"
+            "ui_visibility: current_owner_thread_only\n"
+            "tool_support_real_multi_agent_available: true\n"
+            "thread_management_tool: not_used\n"
+            "single_agent_execution: true\n"
+            "real_multi_agent_required: false\n"
+            "thread_creation_allowed: false\n"
+            "runner_start_allowed: true\n"
+            "formal_runner_allowed: true\n"
+            "formal_evidence_allowed: true\n"
+            "owner_monitor_mode: true\n"
+            "owner_role: monitor\n"
+            "owner_visible_reporting: true\n"
+            "report_channel: current_conversation\n"
+            "report_interval_minutes: 15\n"
+            "agent_activity_stream: AGENT_ACTIVITY.md\n"
+            "monitor_handoff_on_pause: required\n"
+            "thread_archive_policy: not_applicable_no_named_threads\n"
+            "archive_completed_threads_on_stage_end: false\n"
+            "archived_threads_record: AGENT_ACTIVITY.md\n"
+            "agent_output_refs:\n"
+            "  runner_monitor: agent_outputs/runner_monitor.md\n"
+            "  interface_checker: agent_outputs/interface_checker.md\n"
+            "  evidence_quality_checker: agent_outputs/evidence_quality_checker.md\n"
+            "pre_run_required_checks:\n"
+            f"  runner_monitor: {runner_decision}\n"
+            "  interface_checker: allow\n"
+            f"  evidence_quality_checker: {quality_decision}\n"
+            "sequential_role_preflight:\n"
+            "  role_plan_recorded: true\n"
+            "  independent_outputs_present: true\n"
+            "  pre_run_allow_checks_passed: true\n"
+            "  agent_runtime_validated: true\n"
+            "  server_detached_ready: true\n"
+            "  stop_mechanism_ready: true\n"
+            "  cleanup_not_required: true\n"
             "authority_refs:\n"
             "  manifest: manifest.yaml\n"
             "  agent_summary: agent_summary.md\n"
@@ -873,6 +1005,70 @@ audit:
         self.assertIn("daily_read_chain: START_HERE.md -> WORKFLOW_KERNEL.md -> playbooks/mixed_campaign.md", stdout)
         self.assertIn("closed_loop: plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync", stdout)
         self.assertIn("next_action: create campaign manifest and agent_runtime.yaml after owner approval", stdout)
+
+    def test_start_routes_generic_experiment_planning_phrase(self) -> None:
+        code, stdout, stderr = self._run_main("start", "--phrase", "规划下一轮实验")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("owner_phrase: 规划下一轮实验", stdout)
+        self.assertIn("task_type: experiment planning", stdout)
+        self.assertIn("runner_scope: none", stdout)
+        self.assertIn("next_action: run plan-experiments", stdout)
+
+    def test_plan_experiments_auto_scans_state_without_writing(self) -> None:
+        idea_before = (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8")
+
+        code, stdout, stderr = self._run_main("plan-experiments", "--phrase", "调参", "--max-jobs", "3")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("experiment_planning_gate: EXPPLAN-", stdout)
+        self.assertIn("auto_state_scan:", stdout)
+        self.assertIn("baseline_repro_status:", stdout)
+        self.assertIn("## Evidence Summary", stdout)
+        self.assertIn("## Candidate Decision", stdout)
+        self.assertIn("## Current Run Plan", stdout)
+        self.assertIn("TUNE-001", stdout)
+        self.assertIn("changed_config_not_exact_repeat", stdout)
+        self.assertIn("runner_start_allowed: false", stdout)
+        self.assertEqual(idea_before, (self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+
+    def test_plan_experiments_reads_formal_pending_ledger_rows(self) -> None:
+        self._write(
+            "experiments/v1/tune/INDEX.md",
+            "# Tune Index\n\n| 实验 | 状态 | 目录 | 说明 |\n"
+            "|---|---|---|---|\n"
+            "| `TUNE-777_pending` | planned | `experiments/v1/tune/TUNE-777_pending` | formal_pending |\n",
+        )
+
+        code, stdout, stderr = self._run_main("plan-experiments", "--phrase", "调参")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("formal_pending_count: 1", stdout)
+        self.assertIn("TUNE-777_pending", stdout)
+        self.assertIn("formal_pending", stdout)
+
+    def test_plan_experiments_extracts_budget_from_generic_phrase(self) -> None:
+        code, stdout, stderr = self._run_main("plan-experiments", "--phrase", "批量规划50轮实验")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("task_type: experiment planning", stdout)
+        self.assertIn("requested_budget_jobs: 50", stdout)
+        self.assertIn("max 50 jobs after type is resolved", stdout)
+        self.assertIn("runner_start_allowed: false", stdout)
+
+    def test_plan_experiments_routes_mixed_common_planning_phrase(self) -> None:
+        code, stdout, stderr = self._run_main("plan-experiments", "--phrase", "规划2创新+8调参")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("task_type: mixed experiment campaign", stdout)
+        self.assertIn("| INNOV | innovation |", stdout)
+        self.assertIn("| TUNE | tune |", stdout)
+        self.assertIn("runner_start_allowed: false", stdout)
 
     def test_closeout_check_accepts_synced_module_trial_loop_without_writing(self) -> None:
         idea = self._write_selected_idea_files()
@@ -1405,6 +1601,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/agent_summary.md").exists())
+        confirmation_index = self._confirmation_index_text()
+        self.assertIn("| 实验 | 状态 | Run ID | Formal | 目录 | 说明 |", confirmation_index)
+        self.assertIn("formal_pending", confirmation_index)
 
     def test_tune_suggest_lists_at_most_three_candidates_without_writing(self) -> None:
         index_before = self._tune_index_text()
@@ -1479,14 +1678,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
         names = Counter(job["name"].rsplit("_r", 1)[0] for job in jobs)
 
         self.assertEqual(len(jobs), 50)
-        self.assertEqual(groups["direction_confirmation"], 20)
-        self.assertEqual(groups["direction_neighbor"], 20)
+        self.assertEqual(groups["direction_confirmation"], 5)
+        self.assertEqual(groups["direction_neighbor"], 10)
+        self.assertEqual(groups["direction_local_refine"], 25)
         self.assertEqual(groups["sanity_control"], 10)
         self.assertEqual(phases["explore"], 50)
         self.assertNotIn("repeat", phases)
-        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 20)
-        self.assertEqual(names["dr008_direction_sample_h48_w0.5_a0.005"], 10)
-        self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 10)
+        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 5)
+        self.assertEqual(names["dr008_direction_sample_h48_w0.5_a0.005"], 5)
+        self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 5)
         self.assertTrue(all(job["seed"] == 5 for job in jobs))
         target_updates = jobs[0]["config_updates"]
         self.assertEqual(target_updates["dynamic_direction_mode"], "sample")
@@ -1503,11 +1703,11 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual(len(jobs), 50)
         self.assertEqual(phases["explore"], 50)
-        self.assertEqual(groups["must_reproduce"], 12)
-        self.assertEqual(groups["direction_microgrid"], 24)
+        self.assertEqual(groups["must_reproduce"], 11)
+        self.assertEqual(groups["direction_microgrid"], 25)
         self.assertEqual(groups["local_direction_micro"], 6)
         self.assertEqual(groups["direction_pse_micro"], 6)
-        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 6)
+        self.assertEqual(names["dr009_direction_sample_h48_w0.45_a0.005"], 5)
         self.assertEqual(names["dr008_direction_sample_h48_w0.5_a0.005"], 3)
         self.assertEqual(names["dr010_direction_sample_h64_w0.5_a0.01"], 3)
         self.assertTrue(all(job["seed"] == 5 for job in jobs))
@@ -1600,16 +1800,16 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(all(update["weight_s2v"] == 0.525 for update in updates))
         self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
 
-    def test_dynamic_routing_batch_plan_has_dr035_min6_confirm_jobs(self) -> None:
-        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="dr035-min6-confirm")
+    def test_dynamic_routing_batch_plan_has_dr035_max5_confirm_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="dr035-max5-confirm")
         updates = [job["config_updates"] for job in jobs]
 
-        self.assertEqual(len(jobs), 6)
-        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 7)])
-        self.assertEqual([job["group"] for job in jobs], ["confirm_dr035"] * 6)
-        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 6)
-        self.assertEqual([job["seed"] for job in jobs], [5] * 6)
-        self.assertEqual([update["random_seed"] for update in updates], [5] * 6)
+        self.assertEqual(len(jobs), 5)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 6)])
+        self.assertEqual([job["group"] for job in jobs], ["confirm_dr035"] * 5)
+        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 5)
+        self.assertEqual([job["seed"] for job in jobs], [5] * 5)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 5)
         self.assertEqual(
             [job["name"] for job in jobs],
             [
@@ -1618,7 +1818,6 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 "dr035_direction_sample_h48_w0.525_a0.005_s5_r3",
                 "dr035_direction_sample_h48_w0.525_a0.005_s5_r4",
                 "dr035_direction_sample_h48_w0.525_a0.005_s5_r5",
-                "dr035_direction_sample_h48_w0.525_a0.005_s5_r6",
             ],
         )
         self.assertTrue(all(update["use_dynamic_routing"] for update in updates))
@@ -1629,6 +1828,14 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
         self.assertTrue(all(update["dynamic_gate_anchor_lambda"] == 0.005 for update in updates))
         self.assertTrue(all(update["weight_s2v"] == 0.525 for update in updates))
+
+    def test_dynamic_routing_batch_rejects_dr035_min6_confirm_profile(self) -> None:
+        with self.assertRaisesRegex(self.module.WorkflowError, "max_attempts: 5"):
+            self.module.build_dynamic_routing_jobs(seed=99, profile="dr035-min6-confirm")
+
+    def test_exact_repeat_hard_cap_rejects_more_than_five_same_config_runs(self) -> None:
+        with self.assertRaisesRegex(self.module.WorkflowError, "max_attempts: 5"):
+            self.module._dr035_confirm_specs(6)
 
     def test_dynamic_routing_batch_plan_has_h76_existing_routing_100_jobs(self) -> None:
         jobs = self.module.build_dynamic_routing_jobs(seed=5, profile="h76-existing-routing-100")
@@ -1663,6 +1870,284 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(
             all(float(update.get("icsa_ratio", 0.0)) <= 0.004 for update in updates if "icsa_ratio" in update)
         )
+
+    def test_dynamic_routing_batch_plan_has_h76_top4_min5_repeat_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-top4-min5-repeat")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 20)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 21)])
+        self.assertEqual(groups["h76_top4_same_seed_repeat"], 20)
+        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 20)
+        self.assertEqual([job["seed"] for job in jobs], [5] * 20)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 20)
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+
+        expected = [
+            (0.525, 0.003),
+            (0.545, 0.004),
+            (0.515, 0.002),
+            (0.535, 0.002),
+        ]
+        for weight_s2v, anchor in expected:
+            matching = [
+                update
+                for update in updates
+                if update.get("dynamic_direction_mode") == "sample"
+                and update.get("dynamic_gate_hidden") == 48
+                and update.get("weight_s2v") == weight_s2v
+                and update.get("dynamic_gate_anchor_lambda") == anchor
+            ]
+            self.assertEqual(len(matching), 5)
+
+    def test_dynamic_routing_batch_plan_has_h76_mixed200_four_frozen_batches(self) -> None:
+        profiles = [
+            "h76-mixed200-b01-search50",
+            "h76-mixed200-b02-search50",
+            "h76-mixed200-b03-search20-repeat20-ablate10",
+            "h76-mixed200-b04-search20-ablate30",
+        ]
+        batches = [self.module.build_dynamic_routing_jobs(seed=5, profile=profile) for profile in profiles]
+        jobs = [job for batch in batches for job in batch]
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual([len(batch) for batch in batches], [50, 50, 50, 50])
+        self.assertEqual(len(jobs), 200)
+        self.assertEqual(groups["h76_mixed200_search_tune_plus"], 20)
+        self.assertEqual(groups["h76_mixed200_search_local_refine"], 20)
+        self.assertEqual(groups["h76_mixed200_top4_same_seed_repeat"], 20)
+        self.assertEqual(groups["h76_mixed200_ablate_top4"], 40)
+        self.assertEqual(
+            sum(1 for job in jobs if job["group"] not in {"h76_mixed200_top4_same_seed_repeat", "h76_mixed200_ablate_top4"}),
+            140,
+        )
+        self.assertTrue(all(job["phase"] == "explore" for job in jobs))
+        self.assertTrue(all(job["seed"] == 5 for job in jobs))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+
+        self.assertEqual(Counter(job["group"] for job in batches[0])["h76_mixed200_top4_same_seed_repeat"], 0)
+        self.assertEqual(Counter(job["group"] for job in batches[1])["h76_mixed200_top4_same_seed_repeat"], 0)
+        self.assertEqual(Counter(job["group"] for job in batches[2])["h76_mixed200_top4_same_seed_repeat"], 20)
+        self.assertEqual(Counter(job["group"] for job in batches[2])["h76_mixed200_ablate_top4"], 10)
+        self.assertEqual(Counter(job["group"] for job in batches[3])["h76_mixed200_top4_same_seed_repeat"], 0)
+        self.assertEqual(Counter(job["group"] for job in batches[3])["h76_mixed200_search_local_refine"], 20)
+        self.assertEqual(Counter(job["group"] for job in batches[3])["h76_mixed200_ablate_top4"], 30)
+
+        repeated_configs = [
+            (
+                update.get("weight_s2v"),
+                update.get("dynamic_gate_anchor_lambda"),
+            )
+            for job, update in zip(jobs, updates)
+            if job["group"] == "h76_mixed200_top4_same_seed_repeat"
+        ]
+        self.assertEqual(Counter(repeated_configs), Counter({(0.525, 0.003): 5, (0.545, 0.004): 5, (0.515, 0.002): 5, (0.535, 0.002): 5}))
+
+    def test_dynamic_routing_batch_plan_has_h76_followup50_multiseed_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-followup50-multiseed")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 50)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 51)])
+        self.assertEqual(groups["h76_followup50_multiseed_stability"], 50)
+        self.assertEqual([job["phase"] for job in jobs], ["explore"] * 50)
+        self.assertEqual(Counter(job["seed"] for job in jobs), Counter({seed: 5 for seed in range(6, 16)}))
+        self.assertEqual(Counter(update["random_seed"] for update in updates), Counter({seed: 5 for seed in range(6, 16)}))
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(all(update["use_dynamic_routing"] for update in updates))
+        self.assertTrue(all(update["dynamic_local_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_icsa_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_pse_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+
+        candidate_names = Counter(str(job["name"]).rsplit("_s", 1)[0] for job in jobs)
+        self.assertEqual(
+            candidate_names,
+            Counter(
+                {
+                    "dr047_direction_sample_h48_w0.535_a0.002": 10,
+                    "dr020_direction_sample_h48_w0.525_a0.003": 10,
+                    "dr041_direction_sample_h48_w0.515_a0.002": 10,
+                    "a011dr042_direction_sample_h48_w0.515_a0.004": 10,
+                    "a011dr020_direction_sample_h48_w0.555_a0.0045": 10,
+                }
+            ),
+        )
+        self.assertEqual(
+            Counter((update["weight_s2v"], update["dynamic_gate_anchor_lambda"]) for update in updates),
+            Counter({(0.535, 0.002): 10, (0.525, 0.003): 10, (0.515, 0.002): 10, (0.515, 0.004): 10, (0.555, 0.0045): 10}),
+        )
+
+    def test_dynamic_routing_batch_plan_has_h76_restore100_exact_repeat_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-restore100-exact-repeat")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+        candidates = Counter(str(job["source_candidate_id"]) for job in jobs)
+
+        self.assertEqual(len(jobs), 100)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 101)])
+        self.assertEqual(groups["h76_restore100_exact_repeat"], 100)
+        self.assertEqual(len(candidates), 20)
+        self.assertEqual(set(candidates.values()), {5})
+        self.assertEqual([job["seed"] for job in jobs], [5] * 100)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 100)
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(all(job["repeat_max_attempts"] == 5 for job in jobs))
+        self.assertTrue(all(str(job["restore_target_H"]) for job in jobs))
+        self.assertEqual(jobs[0]["source_candidate_id"], "A011B01DR042")
+        self.assertEqual(jobs[0]["restore_target_H"], "75.00")
+        self.assertEqual(jobs[0]["source_run_id"], "RUN-20260706-0001-h76-mixed200-b01-search50-2gpu")
+
+    def test_dynamic_routing_restore100_policy_uses_per_job_restore_target(self) -> None:
+        policy = self.module.confirmation_policy_for_profile("h76-restore100-exact-repeat")
+
+        self.assertEqual(policy["repeat_type"], "exact_repeat")
+        self.assertEqual(policy["restore_target_H"], "per_job_source_H")
+        self.assertTrue(policy["per_job_restore_target_H"])
+        self.assertEqual(policy["max_attempts"], 5)
+        self.assertFalse(policy["seed_change_allowed"])
+
+    def test_dynamic_routing_batch_plan_has_h76_hotspot_top2_restore10_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-hotspot-top2-restore10-exact-repeat")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+        candidates = Counter(str(job["source_candidate_id"]) for job in jobs)
+
+        self.assertEqual(len(jobs), 10)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 11)])
+        self.assertEqual(groups["h76_hotspot_top2_exact_repeat"], 10)
+        self.assertEqual(candidates, Counter({"A015DR004": 5, "A015DR035": 5}))
+        self.assertEqual([job["seed"] for job in jobs], [5] * 10)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 10)
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+        self.assertEqual(
+            Counter((update["weight_s2v"], update["dynamic_gate_anchor_lambda"]) for update in updates),
+            Counter({(0.495, 0.003): 5, (0.525, 0.0035): 5}),
+        )
+        self.assertEqual(jobs[0]["source_run_id"], "RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu")
+        self.assertEqual(jobs[0]["source_job_id"], "DR-004")
+        self.assertEqual(jobs[0]["restore_target_H"], "75.04")
+        self.assertEqual(jobs[5]["source_job_id"], "DR-035")
+        self.assertEqual(jobs[5]["restore_target_H"], "75.00")
+        self.assertTrue(all(job["repeat_max_attempts"] == 5 for job in jobs))
+
+    def test_dynamic_routing_hotspot_top2_restore_policy_uses_per_job_restore_target(self) -> None:
+        policy = self.module.confirmation_policy_for_profile("h76-hotspot-top2-restore10-exact-repeat")
+
+        self.assertEqual(policy["repeat_type"], "exact_repeat")
+        self.assertEqual(policy["restore_target_H"], "per_job_source_H")
+        self.assertTrue(policy["per_job_restore_target_H"])
+        self.assertEqual(policy["max_attempts"], 5)
+        self.assertFalse(policy["seed_change_allowed"])
+        self.assertTrue(policy["early_stop_on_best_hit"])
+
+    def test_dynamic_routing_batch_plan_has_a017dr095_restore5_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-a017dr095-restore5-exact-repeat")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+        candidates = Counter(str(job["source_candidate_id"]) for job in jobs)
+
+        self.assertEqual(len(jobs), 5)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 6)])
+        self.assertEqual(groups["h76_a017dr095_exact_repeat"], 5)
+        self.assertEqual(candidates, Counter({"A017DR095": 5}))
+        self.assertEqual([job["seed"] for job in jobs], [5] * 5)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 5)
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+        self.assertEqual(
+            Counter((update["weight_s2v"], update["dynamic_gate_anchor_lambda"]) for update in updates),
+            Counter({(0.535, 0.0035): 5}),
+        )
+        self.assertEqual(jobs[0]["source_run_id"], "RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu")
+        self.assertEqual(jobs[0]["source_job_id"], "DR-095")
+        self.assertEqual(jobs[0]["restore_target_H"], "75.11")
+        self.assertTrue(all(job["repeat_max_attempts"] == 5 for job in jobs))
+
+    def test_dynamic_routing_a017dr095_restore_policy_uses_per_job_restore_target(self) -> None:
+        policy = self.module.confirmation_policy_for_profile("h76-a017dr095-restore5-exact-repeat")
+
+        self.assertEqual(policy["repeat_type"], "exact_repeat")
+        self.assertEqual(policy["restore_target_H"], "per_job_source_H")
+        self.assertTrue(policy["per_job_restore_target_H"])
+        self.assertEqual(policy["max_attempts"], 5)
+        self.assertFalse(policy["seed_change_allowed"])
+        self.assertTrue(policy["early_stop_on_best_hit"])
+
+    def test_dynamic_routing_batch_plan_has_h76_hotspot100_tune_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-hotspot100-tune")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 100)
+        self.assertEqual(groups["h76_hotspot100_primary_grid"], 65)
+        self.assertEqual(groups["h76_hotspot100_micro_grid"], 20)
+        self.assertEqual(groups["h76_hotspot100_low_anchor_ridge"], 15)
+        self.assertEqual([job["seed"] for job in jobs], [5] * 100)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 100)
+        self.assertTrue(all(update["dynamic_direction_mode"] == "sample" for update in updates))
+        self.assertTrue(all(update["dynamic_gate_hidden"] == 48 for update in updates))
+        self.assertTrue(all(update["dynamic_local_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_icsa_mode"] == "fixed" for update in updates))
+        self.assertTrue(all(update["dynamic_pse_mode"] == "fixed" for update in updates))
+        self.assertGreaterEqual(min(update["weight_s2v"] for update in updates), 0.495)
+        self.assertLessEqual(max(update["weight_s2v"] for update in updates), 0.555)
+        self.assertLessEqual(max(update["dynamic_gate_anchor_lambda"] for update in updates), 0.00375)
+
+        policy = self.module.confirmation_policy_for_profile("h76-hotspot100-tune")
+        self.assertEqual(policy["repeat_type"], "not_confirmation")
+        self.assertTrue(policy["not_confirmation_evidence"])
+
+    def test_dynamic_routing_batch_plan_has_h76_escape100_supported_routing_jobs(self) -> None:
+        jobs = self.module.build_dynamic_routing_jobs(seed=99, profile="h76-escape100-supported-routing")
+        groups = Counter(job["group"] for job in jobs)
+        updates = [job["config_updates"] for job in jobs]
+
+        self.assertEqual(len(jobs), 100)
+        self.assertEqual([job["job_id"] for job in jobs], [f"DR-{i:03d}" for i in range(1, 101)])
+        self.assertEqual(groups["h76_escape_direction_micro"], 30)
+        self.assertEqual(groups["h76_escape_hidden_sweep"], 15)
+        self.assertEqual(groups["h76_escape_local_sample_tune"], 15)
+        self.assertEqual(groups["h76_escape_pse_class_tune"], 15)
+        self.assertEqual(groups["h76_escape_icsa_guarded_tune"], 10)
+        self.assertEqual(groups["h76_escape_ablate_mechanism"], 10)
+        self.assertEqual(groups["h76_escape_sentinel_control"], 5)
+        self.assertEqual([job["seed"] for job in jobs], [5] * 100)
+        self.assertEqual([update["random_seed"] for update in updates], [5] * 100)
+        self.assertNotIn("sample", {update.get("dynamic_pse_mode") for update in updates})
+        self.assertTrue(any(update.get("use_dynamic_routing") is False for update in updates))
+        self.assertTrue(any(update.get("dynamic_gate_hidden") in {40, 44, 52, 56, 64} for update in updates))
+        self.assertTrue(any(update.get("dynamic_local_mode") == "sample" for update in updates))
+        self.assertTrue(any(update.get("dynamic_pse_mode") == "class" for update in updates))
+        self.assertTrue(any(update.get("dynamic_icsa_mode") in {"sample", "class"} for update in updates))
+        self.assertTrue(
+            all(float(update.get("icsa_ratio", 0.0)) <= 0.002 for update in updates if "icsa_ratio" in update)
+        )
+
+        policy = self.module.confirmation_policy_for_profile("h76-escape100-supported-routing")
+        self.assertEqual(policy["repeat_type"], "not_confirmation")
+        self.assertTrue(policy["not_confirmation_evidence"])
+
+    def test_dynamic_runner_candidate_hit_skips_only_candidate_repeats(self) -> None:
+        runner = self.module._dynamic_runner_script()
+
+        self.assertIn("candidate_exact_repeat_best_hit", runner)
+        self.assertIn("skip_remaining_candidate_repeats", runner)
+        self.assertIn("job_skipped_candidate_restored", runner)
+        self.assertIn("source_candidate_id", runner)
+
+    def test_dynamic_runner_script_honors_stop_requested_file(self) -> None:
+        script = self.module._dynamic_runner_script()
+
+        self.assertIn("STOP_REQUESTED", script)
+        self.assertIn("stop_requested(run_dir)", script)
+        self.assertIn("skip_remaining_due_stop", script)
+        self.assertIn("job_skipped_stop_requested", script)
 
     def test_plan_dynamic_routing_batch_rejects_formal_run_without_agent_runtime_gate(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -1722,6 +2207,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
         gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
 
         code, stdout, stderr = self._run_main(
             "plan-dynamic-routing-batch",
@@ -1739,11 +2225,132 @@ log:v1:module_trial:TRIAL-001:attempt-001
         plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-FORMAL-GATE/plan.json").read_text(encoding="utf-8"))
         self.assertTrue(plan["formal_evidence"])
         self.assertEqual("experiments/module_trials/IDEA-0003_x/TRIAL-001_x/agent_runtime.yaml", plan["agent_runtime_gate"])
+        head = self._git("rev-parse", "HEAD").stdout.strip()
+        self.assertEqual(head, plan["commit"])
+        self.assertEqual(head, plan["plan_generation_commit"])
+        self.assertTrue(plan["formal_source_clean"])
+        self.assertEqual("formal_same_clean_head", plan["commit_policy"])
+        self.assertEqual(head, plan["source_control"]["training_commit"])
+        self.assertEqual(head, plan["source_control"]["plan_generation_commit"])
+        self.assertEqual("main", plan["source_control"]["plan_generation_branch"])
+        self.assertEqual("main", plan["source_control"]["training_branch_label"])
+        self.assertEqual("clean", plan["source_control"]["dirty_state"])
+        self.assertIn("experiments/module_trials/IDEA-0003_x/TRIAL-001_x/config.yaml", plan["source_control"]["fingerprint_paths"])
+
+    def test_plan_dynamic_routing_batch_rejects_formal_dirty_worktree(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+        self._write("scratch_dirty.txt", "uncommitted formal planner change\n")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-FORMAL-DIRTY",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("Working tree must be clean before formal dynamic routing batch planning creates files", stderr)
+        self.assertFalse((self.repo / ".gtpj_runtime/batches/RUN-TEST-FORMAL-DIRTY").exists())
+
+    def test_plan_dynamic_routing_batch_rejects_formal_commit_mismatch(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+        frozen_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._write("advance_head.txt", "advance clean HEAD\n")
+        self._commit_all("advance clean head")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-FORMAL-COMMIT-MISMATCH",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--commit",
+            frozen_commit,
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires --commit to equal the clean local HEAD", stderr)
+        self.assertFalse((self.repo / ".gtpj_runtime/batches/RUN-TEST-FORMAL-COMMIT-MISMATCH").exists())
+
+    def test_plan_dynamic_routing_batch_allows_explicit_historical_training_commit(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze historical training source")
+        training_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._write(f"{trial_dir}/config.yaml", "version: planner-only-new\n")
+        self._write("planner_fix.txt", "planner-only safety fix\n")
+        self._commit_all("advance planner helper")
+        planner_commit = self._git("rev-parse", "HEAD").stdout.strip()
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-HISTORICAL-COMMIT",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--commit",
+            training_commit,
+            "--branch",
+            "main",
+            "--allow-historical-training-commit",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("dynamic-routing-plan-created", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-HISTORICAL-COMMIT/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(training_commit, plan["commit"])
+        self.assertEqual(planner_commit, plan["plan_generation_commit"])
+        self.assertEqual("main", plan["branch"])
+        self.assertEqual("formal_explicit_historical_training_commit", plan["commit_policy"])
+        self.assertEqual(training_commit, plan["source_control"]["training_commit"])
+        self.assertEqual(planner_commit, plan["source_control"]["plan_generation_commit"])
+        self.assertEqual("main", plan["source_control"]["training_branch_label"])
+        rendered_config = (self.repo / ".gtpj_runtime/batches/RUN-TEST-HISTORICAL-COMMIT/configs/DR-001.yaml").read_text(encoding="utf-8")
+        self.assertIn("version: v5", rendered_config)
+        self.assertNotIn("planner-only-new", rendered_config)
+
+    def test_plan_dynamic_routing_batch_rejects_formal_branch_mismatch(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-FORMAL-BRANCH-MISMATCH",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--branch",
+            "not-the-current-branch",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires --branch to match the current branch", stderr)
+        self.assertFalse((self.repo / ".gtpj_runtime/batches/RUN-TEST-FORMAL-BRANCH-MISMATCH").exists())
 
     def test_plan_dynamic_routing_batch_uses_attempt_scoped_warehouse_from_gate(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
         gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/attempts/ATTEMPT-007/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
 
         code, stdout, stderr = self._run_main(
             "plan-dynamic-routing-batch",
@@ -1769,11 +2376,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("ATTEMPT-007", plan["warehouse_attempt_id"])
         self.assertIn("warehouse_scope: attempt_run", readme)
         self.assertIn("warehouse_attempt_id: ATTEMPT-007", readme)
+        self.assertIn("cd /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-TEST-ATTEMPT-WAREHOUSE", readme)
 
     def test_plan_dynamic_routing_batch_accepts_explicit_attempt_id_for_warehouse(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
         gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
 
         code, _stdout, stderr = self._run_main(
             "plan-dynamic-routing-batch",
@@ -1796,11 +2405,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-EXPLICIT-ATTEMPT-WAREHOUSE/plan.json").read_text(encoding="utf-8"))
         self.assertEqual("attempt_run", plan["warehouse_scope"])
         self.assertEqual("ATTEMPT-009", plan["warehouse_attempt_id"])
+        self.assertEqual({"ATTEMPT-009"}, {job["attempt_id"] for job in plan["jobs"]})
 
     def test_plan_dynamic_routing_batch_accepts_workflow_v2_10_job_profile(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
         gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
 
         code, stdout, stderr = self._run_main(
             "plan-dynamic-routing-batch",
@@ -1827,6 +2438,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
         gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
 
         code, stdout, stderr = self._run_main(
             "plan-dynamic-routing-batch",
@@ -1848,6 +2460,515 @@ log:v1:module_trial:TRIAL-001:attempt-001
         plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-100/plan.json").read_text(encoding="utf-8"))
         self.assertEqual("h76-existing-routing-100", plan["profile"])
         self.assertEqual(100, len(plan["jobs"]))
+
+    def test_plan_dynamic_routing_batch_accepts_h76_escape100_profile(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-ESCAPE100",
+            "--profile",
+            "h76-escape100-supported-routing",
+            "--jobs",
+            "100",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 100", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-ESCAPE100/plan.json").read_text(encoding="utf-8"))
+        groups = Counter(job["group"] for job in plan["jobs"])
+        self.assertEqual("h76-escape100-supported-routing", plan["profile"])
+        self.assertEqual(100, len(plan["jobs"]))
+        self.assertEqual(groups["h76_escape_direction_micro"], 30)
+        self.assertEqual(groups["h76_escape_ablate_mechanism"], 10)
+
+    def test_plan_dynamic_routing_batch_accepts_h76_mixed200_batch_profile(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-MIXED200-B03",
+            "--profile",
+            "h76-mixed200-b03-search20-repeat20-ablate10",
+            "--jobs",
+            "50",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 50", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-MIXED200-B03"
+        plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
+        readme = (run_dir / "README.md").read_text(encoding="utf-8")
+        runner = (run_dir / "run_dynamic_routing_batch.py").read_text(encoding="utf-8")
+        groups = Counter(job["group"] for job in plan["jobs"])
+        self.assertEqual("h76-mixed200-b03-search20-repeat20-ablate10", plan["profile"])
+        self.assertEqual(50, len(plan["jobs"]))
+        self.assertEqual(groups["h76_mixed200_top4_same_seed_repeat"], 20)
+        self.assertEqual(groups["h76_mixed200_ablate_top4"], 10)
+        self.assertIn("STOP_REQUESTED", readme)
+        self.assertIn("STOP_REQUESTED", runner)
+
+    def test_plan_dynamic_routing_batch_marks_h76_top4_repeat_as_exact_repeat(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-TOP4-REPEAT",
+            "--profile",
+            "h76-top4-min5-repeat",
+            "--jobs",
+            "20",
+            "--restore-target-h",
+            "75.00",
+            "--near-miss-tolerance-h",
+            "0.20",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 20", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-TOP4-REPEAT/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual("exact_repeat", plan["confirmation_policy"]["repeat_type"])
+        self.assertEqual(5, plan["confirmation_policy"]["max_attempts"])
+        self.assertTrue(plan["confirmation_policy"]["early_stop_on_best_hit"])
+        self.assertEqual("75.00", plan["confirmation_policy"]["restore_target_H"])
+        self.assertEqual("0.20", plan["confirmation_policy"]["near_miss_tolerance_H"])
+        self.assertTrue(plan["confirmation_policy"]["near_miss_not_restored"])
+
+    def test_dynamic_runner_near_miss_does_not_trigger_stop(self) -> None:
+        runner = self.module._dynamic_runner_script()
+
+        self.assertIn("h_value >= target_value", runner)
+        self.assertIn("event\": \"near_miss_not_restored\"", runner)
+        self.assertIn("decision\": \"continue_exact_repeat\"", runner)
+        self.assertNotIn("threshold = target_value - tolerance", runner)
+
+    def test_dynamic_runner_verifies_worktree_source_control_before_training(self) -> None:
+        runner = self.module._dynamic_runner_script()
+
+        self.assertIn("git_output([\"cat-file\", \"-e\"", runner)
+        self.assertIn("worktree HEAD mismatch before training", runner)
+        self.assertIn("worktree has unexpected dirty files before training", runner)
+        self.assertIn("allowed_dirty_paths", runner)
+
+    def test_plan_dynamic_routing_batch_accepts_h76_followup50_multiseed_profile(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal dynamic routing fixture")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-FOLLOWUP50",
+            "--profile",
+            "h76-followup50-multiseed",
+            "--jobs",
+            "50",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 50", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-FOLLOWUP50"
+        plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
+        groups = Counter(job["group"] for job in plan["jobs"])
+        self.assertEqual("h76-followup50-multiseed", plan["profile"])
+        self.assertEqual(50, len(plan["jobs"]))
+        self.assertEqual(groups["h76_followup50_multiseed_stability"], 50)
+        self.assertEqual(plan["confirmation_policy"]["repeat_type"], "multi_seed_stability")
+        self.assertTrue(plan["confirmation_policy"]["not_confirmation_evidence"])
+
+    def test_plan_dynamic_routing_batch_can_limit_profile_for_workflow_probe(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+
+        code, stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-H76-20",
+            "--profile",
+            "h76-existing-routing-100",
+            "--jobs",
+            "20",
+            "--limit-jobs",
+            "20",
+            "--debug-smoke",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("jobs: 20", stdout)
+        plan = json.loads((self.repo / ".gtpj_runtime/batches/RUN-TEST-H76-20/plan.json").read_text(encoding="utf-8"))
+        self.assertEqual("h76-existing-routing-100", plan["profile"])
+        self.assertEqual(20, len(plan["jobs"]))
+        self.assertEqual("DR-020", plan["jobs"][-1]["job_id"])
+
+    def test_route_experiment_routes_h76_phrase_to_dynamic_routing(self) -> None:
+        code, stdout, stderr = self._run_main(
+            "route-experiment",
+            "--phrase",
+            "基于DR-035跑20组冲H=76",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow_kind: dynamic-routing", stdout)
+        self.assertIn("profile: h76-existing-routing-100", stdout)
+        self.assertIn("required_roles:", stdout)
+        self.assertIn("agent_instances: not_started_by_route", stdout)
+        self.assertIn("Runner Monitor", stdout)
+
+    def test_run_workflow_requires_explicit_debug_or_formal_mode(self) -> None:
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "基于DR-035跑3组冲H=76",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-NO-MODE",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires exactly one of --debug-smoke or --formal", stderr)
+
+    def test_run_workflow_rejects_ambiguous_debug_and_formal_mode(self) -> None:
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "基于DR-035跑3组冲H=76",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-BOTH-MODES",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--debug-smoke",
+            "--formal",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires exactly one of --debug-smoke or --formal", stderr)
+
+    def test_run_workflow_formal_requires_agent_runtime_gate(self) -> None:
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "基于DR-035跑3组冲H=76",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-FORMAL-NO-GATE",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--formal",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("--formal requires --agent-runtime-gate", stderr)
+
+    def test_run_workflow_requires_explicit_workflow_mode(self) -> None:
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "workflow mode required",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-NO-WORKFLOW-MODE",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--debug-smoke",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("requires --workflow-mode", stderr)
+
+    def test_run_monitor_closeout_workflow_minimal_dispatcher(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+
+        code, stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "基于DR-035跑20组冲H=76",
+            "--workflow-mode",
+            "server_frozen_runner",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-20",
+            "--jobs",
+            "20",
+            "--limit-jobs",
+            "20",
+            "--debug-smoke",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow-run-dir:", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20"
+        state = json.loads((run_dir / "workflow_state.json").read_text(encoding="utf-8"))
+        self.assertEqual("planned", state["current_state"])
+        self.assertEqual("debug_smoke", state["run_mode"])
+        self.assertEqual("server_frozen_runner", state["workflow_mode"])
+        self.assertEqual("role_only", state["activation_mode"])
+        self.assertEqual("role_only", state["agent_instance_mode"])
+        self.assertEqual("not_applicable_debug_smoke", state["formal_runtime_backend"])
+        self.assertFalse(state["real_agent_instances_started_by_helper"])
+        self.assertFalse(state["real_agent_instances_verified_by_gate"])
+        self.assertFalse(state["agent_runtime_gate_satisfied"])
+        self.assertIn("Runner Monitor", state["required_roles"])
+        self.assertTrue((run_dir / "TRANSITIONS.jsonl").exists())
+
+        status = json.loads((run_dir / "batch_status.json").read_text(encoding="utf-8"))
+        status["status"] = "running"
+        status["jobs"]["DR-001"]["status"] = "completed"
+        status["jobs"]["DR-002"]["status"] = "running"
+        (run_dir / "batch_status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+        (run_dir / "summary.csv").write_text(
+            "job_id,status,phase,group,name,H,U,S,ZS,best_epoch\n"
+            "DR-001,completed,explore,sanity_control,static_v5_control,75.01,72.00,78.00,81.00,48\n",
+            encoding="utf-8",
+        )
+
+        code, stdout, stderr = self._run_main(
+            "monitor-workflow",
+            "--run-dir",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20",
+            "--top-k",
+            "3",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow_state: running", stdout)
+        self.assertIn("hit_h75: true", stdout)
+        self.assertIn("next_helper: monitor-workflow", stdout)
+        state = json.loads((run_dir / "workflow_state.json").read_text(encoding="utf-8"))
+        self.assertEqual("debug_smoke", state["run_mode"])
+        self.assertEqual("server_frozen_runner", state["workflow_mode"])
+        self.assertEqual("role_only", state["activation_mode"])
+        self.assertEqual("not_applicable_debug_smoke", state["formal_runtime_backend"])
+        self.assertFalse(state["agent_runtime_gate_satisfied"])
+
+        code, stdout, stderr = self._run_main(
+            "monitor-workflow",
+            "--run-dir",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20",
+            "--report-new-completions",
+            "--activity-log",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20/AGENT_ACTIVITY.md",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("new_completed_count: 1", stdout)
+        self.assertIn("new_completed: DR-001", stdout)
+        seen_jobs = json.loads((run_dir / "monitor_seen_completed_jobs.json").read_text(encoding="utf-8"))
+        self.assertEqual(["DR-001"], seen_jobs["completed_job_ids"])
+        self.assertIn("job_completed_report", (run_dir / "AGENT_ACTIVITY.md").read_text(encoding="utf-8"))
+
+        code, stdout, stderr = self._run_main(
+            "monitor-workflow",
+            "--run-dir",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20",
+            "--report-new-completions",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("new_completed_count: 0", stdout)
+
+        status = json.loads((run_dir / "batch_status.json").read_text(encoding="utf-8"))
+        status["status"] = "stopped"
+        status["jobs"]["DR-002"]["status"] = "skipped"
+        status["jobs"]["DR-002"]["skip_reason"] = "STOP_REQUESTED"
+        (run_dir / "batch_status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        code, stdout, stderr = self._run_main(
+            "monitor-workflow",
+            "--run-dir",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20",
+            "--top-k",
+            "3",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow_state: stopped", stdout)
+        state = json.loads((run_dir / "workflow_state.json").read_text(encoding="utf-8"))
+        self.assertEqual("stopped", state["current_state"])
+        self.assertEqual("server_frozen_runner", state["workflow_mode"])
+
+        code, stdout, stderr = self._run_main(
+            "closeout-workflow",
+            "--run-dir",
+            ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-20",
+            "--allow-incomplete",
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("formal_result_written: false", stdout)
+
+    def test_run_workflow_formal_records_real_multi_agent_gate_status(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal workflow fixture")
+
+        code, stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "基于DR-035跑3组冲H=76",
+            "--workflow-mode",
+            "live_multi_agent_monitor",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-FORMAL",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--formal",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow-run-dir:", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-FORMAL"
+        state = json.loads((run_dir / "workflow_state.json").read_text(encoding="utf-8"))
+        self.assertEqual("formal", state["run_mode"])
+        self.assertEqual("live_multi_agent_monitor", state["workflow_mode"])
+        self.assertEqual("real_multi_agent", state["activation_mode"])
+        self.assertEqual("named_owner_thread", state["agent_instance_mode"])
+        self.assertEqual("named_owner_thread", state["formal_runtime_backend"])
+        self.assertFalse(state["real_agent_instances_started_by_helper"])
+        self.assertTrue(state["real_agent_instances_verified_by_gate"])
+        self.assertTrue(state["agent_runtime_gate_satisfied"])
+        self.assertTrue(state["formal_evidence"])
+
+    def test_run_workflow_formal_records_server_frozen_runner_gate_status(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        gate_path = self._write_server_detached_formal_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal workflow fixture")
+
+        code, stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "server frozen workflow",
+            "--workflow-kind",
+            "dynamic-routing",
+            "--workflow-mode",
+            "server_frozen_runner",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-SERVER-FROZEN",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--formal",
+            "--agent-runtime-gate",
+            str(gate_path),
+        )
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("workflow-run-dir:", stdout)
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-WORKFLOW-SERVER-FROZEN"
+        state = json.loads((run_dir / "workflow_state.json").read_text(encoding="utf-8"))
+        self.assertEqual("formal", state["run_mode"])
+        self.assertEqual("server_frozen_runner", state["workflow_mode"])
+        self.assertEqual("role_only", state["activation_mode"])
+        self.assertEqual("role_only", state["agent_instance_mode"])
+        self.assertEqual("server_detached_role_only", state["formal_runtime_backend"])
+        self.assertFalse(state["real_agent_instances_started_by_helper"])
+        self.assertFalse(state["real_agent_instances_verified_by_gate"])
+        self.assertTrue(state["agent_runtime_gate_satisfied"])
+        self.assertTrue(state["server_detached_expected"])
+        self.assertFalse(state["thread_creation_allowed"])
+        self.assertTrue(state["formal_evidence"])
+
+    def test_run_workflow_rejects_workflow_mode_gate_backend_mismatch(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        named_gate = self._write_agent_runtime_gate(path=f"{trial_dir}/named_agent_runtime.yaml")
+        server_gate = self._write_server_detached_formal_gate(path=f"{trial_dir}/server_agent_runtime.yaml")
+
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "server frozen mismatch",
+            "--workflow-mode",
+            "server_frozen_runner",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-MISMATCH-1",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--formal",
+            "--agent-runtime-gate",
+            str(named_gate),
+        )
+        self.assertEqual(1, code)
+        self.assertIn("server_frozen_runner requires formal_runtime_backend: server_detached_role_only", stderr)
+
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "live monitor mismatch",
+            "--workflow-mode",
+            "live_multi_agent_monitor",
+            "--run-id",
+            "RUN-TEST-WORKFLOW-MISMATCH-2",
+            "--jobs",
+            "3",
+            "--limit-jobs",
+            "3",
+            "--formal",
+            "--agent-runtime-gate",
+            str(server_gate),
+        )
+        self.assertEqual(1, code)
+        self.assertIn("live_multi_agent_monitor requires named-owner-thread", stderr)
 
     def test_config_epoch_schedule_uses_lr_stages_total(self) -> None:
         config_path = self.repo / "experiments/module_trials/IDEA-0001_x/TRIAL-001_x/attempts/ATTEMPT-001/config.yaml"
@@ -2662,6 +3783,37 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("validate-agent-runtime-ok gates=1", stdout)
 
+    def test_validate_agent_runtime_accepts_minimal_debug_smoke_gate(self) -> None:
+        gate_path = self.repo / "experiments/v1/tune/TUNE-001_ok/debug_agent_runtime.yaml"
+        self._write(
+            str(gate_path.relative_to(self.repo)).replace("\\", "/"),
+            "schema_version: gtpj.agent_runtime_gate.v0\n"
+            "subject_id: DEBUG-001\n"
+            "subject_type: run\n"
+            "formal_evidence: false\n"
+            "activation_mode: role_only\n"
+            "agent_instance_mode: role_only\n"
+            "runner_scope: debug_smoke\n"
+            "evidence_level: debug_smoke\n"
+            "formal_runner_allowed: false\n"
+            "formal_evidence_allowed: false\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-agent-runtime-ok gates=1", stdout)
+
+    def test_validate_agent_runtime_accepts_server_detached_formal_role_only_gate(self) -> None:
+        gate_path = self._write_server_detached_formal_gate()
+
+        code, stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("validate-agent-runtime-ok gates=1", stdout)
+
     def test_validate_agent_runtime_rejects_placeholder_agent_id(self) -> None:
         gate_path = self._write_agent_runtime_gate(include_agent_ids=False)
 
@@ -2670,13 +3822,43 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("not a real agent/thread id", stderr)
 
-    def test_validate_agent_runtime_rejects_random_display_name(self) -> None:
-        gate_path = self._write_agent_runtime_gate(bad_display_name=True)
+    def test_validate_agent_runtime_rejects_spawn_agent_named_thread_id(self) -> None:
+        gate_path = self._write_agent_runtime_gate()
+        gate_path.write_text(
+            gate_path.read_text(encoding="utf-8").replace(
+                "runner_monitor: 019f1111-1111-7111-8111-111111111111",
+                "runner_monitor: multi_agent_v1.spawn_agent",
+            ),
+            encoding="utf-8",
+        )
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("not a real agent/thread id", stderr)
+
+    def test_validate_agent_runtime_rejects_random_thread_title(self) -> None:
+        gate_path = self._write_agent_runtime_gate(bad_thread_title=True)
 
         code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
 
         self.assertEqual(1, code)
         self.assertIn("uses a random legacy nickname", stderr)
+
+    def test_validate_agent_runtime_rejects_temporary_subagent_formal_gate(self) -> None:
+        gate_path = self._write_agent_runtime_gate()
+        gate_path.write_text(
+            gate_path.read_text(encoding="utf-8").replace(
+                "agent_instance_mode: named_owner_thread",
+                "agent_instance_mode: temporary_subagent",
+            ),
+            encoding="utf-8",
+        )
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("formal evidence requires agent_instance_mode: named_owner_thread", stderr)
 
     def test_validate_agent_runtime_rejects_missing_pre_run_allow(self) -> None:
         gate_path = self._write_agent_runtime_gate(quality_decision="not_checked")
@@ -2721,7 +3903,17 @@ decision:
         self.assertIn("multi-agent-preflight-ok", stdout)
         self.assertIn("formal_runner_allowed=true", stdout)
 
-    def test_agent_cleanup_plan_lists_keep_and_close_agents(self) -> None:
+    def test_multi_agent_preflight_accepts_server_detached_formal_role_only_gate(self) -> None:
+        gate_path = self._write_server_detached_formal_gate()
+
+        code, stdout, stderr = self._run_main("multi-agent-preflight", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("multi-agent-preflight-ok", stdout)
+        self.assertIn("backend=server_detached_role_only", stdout)
+
+    def test_agent_cleanup_plan_lists_keep_and_archive_threads(self) -> None:
         gate_path = self._write_agent_runtime_gate()
 
         code, stdout, stderr = self._run_main("agent-cleanup-plan", "--path", str(gate_path))
@@ -2731,10 +3923,41 @@ decision:
         self.assertIn("agent-cleanup-plan path=", stdout)
         self.assertIn("keep_count=1", stdout)
         self.assertIn("KEEP role=runner_monitor", stdout)
-        self.assertIn("close_count=2", stdout)
-        self.assertIn("CLOSE role=interface_checker", stdout)
-        self.assertIn("CLOSE role=evidence_quality_checker", stdout)
+        self.assertIn("archive_count=2", stdout)
+        self.assertIn("ARCHIVE role=interface_checker", stdout)
+        self.assertIn("ARCHIVE role=evidence_quality_checker", stdout)
         self.assertIn("duplicate_instance_ids=0", stdout)
+
+    def test_agent_cleanup_plan_defers_archive_during_live_stage(self) -> None:
+        gate_path = self._write_agent_runtime_gate()
+        text = gate_path.read_text(encoding="utf-8")
+        text = text.replace(
+            "archived_threads_record: AGENT_ACTIVITY.md\n",
+            "archived_threads_record: AGENT_ACTIVITY.md\n"
+            "current_stage_status: running\n"
+            "archive_after_closeout_only: true\n"
+        )
+        text = text.replace("  runner_monitor: running\n", "  runner_monitor: completed\n")
+        gate_path.write_text(text, encoding="utf-8")
+
+        code, stdout, stderr = self._run_main("agent-cleanup-plan", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("archive_deferred_until_closeout=true", stdout)
+        self.assertIn("keep_count=3", stdout)
+        self.assertIn("KEEP role=runner_monitor", stdout)
+        self.assertIn("archive_count=0", stdout)
+
+    def test_agent_cleanup_plan_accepts_server_detached_formal_without_named_threads(self) -> None:
+        gate_path = self._write_server_detached_formal_gate()
+
+        code, stdout, stderr = self._run_main("agent-cleanup-plan", "--path", str(gate_path))
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("cleanup_mode=not_applicable_no_named_threads", stdout)
+        self.assertIn("archive_count=0", stdout)
 
     def test_validate_agent_runtime_rejects_missing_owner_monitor_mode(self) -> None:
         gate_path = self._write_agent_runtime_gate(include_owner_monitor=False)
@@ -2743,6 +3966,21 @@ decision:
 
         self.assertEqual(1, code)
         self.assertIn("missing owner_monitor_mode", stderr)
+
+    def test_validate_agent_runtime_rejects_server_detached_formal_if_thread_creation_allowed(self) -> None:
+        gate_path = self._write_server_detached_formal_gate()
+        gate_path.write_text(
+            gate_path.read_text(encoding="utf-8").replace(
+                "thread_creation_allowed: false",
+                "thread_creation_allowed: true",
+            ),
+            encoding="utf-8",
+        )
+
+        code, _stdout, stderr = self._run_main("validate-agent-runtime", "--path", str(gate_path))
+
+        self.assertEqual(1, code)
+        self.assertIn("thread_creation_allowed: false", stderr)
 
     def test_start_card_generates_formal_preflight_skeleton(self) -> None:
         code, stdout, stderr = self._run_main(
@@ -2906,24 +4144,24 @@ decision:
         self.assertIn("tier=strict-3", stdout)
         self.assertTrue((pack / "02_focused_diff.md").exists())
         self.assertTrue((pack / "02_review_brief.md").exists())
-        self.assertTrue((pack / "02_codex_temp_agent_pre_review.md").exists())
+        self.assertTrue((pack / "02_codex_named_thread_pre_review.md").exists())
         self.assertTrue((pack / "05_claude_review_round_1.md").exists())
         self.assertTrue((pack / "07_claude_review_round_2.md").exists())
         self.assertTrue((pack / "09_claude_review_round_3.md").exists())
         prompt_text = (self.repo / "captured_claude_prompt.txt").read_text(encoding="utf-8")
         brief_text = (pack / "02_review_brief.md").read_text(encoding="utf-8")
-        pre_review_text = (pack / "02_codex_temp_agent_pre_review.md").read_text(encoding="utf-8")
+        pre_review_text = (pack / "02_codex_named_thread_pre_review.md").read_text(encoding="utf-8")
         round_text = (pack / "05_claude_review_round_1.md").read_text(encoding="utf-8")
-        self.assertIn("02_codex_temp_agent_pre_review.md", prompt_text)
+        self.assertIn("02_codex_named_thread_pre_review.md", prompt_text)
         self.assertIn("02_review_brief.md", prompt_text)
         self.assertIn("02_focused_diff.md", prompt_text)
         self.assertIn("Do not read 02_diff.patch by default", prompt_text)
         self.assertIn("review_mode: blocking-only", brief_text)
         self.assertIn("prompt_profile: focused", brief_text)
         self.assertIn("review_tier: strict-3", brief_text)
-        self.assertIn("lifecycle: completed_closed", pre_review_text)
-        self.assertIn("closed_before_claude: true", pre_review_text)
-        self.assertIn("close_result_confirms_completion: true", pre_review_text)
+        self.assertIn("lifecycle: completed_archived", pre_review_text)
+        self.assertIn("archived_before_claude: true", pre_review_text)
+        self.assertIn("archive_result_confirms_completion: true", pre_review_text)
         self.assertIn("verdict: pass", pre_review_text)
         self.assertIn("02_review_brief.md", round_text)
         self.assertIn("02_focused_diff.md", round_text)
@@ -2931,7 +4169,7 @@ decision:
         self.assertIn("ai_cross_review_status: pass", final_text)
         self.assertIn("review_tier: strict-3", final_text)
         self.assertIn("claude_rounds_required: 3", final_text)
-        self.assertIn("codex_temp_agent_pre_review: pass", final_text)
+        self.assertIn("codex_named_thread_pre_review: pass", final_text)
         self.assertIn("unresolved_blocking_issues: 0", final_text)
 
     def test_run_ai_cross_review_review_one_creates_one_claude_round(self) -> None:
@@ -3017,9 +4255,9 @@ decision:
         final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
         self.assertIn("review_tier: fast", final_text)
         self.assertIn("claude_rounds_required: 0", final_text)
-        self.assertIn("codex_temp_agent_pre_review: pass", final_text)
+        self.assertIn("codex_named_thread_pre_review: pass", final_text)
         claims_text = (pack / "04_claims.md").read_text(encoding="utf-8")
-        self.assertIn("evidence_ref: 02_codex_temp_agent_pre_review.md", claims_text)
+        self.assertIn("evidence_ref: 02_codex_named_thread_pre_review.md", claims_text)
         self.assertNotIn("05_claude_review_round_1.md", claims_text)
 
         code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", "docs/agent_reviews/fast")
@@ -3069,7 +4307,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("status=blocked", stdout)
         final_text = (self.repo / "docs/agent_reviews/missing-pre-review/10_final_decision.md").read_text(encoding="utf-8")
-        self.assertIn("codex_temp_agent_pre_review: blocked", final_text)
+        self.assertIn("codex_named_thread_pre_review: blocked", final_text)
 
     def test_run_ai_cross_review_rejects_high_risk_non_strict_tier(self) -> None:
         validation_command = self._custom_full_validation_command()
@@ -3140,7 +4378,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("requires --review-tier strict-3", stderr)
 
-    def test_run_ai_cross_review_rejects_unstructured_pre_review_close_result(self) -> None:
+    def test_run_ai_cross_review_rejects_unstructured_pre_review_archive_result(self) -> None:
         validation_command = f'"{sys.executable}" -c "print(123)"'
 
         code, stdout, stderr = self._run_main(
@@ -3156,11 +4394,11 @@ decision:
             "--no-default-validation",
             "--validation-command",
             validation_command,
-            "--codex-pre-review-agent-id",
-            "agent-test-001",
-            "--codex-pre-review-agent-name",
-            "Temp Review Agent",
-            "--codex-pre-review-close-result",
+            "--codex-pre-review-thread-id",
+            "thread-test-001",
+            "--codex-pre-review-thread-title",
+            "ATTEMPT-REVIEW | Codex Pre Review",
+            "--codex-pre-review-archive-result",
             "closed",
             "--codex-pre-review-verdict",
             "pass",
@@ -3169,10 +4407,10 @@ decision:
         self.assertEqual("", stderr)
         self.assertEqual(1, code)
         self.assertIn("status=blocked", stdout)
-        pre_review_text = (self.repo / "docs/agent_reviews/bad-close-result/02_codex_temp_agent_pre_review.md").read_text(encoding="utf-8")
-        self.assertIn("close_result_confirms_completion: false", pre_review_text)
+        pre_review_text = (self.repo / "docs/agent_reviews/bad-close-result/02_codex_named_thread_pre_review.md").read_text(encoding="utf-8")
+        self.assertIn("archive_result_confirms_completion: false", pre_review_text)
 
-    def test_validate_ai_cross_review_rejects_handwritten_bad_close_result(self) -> None:
+    def test_validate_ai_cross_review_rejects_handwritten_bad_archive_result(self) -> None:
         validation_command = f'"{sys.executable}" -c "print(123)"'
 
         code, stdout, stderr = self._run_main(
@@ -3194,15 +4432,15 @@ decision:
         self.assertEqual("", stderr)
         self.assertEqual(0, code, stdout)
         self._write(
-            "docs/agent_reviews/handwritten-bad-close/02_codex_temp_agent_pre_review.md",
-            "codex_temp_agent_pre_review: pass\n"
-            "temporary_agent_required: true\n"
-            "agent_instance_id: agent-test-001\n"
-            "ui_display_name: Temp Review Agent\n"
-            "lifecycle: completed_closed\n"
-            "closed_before_claude: true\n"
-            "close_result_confirms_completion: true\n"
-            "close_result: closed\n"
+            "docs/agent_reviews/handwritten-bad-close/02_codex_named_thread_pre_review.md",
+            "codex_named_thread_pre_review: pass\n"
+            "named_thread_required: true\n"
+            "thread_id: thread-test-001\n"
+            "thread_title: ATTEMPT-REVIEW | Codex Pre Review\n"
+            "lifecycle: completed_archived\n"
+            "archived_before_claude: true\n"
+            "archive_result_confirms_completion: true\n"
+            "archive_result: closed\n"
             "verdict: pass\n"
             "blocking_issues:\n"
             "notes: forged marker should not pass validation\n",
@@ -3216,7 +4454,7 @@ decision:
 
         self.assertEqual("", stdout)
         self.assertEqual(1, code)
-        self.assertIn("close_result must include matching agent id", stderr)
+        self.assertIn("archive_result must include matching thread id", stderr)
 
     def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
         validation_command = self._custom_full_validation_command()
@@ -3247,23 +4485,26 @@ decision:
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nskill 镜像\nactive docs\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
-        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\ntemporary_subagent_display_names\n<subject_id> | <Role Label>\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
         self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
-        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\nrole_file_plan\nfiles_reviewed\n是否需要再次确认\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
-        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
+            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n代码审核不被 `server_frozen_runner` 豁免\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
-            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
+            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n文档语言边界\n不能写整段英文说明\n框架记录的对象\n",
         )
+        self._write("docs/workflow/protocols/experiment_protocol.md", "formal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/protocols/module_trial_protocol.md", "formal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/protocols/mixed_experiment_campaign_protocol.md", "formal_pending\norphan_runtime_plan\n")
         self._write(
             "docs/workflow/playbooks/innovation.md",
             "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\nvalidate-trial-meta\nstrict_template_entry\n",
@@ -3275,14 +4516,16 @@ decision:
         self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
-        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
+        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nfiles_reviewed:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
         )
         self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
+        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "formal_pending\norphan_runtime_plan\nStatus\nFormal\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
+        self._add_confirmation_rule_markers()
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")
 
@@ -3293,23 +4536,26 @@ decision:
     def test_validate_workflow_consistency_rejects_stale_ai_review_phrase(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n重复 3 轮\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n重复 3 轮\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nskill 镜像\nactive docs\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
-        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\ntemporary_subagent_display_names\n<subject_id> | <Role Label>\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
         self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
-        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\nrole_file_plan\nfiles_reviewed\n是否需要再次确认\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
-        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\n")
+        self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n",
+            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n代码审核不被 `server_frozen_runner` 豁免\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
-            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
+            "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n文档语言边界\n不能写整段英文说明\n框架记录的对象\n",
         )
+        self._write("docs/workflow/protocols/experiment_protocol.md", "formal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/protocols/module_trial_protocol.md", "formal_pending\norphan_runtime_plan\n")
+        self._write("docs/workflow/protocols/mixed_experiment_campaign_protocol.md", "formal_pending\norphan_runtime_plan\n")
         self._write(
             "docs/workflow/playbooks/innovation.md",
             "START_HERE.md\nWORKFLOW_KERNEL.md\n探索 / 正式分界\nformal_evidence_allowed\nmodule_template_selection.md\nmodule_source.md\nvalidate-trial-meta\nstrict_template_entry\n",
@@ -3317,14 +4563,16 @@ decision:
         for name in ["tune", "ablation", "confirmation", "promotion", "mixed_campaign", "paper_intake"]:
             self._write(f"docs/workflow/playbooks/{name}.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
-        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
+        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nfiles_reviewed:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_temp_agent_pre_review.md\ncompleted_closed\nclose_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
         )
         self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
+        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "formal_pending\norphan_runtime_plan\nStatus\nFormal\n")
+        self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
+        self._add_confirmation_rule_markers()
 
         code, stdout, stderr = self._run_main("validate-workflow-consistency")
 
@@ -3332,6 +4580,16 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("contains stale AI review phrase", stderr)
         self.assertIn("重复 3 轮", stderr)
+
+    def test_confirmation_rule_map_lists_sync_dictionary(self) -> None:
+        code, stdout, stderr = self._run_main("confirmation-rule-map")
+
+        self.assertEqual("", stderr)
+        self.assertEqual(0, code)
+        self.assertIn("confirmation-rule-map", stdout)
+        self.assertIn("repeat_type: exact_repeat", stdout)
+        self.assertIn("docs/workflow/WORKFLOW_KERNEL.md", stdout)
+        self.assertIn("experiments/templates/run_receipt_template.yaml", stdout)
 
     def test_list_workflow_files_groups_manifest_entries(self) -> None:
         self._write_minimal_workflow_manifest()

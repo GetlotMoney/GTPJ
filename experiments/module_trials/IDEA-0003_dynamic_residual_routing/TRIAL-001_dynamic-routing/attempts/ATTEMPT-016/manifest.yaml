@@ -1,0 +1,104 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-016
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 hotspot top2 exact-repeat restore campaign
+  status: running
+  recorded_at: "2026-07-08"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-015
+  source_result_ref: attempts/ATTEMPT-015/result.yaml
+  source_run_id: RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu
+run:
+  run_id: RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
+  profile: h76-hotspot-top2-restore10-exact-repeat
+  jobs: 10
+  execution_mode: server_frozen_runner
+  server_runner_started: true
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
+  local_batch_dir: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
+  local_frozen_plan_status: generated
+  launch_status: running
+  screen_session: GTPJ_ATTEMPT016_RESTORE10_R2
+  latest_counts:
+    running: 2
+    pending: 4
+    completed: 4
+    failed: 0
+    skipped: 0
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  server_branch: codex/h76-campaign-20260704
+  git_remote: none
+  python: /data/lby/.conda/envs/dvsr_gpu/bin/python
+  previous_failed_launch:
+    run_id: RUN-20260708-0004-h76-hotspot-top2-restore10-exact-repeat-2gpu
+    status: runner_environment_failed_before_training
+    method_evidence: false
+    reason: "The initial plan used python plus conda_env; lab4090 non-interactive shell could not find conda."
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: per_job_source_H
+  per_job_restore_target_H: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+  not_confirmation_evidence: false
+campaign:
+  source_candidates: 2
+  repeats_per_candidate: 5
+  total_jobs: 10
+  candidates:
+    - source_candidate_id: A015DR004
+      source_job_id: DR-004
+      source_H: 75.04
+      restore_target_H: 75.04
+      config: direction_sample_h48_w0.495_a0.003
+    - source_candidate_id: A015DR035
+      source_job_id: DR-035
+      source_H: 75.00
+      restore_target_H: 75.00
+      config: direction_sample_h48_w0.525_a0.0035
+gate:
+  workflow_mode: server_frozen_runner
+  activation_mode: role_only
+  agent_instance_mode: role_only
+  formal_runtime_backend: server_detached_role_only
+  thread_creation_allowed: false
+  formal_runner_allowed: true
+  blocked_until: results_and_closeout
+local_frozen_plan:
+  config_count: 10
+  files:
+    plan_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/plan.json
+      size_bytes: 11611
+      sha256: 268dd25d9712089d56c8a15bc0cb85c2b535980423b2161ff4eb859ef159c12c
+    batch_status_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/batch_status.json
+      size_bytes: 2377
+      sha256: 5236e93cc1d4f8a5e2ec2abacdd8b055bcecac42f5495ce34a2dd098cb516c5b
+    run_dynamic_routing_batch_py:
+      path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/run_dynamic_routing_batch.py
+      size_bytes: 26943
+      sha256: 609bcee227ede155861f19809e254b1d36ade6b034fca36e5bb377e587920eaf
+    start_batch_sh:
+      path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/start_batch.sh
+      size_bytes: 312
+      sha256: 23364bfc4939e109321f1b6dbe980abb6cd61f4fba1ab1bb7938cbc3583a6316
+    screen_supervisor_sh:
+      path: .gtpj_runtime/batches/RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu/screen_supervisor.sh
+      size_bytes: 391
+      sha256: d0c8c4cdbafa5eff93ec35f8172207870cbd446df873bc09e3156ab7e5a3d198
+decision:
+  state: running
+  promotion_decision: blocked
+  latest_status_note: "4/10 completed; best H=74.84 is below restore target H=75.04, so this is near_miss_not_restored and the runner should continue."
+  reason: "Server runner is still running; current best is not restored, so promotion remains blocked."

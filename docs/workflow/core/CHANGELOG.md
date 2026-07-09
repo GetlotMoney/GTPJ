@@ -43,26 +43,26 @@ validate-evidence-routing
 AGENT_RUNTIME_HARD_GATE.md
 agent_runtime.yaml
 validate-agent-runtime
-right_sidebar_temporary_agents
+left_sidebar_named_threads
 ```
 
-正式实验现在要求真实 temporary agents，并在 Runner 启动前记录 `agent_instance_id`
+正式实验现在要求真实 named threads，并在 Runner 启动前记录 `agent_instance_id`
 和 pre-run allow/check。Coordinator 单窗口执行只能算 candidate/debug evidence，
 不是完整 `real_multi_agent` workflow。
 
-## workflow-v2 right-sidebar cleanup
+## workflow-v2 legacy UI-agent cleanup
 
 新增 owner 可见的 agent cleanup 规则：
 
 ```text
-right_sidebar_retention_policy: current_stage_active_only
-close_completed_agents_on_stage_end: true
-closed_agents_record: AGENT_ACTIVITY.md
+thread_archive_policy: archive_completed_threads_on_stage_end
+archive_completed_threads_on_stage_end: true
+archived_threads_record: AGENT_ACTIVITY.md
 ```
 
 在 workflow 或阶段 closeout 时，Coordinator 必须记录 keep/close lists，把已完成 agent
 结论沉淀到 `agent_summary.md` / `AGENT_ACTIVITY.md` / result / quality / issues / memory，
-然后关闭 completed temporary agents。右侧栏应该显示当前 active roles，而不是历史窗口。
+然后归档 completed named threads。左侧栏应该显示当前 active roles，而不是历史窗口。
 
 ## workflow-v2 formal multi-agent preflight
 

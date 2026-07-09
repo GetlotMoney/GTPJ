@@ -10,6 +10,17 @@
 | `ATTEMPT-006` | `RUN-20260702-0003-mixed2innov8tune-2gpu` | 10 completed / 0 failed | TUNE-002 / DR-004 direction_sample_h48_w0.525_a0.003 H=74.75 | TUNE-002 / DR-004 H=74.75 | no exact repeat; campaign is routing index only | tune_promising; formal ledger for workflow-v2 2-probe + 8-tune batch |
 | `ATTEMPT-007` | `RUN-20260703-0002-dr035-exact-repeat-s5-min3-2gpu` | 3 completed / 0 failed | DR-002/DR-003 H=74.62 | DR-002/DR-003 H=74.62 | same-seed exact repeat seed 5 x3: 74.58/74.62/74.62; mean H=74.61; min H=74.58; range H=0.04 | confirmed_candidate; promotion blocked |
 | `ATTEMPT-008` | `RUN-20260704-0001-dr035-min6-confirm-s5-2gpu` | 6 completed / 0 failed | DR-004 H=74.76 | DR-004 H=74.76 | same-seed exact repeat seed 5 x6: 74.57/74.59/74.51/74.76/74.47/74.45; mean H=74.56; min H=74.45; range H=0.31 | not_confirmed; promotion blocked |
+| `ATTEMPT-010` | `RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu` | workflow smoke stopped: 4 completed / 16 skipped | DR-004 H=74.68 within stopped DR-020 partial repeat | DR-020 partial repeat only | DR-020 seed=5 x4 mean H=74.59; other top4 candidates skipped | rerun_required; promotion blocked |
+| `ATTEMPT-011` | `RUN-20260706-0001-h76-mixed200-b01-search50-2gpu` -> `RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu` | 200 completed / 0 failed, server detached | DR-042 H=75.00 and b04 DR-036 H=75.00 | direction_sample h48 hotspot | top4 same-seed repeat means: DR047 74.630, DR020 74.606, DR041 74.598, DR051 74.524 | follow-up required; promotion blocked |
+| `ATTEMPT-012` | `RUN-20260706-0005-h76-followup50-multiseed-2gpu` | owner stopped: 6 completed / 44 skipped | DR-001 H=74.49 | DR047 partial only | DR047 seeds 6-11 partial mean H=74.285; other candidates skipped | stopped_by_owner; not confirmation evidence; switch to local workflow |
+| `ATTEMPT-013` | `RUN-20260707-0001-h76-followup50-live-multiagent-2gpu` | stopped_invalid_confirmation_scope: 44 completed / 0 failed / 6 skipped | DR-028 H=74.53, no H>=75 | DR047 mean H=74.134; DR020 mean H=74.131; DR041 mean H=74.127; A011DR042 mean H=74.095; A011DR020 partial mean H=73.973 | profile changed seeds 6-15, so this is `multi_seed_stability` / seed sweep, not `repeat_type: exact_repeat`; `not_confirmation_evidence: true` | stopped; keep/best/confirmation/promotion blocked |
+| `ATTEMPT-014` | `RUN-20260708-0002-h76-restore100-exact-repeat-2gpu` | completed_with_skips: 80 completed / 20 skipped / 0 failed; first `RUN-20260708-0001...` failed before training due commit mismatch and is not method evidence | DR-022 H=74.99; no H>=75 | direction_sample h48 small-anchor hotspot | 12/20 candidates restored to their own target; source_H=75.00 candidates were not restored | tune_promising; promotion blocked |
+| `ATTEMPT-015` | `RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu` | completed: 100 completed / 0 failed / 0 skipped | DR-004 H=75.04, U=73.30, S=76.85, ZS=82.05; DR-035 H=75.00; 2 H>=75 tune singles, no H>=76 | direction_sample h48 small-anchor hotspot tune; primary_grid best H=75.04, micro_grid best H=74.88, low_anchor_ridge best H=74.81 | not confirmation; profile `h76-hotspot100-tune`, seed=5, 100 jobs; follow-up must be exact-repeat same config/seed | live_multi_agent_monitor closeout; promotion blocked |
+| `ATTEMPT-016` | `RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu` (`RUN-20260708-0004...` failed before training: missing conda, not method evidence) | running snapshot 2026-07-09: 7 completed / 1 running / 2 pending; best DR-003 H=74.84 | pending | direction_sample h48 top2 from ATTEMPT-015 | A015DR004 five exact repeats finished below restore_target_H=75.04; A015DR035 still running; restore target 75.00 | near_miss_not_restored so far; server_frozen_runner running; promotion blocked |
+| `ATTEMPT-017` | `RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu` | completed: 100 completed / 0 failed / 0 skipped, server frozen | DR-095 H=75.11, U=73.00, S=77.36, ZS=82.12 | supported dynamic-routing escape plan; best came from mechanism ablation `a015dr035_weight_plus_0.01` | not confirmation; seed=5 tune_search + narrow_ablation; DR-095 becomes exact_repeat candidate with restore_target_H=75.11 | valid_single_run; exact_repeat DR-095 next; promotion blocked |
+| `ATTEMPT-018` | `RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu` | running: 2 running / 3 pending, live_multi_agent_monitor | pending | A017DR095 / DR-095 exact-repeat restore candidate | max 5 same-seed exact repeats, stop on H>=75.11; near miss remains not restored | running exact-repeat restore; promotion blocked |
+
+待跑规则：本表是当前 trial 的 `formal_pending` 账本。`Status`、结果或决策字段中出现 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的正式行，表示当前仍有待跑正式实验。没有本表对应行的 `.gtpj_runtime/batches/*` 目录统一视为 `orphan_runtime_plan`，不能自动续跑。
 
 ## ATTEMPT-001 Notes
 
@@ -294,3 +305,43 @@ Attempt-local records:
 - `attempts/ATTEMPT-008/result.md`
 - `attempts/ATTEMPT-008/quality_check.md`
 - `attempts/ATTEMPT-008/agent_summary.md`
+
+## ATTEMPT-013 Pre-Run Notes
+
+ATTEMPT-013 是在停止 ATTEMPT-012 服务器 detached run 之后，切回本地 `live_multi_agent_monitor` 工作流的 50 轮计划。
+
+计划目标：
+
+- 不复用 ATTEMPT-012 的 6 个 partial jobs 作为正式确认结论。
+- 只把 ATTEMPT-011 和 ATTEMPT-012 partial 当作候选来源和弱先验。
+- 用 5 个 `direction_sample h48` 小 anchor 候选各跑 seeds 6-15，共 50 jobs，检查多 seed 稳定性。
+- 本地多 agent planning gate 已完成，服务器 Runner 已启动并进入 owner-visible monitor loop。
+
+计划候选：
+
+- DR047 `direction_sample_h48_w0.535_a0.002`，10 jobs。
+- DR020 `direction_sample_h48_w0.525_a0.003`，10 jobs。
+- DR041 `direction_sample_h48_w0.515_a0.002`，10 jobs。
+- A011DR042 `direction_sample_h48_w0.515_a0.004`，10 jobs。
+- A011DR020 `direction_sample_h48_w0.555_a0.0045`，10 jobs。
+
+证据边界：
+
+- 当前已有 40/50 completed 结果；DR047、DR020、DR041、A011DR042 均已完整完成但尚未出现 H>=75；A011DR020 seed 6/7 正在运行，暂未形成 completed 结果。
+- 后续 best single、repeat mean、稳定性和 promotion-facing 结论必须等完整 summary 和 post-run 多 agent 复核。
+- Promotion 保持 blocked。
+
+Attempt-local records:
+
+- `attempts/ATTEMPT-013/task_start_card.md`
+- `attempts/ATTEMPT-013/pre_run_plan.md`
+- `attempts/ATTEMPT-013/WORK_ITEMS.md`
+- `attempts/ATTEMPT-013/manifest.yaml`
+- `attempts/ATTEMPT-013/agent_runtime.yaml`
+- `attempts/ATTEMPT-013/agent_outputs/`
+- `attempts/ATTEMPT-013/quality_check.md`
+- `attempts/ATTEMPT-013/result.yaml`
+- `attempts/ATTEMPT-013/result.md`
+- `attempts/ATTEMPT-013/agent_summary.md`
+- `attempts/ATTEMPT-013/AGENT_ACTIVITY.md`
+- `attempts/ATTEMPT-013/TRANSITIONS.jsonl`

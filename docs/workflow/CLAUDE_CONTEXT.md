@@ -3,10 +3,10 @@
 ## 当前审核分层
 
 - 机器验证永远优先于模型意见。
-- `fast` 不调用 Claude Code，但必须有机器验证通过和临时 Codex agent 预审通过。
+- `fast` 不调用 Claude Code，但必须有机器验证通过和命名 Codex 线程预审通过。
 - `review-1` 只需要 1 轮 Claude Code，用于普通 workflow/helper/template 修补。
 - `strict-3` 才需要 3 轮 Claude Code，只用于会污染正式实验结论、promotion、baseline 或论文 claim 的改动。
-- Claude Code 前必须读取 `02_codex_temp_agent_pre_review.md`，确认临时 Codex agent 已 `completed_closed`。
+- Claude Code 前必须读取 `02_codex_named_thread_pre_review.md`，确认命名 Codex 线程已 `completed_archived`。
 
 本文件是 GTPJ 给 Claude Code 的轻量共享上下文。它只记录稳定规则，当前事实仍以本次审核包、仓库文件、验证命令和实验 artifact 为准。
 
@@ -20,7 +20,7 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 - Claude Code 只读审核，Codex 负责实现和修复。
 - 正式实验不能绕过 `agent_runtime.yaml`、`validate-agent-runtime`、`multi-agent-preflight` 和 cleanup 记录。
 - raw artifacts 不能进入 GitHub；GitHub 只记录 artifact id、URI、sha256、size、config、manifest、result 和 quality。
-- exact repeat 必须固定原始 seed；多 seed 只能称为 seed sweep 或 stability，不算 exact repeat。
+- exact repeat 必须固定原始 seed；正式复现必须写 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`。同一候选无论是否还原成功都最多 5 次；多 seed / `seed_sweep` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不算 exact repeat。
 - `best_observed_H` 表示历史最高观察值；`confirmed_H` 表示确认复现实验的确认值，二者不能混用。
 - promotion 必须有完整 result、quality、artifact、confirmation 和 promotion evidence；普通调参或未确认结果不能自动升版本。
 

@@ -1,0 +1,93 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-013
+status: stopped_invalid_confirmation_scope
+run_id: RUN-20260707-0001-h76-followup50-live-multiagent-2gpu
+completed_jobs: 44
+running_jobs: 0
+pending_jobs: 0
+server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260707-0001-h76-followup50-live-multiagent-2gpu
+launched_at: "2026-07-07T17:57:41+08:00"
+last_checked_at: "2026-07-07T22:00:00+08:00"
+failed_jobs: 0
+skipped_jobs: 6
+planned_jobs: 50
+stop_requested_at: "2026-07-07T21:49:00+08:00"
+server_batch_status: completed_with_skips
+confirmation_policy:
+  repeat_type: multi_seed_stability
+  original_seed: not_preserved
+  max_attempts: 5
+  early_stop_on_best_hit: true
+  restore_target_H: not_applicable_not_exact_repeat
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  not_confirmation_evidence: true
+  violation: "Seeds were changed to 6-15; exact_repeat reproduction must keep original_seed and all parameters unchanged."
+best_single:
+  job_id: DR-028
+  name: dr041_direction_sample_h48_w0.515_a0.002_s13
+  candidate: DR041
+  seed: 13
+  H: 74.53
+  U: 71.89
+  S: 77.36
+  ZS: 81.58
+repeat_evidence:
+  groups:
+    DR047:
+      config: direction_sample_h48_w0.535_a0.002
+      completed_seeds: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      n: 10
+      mean_H: 74.134
+      min_H: 73.89
+      max_H: 74.37
+      range_H: 0.48
+      status: completed_below_75
+    DR020:
+      config: direction_sample_h48_w0.525_a0.003
+      completed_seeds: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      n: 10
+      mean_H: 74.131
+      min_H: 73.90
+      max_H: 74.29
+      range_H: 0.39
+      status: completed_below_75
+    DR041:
+      config: direction_sample_h48_w0.515_a0.002
+      completed_seeds: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      n: 10
+      mean_H: 74.127
+      min_H: 73.66
+      max_H: 74.53
+      range_H: 0.87
+      status: completed_below_75
+    A011DR042:
+      config: direction_sample_h48_w0.515_a0.004
+      completed_seeds: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      n: 10
+      mean_H: 74.095
+      min_H: 73.80
+      max_H: 74.30
+      range_H: 0.50
+      status: completed_below_75
+    A011DR020:
+      config: direction_sample_h48_w0.555_a0.0045
+      completed_seeds: [6, 7, 8, 9]
+      skipped_seeds: [10, 11, 12, 13, 14, 15]
+      n: 4
+      mean_H: 73.973
+      min_H: 73.87
+      max_H: 74.11
+      range_H: 0.24
+      status: stopped_below_75
+result_state: stopped_wrong_reproduction_scope
+promotion_decision: blocked
+notes:
+  - "STOP_REQUESTED was created after owner corrected the reproduction rule; controllers stopped accepting new jobs and the batch ended with skips."
+  - "This run is seed_sweep / multi_seed_stability evidence, not exact_repeat reproduction; it is not eligible for keep/best/confirmation/promotion."
+  - "DR047 seed 6-15 completed below 75 and does not support stable 75+."
+  - "DR020 seed 6-15 completed below 75 and does not support stable 75+."
+  - "DR041 seed 6-15 completed below 75 and does not support stable 75+."
+  - "A011DR042 seed 6-15 completed below 75 and does not support stable 75+."
+  - "A011DR020 completed seeds 6/7/8/9 below 75; remaining seeds were skipped by STOP_REQUESTED."
+  - "ATTEMPT-012 partial output remains weak prior only."

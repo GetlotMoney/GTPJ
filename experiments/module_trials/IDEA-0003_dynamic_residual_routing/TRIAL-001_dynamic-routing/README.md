@@ -12,15 +12,15 @@ version_score: 82.0
 applicability: direct
 code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
 run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
-trial_decision: keep
+trial_decision: rerun
 promotion_decision: blocked
 promote_to:
-evidence_level: confirmation_grade
-best_observed_H: 75.02
+evidence_level: valid_single_run
+best_observed_H: 75.04
 best_dynamic_single_H: 75.02
 best_dynamic_repeat_mean_H: 74.61
-confirmed_H: 74.61
-confirmation_status: confirmed_candidate
+confirmed_H: pending
+confirmation_status: needs_confirmation
 changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
 run_config:
 attempts: ATTEMPTS.md
@@ -233,4 +233,4 @@ remain unchanged.
 
 | Dataset | Seed | U | S | H | ZS | Best epoch | Log |
 |---|---:|---:|---:|---:|---:|---:|---|
-| CUB | 5 | 72.58 | 76.75 | 74.61 | 81.82 | min3_mean | `RUN-20260703-0002 / ATTEMPT-007 exact repeat` |
+| CUB | 5 | 73.00 | 77.36 | 75.11 | 82.12 | 48 | `` |

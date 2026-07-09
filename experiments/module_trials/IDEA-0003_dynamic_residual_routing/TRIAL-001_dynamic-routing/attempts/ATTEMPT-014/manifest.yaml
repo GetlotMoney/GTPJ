@@ -1,0 +1,132 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-014
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 restore100 exact-repeat server frozen campaign
+  status: completed_with_skips
+  recorded_at: "2026-07-08"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-011
+  source_result_ref: attempts/ATTEMPT-011/result.yaml
+  source_note: "ATTEMPT-011 supplies completed server summary and source candidates; ATTEMPT-013 is excluded because it changed seed and is not confirmation evidence."
+run:
+  run_id: RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+  profile: h76-restore100-exact-repeat
+  jobs: 100
+  execution_mode: server_frozen_runner
+  server_runner_started: true
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+  local_batch_dir: .gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+  local_frozen_plan_status: generated
+  launch_status: completed
+  screen_session: GTPJ_ATTEMPT014_RESTORE100_R2
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  git_remote: none
+  previous_failed_launch:
+    run_id: RUN-20260708-0001-h76-restore100-exact-repeat-2gpu
+    status: runner_preflight_failed_commit_mismatch
+    method_evidence: false
+    reason: "The first frozen plan recorded a local commit/branch that the server repo could not resolve; all jobs failed before training started."
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: per_job_source_H
+  per_job_restore_target_H: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+  not_confirmation_evidence: false
+campaign:
+  source_candidates: 20
+  repeats_per_candidate: 5
+  total_jobs: 100
+  candidate_selection: "Top pure direction_sample h48 fixed local/ICSA/PSE source singles from ATTEMPT-011 server summary."
+artifacts:
+  server_summary_csv:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:summary-csv
+    role: server_summary_csv
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/summary.csv
+    sha256: 2993f7b600ef8fa54f9a7eb97973bb199ab5e58cf0818548b55ea9b6cced6c37
+    size_bytes: 38306
+    status: available
+  server_summary_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:summary-jsonl
+    role: server_summary_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/summary.jsonl
+    sha256: 0bf4f6f4a3be1e0ff4fcb0c4f64138db4f4dcdd894fbcbe95786e8c5b3af466e
+    size_bytes: 114560
+    status: available
+  server_batch_status_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:batch-status-json
+    role: server_batch_status_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/batch_status.json
+    sha256: 82cc7e5c03cf29157888bdd12f8e3ee4a6c9c6f7efad1fc645f250458d5be0d1
+    size_bytes: 78645
+    status: available
+  server_events_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:events-jsonl
+    role: server_events_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/events.jsonl
+    sha256: e7da31f3bf86bde9382d419bc84d3cb2f48c181135a7e27e9816ca1e8fcde2e5
+    size_bytes: 50016
+    status: available
+  server_plan_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:plan-json
+    role: server_plan_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/plan.json
+    sha256: 83fff0f488d96940f9ad8039e4ef2e5426db2f8fbf3fcbde1b97595433884abf
+    size_bytes: 100725
+    status: available
+gate:
+  workflow_mode: server_frozen_runner
+  activation_mode: role_only
+  agent_instance_mode: role_only
+  formal_runtime_backend: server_detached_role_only
+  thread_creation_allowed: false
+  formal_runner_allowed: true
+  blocked_until: null
+local_frozen_plan:
+  config_count: 100
+  files:
+    plan_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/plan.json
+      size_bytes: 100725
+      sha256: 83fff0f488d96940f9ad8039e4ef2e5426db2f8fbf3fcbde1b97595433884abf
+    batch_status_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/batch_status.json
+      size_bytes: 22265
+      sha256: 549f4cf670c5365bf59e32b70b81365ff3e44d1cee86dcaba1cea2098280cd39
+    run_dynamic_routing_batch_py:
+      path: .gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/run_dynamic_routing_batch.py
+      size_bytes: 26943
+      sha256: 609bcee227ede155861f19809e254b1d36ade6b034fca36e5bb377e587920eaf
+    start_batch_sh:
+      path: .gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu/start_batch.sh
+      size_bytes: 312
+      sha256: 23364bfc4939e109321f1b6dbe980abb6cd61f4fba1ab1bb7938cbc3583a6316
+decision:
+  state: tune_promising
+  promotion_decision: blocked
+  reason: "RUN-20260708-0002 completed with 80 completed, 20 skipped, and 0 failed. No job reached H>=75; the two H=75.00 source candidates were not restored, so promotion remains blocked."
+post_run_summary:
+  completed_jobs: 80
+  skipped_jobs: 20
+  failed_jobs: 0
+  h_ge_75_count: 0
+  restored_candidates: 12
+  candidate_count: 20
+  best_single:
+    job_id: DR-022
+    source_candidate_id: A011B01DR017
+    H: 74.99
+    U: 73.33
+    S: 76.73
+    restore_target_H: 74.89
+  source_75_restored: false
