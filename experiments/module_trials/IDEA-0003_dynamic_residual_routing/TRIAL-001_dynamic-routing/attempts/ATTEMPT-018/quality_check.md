@@ -1,6 +1,6 @@
 # ATTEMPT-018 Quality Check
 
-status: running
+status: completed_not_restored
 
 ## Required Before Runner
 
@@ -24,6 +24,25 @@ status: running
 - running_jobs: `DR-001` on GPU0, `DR-002` on GPU1
 - owner monitor: `monitor-workflow --report-new-completions`
 
+## Post-Run
+
+- [x] Server `batch_status.status=completed`.
+- [x] 5/5 completed, 0 failed, 0 skipped.
+- [x] GPU0/GPU1 idle after completion.
+- [x] Local runtime has `batch_status.json`, `summary.csv`, `summary.jsonl`, `events.jsonl`.
+- [x] Best repeat is `DR-001`, H=74.71, U=72.19, S=77.40, ZS=81.95, best_epoch=48.
+- [x] No repeat reached `restore_target_H=75.11`.
+- [x] Best repeat is below near-miss threshold 74.91, so do not mark `near_miss_not_restored`.
+
 ## Result Boundary
 
-No result is recorded yet. DR-095 remains a valid single-run candidate until exact repeat reaches `restore_target_H=75.11`.
+ATTEMPT-018 is a completed max-5 exact-repeat non-restore observation for DR-095. It does not produce confirmation evidence, restored evidence, or promotion evidence.
+
+Because this run was planned before the later source-control helper hardening, do not use it as a post-fix source-control confirmation. A future restored claim must be generated under the fixed strict gate and clean server worktree.
+
+## Decision
+
+- evidence_state: `stopped_repeat_unstable`
+- confirmation_decision: `not_restored`
+- promotion_decision: `blocked`
+- next_action: post-fix strict-gate rerun or a new 4-candidate x 5 exact-repeat plan, but only after real strict-3 review passes.

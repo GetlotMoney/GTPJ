@@ -1,6 +1,6 @@
 # ATTEMPT-018 Agent Summary
 
-status: running
+status: completed_not_restored
 workflow_mode: `live_multi_agent_monitor`
 agent_instance_mode: `named_owner_thread`
 memory_used: true
@@ -18,4 +18,17 @@ verified_against_current_repo: partial
 
 ## Current Decision
 
-Formal Runner is running on lab4090. Named threads and role outputs exist, all six roles are `allow`, machine gates passed, and the uploaded batch has started with `DR-001` on GPU0 and `DR-002` on GPU1. Continue owner-visible monitoring with `monitor-workflow --report-new-completions` after syncing server `batch_status.json`, `summary.csv/jsonl`, and `events.jsonl` back to the local batch directory.
+Formal Runner completed on lab4090. Named threads and role outputs existed for the live multi-agent pre-run gate, all five repeat jobs completed, and no job restored `H=75.11`.
+
+Closeout:
+
+- completed: 5/5
+- failed: 0
+- skipped: 0
+- best repeat: DR-001, H=74.71
+- mean_H: 74.58
+- confirmation_decision: `not_restored`
+- evidence_state: `stopped_repeat_unstable`
+- promotion_decision: `blocked`
+
+Source-control caveat: ATTEMPT-018 was launched before the later source-control helper hardening. Treat it as observed repeat evidence, not as a post-fix restored/promotion claim.

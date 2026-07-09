@@ -24,7 +24,7 @@ agent_activity_stream: AGENT_ACTIVITY.md
 monitor_handoff_on_pause: required
 thread_archive_policy: archive_completed_threads_on_stage_end
 archive_completed_threads_on_stage_end: true
-current_stage_status: pre_run_gate_ready
+current_stage_status: closed_out
 archive_after_closeout_only: true
 active_named_threads_visible_until_closeout: true
 report_new_completions: true

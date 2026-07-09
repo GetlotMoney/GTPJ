@@ -4,7 +4,7 @@ attempt:
   trial_id: TRIAL-001
   idea_id: IDEA-0003
   name: A017DR095 exact-repeat live multi-agent restore campaign
-  status: running
+  status: completed_not_restored
   recorded_at: "2026-07-09"
 version:
   base_version: v5
@@ -47,7 +47,7 @@ run:
   planned_training_branch: codex/h76-campaign-20260704
   local_plan_generation_commit: a884fea429a302fecc42ba8cddf9e6e66f5d07c8
   git_remote: none
-  launch_status: running
+  launch_status: completed
   local_batch_dir: .gtpj_runtime/batches/RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu
   server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu
 gate:
@@ -69,7 +69,7 @@ confirmation_policy:
   near_miss_not_restored: true
   seed_change_allowed: false
 decision:
-  state: running
+  state: stopped_repeat_unstable
   promotion_decision: blocked
-  confirmation_decision: pending_exact_repeat
-  reason: "DR-095 is a valid single-run candidate from ATTEMPT-017 and requires exact-repeat restore before confirmation."
+  confirmation_decision: not_restored
+  reason: "5/5 same-seed exact repeats completed below restore_target_H=75.11; best repeat H=74.71 is below near-miss threshold 74.91."
