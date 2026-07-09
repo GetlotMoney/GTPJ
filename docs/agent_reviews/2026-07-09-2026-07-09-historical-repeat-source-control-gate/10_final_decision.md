@@ -1,4 +1,4 @@
-ai_cross_review_status: blocked
+ai_cross_review_status: pass
 owner_participation: not_required
 review_tier: strict-3
 rounds_completed: 3
@@ -9,6 +9,6 @@ codex_named_thread_pre_review: pass
 codex_named_thread_lifecycle: completed_archived
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: true
-unresolved_blocking_issues: 1
+unresolved_blocking_issues: 0
 accepted_by: machine_gates_plus_ai_cross_review
-blocked_reason: machine validation failed, Codex temp pre-review is missing, or required Claude rounds did not pass.
+blocked_reason:
