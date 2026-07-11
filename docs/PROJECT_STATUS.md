@@ -1,6 +1,6 @@
 # Project Status
 
-Date: 2026-06-30
+Date: 2026-07-11
 
 ## Current Active Mainline
 
@@ -41,6 +41,43 @@ historical_tag: v4 (legacy config-only tag; not a formal framework version)
 
 `v3/CONFIRM-001 local-v3-054` remains the stronger confirmed reference because its min3 cluster passed and the formal confirmed H is `74.47`; its repeat mean is `74.45`, while the v5 frozen-repeat mean is `74.44`. `GTPJ-v5` is active because the owner explicitly selected it as the next mainline for tuning, not because it supersedes the confirmed v3 config.
 
+## 当前研究前沿（尚未晋级）
+
+```text
+trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
+best_single_H: 75.11
+best_single_ref: ATTEMPT-017 / DR-095
+best_single_status: valid_single_run
+latest_repeat_attempt: ATTEMPT-018
+latest_repeat_best_H: 74.71
+latest_repeat_mean_H: 74.58
+latest_repeat_status: not_restored
+promotion_decision: blocked
+```
+
+当前最高单次 `H=75.11` 来自 ATTEMPT-017 的 `DR-095 / a015dr035_weight_plus_0.01`，对应 `U=73.00`、`S=77.36`、`ZS=82.12`。ATTEMPT-018 对该配置完成 5 次同 seed exact repeat，结果为 `74.71/74.62/74.51/74.60/74.45`，均值 `74.58`，没有达到 `restore_target_H=75.11`。
+
+### 高分候选分布
+
+| 证据位置 | 已记录的高分分布 | 说明 |
+|---|---|---|
+| `ATTEMPT-004` | `75.02`、`75.00`、`74.90`、`74.90` | 早期 direction h48 高分单次；75.02 后续复现未回到来源水平。 |
+| `ATTEMPT-011` | 选出的 12 个 `H>=74.80` 来源候选：`75.00×2`、`74.98`、`74.96`、`74.89`、`74.85`、`74.83`、`74.82×3`、`74.81`、`74.80` | 说明 direction h48 附近存在连续高分区域，而不是单个偶然配置。 |
+| `ATTEMPT-014` | exact repeat top5：`74.99`、`74.93`、`74.92`、`74.88`、`74.87` | `74.99` 还原的是较低来源目标 `74.89`；两个来源为 75.00 的候选只达到 `74.81/74.80`。 |
+| `ATTEMPT-015` | 100 jobs 中有 15 个 `H>=74.80`：`75.04`、`75.00`、`74.92`、`74.91`、`74.89`、`74.88×2`、`74.85`、`74.83`、`74.81×5`、`74.80` | 这是当前最清楚的密集高分带证据。 |
+| `ATTEMPT-017` | 结果文件 top5：`75.11`、`74.92`、`74.90`、`74.86`、`74.86` | 机制窄消融产生当前最高单次，但随后未复现。 |
+
+### 75 分来源的复现结论
+
+| 来源单次 | 来源 | 后续 exact repeat | 结论 |
+|---:|---|---|---|
+| `75.11` | ATTEMPT-017 DR-095 | ATTEMPT-018，5 次，best `74.71`，mean `74.58` | `not_restored`，promotion blocked |
+| `75.04` | ATTEMPT-015 DR-004 | ATTEMPT-016，5 次，best `74.84`，mean `74.66` | `not_restored` |
+| `75.00` | ATTEMPT-015 DR-035 | ATTEMPT-016，5 次，best `74.85`，mean `74.65` | `not_restored` |
+| `75.02` | ATTEMPT-004 DR-035 | ATTEMPT-007 min3 mean `74.61`；ATTEMPT-008 min6 mean `74.56`、best `74.76` | 扩展复现未确认，promotion blocked |
+
+因此，项目可以公开陈述“最高单次达到 `H=75.11`，并存在密集的 `74.8x/74.9x` 候选带”，但不能陈述“confirmed/baseline 已达到 75”。
+
 ## Enabled Modules
 
 - Frozen CLIP ViT-L/14@336px backbone
@@ -65,6 +102,7 @@ historical_tag: v4 (legacy config-only tag; not a formal framework version)
 ## Known Risks
 
 - `GTPJ-v5` has a best single repeat of `H=74.54`, but its 5-repeat mean is `H=74.44`, below the confirmed v3 config `confirmed_H=74.47`.
+- Dynamic Routing trial 已出现 `H=75.11` 的研究单次和大量 `74.8x/74.9x` 候选，但 75.11、75.04、75.02、75.00 的关键来源均未在后续 exact repeat 中还原。
 - Future manuscript-grade claims should cite whether a number is `confirmed_H`, repeat mean, or `best_observed_H`.
 - The next tuning round should start from `config/versions/v5.yaml` but still compare against `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`.
 

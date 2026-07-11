@@ -1,11 +1,11 @@
 schema_version: "gtpj-queue-state/v1"
-updated_at: "2026-07-04"
+updated_at: "2026-07-11"
 current_window:
   focus: "GTPJ-v5 active mainline 后的近期复现、调参、队列整理和证据收尾。"
   policy: "只保留 3-7 条近期动作；完整创意库看 idea_tree/INDEX.md；具体实验动作写入 task/trial/attempt。"
 actions:
   - priority: "P0"
-    item: "每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-5 best model_best/best-model files 并记录 manifest。"
+    item: "每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-3 best model_best/best-model files 并记录 manifest。"
     type: "artifact_retention"
     owner: "Coordinator"
     status: "open"
@@ -19,7 +19,7 @@ actions:
     blocked_by: "需要 owner 指定调参、消融或混合实验范围。"
     evidence_ref: "experiments/v5/"
   - priority: "P1"
-    item: "下一轮调参后，用 repeat mean 判断 v5 是否超过 v4 confirmed_H=74.45。"
+    item: "下一轮调参后，用 repeat mean 判断 v5 是否超过 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
     type: "confirmation_planning"
     owner: "Coordinator"
     status: "open"

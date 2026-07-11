@@ -19,6 +19,8 @@ v5/                      GTPJ-v5 owner-activated active mainline 记录
 
 当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。
 
+当前研究最高单次来自 `IDEA-0003/TRIAL-001 ATTEMPT-017`，`H=75.11`；ATTEMPT-018 的 5 次 exact repeat 最好 `H=74.71`、均值 `H=74.58`，未还原，因此该结果仍是未晋级的研究单次，不能替代 confirmed reference。完整高分分布见该 trial 的 [README](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md) 和 [ATTEMPTS](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/ATTEMPTS.md)。
+
 旧的 `experiments/v1/` 到 `experiments/v4/` 不删除。`main` 保存全部版本账本，代码快照靠对应 tag 回滚。
 
 ## 正式表格地图

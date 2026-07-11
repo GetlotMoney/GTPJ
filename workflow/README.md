@@ -15,7 +15,7 @@ docs/workflow/reference/agent_contracts.md
 ```
 
 当前 active mainline code 是 `GTPJ-v5 / tag v5`。`best_observed_H=74.54`，
-`confirmed_H=74.44`，仍需和更强 confirmed reference `v4 confirmed_H=74.45` 区分表述。
+`confirmed_H=74.44`，仍需和更强 confirmed reference `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 区分表述。当前 IDEA-0003/TRIAL-001 的研究最高单次为 `H=75.11`，但 exact repeat 未还原，不能写成 confirmed 或 promoted 结果。
 `validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
 用于核对远端 `main` 和 baseline tags 是否与本地治理事实对齐。
 

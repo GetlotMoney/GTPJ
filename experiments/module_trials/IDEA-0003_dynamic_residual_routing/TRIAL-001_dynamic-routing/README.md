@@ -12,15 +12,20 @@ version_score: 82.0
 applicability: direct
 code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
 run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
-trial_decision: rerun
+trial_decision: revise
 promotion_decision: blocked
 promote_to:
 evidence_level: valid_single_run
-best_observed_H: 75.04
-best_dynamic_single_H: 75.02
-best_dynamic_repeat_mean_H: 74.61
+best_observed_H: 75.11
+best_dynamic_single_H: 75.11
+best_fixed_n_repeat_mean_H: 74.63
+best_fixed_n_repeat_mean_ref: ATTEMPT-011 / DR047 / n=10
+latest_exact_repeat_ref: ATTEMPT-018 / A017DR095 / n=5
+latest_exact_repeat_best_H: 74.71
+latest_exact_repeat_mean_H: 74.58
+latest_exact_repeat_status: not_restored
 confirmed_H: pending
-confirmation_status: needs_confirmation
+confirmation_status: not_restored
 changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
 run_config:
 attempts: ATTEMPTS.md
@@ -32,7 +37,26 @@ agent_summary: agent_summary.md
 implementation: implementation.md
 ```
 
-## Run Summary
+## 当前实验前沿
+
+当前最高单次是 ATTEMPT-017 `DR-095 / a015dr035_weight_plus_0.01`：`H=75.11`、`U=73.00`、`S=77.36`、`ZS=82.12`。该结果是 `valid_single_run`，不是 confirmation 或 promotion 证据。
+
+ATTEMPT-018 已完成同配置、同 seed 的 5 次 exact repeat，最好 `H=74.71`、均值 `H=74.58`、范围 `74.45–74.71`，没有达到 `restore_target_H=75.11`，状态为 `stopped_repeat_unstable / not_restored`。
+
+| 分层 | 代表结果 | 证据解释 |
+|---|---|---|
+| 最高搜索单次 | ATTEMPT-017 DR-095 `H=75.11` | 当前最高，但未复现。 |
+| 其他 75 分单次 | ATTEMPT-015 `75.04/75.00`；ATTEMPT-004 `75.02/75.00`；ATTEMPT-011 `75.00×2` | 都只能作为调参信号。 |
+| 74.9x 前沿 | `74.99/74.98/74.96/74.93/74.92/74.91/74.90` | 分布在 ATTEMPT-011、014、015、017，说明 h48 小 anchor 区域存在连续信号。 |
+| 74.8x 密集带 | ATTEMPT-015 单轮有 11 个 `74.80–74.89` job；ATTEMPT-011 选出的来源候选中有 8 个 `74.80–74.89` | 高分不是只有一个点，但仍缺少稳定 75+ 复现。 |
+| 最佳固定次数重复均值 | ATTEMPT-011 DR047，`n=10`，mean `74.630`，best `74.87` | 高于旧的 ATTEMPT-007 min3 mean `74.61`，仍非 75+ confirmation。 |
+| 较低目标还原 | ATTEMPT-014 DR-022 `H=74.99`，来源目标 `74.89` | 证明较低目标可还原，不等于还原 75。 |
+
+当前结论保持：`promotion_decision: blocked`；正式 confirmed reference 仍是 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。
+
+## ATTEMPT-001 初始运行摘要
+
+以下 ATTEMPT-001/002/004/006 段落保留历史阶段判断；当前结论以本文开头“当前实验前沿”和 `ATTEMPTS.md` 为准。
 
 | Field | Value |
 |---|---|
@@ -91,7 +115,7 @@ Group summary:
 | `icsa_gate` | 8 | 53.64 | 62.88 | collapsed or over-injected; avoid dynamic ICSA for now |
 | `combination` | 8 | 57.32 | 73.38 | combinations are too unstable in this profile |
 
-## Decision
+## ATTEMPT-001 当时决策
 
 `promotion_decision: rejected`.
 
@@ -130,9 +154,9 @@ ATTEMPT-004 and the workflow-v2 validation campaign refine the ATTEMPT-003 direc
 | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-009 | `dr016_direction_sample_h48_w0.45_a0.003_r02` | 75.00 | 72.93 | 77.19 | supporting single |
 | ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-002 / DR-004 | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | repeat candidate |
 
-Current interpretation:
+ATTEMPT-004/006 当时解释（已被后续 ATTEMPT-017/018 证据更新）：
 
-- Best observed single is ATTEMPT-004 DR-035 H=75.02.
+- 当时最高单次是 ATTEMPT-004 DR-035 H=75.02；当前最高单次已更新为 ATTEMPT-017 H=75.11。
 - The strongest family is `direction_sample`, hidden 48, anchor lambda around 0.003-0.005.
 - ATTEMPT-006 workflow-v2 innovation probes did not help and are stopped for this campaign.
 - No result is confirmed; promotion remains blocked until min3 repeat and post-run quality closeout.

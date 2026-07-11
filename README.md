@@ -17,6 +17,24 @@ future_tuning_base: config/versions/v5.yaml
 
 The stronger confirmed reference is `v3 / CONFIRM-001 local-v3-054 / confirmed_H=74.47`. v5 is active for the next tuning round, but its frozen-repeat mean is `74.44`, so it is not a stronger confirmed-baseline claim over that confirmed v3 config.
 
+## 当前研究前沿（尚未晋级）
+
+```text
+research_trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
+research_best_single_H: 75.11
+research_best_single_ref: ATTEMPT-017 / DR-095
+research_best_restore_status: not_restored
+latest_exact_repeat: ATTEMPT-018
+latest_repeat_best_H: 74.71
+latest_repeat_mean_H: 74.58
+confirmed_reference_H: 74.47
+promotion_decision: blocked
+```
+
+`H=75.11` 是当前仓库记录的最高单次结果，但它属于调参/窄消融单次证据，不是 confirmed 结果。随后 5 次同配置、同 seed 的 exact repeat 均未还原该数值，因此不能把正式 baseline 或 `confirmed_H` 写成 75.11。
+
+高分并非孤立点：历史账本还记录了 `75.04`、`75.02`、多次 `75.00`，以及一批 `74.80–74.99` 候选。完整分布、候选身份和复现结论见[项目状态](docs/PROJECT_STATUS.md)与[动态路由 trial 进展](experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md)。
+
 ## Versions
 
 | Version | Code tag | Status | Dataset | Note |
