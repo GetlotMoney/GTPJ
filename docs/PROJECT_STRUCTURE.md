@@ -74,6 +74,8 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和结构辅助命令。 |
 | `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
+| `REPOSITORY_INDEX.json` | 新旧仓库机器可读索引；允许互相定位和只读参考，不提供自动同步或跨仓库写入授权。 |
+| `REPOSITORY_INDEX.md` | 新旧仓库索引的人话说明。 |
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |

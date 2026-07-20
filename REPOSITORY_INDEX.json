@@ -1,0 +1,16 @@
+{
+  "schema": "workflow-repository-index.v1",
+  "owner_repository": "gtpj-legacy",
+  "path_base": "index_directory",
+  "repositories": [
+    {"id": "gtpj-legacy", "role": "旧版 GTPJ 仓库", "path": ".", "access": "read_write"},
+    {"id": "cv-experiment-workflow", "role": "通用工作流模板", "path": "..\\..\\cv工作流（新）\\cv-experiment-workflow", "access": "read_only_reference"},
+    {"id": "xiaoyang-cv-lab", "role": "初始化项目实例", "path": "..\\..\\cv工作流（新）\\Xiaoyang-CV-Lab", "access": "read_only_reference"}
+  ],
+  "policy": {
+    "read_repository_files": true,
+    "automatic_sync": false,
+    "shared_git_history": false,
+    "cross_repository_write_requires_explicit_user_authorization": true
+  }
+}
