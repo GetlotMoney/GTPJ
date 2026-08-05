@@ -3921,6 +3921,7 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
         ]
         if run_start_receipt_path is not None:
             allowed_runtime_paths.append(run_start_receipt_path)
+            allowed_runtime_paths.append(run_finish_receipt_path(run_start_receipt_path))
         dirty_before = "dirty" if git_dirty_outside(allowed_runtime_paths) else "clean"
     else:
         dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
@@ -3933,6 +3934,12 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
         if run_start_receipt_path.resolve() != receipt_dest.resolve():
             shutil.copy2(run_start_receipt_path, receipt_dest)
         run_start_receipt_ref = rel(receipt_dest)
+        finish_receipt_source = run_finish_receipt_path(run_start_receipt_path)
+        finish_receipt_dest = exp_dir / "run_finish_receipt.json"
+        if finish_receipt_dest.exists() and sha256_file(finish_receipt_dest) != sha256_file(finish_receipt_source):
+            raise WorkflowError("Refusing to overwrite a different run_finish_receipt.json")
+        if finish_receipt_source.resolve() != finish_receipt_dest.resolve():
+            shutil.copy2(finish_receipt_source, finish_receipt_dest)
     evidence_defaults = result_evidence_defaults(kind.name, metrics["H"], args.decision, git_dirty)
     if legacy_summary_only:
         evidence_defaults.update(
@@ -5744,6 +5751,16 @@ def _cmd_record_module_attempt_locked(args: argparse.Namespace) -> int:
             "audit",
             f"Runner start receipt bound to the frozen row for {attempt_upper}.",
         )
+        add_file_artifact(
+            "run_finish_receipt",
+            run_finish_receipt_path(run_start_receipt_path),
+            "receipts",
+            "run_finish_receipt",
+            "runner_finish",
+            f"receipt:{version}:module_trial:{trial_id}:{attempt_lower}:run_finish",
+            "audit",
+            f"Immutable process-finish receipt for {attempt_upper}.",
+        )
 
     if args.best_checkpoint:
         best_path = resolve_existing_path(args.best_checkpoint, "best checkpoint")
@@ -5837,6 +5854,7 @@ note: Full per-epoch output is stored in the training_log artifact.
         ]
         if run_start_receipt_path is not None:
             allowed_runtime_paths.append(run_start_receipt_path)
+            allowed_runtime_paths.append(run_finish_receipt_path(run_start_receipt_path))
         module_git_dirty = "true" if git_dirty_outside(allowed_runtime_paths) else "false"
     elif not git(["status", "--short"], check=False):
         module_git_dirty = "false"
@@ -13877,6 +13895,15 @@ def run_start_receipt_errors(
             errors.append(str(exc))
     if receipt_path.stat().st_mtime > log_path.stat().st_mtime:
         errors.append("run-start receipt was written after the training log")
+    errors.extend(
+        run_finish_receipt_errors(
+            receipt_path=receipt_path,
+            log_path=log_path,
+            job_id=row.get("job_id", ""),
+            run_id=run_id,
+            command=command,
+        )
+    )
     return errors
 
 
@@ -13909,9 +13936,80 @@ def sealed_training_process_evidence(log_path: Path, command: str) -> dict[str, 
         raise WorkflowError("Cannot seal the finished training process:\n" + "\n".join(errors))
     return {
         "pid": int(finish_matches[0].group(1)),
+        "started_at": start_matches[0].group(2),
+        "finished_at": finish_matches[0].group(3),
         "returncode": int(finish_matches[0].group(2)),
         "log_sha256": sha256_file(log_path),
     }
+
+
+def run_finish_receipt_path(receipt_path: Path) -> Path:
+    return receipt_path.with_name(f"{receipt_path.stem}.finish.json")
+
+
+def write_run_finish_receipt(
+    *,
+    receipt_path: Path,
+    job_id: str,
+    run_id: str,
+    command: str,
+    process_result: dict[str, object],
+) -> Path:
+    finish_path = run_finish_receipt_path(receipt_path)
+    payload = {
+        "schema_version": "gtpj-run-finish-receipt/v1",
+        "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
+        "job_id": job_id,
+        "run_id": run_id,
+        "run_start_receipt_sha256": sha256_file(receipt_path),
+        "command_sha256": parameter_matrix_sha256(command),
+        "pid": int(process_result["pid"]),
+        "started_at": str(process_result["started_at"]),
+        "finished_at": str(process_result["finished_at"]),
+        "returncode": int(process_result["returncode"]),
+        "log_sha256": str(process_result["log_sha256"]),
+    }
+    write_new_lf(finish_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    return finish_path
+
+
+def run_finish_receipt_errors(
+    *,
+    receipt_path: Path,
+    log_path: Path,
+    job_id: str,
+    run_id: str,
+    command: str,
+) -> list[str]:
+    finish_path = run_finish_receipt_path(receipt_path)
+    if not finish_path.exists() or not finish_path.is_file():
+        return ["finished training process requires an immutable run-finish receipt"]
+    try:
+        payload = json.loads(read_text(finish_path))
+    except json.JSONDecodeError:
+        return ["run-finish receipt is not valid JSON"]
+    try:
+        process_result = sealed_training_process_evidence(log_path, command)
+    except WorkflowError as exc:
+        return [str(exc)]
+    expected = {
+        "schema_version": "gtpj-run-finish-receipt/v1",
+        "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
+        "job_id": job_id,
+        "run_id": run_id,
+        "run_start_receipt_sha256": sha256_file(receipt_path),
+        "command_sha256": parameter_matrix_sha256(command),
+        "pid": int(process_result["pid"]),
+        "started_at": str(process_result["started_at"]),
+        "finished_at": str(process_result["finished_at"]),
+        "returncode": int(process_result["returncode"]),
+        "log_sha256": str(process_result["log_sha256"]),
+    }
+    return [
+        f"finish receipt {field} does not match the sealed training process"
+        for field, value in expected.items()
+        if payload.get(field) != value
+    ]
 
 
 def seal_finished_parameter_matrix_run(
@@ -13992,6 +14090,7 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
     log_path = Path(args.log)
     if not log_path.is_absolute():
         log_path = REPO_ROOT / log_path
+    finish_receipt_path = run_finish_receipt_path(receipt_path)
     if receipt_path.exists() and log_path.exists():
         recovered = seal_finished_parameter_matrix_run(
             matrix_path=matrix_path,
@@ -14012,8 +14111,8 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         print(f"receipt: {display_path(receipt_path)}")
         print(f"log: {display_path(log_path)}")
         return 0
-    if receipt_path.exists() or log_path.exists():
-        raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
+    if receipt_path.exists() or log_path.exists() or finish_receipt_path.exists():
+        raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files, including a finish receipt")
     if receipt_path.resolve() == log_path.resolve():
         raise WorkflowError("prepare-run-start-receipt requires different receipt and log paths")
     # The lock is matrix-wide, not row-wide: two different jobs still rewrite
@@ -14174,9 +14273,17 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
                 overwrite=True,
             )
         receipt_path.unlink(missing_ok=True)
+        finish_receipt_path.unlink(missing_ok=True)
         log_path.unlink(missing_ok=True)
         raise
 
+    write_run_finish_receipt(
+        receipt_path=receipt_path,
+        job_id=args.job_id,
+        run_id=args.run_id,
+        command=args.command,
+        process_result=process_result,
+    )
     sealed_process_result = seal_finished_parameter_matrix_run(
         matrix_path=matrix_path,
         config_path=config_path,

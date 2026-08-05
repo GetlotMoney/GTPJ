@@ -3068,6 +3068,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             matrix_path.with_name("PARAMETER_MATRIX.md"),
             log_path,
             self.repo / "train_log/tune.run_start.json",
+            self.repo / "train_log/tune.run_start.finish.json",
         ]
         self.assertFalse(
             self.module.git_dirty_outside(allowed_runtime_paths),
@@ -3669,6 +3670,89 @@ log:v1:module_trial:TRIAL-001:attempt-001
         tamper_code, _tamper_stdout, tamper_stderr = self._run_main(*receipt_args)
         self.assertEqual(1, tamper_code)
         self.assertIn("already-sealed log hash", tamper_stderr)
+
+    def test_finished_run_recovery_rejects_log_tampered_after_seal_timeout(self) -> None:
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-774_seal-timeout"
+        config_path = matrix_dir / "config.yaml"
+        matrix_path = matrix_dir / "PARAMETER_MATRIX.csv"
+        lock_path = self.module.parameter_matrix_lock_path(matrix_path)
+        self._write(
+            str(config_path.relative_to(self.repo)).replace("\\", "/"),
+            "version: v1\nrandom_seed:\n  value: 5\n",
+        )
+        self._write(
+            "train_GTPJ_CUB.py",
+            "from pathlib import Path\n"
+            "print('Best Results @ Epoch 2')\n"
+            "print('  GZSL-U : 70.0%')\n"
+            "print('  GZSL-S : 72.0%')\n"
+            "print('  GZSL-H : 71.0%')\n"
+            "print('  ZSL : 73.0%')\n"
+            f"Path({str(lock_path)!r}).write_text('persistent external writer\\n', encoding='utf-8')\n",
+        )
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "TUNE-774-001", "seed": 5, "config_updates": {}}],
+            base_config_text=config_path.read_text(encoding="utf-8"),
+            base_version="v1",
+            code_ref="HEAD",
+            run_id="",
+        )
+        rows[0]["config_snapshot_ref"] = "config.yaml"
+        rows[0]["config_fingerprint"] = self.module.parameter_matrix_sha256(
+            config_path.read_text(encoding="utf-8")
+        )
+        rows[0]["status"] = "frozen"
+        self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="seal timeout recovery test",
+        )
+        self._commit_all("freeze seal timeout fixture")
+        self.module.PARAMETER_MATRIX_FINISH_LOCK_TIMEOUT_SECONDS = 0.05
+        receipt_args = (
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_path),
+            "--config",
+            str(config_path),
+            "--job-id",
+            "TUNE-774-001",
+            "--run-id",
+            "RUN-SEAL-TIMEOUT",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-774_seal-timeout/config.yaml",
+            "--receipt",
+            "train_log/seal-timeout.json",
+            "--log",
+            "train_log/seal-timeout.log",
+        )
+
+        first_code, _first_stdout, first_stderr = self._run_main(*receipt_args)
+
+        self.assertEqual(1, first_code)
+        self.assertIn("another process is already updating", first_stderr)
+        row_before_recovery = self.module.read_parameter_matrix(matrix_path)[0]
+        self.assertEqual("running", row_before_recovery["status"])
+        self.assertEqual("", row_before_recovery["run_log_sha256"])
+        finish_receipt_path = self.repo / "train_log/seal-timeout.finish.json"
+        self.assertTrue(finish_receipt_path.exists())
+        log_path = self.repo / "train_log/seal-timeout.log"
+        log_path.write_text(
+            log_path.read_text(encoding="utf-8").replace("  GZSL-H : 71.0%", "  GZSL-H : 99.0%"),
+            encoding="utf-8",
+        )
+        lock_path.unlink()
+
+        recovery_code, _recovery_stdout, recovery_stderr = self._run_main(*receipt_args)
+
+        self.assertEqual(1, recovery_code)
+        self.assertIn("finish receipt log_sha256", recovery_stderr)
+        row_after_recovery = self.module.read_parameter_matrix(matrix_path)[0]
+        self.assertEqual("running", row_after_recovery["status"])
+        self.assertEqual("", row_after_recovery["run_log_sha256"])
 
     def test_training_output_without_final_newline_keeps_finish_marker_on_its_own_line(self) -> None:
         self._write(
