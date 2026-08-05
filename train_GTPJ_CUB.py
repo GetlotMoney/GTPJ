@@ -62,7 +62,7 @@ def print_log(msg):
 # ==========================================
 #   加载配置
 # ==========================================
-parser = argparse.ArgumentParser(description="Train GTPJ on CUB GZSL.")
+parser = argparse.ArgumentParser(description="Train GTPJ on CUB GZSL.", allow_abbrev=False)
 parser.add_argument(
     "--config",
     default="./config/GTPJ_cub_gzsl.yaml",

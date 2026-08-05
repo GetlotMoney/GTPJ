@@ -123,7 +123,7 @@ confirmation / promotion。
 
 ## 2.1.1 参数矩阵硬规则（2026-08-04 起）
 
-一轮 batch 只是很多具体任务的容器，不能替代参数表。任何新建正式实验必须把每个 job 写进 `PARAMETER_MATRIX.csv`，并提供自动生成的 `PARAMETER_MATRIX.md` 阅读版。相同配置指纹必须明确标注为 `repeat_of`，否则视为误重复；参数矩阵必须与 pre-run freeze commit 一起冻结，训练启动前必须生成绑定提交、任务、Run、配置和日志首行的 run-start receipt，跑完后只允许回填状态和结果。阅读版与 CSV 不一致、启动收据缺失或收据与日志不匹配时，`record-result` 和 `record-module-attempt` 都会拒绝正式入账。动态路由正式批次还会逐行核对冻结计划，并要求取回真实 Warehouse manifest 文件后再同步。完整规范：`docs/workflow/protocols/parameter_matrix_protocol.md`。
+一轮 batch 只是很多具体任务的容器，不能替代参数表。任何新建正式实验必须把每个 job 写进 `PARAMETER_MATRIX.csv`，并提供自动生成的 `PARAMETER_MATRIX.md` 阅读版。相同配置指纹必须明确标注为 `repeat_of`，否则视为误重复；参数矩阵必须与 pre-run freeze commit 一起冻结，再用 `prepare-run-start-receipt` 由 helper 生成收据并直接拉起训练。helper 会把真实进程号、开始、退出和输出追加到收据哈希之后，不能只生成收据再手工开跑。跑完后只允许回填状态和结果，所有参数表改写动作共用同一把锁。阅读版与 CSV 不一致、启动收据缺失、真实进程标记缺失或收据与日志不匹配时，`record-result` 和 `record-module-attempt` 都会拒绝正式入账。动态路由正式批次还会逐行核对冻结计划，并要求取回真实 Warehouse manifest 和逐任务启动收据后再同步。完整规范：`docs/workflow/protocols/parameter_matrix_protocol.md`。
 
 ## 2.2 实验规划门（Experiment Planning Gate）
 

@@ -522,6 +522,72 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         return gate_path
 
+    def _write_dynamic_run_start_receipt(
+        self,
+        *,
+        run_dir: Path,
+        plan: dict[str, object],
+        job_id: str,
+        source_config_sha256: str,
+    ) -> dict[str, str]:
+        command = [
+            "conda",
+            "run",
+            "--no-capture-output",
+            "-n",
+            str(plan.get("conda_env", "dvsr_gpu")),
+            str(plan.get("python", "python")),
+            "train_GTPJ_CUB.py",
+            "--config",
+            f"/runtime/{job_id}.yaml",
+        ]
+        command_sha256 = hashlib.sha256(
+            json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        frozen_row = plan["parameter_matrix_frozen_rows"][job_id]
+        frozen_sha256 = hashlib.sha256(
+            json.dumps(
+                frozen_row,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        training_entry = self._git("show", f"{plan['commit']}:train_GTPJ_CUB.py").stdout
+        training_entry_sha256 = hashlib.sha256(training_entry.encode("utf-8")).hexdigest()
+        payload = {
+            "schema_version": "gtpj-dynamic-run-start-receipt/v1",
+            "job_id": job_id,
+            "run_id": str(plan["run_id"]),
+            "attempt_id": str(plan["warehouse_attempt_id"]),
+            "training_commit": str(plan["commit"]),
+            "plan_generation_commit": str(plan["plan_generation_commit"]),
+            "parameter_matrix_frozen_sha256": frozen_sha256,
+            "source_config_sha256": source_config_sha256,
+            "runtime_config_sha256": "c" * 64,
+            "training_entry": "train_GTPJ_CUB.py",
+            "training_entry_sha256": training_entry_sha256,
+            "command": command,
+            "command_sha256": command_sha256,
+            "log_path": f"/runtime/{job_id}.log",
+        }
+        receipt_path = run_dir / "run_start_receipts" / f"{job_id}.json"
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        receipt_sha256 = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+        warehouse_dir = self.module.expected_dynamic_warehouse_dir(plan, job_id)
+        return {
+            "run_start_receipt": str(warehouse_dir / "receipts" / "run_start_receipt.json"),
+            "run_start_receipt_sha256": receipt_sha256,
+            "run_command_sha256": command_sha256,
+            "source_config_sha256": source_config_sha256,
+            "runtime_config_sha256": "c" * 64,
+            "training_entry_sha256": training_entry_sha256,
+        }
+
     def _write_server_detached_formal_gate(
         self,
         *,
@@ -2283,6 +2349,16 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("", stderr)
         self.assertIn("dynamic-routing-plan-created", stdout)
         run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC"
+        plan = json.loads((run_dir / "plan.json").read_text(encoding="utf-8"))
+        frozen_rows = self.module.read_parameter_matrix(
+            self.repo / trial_dir / "attempts/ATTEMPT-009/PARAMETER_MATRIX.csv"
+        )
+        receipt_fields = self._write_dynamic_run_start_receipt(
+            run_dir=run_dir,
+            plan=plan,
+            job_id="DR-001",
+            source_config_sha256=frozen_rows[0]["config_fingerprint"],
+        )
         manifest_rel = ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC/artifact_manifests/DR-001.json"
         self._write(
             manifest_rel,
@@ -2294,6 +2370,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
                     "warehouse_attempt_id": "ATTEMPT-009",
                     "warehouse_dir": "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/"
                     "module_trial/TRIAL-001/ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001",
+                    "run_start_receipt": receipt_fields["run_start_receipt"],
+                    "run_start_receipt_sha256": receipt_fields["run_start_receipt_sha256"],
+                    "run_command_sha256": receipt_fields["run_command_sha256"],
                 }
             ),
         )
@@ -2303,14 +2382,33 @@ log:v1:module_trial:TRIAL-001:attempt-001
             ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC/summary.csv",
             "job_id,attempt_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir,"
             "artifact_manifest,artifact_manifest_sha256,artifact_manifest_job_id,"
-            "artifact_manifest_run_id,artifact_manifest_attempt_id\n"
+            "artifact_manifest_run_id,artifact_manifest_attempt_id,run_start_receipt,"
+            "run_start_receipt_sha256,run_command_sha256,source_config_sha256,"
+            "runtime_config_sha256,training_entry_sha256\n"
             "DR-001,ATTEMPT-009,completed,70.1,72.2,71.1,73.3,12,,"
             "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/"
             "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001,"
             "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/"
             "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001/artifact_manifest.json,"
-            f"{manifest_sha256},DR-001,RUN-TEST-MATRIX-SYNC,ATTEMPT-009\n",
+            f"{manifest_sha256},DR-001,RUN-TEST-MATRIX-SYNC,ATTEMPT-009,"
+            f"{receipt_fields['run_start_receipt']},{receipt_fields['run_start_receipt_sha256']},"
+            f"{receipt_fields['run_command_sha256']},{receipt_fields['source_config_sha256']},"
+            f"{receipt_fields['runtime_config_sha256']},{receipt_fields['training_entry_sha256']}\n",
         )
+
+        matrix_path = self.repo / trial_dir / "attempts/ATTEMPT-009/PARAMETER_MATRIX.csv"
+        lock_path = self.module.parameter_matrix_lock_path(matrix_path)
+        lock_path.write_text("operation=another-writer\n", encoding="utf-8")
+        try:
+            code, _stdout, stderr = self._run_main(
+                "sync-dynamic-routing-matrix",
+                "--run-dir",
+                str(run_dir),
+            )
+            self.assertEqual(1, code)
+            self.assertIn("another process is already updating this parameter matrix", stderr)
+        finally:
+            lock_path.unlink()
 
         code, stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
         self.assertEqual(0, code)
@@ -2329,6 +2427,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             rows[0]["artifact_ref"],
         )
         self.assertEqual(manifest_sha256, rows[0]["artifact_manifest_sha256"])
+        self.assertEqual(receipt_fields["run_start_receipt_sha256"], rows[0]["run_start_receipt_sha256"])
+        self.assertEqual(receipt_fields["run_command_sha256"], rows[0]["run_command_sha256"])
         code, _stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
@@ -2426,6 +2526,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_sync_dynamic_routing_matrix_resolves_top_rank_repeats_and_rejects_unknown_jobs(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal top-rank fixture")
         code, _stdout, stderr = self._run_main(
             "prepare-dynamic-routing-matrix",
             "--trial-dir",
@@ -2441,31 +2544,31 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
+        self._commit_all("freeze top-rank matrix before planning")
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-TEST-TOP-RANK-SYNC",
+            "--profile",
+            "balanced-aggressive",
+            "--jobs",
+            "50",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--attempt-id",
+            "ATTEMPT-011",
+            "--warehouse-root",
+            "/warehouse",
+        )
+        self.assertEqual(0, code, stderr)
         matrix_path = self.repo / trial_dir / "attempts/ATTEMPT-011/PARAMETER_MATRIX.csv"
         before_rows = self.module.read_parameter_matrix(matrix_path)
         pending = next(row for row in before_rows if row["config_fingerprint"].startswith("pending_after_top_rank:"))
         source = next(row for row in before_rows if row["job_id"] == "DR-001")
         self.assertEqual("top_rank:1", pending["repeat_of"])
         run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC"
-        self._write(
-            ".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/plan.json",
-            json.dumps(
-                {
-                    "run_id": "RUN-TEST-TOP-RANK-SYNC",
-                    "trial_dir": trial_dir,
-                    "warehouse_root": "/warehouse",
-                    "base_version": "v5",
-                    "trial_id": "TRIAL-001",
-                    "warehouse_attempt_id": "ATTEMPT-011",
-                    "formal_evidence": True,
-                    "parameter_matrix": str(matrix_path.relative_to(self.repo)).replace("\\", "/"),
-                    "parameter_matrix_frozen_rows": {
-                        row["job_id"]: self.module.parameter_matrix_frozen_fields(row) for row in before_rows
-                    },
-                    "jobs": [{"job_id": row["job_id"]} for row in before_rows],
-                }
-            ),
-        )
         self._write(
             ".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/summary.csv",
             "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir\n"
@@ -2498,6 +2601,18 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
             "RUN-TEST-TOP-RANK-SYNC/DR-001"
         )
+        source_receipt_fields = self._write_dynamic_run_start_receipt(
+            run_dir=run_dir,
+            plan=plan,
+            job_id="DR-001",
+            source_config_sha256=source["config_fingerprint"],
+        )
+        pending_receipt_fields = self._write_dynamic_run_start_receipt(
+            run_dir=run_dir,
+            plan=plan,
+            job_id=pending["job_id"],
+            source_config_sha256=source["config_fingerprint"],
+        )
         manifest_rel = (
             f".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/"
             f"artifact_manifests/{pending['job_id']}.json"
@@ -2511,6 +2626,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
                     "run_id": "RUN-TEST-TOP-RANK-SYNC",
                     "warehouse_attempt_id": "ATTEMPT-011",
                     "warehouse_dir": expected_warehouse,
+                    "run_start_receipt": pending_receipt_fields["run_start_receipt"],
+                    "run_start_receipt_sha256": pending_receipt_fields["run_start_receipt_sha256"],
+                    "run_command_sha256": pending_receipt_fields["run_command_sha256"],
                 }
             ),
         )
@@ -2528,6 +2646,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
                     "run_id": "RUN-TEST-TOP-RANK-SYNC",
                     "warehouse_attempt_id": "ATTEMPT-011",
                     "warehouse_dir": source_warehouse,
+                    "run_start_receipt": source_receipt_fields["run_start_receipt"],
+                    "run_start_receipt_sha256": source_receipt_fields["run_start_receipt_sha256"],
+                    "run_command_sha256": source_receipt_fields["run_command_sha256"],
                 }
             ),
         )
@@ -2537,6 +2658,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "job_id", "attempt_id", "phase", "status", "U", "S", "H", "ZS", "best_epoch",
             "resolved_from_job_id", "warehouse_dir", "artifact_manifest", "artifact_manifest_sha256",
             "artifact_manifest_job_id", "artifact_manifest_run_id", "artifact_manifest_attempt_id",
+            "run_start_receipt", "run_start_receipt_sha256", "run_command_sha256",
+            "source_config_sha256", "runtime_config_sha256", "training_entry_sha256",
         ]
         summary_rows = []
         for candidate in before_rows:
@@ -2560,6 +2683,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
                         "artifact_manifest_job_id": "DR-001",
                         "artifact_manifest_run_id": "RUN-TEST-TOP-RANK-SYNC",
                         "artifact_manifest_attempt_id": "ATTEMPT-011",
+                        **source_receipt_fields,
                     }
                 )
             else:
@@ -2589,6 +2713,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 "artifact_manifest_job_id": pending["job_id"],
                 "artifact_manifest_run_id": "RUN-TEST-TOP-RANK-SYNC",
                 "artifact_manifest_attempt_id": "ATTEMPT-011",
+                **pending_receipt_fields,
             }
         )
         summary_buffer = io.StringIO()
@@ -2835,6 +2960,10 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertIn("run-start-receipt-created", stdout)
+        log_lines = log_path.read_text(encoding="utf-8").splitlines()
+        self.assertTrue(any(line.startswith("GTPJ_TRAINING_PROCESS_STARTED ") for line in log_lines))
+        self.assertTrue(any(line.startswith("GTPJ_TRAINING_PROCESS_FINISHED ") for line in log_lines))
+        self.assertIn("training entry", "\n".join(log_lines))
         rows = self.module.read_parameter_matrix(matrix_path)
         self.assertEqual("running", rows[0]["status"])
         self.assertEqual("attempt-001", rows[0]["run_id"])
@@ -2862,6 +2991,12 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("unused frozen row", stderr)
         with log_path.open("a", encoding="utf-8") as handle:
             handle.write(training_log_text)
+        successful_log_text = log_path.read_text(encoding="utf-8")
+        log_path.write_text(successful_log_text.replace("returncode=0", "returncode=7"), encoding="utf-8")
+        code, _stdout, stderr = self._run_main(*record_args)
+        self.assertEqual(1, code)
+        self.assertIn("non-zero exit code", stderr)
+        log_path.write_text(successful_log_text, encoding="utf-8")
         bad_seed_args = list(record_args)
         bad_seed_args[bad_seed_args.index("5")] = "6"
         code, _stdout, stderr = self._run_main(*bad_seed_args)
@@ -2988,6 +3123,66 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("", stderr)
         self.assertIn("parameter-matrix-validate-ok", stdout)
 
+    def test_all_parameter_matrix_writers_share_the_same_lock(self) -> None:
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-778_shared-lock"
+        config_path = matrix_dir / "config.yaml"
+        self._write(
+            str(config_path.relative_to(self.repo)).replace("\\", "/"),
+            "version: v1\nrandom_seed:\n  value: 5\n",
+        )
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "JOB-LOCK-001", "seed": 5, "config_updates": {}}],
+            base_config_text=config_path.read_text(encoding="utf-8"),
+            base_version="v1",
+            code_ref="v1",
+        )
+        rows[0]["status"] = "draft"
+        matrix_path, _view = self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="shared-lock test",
+        )
+        lock_path = self.module.parameter_matrix_lock_path(matrix_path)
+        lock_path.write_text("operation=another-writer\n", encoding="utf-8")
+        try:
+            code, _stdout, stderr = self._run_main(
+                "freeze-parameter-matrix",
+                "--path",
+                str(matrix_path),
+                "--config",
+                str(config_path),
+                "--job-id",
+                "JOB-LOCK-001",
+            )
+            self.assertEqual(1, code)
+            self.assertIn("another process is already updating this parameter matrix", stderr)
+
+            code, _stdout, stderr = self._run_main(
+                "refresh-parameter-matrix-view",
+                "--path",
+                str(matrix_path),
+            )
+            self.assertEqual(1, code)
+            self.assertIn("another process is already updating this parameter matrix", stderr)
+
+            running_rows = [dict(rows[0], status="running", run_id="RUN-LOCK")]
+            with self.assertRaisesRegex(
+                self.module.WorkflowError,
+                "another process is already updating this parameter matrix",
+            ):
+                self.module.sync_parameter_matrix_result_row(
+                    matrix_path,
+                    running_rows,
+                    running_rows[0],
+                    metrics={"U": "1", "S": "2", "H": "1.3", "ZS": "3", "best_epoch": "1"},
+                    decision="keep",
+                    run_id="RUN-LOCK",
+                    artifact_ref="warehouse://lock-test",
+                )
+        finally:
+            lock_path.unlink()
+
     def test_run_start_receipt_requires_exact_clean_commit_and_real_config_command(self) -> None:
         matrix_dir = self.repo / "experiments/v1/tune/TUNE-777_receipt-gate"
         config_path = matrix_dir / "config.yaml"
@@ -3046,6 +3241,17 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 commit_ref="HEAD",
             ),
         )
+        for abbreviated_option in ["--con", "--conf", "--confi", "--config-override"]:
+            abbreviation_errors = self.module.run_start_command_errors(
+                "python train_GTPJ_CUB.py "
+                "--config experiments/v1/tune/TUNE-777_receipt-gate/config.yaml "
+                f"{abbreviated_option} evil.yaml",
+                config_path,
+                commit_ref="HEAD",
+            )
+            self.assertIn("abbreviated or duplicate config option", "\n".join(abbreviation_errors))
+        training_entry_source = (MODULE_PATH.parents[1] / "train_GTPJ_CUB.py").read_text(encoding="utf-8")
+        self.assertIn("allow_abbrev=False", training_entry_source)
         receipt_args = (
             "prepare-run-start-receipt",
             "--path",
@@ -3518,6 +3724,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "trial_id": "TRIAL-001",
             "warehouse_attempt_id": "ATTEMPT-013",
             "run_id": "RUN-WAREHOUSE-GATE",
+            "commit": "1" * 40,
+            "plan_generation_commit": "2" * 40,
+            "parameter_matrix_frozen_rows": {"DR-001": {"seed": "5"}},
         }
         result = {
             "job_id": "DR-001",
@@ -3561,6 +3770,75 @@ log:v1:module_trial:TRIAL-001:attempt-001
             ),
         )
         manifest_path = self.repo / manifest_rel
+        result["artifact_manifest_sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        missing_receipt_errors = self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir)
+        self.assertIn("no downloaded run-start receipt", "\n".join(missing_receipt_errors))
+        command = [
+            "conda",
+            "run",
+            "--no-capture-output",
+            "-n",
+            "dvsr_gpu",
+            "python",
+            "train_GTPJ_CUB.py",
+            "--config",
+            "/runtime/DR-001.yaml",
+        ]
+        command_sha256 = hashlib.sha256(
+            json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        frozen_sha256 = hashlib.sha256(
+            json.dumps(plan["parameter_matrix_frozen_rows"]["DR-001"], ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        receipt_rel = ".gtpj_runtime/batches/RUN-WAREHOUSE-GATE/run_start_receipts/DR-001.json"
+        self._write(
+            receipt_rel,
+            json.dumps(
+                {
+                    "schema_version": "gtpj-dynamic-run-start-receipt/v1",
+                    "job_id": "DR-001",
+                    "run_id": "RUN-WAREHOUSE-GATE",
+                    "attempt_id": "ATTEMPT-013",
+                    "training_commit": plan["commit"],
+                    "plan_generation_commit": plan["plan_generation_commit"],
+                    "parameter_matrix_frozen_sha256": frozen_sha256,
+                    "source_config_sha256": "b" * 64,
+                    "runtime_config_sha256": "c" * 64,
+                    "training_entry": "train_GTPJ_CUB.py",
+                    "training_entry_sha256": "d" * 64,
+                    "command": command,
+                    "command_sha256": command_sha256,
+                    "log_path": "/runtime/DR-001.log",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+        )
+        receipt_path = self.repo / receipt_rel
+        receipt_sha256 = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+        result.update(
+            {
+                "run_start_receipt": expected + "/receipts/run_start_receipt.json",
+                "run_start_receipt_sha256": receipt_sha256,
+                "run_command_sha256": command_sha256,
+                "source_config_sha256": "b" * 64,
+                "runtime_config_sha256": "c" * 64,
+                "training_entry_sha256": "d" * 64,
+            }
+        )
+        manifest_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest_payload.update(
+            {
+                "run_start_receipt": result["run_start_receipt"],
+                "run_start_receipt_sha256": receipt_sha256,
+                "run_command_sha256": command_sha256,
+            }
+        )
+        manifest_path.write_text(
+            json.dumps(manifest_payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
         result["artifact_manifest_sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         self.assertEqual([], self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
         bad_summary_attempt = dict(result, attempt_id="ATTEMPT-999")
@@ -3626,6 +3904,73 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(1, code)
         self.assertIn("base_version differs from the frozen batch plan", stderr)
+
+    def test_sync_dynamic_routing_rejects_plan_and_matrix_tampered_together(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal combined-tamper fixture")
+        code, _stdout, stderr = self._run_main(
+            "prepare-dynamic-routing-matrix",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-015",
+            "--run-id",
+            "RUN-COMBINED-TAMPER",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+        )
+        self.assertEqual(0, code, stderr)
+        self._commit_all("freeze matrix before combined-tamper plan")
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-COMBINED-TAMPER",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--attempt-id",
+            "ATTEMPT-015",
+        )
+        self.assertEqual(0, code, stderr)
+
+        matrix_path = self.repo / trial_dir / "attempts/ATTEMPT-015/PARAMETER_MATRIX.csv"
+        rows = self.module.read_parameter_matrix(matrix_path)
+        for row in rows:
+            row["code_ref"] = "forged-code-ref"
+        rows[0]["seed"] = "999"
+        self.module.write_parameter_matrix(
+            directory=matrix_path.parent,
+            title=matrix_path.parent.name,
+            rows=rows,
+            source_note="plan and matrix were tampered together",
+            overwrite=True,
+        )
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-COMBINED-TAMPER"
+        plan_path = run_dir / "plan.json"
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        plan["jobs"][0]["seed"] = 999
+        plan["parameter_matrix_frozen_rows"] = {
+            row["job_id"]: self.module.parameter_matrix_frozen_fields(row) for row in rows
+        }
+        plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        self._write(
+            ".gtpj_runtime/batches/RUN-COMBINED-TAMPER/summary.csv",
+            "job_id,status\nDR-001,skipped\n",
+        )
+
+        code, _stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
+        self.assertEqual(1, code)
+        self.assertIn("training commit", stderr)
 
     def test_plan_dynamic_routing_batch_writes_start_script_with_lf_newlines(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -4522,6 +4867,10 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("def reserve_warehouse_attempt_dir(plan, job):", script)
         self.assertIn("attempt_dir.mkdir(parents=True, exist_ok=False)", script)
         self.assertIn("Refusing to overwrite existing Warehouse job directory", script)
+        self.assertIn('receipt_dir = run_dir / "run_start_receipts"', script)
+        self.assertIn('"gtpj-dynamic-run-start-receipt/v1"', script)
+        self.assertIn("GTPJ_RUN_START_RECEIPT_SHA256=", script)
+        self.assertIn('log_path.open("a", encoding="utf-8", errors="replace")', script)
         compile(script, "run_dynamic_routing_batch.py", "exec")
 
     def test_runner_lock_rejects_second_run_until_unlocked(self) -> None:

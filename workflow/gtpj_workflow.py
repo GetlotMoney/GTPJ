@@ -9,6 +9,7 @@ not run training, push to GitHub, or mutate Git history.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import csv
 import hashlib
 import io
@@ -12682,6 +12683,39 @@ PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS = {
     "duplicate_resolution",
 }
 PARAMETER_MATRIX_TERMINAL_STATUSES = {"completed", "failed", "skipped", "cancelled"}
+_HELD_PARAMETER_MATRIX_LOCKS: set[str] = set()
+
+
+def parameter_matrix_lock_path(matrix_path: Path) -> Path:
+    return matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
+
+
+@contextmanager
+def parameter_matrix_mutation_lock(
+    matrix_path: Path,
+    *,
+    operation: str,
+    job_id: str = "",
+    run_id: str = "",
+):
+    """Serialize every CSV/Markdown mutation, including nested writer calls."""
+    lock_path = parameter_matrix_lock_path(matrix_path)
+    lock_key = os.path.normcase(str(lock_path.resolve()))
+    if lock_key in _HELD_PARAMETER_MATRIX_LOCKS:
+        yield
+        return
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with lock_path.open("x", encoding="utf-8") as lock_handle:
+            lock_handle.write(f"operation={operation}\njob_id={job_id}\nrun_id={run_id}\n")
+    except FileExistsError as exc:
+        raise WorkflowError("another process is already updating this parameter matrix") from exc
+    _HELD_PARAMETER_MATRIX_LOCKS.add(lock_key)
+    try:
+        yield
+    finally:
+        _HELD_PARAMETER_MATRIX_LOCKS.discard(lock_key)
+        lock_path.unlink(missing_ok=True)
 
 
 def parameter_matrix_policy_is_active() -> bool:
@@ -13059,16 +13093,17 @@ def write_parameter_matrix(
 ) -> tuple[Path, Path]:
     csv_path = directory / PARAMETER_MATRIX_CSV
     md_path = directory / PARAMETER_MATRIX_MD
-    if (csv_path.exists() or md_path.exists()) and not overwrite:
-        raise WorkflowError(f"Parameter matrix already exists under {display_path(directory)}")
-    directory.mkdir(parents=True, exist_ok=True)
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=PARAMETER_MATRIX_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
-    md_path.write_text(
-        render_parameter_matrix_markdown(title=title, rows=rows, source_note=source_note), encoding="utf-8"
-    )
+    with parameter_matrix_mutation_lock(csv_path, operation="write-parameter-matrix"):
+        if (csv_path.exists() or md_path.exists()) and not overwrite:
+            raise WorkflowError(f"Parameter matrix already exists under {display_path(directory)}")
+        directory.mkdir(parents=True, exist_ok=True)
+        with csv_path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=PARAMETER_MATRIX_COLUMNS)
+            writer.writeheader()
+            writer.writerows(rows)
+        md_path.write_text(
+            render_parameter_matrix_markdown(title=title, rows=rows, source_note=source_note), encoding="utf-8"
+        )
     return csv_path, md_path
 
 
@@ -13104,15 +13139,19 @@ def parameter_matrix_view_errors(csv_path: Path, rows: list[dict[str, str]]) -> 
 
 def refresh_parameter_matrix_view(csv_path: Path, rows: list[dict[str, str]], source_note: str = "") -> Path:
     md_path = csv_path.with_name(PARAMETER_MATRIX_MD)
-    resolved_source_note = source_note or parameter_matrix_source_note_from_view(md_path)
-    md_path.write_text(
-        render_parameter_matrix_markdown(
-            title=csv_path.parent.name,
-            rows=rows,
-            source_note=resolved_source_note,
-        ),
-        encoding="utf-8",
-    )
+    with parameter_matrix_mutation_lock(csv_path, operation="refresh-parameter-matrix-view"):
+        current_rows = read_parameter_matrix(csv_path)
+        if current_rows != rows:
+            raise WorkflowError("parameter matrix changed before its Markdown view could be refreshed")
+        resolved_source_note = source_note or parameter_matrix_source_note_from_view(md_path)
+        md_path.write_text(
+            render_parameter_matrix_markdown(
+                title=csv_path.parent.name,
+                rows=current_rows,
+                source_note=resolved_source_note,
+            ),
+            encoding="utf-8",
+        )
     return md_path
 
 
@@ -13223,29 +13262,47 @@ def sync_parameter_matrix_result_row(
     run_id: str,
     artifact_ref: str,
 ) -> None:
-    if row.get("status") not in {"frozen", "running"}:
-        raise WorkflowError(
-            f"Refusing to overwrite result row {row.get('job_id')} with status {row.get('status')!r}"
+    expected_frozen_fields = parameter_matrix_frozen_fields(row)
+    with parameter_matrix_mutation_lock(
+        csv_path,
+        operation="sync-parameter-matrix-result",
+        job_id=row.get("job_id", ""),
+        run_id=run_id,
+    ):
+        current_rows = read_parameter_matrix(csv_path)
+        matches = [candidate for candidate in current_rows if candidate.get("job_id") == row.get("job_id")]
+        if len(matches) != 1:
+            raise WorkflowError("parameter matrix changed before its result could be recorded")
+        current_row = matches[0]
+        if parameter_matrix_frozen_fields(current_row) != expected_frozen_fields:
+            raise WorkflowError("parameter matrix frozen fields changed before its result could be recorded")
+        if current_row.get("status") not in {"frozen", "running"}:
+            raise WorkflowError(
+                f"Refusing to overwrite result row {current_row.get('job_id')} "
+                f"with status {current_row.get('status')!r}"
+            )
+        if any(
+            current_row.get(key, "")
+            for key in ["U", "S", "H", "ZS", "best_epoch", "decision", "artifact_ref"]
+        ):
+            raise WorkflowError(f"Refusing to overwrite an existing result for {current_row.get('job_id')}")
+        if current_row.get("run_id", "") and current_row.get("run_id") != run_id:
+            raise WorkflowError(
+                f"{current_row.get('job_id')} is frozen for run_id {current_row.get('run_id')}, not {run_id}"
+            )
+        current_row["status"] = "completed"
+        for key in ["U", "S", "H", "ZS", "best_epoch"]:
+            current_row[key] = metrics.get(key, current_row.get(key, ""))
+        current_row["decision"] = decision
+        current_row["run_id"] = run_id
+        current_row["artifact_ref"] = artifact_ref
+        write_parameter_matrix(
+            directory=csv_path.parent,
+            title=csv_path.parent.name,
+            rows=current_rows,
+            source_note=parameter_matrix_source_note_from_view(csv_path.with_name(PARAMETER_MATRIX_MD)),
+            overwrite=True,
         )
-    if any(row.get(key, "") for key in ["U", "S", "H", "ZS", "best_epoch", "decision", "artifact_ref"]):
-        raise WorkflowError(f"Refusing to overwrite an existing result for {row.get('job_id')}")
-    if row.get("run_id", "") and row.get("run_id") != run_id:
-        raise WorkflowError(
-            f"{row.get('job_id')} is frozen for run_id {row.get('run_id')}, not {run_id}"
-        )
-    row["status"] = "completed"
-    for key in ["U", "S", "H", "ZS", "best_epoch"]:
-        row[key] = metrics.get(key, row.get(key, ""))
-    row["decision"] = decision
-    row["run_id"] = run_id
-    row["artifact_ref"] = artifact_ref
-    write_parameter_matrix(
-        directory=csv_path.parent,
-        title=csv_path.parent.name,
-        rows=rows,
-        source_note=parameter_matrix_source_note_from_view(csv_path.with_name(PARAMETER_MATRIX_MD)),
-        overwrite=True,
-    )
 
 
 def parameter_matrix_identity(row: dict[str, str]) -> tuple[str, str, str]:
@@ -13464,6 +13521,11 @@ def run_start_command_errors(command: str, config_path: Path, *, commit_ref: str
     index = 0
     while index < len(tokens):
         token = unquote(tokens[index])
+        option_name = token.split("=", 1)[0]
+        if len(option_name) > 2 and option_name != "--config" and (
+            "--config".startswith(option_name) or option_name.startswith("--config")
+        ):
+            return ["run-start receipt command contains an abbreviated or duplicate config option"]
         if token == "--config":
             if index + 1 >= len(tokens):
                 return ["run-start receipt command has --config without a path"]
@@ -13498,6 +13560,54 @@ def run_start_command_errors(command: str, config_path: Path, *, commit_ref: str
         if read_text(training_entry) != committed_entry:
             return [f"run-start receipt training entry differs from frozen commit {commit}: {entry_rel}"]
     return []
+
+
+def run_start_command_tokens(command: str) -> list[str]:
+    try:
+        return [normalize_simple_scalar(token) for token in shlex.split(command.strip(), posix=False)]
+    except ValueError as exc:
+        raise WorkflowError(f"run-start receipt command cannot be parsed: {exc}") from exc
+
+
+def run_training_with_start_receipt(command: str, log_path: Path) -> int:
+    """Launch the frozen command directly and capture its complete output in the anchored log."""
+    command_sha256 = parameter_matrix_sha256(command)
+    tokens = run_start_command_tokens(command)
+    try:
+        process = subprocess.Popen(
+            tokens,
+            cwd=REPO_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+    except OSError as exc:
+        raise WorkflowError(f"frozen training command could not start: {exc}") from exc
+    assert process.stdout is not None
+    with log_path.open("ab") as log_handle:
+        started_at = utc_now()
+        log_handle.write(
+            (
+                "GTPJ_TRAINING_PROCESS_STARTED "
+                f"command_sha256={command_sha256} pid={process.pid} started_at={started_at}\n"
+            ).encode("utf-8")
+        )
+        log_handle.flush()
+        with process.stdout:
+            for chunk in iter(lambda: process.stdout.read(1024 * 1024), b""):
+                log_handle.write(chunk)
+                log_handle.flush()
+        return_code = process.wait()
+        log_handle.write(
+            (
+                "GTPJ_TRAINING_PROCESS_FINISHED "
+                f"command_sha256={command_sha256} pid={process.pid} "
+                f"returncode={return_code} finished_at={utc_now()}\n"
+            ).encode("utf-8")
+        )
+        log_handle.flush()
+    if return_code != 0:
+        raise WorkflowError(f"frozen training command exited with code {return_code}; see {display_path(log_path)}")
+    return return_code
 
 
 def run_start_receipt_errors(
@@ -13564,9 +13674,29 @@ def run_start_receipt_errors(
     if row.get("run_command_sha256", "") != parameter_matrix_sha256(command):
         errors.append("parameter-matrix run_command_sha256 does not match the training command")
     errors.extend(run_start_command_errors(command, config_path, commit_ref=commit))
-    first_line = read_text(log_path).splitlines()[0] if read_text(log_path).splitlines() else ""
+    log_lines = read_text(log_path).splitlines()
+    first_line = log_lines[0] if log_lines else ""
     if first_line != f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}":
         errors.append("training log is not anchored to the run-start receipt in its first line")
+    command_sha256 = parameter_matrix_sha256(command)
+    start_pattern = re.compile(
+        rf"^GTPJ_TRAINING_PROCESS_STARTED command_sha256={command_sha256} "
+        r"pid=([1-9][0-9]*) started_at=(\S+)$"
+    )
+    finish_pattern = re.compile(
+        rf"^GTPJ_TRAINING_PROCESS_FINISHED command_sha256={command_sha256} "
+        r"pid=([1-9][0-9]*) returncode=(-?[0-9]+) finished_at=(\S+)$"
+    )
+    start_matches = [match for line in log_lines if (match := start_pattern.fullmatch(line))]
+    finish_matches = [match for line in log_lines if (match := finish_pattern.fullmatch(line))]
+    if len(start_matches) != 1:
+        errors.append("training log has no unique workflow-launched process start marker")
+    if len(finish_matches) != 1:
+        errors.append("training log has no unique workflow-captured process finish marker")
+    if start_matches and finish_matches and start_matches[0].group(1) != finish_matches[0].group(1):
+        errors.append("training process start/finish markers do not name the same process")
+    if len(finish_matches) == 1 and finish_matches[0].group(2) != "0":
+        errors.append("training process finished with a non-zero exit code")
     if receipt_path.stat().st_mtime > log_path.stat().st_mtime:
         errors.append("run-start receipt was written after the training log")
     return errors
@@ -13591,13 +13721,15 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         raise WorkflowError("prepare-run-start-receipt requires different receipt and log paths")
     # The lock is matrix-wide, not row-wide: two different jobs still rewrite
     # the same CSV/Markdown pair and must never race with each other.
-    lock_path = matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
+    lock_path = parameter_matrix_lock_path(matrix_path)
+    lock_key = os.path.normcase(str(lock_path.resolve()))
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with lock_path.open("x", encoding="utf-8") as lock_handle:
             lock_handle.write(f"job_id={args.job_id}\nrun_id={args.run_id}\n")
     except FileExistsError as exc:
         raise WorkflowError("another process is already binding this parameter matrix") from exc
+    _HELD_PARAMETER_MATRIX_LOCKS.add(lock_key)
     try:
         rows = read_parameter_matrix(matrix_path)
         original_rows = [dict(item) for item in rows]
@@ -13707,11 +13839,13 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
                 raise
             raise WorkflowError(f"run-start receipt transaction failed: {exc}{rollback_error}") from exc
     finally:
+        _HELD_PARAMETER_MATRIX_LOCKS.discard(lock_key)
         lock_path.unlink(missing_ok=True)
+    run_training_with_start_receipt(args.command, log_path)
     print("run-start-receipt-created")
     print(f"receipt: {display_path(receipt_path)}")
     print(f"log: {display_path(log_path)}")
-    print("next: start the frozen training command and append stdout/stderr to this log; never overwrite its first line")
+    print("frozen training command completed; stdout/stderr were captured after the immutable first line")
     return 0
 
 
@@ -13797,6 +13931,20 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
         config_path = REPO_ROOT / config_path
     if not config_path.exists() or not config_path.is_file():
         raise WorkflowError(f"Missing config snapshot: {display_path(config_path)}")
+    with parameter_matrix_mutation_lock(
+        matrix_path,
+        operation="freeze-parameter-matrix",
+        job_id=args.job_id,
+    ):
+        return freeze_parameter_matrix_locked(args, matrix_path=matrix_path, config_path=config_path)
+
+
+def freeze_parameter_matrix_locked(
+    args: argparse.Namespace,
+    *,
+    matrix_path: Path,
+    config_path: Path,
+) -> int:
     rows = read_parameter_matrix(matrix_path)
     matches = [row for row in rows if row.get("job_id", "") == args.job_id]
     if len(matches) != 1:
@@ -13933,6 +14081,27 @@ def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
         run_id=run_id,
     )
     attempt_dir = trial_dir / "attempts" / attempt_upper
+    matrix_path = attempt_dir / PARAMETER_MATRIX_CSV
+    with parameter_matrix_mutation_lock(
+        matrix_path,
+        operation="prepare-dynamic-routing-matrix",
+        run_id=run_id,
+    ):
+        return write_prepared_dynamic_routing_matrix_locked(
+            args,
+            attempt_dir=attempt_dir,
+            base_config=base_config,
+            rows=rows,
+        )
+
+
+def write_prepared_dynamic_routing_matrix_locked(
+    args: argparse.Namespace,
+    *,
+    attempt_dir: Path,
+    base_config: Path,
+    rows: list[dict[str, str]],
+) -> int:
     existing_matrix = attempt_dir / PARAMETER_MATRIX_CSV
     if existing_matrix.exists() and bool(args.overwrite):
         existing_rows = read_parameter_matrix(existing_matrix)
@@ -13955,7 +14124,7 @@ def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
         raise WorkflowError("Refusing to create a duplicate or invalid matrix:\n" + "\n".join(errors))
     csv_path, md_path = write_parameter_matrix(
         directory=attempt_dir,
-        title=attempt_upper,
+        title=attempt_dir.name,
         rows=rows,
         source_note=f"profile={args.profile}; base_config={display_path(base_config)}",
         overwrite=bool(args.overwrite),
@@ -13984,11 +14153,89 @@ def expected_dynamic_warehouse_dir(plan: dict[str, object], job_id: str) -> Pure
     )
 
 
+def canonical_json_sha256(value: object) -> str:
+    return parameter_matrix_sha256(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    )
+
+
+def dynamic_run_start_receipt_errors(
+    plan: dict[str, object],
+    result: dict[str, str],
+    *,
+    run_dir: Path,
+    expected_source_config_sha256: str = "",
+    expected_training_entry_sha256: str = "",
+) -> list[str]:
+    job_id = result.get("job_id", "")
+    local_receipt = run_dir / "run_start_receipts" / f"{job_id}.json"
+    if not local_receipt.exists() or not local_receipt.is_file():
+        return [f"{job_id} has no downloaded run-start receipt"]
+    receipt_sha256 = result.get("run_start_receipt_sha256", "").strip()
+    if not re.fullmatch(r"[0-9a-f]{64}", receipt_sha256):
+        return [f"{job_id} has no valid run_start_receipt_sha256"]
+    errors: list[str] = []
+    if sha256_file(local_receipt) != receipt_sha256:
+        errors.append(f"{job_id} run-start receipt hash does not match the downloaded file")
+    try:
+        payload = json.loads(read_text(local_receipt))
+    except json.JSONDecodeError:
+        errors.append(f"{job_id} run-start receipt is not valid JSON")
+        return errors
+    if not isinstance(payload, dict):
+        return [f"{job_id} run-start receipt must be a JSON object"]
+    identity = {
+        "schema_version": "gtpj-dynamic-run-start-receipt/v1",
+        "job_id": job_id,
+        "run_id": str(plan.get("run_id", "")),
+        "attempt_id": str(plan.get("warehouse_attempt_id", "")),
+        "training_commit": str(plan.get("commit", "")),
+        "plan_generation_commit": str(plan.get("plan_generation_commit", "")),
+        "training_entry": "train_GTPJ_CUB.py",
+    }
+    for field, expected in identity.items():
+        if str(payload.get(field, "")) != expected:
+            errors.append(f"{job_id} run-start receipt {field} mismatch")
+    frozen_rows = plan.get("parameter_matrix_frozen_rows", {})
+    frozen_row = frozen_rows.get(job_id) if isinstance(frozen_rows, dict) else None
+    if not isinstance(frozen_row, dict):
+        errors.append(f"{job_id} run plan has no frozen row for its start receipt")
+    elif str(payload.get("parameter_matrix_frozen_sha256", "")) != canonical_json_sha256(frozen_row):
+        errors.append(f"{job_id} run-start receipt frozen-row hash mismatch")
+    command = payload.get("command")
+    command_sha256 = str(payload.get("command_sha256", ""))
+    if not isinstance(command, list) or not all(isinstance(part, str) and part for part in command):
+        errors.append(f"{job_id} run-start receipt command must be a non-empty string list")
+    elif command_sha256 != canonical_json_sha256(command):
+        errors.append(f"{job_id} run-start receipt command hash mismatch")
+    expected_receipt_path = expected_dynamic_warehouse_dir(plan, job_id) / "receipts" / "run_start_receipt.json"
+    if normalized_posix_path(result.get("run_start_receipt", "")) != expected_receipt_path:
+        errors.append(f"{job_id} run_start_receipt does not match its Warehouse job directory")
+    summary_fields = {
+        "run_command_sha256": command_sha256,
+        "source_config_sha256": str(payload.get("source_config_sha256", "")),
+        "runtime_config_sha256": str(payload.get("runtime_config_sha256", "")),
+        "training_entry_sha256": str(payload.get("training_entry_sha256", "")),
+    }
+    for field, expected in summary_fields.items():
+        if not re.fullmatch(r"[0-9a-f]{64}", expected):
+            errors.append(f"{job_id} run-start receipt has no valid {field}")
+        if result.get(field, "").strip() != expected:
+            errors.append(f"{job_id} summary {field} does not match the run-start receipt")
+    if expected_source_config_sha256 and summary_fields["source_config_sha256"] != expected_source_config_sha256:
+        errors.append(f"{job_id} source config does not match the frozen parameter-matrix fingerprint")
+    if expected_training_entry_sha256 and summary_fields["training_entry_sha256"] != expected_training_entry_sha256:
+        errors.append(f"{job_id} training entry does not match the frozen training commit")
+    return errors
+
+
 def dynamic_warehouse_result_errors(
     plan: dict[str, object],
     result: dict[str, str],
     *,
     run_dir: Path,
+    expected_source_config_sha256: str = "",
+    expected_training_entry_sha256: str = "",
 ) -> list[str]:
     job_id = result.get("job_id", "")
     warehouse_dir = result.get("warehouse_dir", "").strip()
@@ -14036,6 +14283,23 @@ def dynamic_warehouse_result_errors(
         errors.append(f"{job_id} artifact manifest warehouse_attempt_id mismatch")
     if normalized_posix_path(str(payload.get("warehouse_dir", ""))) != expected_dir:
         errors.append(f"{job_id} artifact manifest warehouse_dir mismatch")
+    receipt_errors = dynamic_run_start_receipt_errors(
+        plan,
+        result,
+        run_dir=run_dir,
+        expected_source_config_sha256=expected_source_config_sha256,
+        expected_training_entry_sha256=expected_training_entry_sha256,
+    )
+    errors.extend(receipt_errors)
+    if not receipt_errors:
+        manifest_receipt_fields = {
+            "run_start_receipt": result.get("run_start_receipt", "").strip(),
+            "run_start_receipt_sha256": result.get("run_start_receipt_sha256", "").strip(),
+            "run_command_sha256": result.get("run_command_sha256", "").strip(),
+        }
+        for field, expected in manifest_receipt_fields.items():
+            if str(payload.get(field, "")) != expected:
+                errors.append(f"{job_id} artifact manifest {field} mismatch")
     return errors
 
 
@@ -14098,6 +14362,117 @@ def dynamic_top_rank_resolution_errors(
     return []
 
 
+def formal_dynamic_plan_commit_errors(
+    plan: dict[str, object],
+    *,
+    matrix_path: Path,
+    current_rows: list[dict[str, str]],
+) -> list[str]:
+    """Rebuild a formal plan from Git so mutable runtime files cannot certify each other."""
+    errors: list[str] = []
+    try:
+        plan_generation_commit = resolve_commit(str(plan.get("plan_generation_commit", "")))
+        training_commit = resolve_commit(str(plan.get("commit", "")))
+        head_commit = resolve_commit("HEAD")
+    except WorkflowError as exc:
+        return [f"formal dynamic plan has an invalid frozen commit: {exc}"]
+    if plan_generation_commit != head_commit:
+        errors.append(
+            "formal dynamic plan generation commit does not match the current Git HEAD; "
+            "sync results before making a post-run commit"
+        )
+    source_control = plan.get("source_control")
+    if not isinstance(source_control, dict):
+        errors.append("formal dynamic plan has no source_control record")
+        source_control = {}
+    if str(source_control.get("plan_generation_commit", "")) != plan_generation_commit:
+        errors.append("formal dynamic plan source_control plan_generation_commit mismatch")
+    if str(source_control.get("training_commit", "")) != training_commit:
+        errors.append("formal dynamic plan source_control training_commit mismatch")
+    if str(source_control.get("dirty_state", "")) != "clean":
+        errors.append("formal dynamic plan source_control is not clean")
+
+    try:
+        matrix_rel = repo_relative_path(matrix_path, "Formal dynamic routing parameter matrix")
+        committed_rows = parse_parameter_matrix_text(
+            read_text_at_commit(training_commit, matrix_rel),
+            label=f"{training_commit}:{matrix_rel}",
+        )
+    except WorkflowError as exc:
+        return errors + [f"formal parameter matrix is not readable at the training commit: {exc}"]
+    committed_by_job = {row["job_id"]: row for row in committed_rows}
+    current_by_job = {row["job_id"]: row for row in current_rows}
+    if set(committed_by_job) != set(current_by_job):
+        errors.append("current parameter matrix job set differs from the training commit")
+        return errors
+
+    frozen_rows = plan.get("parameter_matrix_frozen_rows", {})
+    if not isinstance(frozen_rows, dict) or set(frozen_rows) != set(committed_by_job):
+        errors.append("run plan has no complete parameter-matrix snapshot from the training commit")
+    for job_id, committed_row in committed_by_job.items():
+        committed_frozen = parameter_matrix_frozen_fields(committed_row)
+        plan_frozen = frozen_rows.get(job_id) if isinstance(frozen_rows, dict) else None
+        if plan_frozen != committed_frozen:
+            errors.append(f"{job_id} run plan frozen fields differ from the training commit")
+        current_frozen = parameter_matrix_frozen_fields(current_by_job[job_id])
+        pending_top_rank = committed_row.get("config_fingerprint", "").startswith("pending_after_top_rank:")
+        for field, expected in committed_frozen.items():
+            if pending_top_rank and field in PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS:
+                continue
+            if current_frozen.get(field, "") != expected:
+                errors.append(f"{job_id} current frozen field {field} differs from the training commit")
+
+    try:
+        seed = int(plan["seed"])
+        limit_jobs = int(plan.get("limit_jobs", 0) or 0)
+        profile = str(plan["profile"])
+        expected_jobs = limit_dynamic_routing_jobs(
+            build_dynamic_routing_jobs(seed=seed, profile=profile),
+            limit_jobs,
+        )
+    except (KeyError, TypeError, ValueError, WorkflowError) as exc:
+        errors.append(f"formal dynamic plan cannot rebuild its job list: {exc}")
+        return errors
+    attempt_id = str(plan.get("warehouse_attempt_id", ""))
+    if attempt_id:
+        for job in expected_jobs:
+            job["attempt_id"] = attempt_id
+    gpus = plan.get("gpus")
+    if not isinstance(gpus, list) or not gpus:
+        errors.append("formal dynamic plan has no GPU list")
+        return errors
+    for index, job in enumerate(expected_jobs):
+        job["gpu_slot"] = index % len(gpus)
+    if plan.get("jobs") != expected_jobs:
+        errors.append("formal dynamic plan jobs differ from the deterministic profile and seed")
+
+    try:
+        base_config = Path(str(plan.get("base_config", "")))
+        if not base_config.is_absolute():
+            base_config = REPO_ROOT / base_config
+        base_config_rel = repo_relative_path(base_config, "Formal dynamic routing base config")
+        base_text = read_text_at_commit(training_commit, base_config_rel)
+        expected_rows = build_parameter_matrix_rows(
+            jobs=expected_jobs,
+            base_config_text=base_text,
+            base_version=str(plan.get("base_version", "")),
+            code_ref=str(plan.get("base_code_tag", "")),
+            run_id=str(plan.get("run_id", "")),
+        )
+    except WorkflowError as exc:
+        errors.append(f"formal dynamic plan cannot rebuild its parameter matrix: {exc}")
+        return errors
+    expected_by_job = {row["job_id"]: row for row in expected_rows}
+    for job_id, committed_row in committed_by_job.items():
+        expected_row = expected_by_job.get(job_id)
+        if expected_row is None:
+            errors.append(f"{job_id} exists in the training commit but not the rebuilt plan")
+            continue
+        if parameter_matrix_frozen_fields(committed_row) != parameter_matrix_frozen_fields(expected_row):
+            errors.append(f"{job_id} training-commit matrix differs from the deterministic batch plan")
+    return errors
+
+
 def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir)
     if not run_dir.is_absolute():
@@ -14121,10 +14496,20 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     if plan_matrix_path.resolve() != matrix_path.resolve():
         raise WorkflowError("Run plan parameter_matrix does not point to this Attempt matrix")
     rows = read_parameter_matrix(matrix_path)
+    matrix_source_rows = [dict(row) for row in rows]
     errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
     errors.extend(parameter_matrix_view_errors(matrix_path, rows))
     if errors:
         raise WorkflowError("Refusing to sync an invalid parameter matrix:\n" + "\n".join(errors))
+    commit_errors = formal_dynamic_plan_commit_errors(plan, matrix_path=matrix_path, current_rows=rows)
+    if commit_errors:
+        raise WorkflowError(
+            "Refusing to sync a runtime plan that differs from its training commit:\n"
+            + "\n".join(commit_errors)
+        )
+    training_entry_sha256 = parameter_matrix_sha256(
+        read_text_at_commit(str(plan.get("commit", "")), "train_GTPJ_CUB.py")
+    )
     summary_rows = _read_summary_rows(run_dir)
     if not summary_rows:
         raise WorkflowError("summary.csv is missing or empty; no formal result can be synchronized")
@@ -14176,11 +14561,23 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
                 and row.get("artifact_ref", "") == incoming_artifact
                 and row.get("artifact_manifest_sha256", "")
                 == result.get("artifact_manifest_sha256", "").strip()
+                and row.get("run_start_receipt_ref", "") == result.get("run_start_receipt", "").strip()
+                and row.get("run_start_receipt_sha256", "")
+                == result.get("run_start_receipt_sha256", "").strip()
+                and row.get("run_command_sha256", "") == result.get("run_command_sha256", "").strip()
             )
             if not same_result:
                 errors.append(f"Refusing to overwrite an existing result for {row['job_id']}")
             elif incoming_status in {"completed", "failed"}:
-                errors.extend(dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
+                errors.extend(
+                    dynamic_warehouse_result_errors(
+                        plan,
+                        result,
+                        run_dir=run_dir,
+                        expected_source_config_sha256=row.get("config_fingerprint", ""),
+                        expected_training_entry_sha256=training_entry_sha256,
+                    )
+                )
             continue
         if row.get("status") not in {"frozen", "running"}:
             errors.append(f"{row['job_id']} status {row.get('status')!r} cannot accept a result")
@@ -14211,24 +14608,44 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
         row["run_id"] = str(plan.get("run_id", ""))
         if row.get("status") in PARAMETER_MATRIX_TERMINAL_STATUSES:
             if result.get("status") in {"completed", "failed"}:
-                errors.extend(dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
+                errors.extend(
+                    dynamic_warehouse_result_errors(
+                        plan,
+                        result,
+                        run_dir=run_dir,
+                        expected_source_config_sha256=row.get("config_fingerprint", ""),
+                        expected_training_entry_sha256=training_entry_sha256,
+                    )
+                )
         if result.get("status") in {"completed", "failed"} and not warehouse_dir:
             errors.append(f"{row['job_id']} has no warehouse_dir in summary.csv")
         elif warehouse_dir:
             row["artifact_ref"] = f"warehouse_dir:{warehouse_dir}"
             row["artifact_manifest_sha256"] = result.get("artifact_manifest_sha256", "").strip()
+        if result.get("status") in {"completed", "failed"}:
+            row["run_start_receipt_ref"] = result.get("run_start_receipt", "").strip()
+            row["run_start_receipt_sha256"] = result.get("run_start_receipt_sha256", "").strip()
+            row["run_command_sha256"] = result.get("run_command_sha256", "").strip()
     if errors:
         raise WorkflowError("Refusing to sync unresolved or non-reproducible results:\n" + "\n".join(errors))
     errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
     if errors:
         raise WorkflowError("Refusing to write an invalid parameter matrix:\n" + "\n".join(errors))
-    write_parameter_matrix(
-        directory=matrix_path.parent,
-        title=attempt_id,
-        rows=rows,
-        source_note=f"已从 {display_path(run_dir / 'summary.csv')} 回填；原始证据留在 Warehouse。",
-        overwrite=True,
-    )
+    with parameter_matrix_mutation_lock(
+        matrix_path,
+        operation="sync-dynamic-routing-matrix",
+        run_id=str(plan.get("run_id", "")),
+    ):
+        current_rows = read_parameter_matrix(matrix_path)
+        if current_rows != matrix_source_rows:
+            raise WorkflowError("parameter matrix changed while the dynamic summary was being verified")
+        write_parameter_matrix(
+            directory=matrix_path.parent,
+            title=attempt_id,
+            rows=rows,
+            source_note=f"已从 {display_path(run_dir / 'summary.csv')} 回填；原始证据留在 Warehouse。",
+            overwrite=True,
+        )
     print("dynamic-routing-parameter-matrix-synced")
     print(f"rows: {len(rows)}")
     return 0
@@ -14280,10 +14697,23 @@ def write_json(path, data):
     os.replace(tmp_path, path)
 
 
+def canonical_json_sha256(value):
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def sha256_path(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def run(cmd, cwd=None, env=None, log_path=None):
     if log_path is None:
         return subprocess.run(cmd, cwd=cwd, env=env, text=True, check=True)
-    with log_path.open("w", encoding="utf-8", errors="replace") as handle:
+    with log_path.open("a", encoding="utf-8", errors="replace") as handle:
         return subprocess.run(cmd, cwd=cwd, env=env, text=True, stdout=handle, stderr=subprocess.STDOUT)
 
 
@@ -14527,6 +14957,8 @@ def append_summary(run_dir, row):
             "resolved_from_job_id", "status", "U", "S", "H", "ZS", "best_epoch", "gpu",
             "log_path", "warehouse_dir", "artifact_manifest", "artifact_manifest_sha256",
             "artifact_manifest_job_id", "artifact_manifest_run_id", "artifact_manifest_attempt_id",
+            "run_start_receipt", "run_start_receipt_sha256", "run_command_sha256",
+            "source_config_sha256", "runtime_config_sha256", "training_entry_sha256",
         ]
         with summary.open("a", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fields)
@@ -14728,6 +15160,58 @@ def reserve_warehouse_attempt_dir(plan, job):
     return attempt_dir
 
 
+def prepare_run_start_receipt(run_dir, plan, job, worktree, source_config, runtime_config, cmd, log_path):
+    job_id = str(job["job_id"])
+    receipt_dir = run_dir / "run_start_receipts"
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    receipt_path = receipt_dir / f"{job_id}.json"
+    if receipt_path.exists() or log_path.exists():
+        raise RuntimeError(f"Refusing to overwrite an existing run-start receipt or log for {job_id}")
+    training_entry = worktree / "train_GTPJ_CUB.py"
+    if not training_entry.is_file():
+        raise RuntimeError(f"Missing frozen training entry: {training_entry}")
+    frozen_rows = plan.get("parameter_matrix_frozen_rows", {})
+    frozen_row = frozen_rows.get(job_id, {}) if isinstance(frozen_rows, dict) else {}
+    if plan.get("formal_evidence") and not frozen_row:
+        raise RuntimeError(f"Formal job {job_id} has no frozen parameter-matrix row")
+    command_sha256 = canonical_json_sha256(cmd)
+    payload = {
+        "schema_version": "gtpj-dynamic-run-start-receipt/v1",
+        "created_at": utc_now(),
+        "job_id": job_id,
+        "run_id": str(plan.get("run_id", "")),
+        "attempt_id": str(plan.get("warehouse_attempt_id", "")),
+        "training_commit": str(plan.get("commit", "")),
+        "plan_generation_commit": str(plan.get("plan_generation_commit", "")),
+        "parameter_matrix": str(plan.get("parameter_matrix", "")),
+        "parameter_matrix_frozen_sha256": canonical_json_sha256(frozen_row),
+        "source_config_sha256": sha256_path(source_config),
+        "runtime_config_sha256": sha256_path(runtime_config),
+        "training_entry": "train_GTPJ_CUB.py",
+        "training_entry_sha256": sha256_path(training_entry),
+        "command": cmd,
+        "command_sha256": command_sha256,
+        "log_path": str(log_path),
+    }
+    write_json(receipt_path, payload)
+    receipt_sha256 = sha256_path(receipt_path)
+    warehouse_receipt_dir = warehouse_attempt_dir(plan, job) / "receipts"
+    warehouse_receipt_dir.mkdir(parents=True, exist_ok=True)
+    warehouse_receipt = warehouse_receipt_dir / "run_start_receipt.json"
+    if warehouse_receipt.exists():
+        raise RuntimeError(f"Refusing to overwrite Warehouse run-start receipt: {warehouse_receipt}")
+    shutil.copy2(receipt_path, warehouse_receipt)
+    log_path.write_text(f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}\n", encoding="utf-8")
+    return {
+        "run_start_receipt": str(warehouse_receipt),
+        "run_start_receipt_sha256": receipt_sha256,
+        "run_command_sha256": command_sha256,
+        "source_config_sha256": payload["source_config_sha256"],
+        "runtime_config_sha256": payload["runtime_config_sha256"],
+        "training_entry_sha256": payload["training_entry_sha256"],
+    }
+
+
 def copy_if_newer(src, dst_dir, start_ts):
     copied = []
     if not src.exists():
@@ -14793,6 +15277,8 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
     kept_models, removed_models = prune_model_artifacts(attempt_dir, keep=3)
     removed_set = set(removed_models)
     copied = [path for path in copied if path not in removed_set]
+    run_start_receipt = attempt_dir / "receipts" / "run_start_receipt.json"
+    receipt_payload = load_json(run_start_receipt) if run_start_receipt.exists() else {}
     manifest = {
         "job_id": job["job_id"],
         "attempt_id": job["attempt_id"],
@@ -14804,6 +15290,9 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
         "kept_model_files": kept_models,
         "removed_model_files": removed_models,
         "model_retention_policy": "keep top 3 best_model_*.pth by H; remove other .pth files",
+        "run_start_receipt": str(run_start_receipt) if run_start_receipt.exists() else "",
+        "run_start_receipt_sha256": sha256_path(run_start_receipt) if run_start_receipt.exists() else "",
+        "run_command_sha256": str(receipt_payload.get("command_sha256", "")),
         "recorded_at": utc_now(),
     }
     (attempt_dir / "artifact_manifest.json").write_text(
@@ -14843,6 +15332,7 @@ def run_job(run_dir, plan, job, gpu):
     warehouse_dir = ""
     warehouse_reserved = False
     manifest_evidence = {}
+    receipt_evidence = {}
     try:
         reserve_warehouse_attempt_dir(plan, job)
         warehouse_reserved = True
@@ -14877,6 +15367,16 @@ def run_job(run_dir, plan, job, gpu):
                 "conda", "run", "--no-capture-output", "-n", plan["conda_env"],
                 python_cmd, "train_GTPJ_CUB.py", "--config", str(runtime_config),
             ]
+        receipt_evidence = prepare_run_start_receipt(
+            run_dir,
+            plan,
+            job,
+            worktree,
+            source_config,
+            runtime_config,
+            cmd,
+            log_path,
+        )
         code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
         warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
         manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir, run_dir)
@@ -14884,6 +15384,7 @@ def run_job(run_dir, plan, job, gpu):
             row = {
                 **job,
                 **manifest_evidence,
+                **receipt_evidence,
                 "status": "failed",
                 "gpu": gpu,
                 "resolved_from_job_id": resolved_from,
@@ -14897,7 +15398,17 @@ def run_job(run_dir, plan, job, gpu):
 
         metrics = parse_metrics(log_path)
         status = "completed" if metrics.get("H") else "failed"
-        row = {**job, **metrics, **manifest_evidence, "status": status, "gpu": gpu, "resolved_from_job_id": resolved_from, "log_path": str(log_path), "warehouse_dir": warehouse_dir}
+        row = {
+            **job,
+            **metrics,
+            **manifest_evidence,
+            **receipt_evidence,
+            "status": status,
+            "gpu": gpu,
+            "resolved_from_job_id": resolved_from,
+            "log_path": str(log_path),
+            "warehouse_dir": warehouse_dir,
+        }
         update_job(run_dir, job_id, status=status, returncode=code, log_path=str(log_path), resolved_from_job_id=resolved_from, metrics=metrics, warehouse_dir=warehouse_dir)
         append_summary(run_dir, row)
         append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": f"job_{status}", "job_id": job_id, "gpu": gpu, "metrics": metrics, "warehouse_dir": warehouse_dir})
@@ -14926,6 +15437,9 @@ def run_job(run_dir, plan, job, gpu):
                         "run_id": str(plan.get("run_id", "")),
                         "warehouse_dir": str(attempt_dir),
                         "copied_files": [str(dst)],
+                        "run_start_receipt": receipt_evidence.get("run_start_receipt", ""),
+                        "run_start_receipt_sha256": receipt_evidence.get("run_start_receipt_sha256", ""),
+                        "run_command_sha256": receipt_evidence.get("run_command_sha256", ""),
                         "error": str(exc),
                         "recorded_at": utc_now(),
                     },
@@ -14941,6 +15455,7 @@ def run_job(run_dir, plan, job, gpu):
         row = {
             **job,
             **manifest_evidence,
+            **receipt_evidence,
             "status": "failed",
             "gpu": gpu,
             "resolved_from_job_id": resolved_from,
@@ -15061,8 +15576,10 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             "missing_fingerprint_paths": [],
         }
 
-    jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
-    jobs = limit_dynamic_routing_jobs(jobs, int(getattr(args, "limit_jobs", 0) or 0))
+    plan_seed = int(args.seed)
+    plan_limit_jobs = int(getattr(args, "limit_jobs", 0) or 0)
+    jobs = build_dynamic_routing_jobs(seed=plan_seed, profile=args.profile)
+    jobs = limit_dynamic_routing_jobs(jobs, plan_limit_jobs)
     if int(args.jobs) != len(jobs):
         raise WorkflowError(f"Dynamic routing batch profile {args.profile!r} expects {len(jobs)} jobs, got --jobs {args.jobs}.")
     if warehouse_attempt_id:
@@ -15136,6 +15653,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     ensure_dir(run_dir / "logs")
     ensure_dir(run_dir / "pids")
     ensure_dir(run_dir / "runtime_configs")
+    ensure_dir(run_dir / "run_start_receipts")
 
     gpus = [int(part.strip()) for part in args.gpus.split(",") if part.strip()]
     if not gpus:
@@ -15148,6 +15666,9 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     plan = {
         "run_id": run_id,
         "profile": args.profile,
+        "seed": plan_seed,
+        "limit_jobs": plan_limit_jobs,
+        "requested_jobs": int(args.jobs),
         "created_at": utc_now(),
         "formal_evidence": formal_evidence,
         "evidence_level": "debug_smoke" if args.debug_smoke else "formal_pre_run",
@@ -15226,7 +15747,8 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         )
     write_new_lf(
         run_dir / "start_batch.sh",
-        "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\nmkdir -p logs pids runtime_configs\n"
+        "#!/usr/bin/env bash\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\n"
+        "mkdir -p logs pids runtime_configs run_start_receipts\n"
         + "\n".join(gpu_lines),
     )
     server_run_dir = PurePosixPath(str(args.server_repo)) / ".gtpj_runtime" / "batches" / run_id
@@ -15259,6 +15781,7 @@ Outputs:
 - `events.jsonl`
 - `logs/`
 - `runtime_configs/`
+- `run_start_receipts/`（逐任务训练启动收据；取回结果时必须一起复制）
 - `artifact_manifests/`（逐任务 Warehouse 证据清单；取回结果时必须一起复制）
 
 Stop policy:
@@ -15934,7 +16457,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prepare_receipt = sub.add_parser(
         "prepare-run-start-receipt",
-        help="在正式训练启动前生成冻结任务收据和不可覆盖的日志首行",
+        help="生成冻结任务收据，并直接启动训练、收集进程输出",
     )
     prepare_receipt.add_argument("--path", required=True)
     prepare_receipt.add_argument("--config", required=True)
