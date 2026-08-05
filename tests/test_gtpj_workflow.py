@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "workflow" / "gtpj_workflow.py"
@@ -147,6 +148,7 @@ class WorkflowHelperTest(unittest.TestCase):
                 self._write(relative, existing + "\n" + CONFIRMATION_RULE_MARKERS_TEXT)
 
     def _write_minimal_repo(self) -> None:
+        self._write("train_GTPJ_CUB.py", "print('training entry')\n")
         self._write(
             "experiments/v1/config.yaml",
             "version: v1\n"
@@ -3024,7 +3026,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code, stderr)
         self._commit_all("freeze receipt-gate matrix")
         freeze_commit = self._git("rev-parse", "HEAD").stdout.strip()
-        self._write("train_GTPJ_CUB.py", "print('training entry')\n")
+        self._write("train_GTPJ_CUB.py", "print('changed training entry')\n")
         self._commit_all("change training code after old freeze")
         receipt_args = (
             "prepare-run-start-receipt",
@@ -3072,6 +3074,65 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("placeholder command", stderr)
 
+        missing_entry_args = list(receipt_args)
+        command_index = missing_entry_args.index("--command") + 1
+        missing_entry_args[command_index] = (
+            "python missing_training_entry.py "
+            "--config experiments/v1/tune/TUNE-777_receipt-gate/config.yaml"
+        )
+        code, _stdout, stderr = self._run_main(
+            *missing_entry_args,
+            "--pre-run-freeze-commit",
+            "HEAD",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("training entry does not exist", stderr)
+
+        for wrapped_command in [
+            "cmd /c echo python train_GTPJ_CUB.py --config "
+            "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
+            "powershell Write-Output python train_GTPJ_CUB.py --config "
+            "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
+            "python train_GTPJ_CUB.py --config "
+            "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml && echo done",
+        ]:
+            wrapped_args = list(receipt_args)
+            wrapped_args[wrapped_args.index("--command") + 1] = wrapped_command
+            code, _stdout, stderr = self._run_main(
+                *wrapped_args,
+                "--pre-run-freeze-commit",
+                "HEAD",
+            )
+            self.assertEqual(1, code)
+            self.assertTrue("direct" in stderr or "shell chaining" in stderr)
+
+        with tempfile.TemporaryDirectory() as outside_tmp:
+            outside_entry = Path(outside_tmp) / "outside_training.py"
+            outside_entry.write_text("print('outside')\n", encoding="utf-8")
+            outside_args = list(receipt_args)
+            outside_args[outside_args.index("--command") + 1] = (
+                f"python {outside_entry} --config "
+                "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml"
+            )
+            code, _stdout, stderr = self._run_main(
+                *outside_args,
+                "--pre-run-freeze-commit",
+                "HEAD",
+            )
+            self.assertEqual(1, code)
+            self.assertIn("must be inside repository", stderr)
+
+        matrix_lock = matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
+        matrix_lock.write_text("job_id=ANOTHER-JOB\n", encoding="utf-8")
+        code, _stdout, stderr = self._run_main(
+            *receipt_args,
+            "--pre-run-freeze-commit",
+            "HEAD",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("binding this parameter matrix", stderr)
+        matrix_lock.unlink()
+
         wrong_config_args = list(receipt_args)
         command_index = wrong_config_args.index("--command") + 1
         wrong_config_args[command_index] = (
@@ -3103,6 +3164,36 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self.assertIn("run-start receipt transaction failed", stderr)
             self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
             self.assertFalse((output_root / "training.log").exists())
+
+        with tempfile.TemporaryDirectory() as output_tmp:
+            output_root = Path(output_tmp)
+            receipt_path = output_root / "receipt.json"
+            training_log = output_root / "training.log"
+            atomic_args = list(receipt_args)
+            atomic_args[atomic_args.index("--receipt") + 1] = str(receipt_path)
+            atomic_args[atomic_args.index("--log") + 1] = str(training_log)
+            real_replace = self.module.os.replace
+            replace_calls = 0
+
+            def fail_log_publish(source, target):
+                nonlocal replace_calls
+                replace_calls += 1
+                if replace_calls == 2:
+                    raise OSError("injected log publication failure")
+                return real_replace(source, target)
+
+            with mock.patch.object(self.module.os, "replace", side_effect=fail_log_publish):
+                code, _stdout, stderr = self._run_main(
+                    *atomic_args,
+                    "--pre-run-freeze-commit",
+                    "HEAD",
+                )
+            self.assertEqual(1, code)
+            self.assertIn("injected log publication failure", stderr)
+            self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+            self.assertFalse(receipt_path.exists())
+            self.assertFalse(training_log.exists())
+            self.assertFalse(list(output_root.glob(".*.tmp")))
 
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
@@ -3317,6 +3408,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         matrix_path.write_text(matrix_path.read_text(encoding="utf-8").rstrip() + ",unexpected\n", encoding="utf-8")
         with self.assertRaisesRegex(self.module.WorkflowError, "cells outside the fixed header"):
             self.module.read_parameter_matrix(matrix_path)
+
+    def test_set_readme_field_preserves_windows_command_backslashes(self) -> None:
+        command = r"python train_GTPJ_CUB.py --config experiments\v1\tune\x\config.yaml"
+
+        rendered = self.module.set_readme_field("command: old\n", "command", command)
+
+        self.assertEqual(f"command: {command}\n", rendered)
 
     def test_init_parameter_matrix_supports_an_ordinary_module_attempt(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -5496,6 +5594,45 @@ decision:
         self.assertEqual("", stdout)
         self.assertIn("distinct real reviewer_instance_id", stderr)
 
+    def test_validate_ai_cross_review_rejects_empty_fallback_ids_followed_by_notes(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-empty-fallback-identities"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        for round_number, filename in [
+            (1, "05_claude_review_round_1.md"),
+            (2, "07_claude_review_round_2.md"),
+            (3, "09_claude_review_round_3.md"),
+        ]:
+            self._write(
+                f"{pack_dir}/{filename}",
+                f"round: {round_number}\n"
+                "reviewer: independent_codex_fallback\n"
+                "independent_codex_read_only: true\n"
+                "fallback_reason: claude_code_unavailable\n"
+                "reviewer_instance_id:\n"
+                f"note: /root/apparently-distinct-{round_number}\n"
+                "independent_context: true\n"
+                "files_reviewed:\n"
+                "- workflow/gtpj_workflow.py\n"
+                "commands_run:\n"
+                "- python -m unittest\n"
+                "verdict: pass\n"
+                "blocking_issues:\n",
+            )
+        final_path = self.repo / pack_dir / "10_final_decision.md"
+        final_path.write_text(
+            final_path.read_text(encoding="utf-8").replace(
+                "claude_code_read_only: true",
+                "claude_code_read_only: false\nindependent_codex_fallback_read_only: true",
+            ),
+            encoding="utf-8",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("no real reviewer_instance_id", stderr)
+
     def test_validate_ai_cross_review_rejects_fallback_pack_claiming_claude_only(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-fallback-claims-claude"
         self._write_valid_ai_cross_review_pack(pack_dir)
@@ -5561,6 +5698,43 @@ decision:
         self.assertEqual(1, code)
         self.assertEqual("", stdout)
         self.assertIn("must use the same review tier", stderr)
+
+    def test_validate_ai_cross_review_rejects_quoted_high_risk_downgrade(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-quoted-high-downgrade"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        self._write(
+            f"{pack_dir}/00_task.md",
+            'task_id: TEST\nrisk_level: "high"\nreview_tier: review-1\nclaude_rounds_required: 1\n',
+        )
+        self._write(
+            f"{pack_dir}/02_review_brief.md",
+            'risk_level: "high"\nreview_tier: review-1\nclaude_rounds_required: 1\n',
+        )
+        self._write(f"{pack_dir}/02_focused_diff.md", "changed files\n")
+        self._write(
+            f"{pack_dir}/02_codex_named_thread_pre_review.md",
+            "named_thread_required: true\nthread_id: thread-test-001\n"
+            "lifecycle: completed_archived\narchived_before_claude: true\n"
+            "archive_result_confirms_completion: true\n"
+            "archive_result: thread_id=thread-test-001 previous_status=completed archived: true\n"
+            "verdict: pass\n",
+        )
+        self._write(
+            f"{pack_dir}/10_final_decision.md",
+            "ai_cross_review_status: pass\nowner_participation: not_required\n"
+            "review_tier: review-1\nclaude_rounds_required: 1\nrounds_completed: 1\n"
+            "claude_rounds_completed: 1\nclaude_code_read_only: true\n"
+            "codex_named_thread_pre_review: pass\n"
+            "codex_named_thread_lifecycle: completed_archived\n"
+            "codex_fixes_or_rebuttals_recorded: true\nmachine_gates_passed: true\n"
+            "unresolved_blocking_issues: 0\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("risk_level high requires review_tier strict-3", stderr)
 
     def test_validate_ai_cross_review_rejects_a_forged_top_level_provider(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-forged-provider"

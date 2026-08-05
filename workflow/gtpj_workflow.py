@@ -1161,7 +1161,7 @@ def set_readme_field(content: str, field: str, value: str) -> str:
     line = f"{field}: {value}"
     pattern = rf"(?m)^{re.escape(field)}:.*$"
     if re.search(pattern, content):
-        return re.sub(pattern, line, content, count=1)
+        return re.sub(pattern, lambda _match: line, content, count=1)
 
     start = content.find("```text")
     if start == -1:
@@ -7365,14 +7365,21 @@ def resolve_ai_cross_review_path(path_text: str) -> Path:
 
 
 def scalar_from_text(text: str, key: str) -> str:
-    match = re.search(rf"(?im)^\s*{re.escape(key)}\s*:\s*(.*?)\s*$", text)
-    return match.group(1).strip() if match else ""
+    match = re.search(rf"(?im)^[ \t]*{re.escape(key)}[ \t]*:[ \t]*([^\r\n]*)$", text)
+    return normalize_simple_scalar(match.group(1)) if match else ""
+
+
+def normalize_simple_scalar(value: str) -> str:
+    normalized = value.strip()
+    while len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {'"', "'"}:
+        normalized = normalized[1:-1].strip()
+    return normalized
 
 
 def top_level_scalar_values(text: str, key: str) -> list[str]:
     return [
-        match.group(1).strip()
-        for match in re.finditer(rf"(?im)^{re.escape(key)}\s*:\s*(.*?)\s*$", text)
+        normalize_simple_scalar(match.group(1))
+        for match in re.finditer(rf"(?im)^{re.escape(key)}[ \t]*:[ \t]*([^\r\n]*)$", text)
     ]
 
 
@@ -7382,10 +7389,7 @@ def single_top_level_scalar(text: str, key: str) -> str:
 
 
 def normalize_attested_identifier(value: str) -> str:
-    normalized = value.strip()
-    while len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {'"', "'"}:
-        normalized = normalized[1:-1].strip()
-    return normalized
+    return normalize_simple_scalar(value)
 
 
 def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], int, bool]:
@@ -7519,9 +7523,11 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             errors.append("00_task.md, 02_review_brief.md, and 10_final_decision.md must use the same review tier")
         for filename in ["00_task.md", "02_review_brief.md"]:
             path = pack_dir / filename
-            if path.is_file() and re.search(r"(?im)^risk_level:\s*high\s*$", read_text(path)):
-                if declarations.get(filename) != ("strict-3", "3"):
-                    errors.append(f"{filename} risk_level high requires review_tier strict-3 and 3 rounds")
+            if not path.is_file():
+                continue
+            risk_levels = top_level_scalar_values(read_text(path), "risk_level")
+            if risk_levels == ["high"] and declarations.get(filename) != ("strict-3", "3"):
+                errors.append(f"{filename} risk_level high requires review_tier strict-3 and 3 rounds")
 
     round_marker_items = list(AI_CROSS_REVIEW_ROUND_MARKERS.items())
     if tiered_pack:
@@ -13325,7 +13331,7 @@ def parameter_matrix_freeze_commit_errors(
             errors.append("run-start receipt must be created while HEAD exactly equals the pre-run freeze commit")
         if require_clean_checkout:
             ignored_lock = display_path(
-                matrix_path.with_name(f".{matrix_path.name}.{job_id}.run-start.lock")
+                matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
             ).replace("\\", "/")
             dirty_lines = [
                 line
@@ -13363,14 +13369,68 @@ def parameter_matrix_freeze_commit_errors(
     return errors
 
 
-def run_start_command_errors(command: str, config_path: Path) -> list[str]:
+def run_start_training_entry_path(command: str) -> Path | None:
+    try:
+        tokens = shlex.split(command.strip(), posix=False)
+    except ValueError:
+        return None
+
+    def unquote(value: str) -> str:
+        return normalize_simple_scalar(value)
+
+    python_positions = [
+        index
+        for index, token in enumerate(tokens)
+        if re.fullmatch(
+            r"(?i)(?:.*[\\/])?python(?:\d+(?:\.\d+)*)?(?:\.exe)?",
+            unquote(token),
+        )
+    ]
+    if len(python_positions) != 1:
+        return None
+    python_index = python_positions[0]
+    if python_index != 0:
+        executable = Path(unquote(tokens[0])).name.lower()
+        if executable not in {"conda", "conda.exe"} or len(tokens) < 3 or unquote(tokens[1]).lower() != "run":
+            return None
+        allowed_flags = {"--no-capture-output", "--live-stream", "--debug-wrapper-scripts", "--dev", "--"}
+        value_flags = {"-n", "--name", "-p", "--prefix", "--cwd"}
+        index = 2
+        while index < python_index:
+            token = unquote(tokens[index])
+            if token in allowed_flags:
+                index += 1
+                continue
+            if token in value_flags:
+                if index + 1 >= python_index:
+                    return None
+                index += 2
+                continue
+            if any(token.startswith(f"{flag}=") for flag in {"--name", "--prefix", "--cwd"}):
+                index += 1
+                continue
+            return None
+    script_values = [
+        unquote(token)
+        for token in tokens[python_index + 1 :]
+        if unquote(token).lower().endswith(".py")
+    ]
+    if len(script_values) != 1:
+        return None
+    script_path = Path(script_values[0])
+    return script_path if script_path.is_absolute() else REPO_ROOT / script_path
+
+
+def run_start_command_errors(command: str, config_path: Path, *, commit_ref: str = "") -> list[str]:
     command_text = command.strip()
     if not command_text:
         return ["run-start receipt requires a non-empty training command"]
     lowered = command_text.lower()
     if re.match(r"^(echo|printf|write-output|python\s+-c)\b", lowered):
         return ["run-start receipt command must launch a training script, not a placeholder command"]
-    if not re.search(r"(?i)(?:^|\s)(?:python(?:\.exe)?|[^\s]*python)(?:\s|$)", command_text):
+    if re.search(r"(?:&&|\|\||[;&|<>`]|\$\()", command_text):
+        return ["run-start receipt command must be one direct training command without shell chaining"]
+    if not re.search(r"(?i)(?:^|\s)(?:python(?:\d+(?:\.\d+)*)?(?:\.exe)?|[^\s]*[\\/]python)(?:\s|$)", command_text):
         return ["run-start receipt command must invoke Python"]
     if not re.search(r"(?i)\.py(?:\s|$)", command_text):
         return ["run-start receipt command must name a Python training entry script"]
@@ -13405,6 +13465,23 @@ def run_start_command_errors(command: str, config_path: Path) -> list[str]:
         supplied_path = REPO_ROOT / supplied_path
     if os.path.normcase(str(supplied_path.resolve())) != os.path.normcase(str(config_path.resolve())):
         return ["run-start receipt --config must exactly match the frozen config path"]
+    training_entry = run_start_training_entry_path(command_text)
+    if training_entry is None:
+        return ["run-start receipt command must directly invoke exactly one Python training entry script"]
+    try:
+        entry_rel = repo_relative_path(training_entry, "training entry")
+    except WorkflowError as exc:
+        return [str(exc)]
+    if not training_entry.is_file():
+        return [f"run-start receipt training entry does not exist: {entry_rel}"]
+    if commit_ref.strip():
+        try:
+            commit = resolve_commit(commit_ref)
+            committed_entry = read_text_at_commit(commit, entry_rel)
+        except WorkflowError:
+            return [f"run-start receipt training entry is not frozen in commit {commit_ref}: {entry_rel}"]
+        if read_text(training_entry) != committed_entry:
+            return [f"run-start receipt training entry differs from frozen commit {commit}: {entry_rel}"]
     return []
 
 
@@ -13438,6 +13515,11 @@ def run_start_receipt_errors(
         "command": command,
         "command_sha256": parameter_matrix_sha256(command),
     }
+    training_entry = run_start_training_entry_path(command)
+    if training_entry is not None:
+        entry_rel = repo_relative_path(training_entry, "training entry")
+        expected["training_entry_path"] = entry_rel
+        expected["training_entry_sha256"] = parameter_matrix_sha256(read_text_at_commit(commit, entry_rel))
     errors = [
         f"run-start receipt {field} does not match the frozen run"
         for field, value in expected.items()
@@ -13466,7 +13548,7 @@ def run_start_receipt_errors(
         errors.append("parameter-matrix run_start_receipt_sha256 does not match the receipt file")
     if row.get("run_command_sha256", "") != parameter_matrix_sha256(command):
         errors.append("parameter-matrix run_command_sha256 does not match the training command")
-    errors.extend(run_start_command_errors(command, config_path))
+    errors.extend(run_start_command_errors(command, config_path, commit_ref=commit))
     first_line = read_text(log_path).splitlines()[0] if read_text(log_path).splitlines() else ""
     if first_line != f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}":
         errors.append("training log is not anchored to the run-start receipt in its first line")
@@ -13492,13 +13574,15 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
     if receipt_path.resolve() == log_path.resolve():
         raise WorkflowError("prepare-run-start-receipt requires different receipt and log paths")
-    lock_path = matrix_path.with_name(f".{matrix_path.name}.{args.job_id}.run-start.lock")
+    # The lock is matrix-wide, not row-wide: two different jobs still rewrite
+    # the same CSV/Markdown pair and must never race with each other.
+    lock_path = matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         with lock_path.open("x", encoding="utf-8") as lock_handle:
             lock_handle.write(f"job_id={args.job_id}\nrun_id={args.run_id}\n")
     except FileExistsError as exc:
-        raise WorkflowError("another process is already binding this parameter-matrix row") from exc
+        raise WorkflowError("another process is already binding this parameter matrix") from exc
     try:
         rows = read_parameter_matrix(matrix_path)
         original_rows = [dict(item) for item in rows]
@@ -13517,7 +13601,7 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
             require_exact_checkout=True,
             require_clean_checkout=True,
         )
-        errors.extend(run_start_command_errors(args.command, config_path))
+        errors.extend(run_start_command_errors(args.command, config_path, commit_ref=args.pre_run_freeze_commit))
         if not args.run_id.strip():
             errors.append("run-start receipt requires a non-empty run_id")
         if errors:
@@ -13544,6 +13628,14 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
             "command_sha256": parameter_matrix_sha256(args.command),
             "started_at": utc_now(),
         }
+        training_entry = run_start_training_entry_path(args.command)
+        if training_entry is None:
+            raise WorkflowError("Cannot create run-start receipt:\ntraining entry parsing failed after validation")
+        training_entry_rel = repo_relative_path(training_entry, "training entry")
+        payload["training_entry_path"] = training_entry_rel
+        payload["training_entry_sha256"] = parameter_matrix_sha256(
+            read_text_at_commit(commit, training_entry_rel)
+        )
         receipt_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
         receipt_sha256 = hashlib.sha256(receipt_text.encode("utf-8")).hexdigest()
         receipt_temp = receipt_path.with_name(f".{receipt_path.name}.{args.job_id}.tmp")
