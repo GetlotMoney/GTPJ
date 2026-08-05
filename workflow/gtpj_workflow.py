@@ -13412,14 +13412,18 @@ def run_start_training_entry_path(command: str) -> Path | None:
                 index += 1
                 continue
             return None
-    script_values = [
-        unquote(token)
-        for token in tokens[python_index + 1 :]
-        if unquote(token).lower().endswith(".py")
+    script_items = [
+        (index, unquote(tokens[index]))
+        for index in range(python_index + 1, len(tokens))
+        if unquote(tokens[index]).lower().endswith(".py")
     ]
-    if len(script_values) != 1:
+    if len(script_items) != 1:
         return None
-    script_path = Path(script_values[0])
+    script_index, script_value = script_items[0]
+    safe_interpreter_flags = {"-u", "-B", "-O", "-OO"}
+    if any(unquote(token) not in safe_interpreter_flags for token in tokens[python_index + 1 : script_index]):
+        return None
+    script_path = Path(script_value)
     return script_path if script_path.is_absolute() else REPO_ROOT / script_path
 
 

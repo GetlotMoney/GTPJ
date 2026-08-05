@@ -3037,6 +3037,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 commit_ref="HEAD",
             ),
         )
+        self.assertEqual(
+            [],
+            self.module.run_start_command_errors(
+                "python -u train_GTPJ_CUB.py "
+                "--config experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
+                config_path,
+                commit_ref="HEAD",
+            ),
+        )
         receipt_args = (
             "prepare-run-start-receipt",
             "--path",
@@ -3101,6 +3110,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "cmd /c echo python train_GTPJ_CUB.py --config "
             "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
             "powershell Write-Output python train_GTPJ_CUB.py --config "
+            "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
+            "python -u -c train_GTPJ_CUB.py --config "
             "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
             "python train_GTPJ_CUB.py --config "
             "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml && echo done",
