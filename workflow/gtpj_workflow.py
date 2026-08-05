@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import io
 import json
 import re
 import shutil
@@ -3713,7 +3714,18 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     matrix_path: Path | None = None
     matrix_rows: list[dict[str, str]] = []
     matrix_result_row: dict[str, str] | None = None
-    if parameter_matrix_policy_is_active():
+    matrix_exists = (exp_dir / PARAMETER_MATRIX_CSV).exists()
+    legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
+        raise WorkflowError(
+            "Active parameter-matrix policy requires PARAMETER_MATRIX.csv; "
+            "use --legacy-summary-only only for a pre-policy historical result"
+        )
+    if legacy_summary_only and matrix_exists:
+        raise WorkflowError("--legacy-summary-only cannot bypass an existing parameter matrix")
+    if legacy_summary_only and args.decision not in {"reject", "rejected", "blocked"}:
+        raise WorkflowError("--legacy-summary-only cannot create keep/best evidence; use a non-promoting decision")
+    if parameter_matrix_policy_is_active() and matrix_exists:
         if not args.seed:
             raise WorkflowError("record-result under the parameter-matrix policy requires --seed")
         matrix_path = exp_dir / PARAMETER_MATRIX_CSV
@@ -3732,7 +3744,15 @@ def cmd_record_result(args: argparse.Namespace) -> int:
             tune_parameter=args.parameter if args.kind == "tune" else "",
             tune_new_value=args.new_value if args.kind == "tune" else "",
             tune_old_value=args.old_value if args.kind == "tune" else "",
-            baseline_config_path=REPO_ROOT / "experiments" / version / "config.yaml" if args.kind == "tune" else None,
+            baseline_config_path=REPO_ROOT / "experiments" / version / "config.yaml",
+        )
+        runtime_errors.extend(
+            parameter_matrix_freeze_commit_errors(
+                commit_ref=str(getattr(args, "pre_run_freeze_commit", "") or ""),
+                matrix_path=matrix_path,
+                config_path=exp_dir / "config.yaml",
+                job_id=matrix_result_row["job_id"],
+            )
         )
         if runtime_errors:
             raise WorkflowError("Formal result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
@@ -5329,12 +5349,25 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     config_values = read_config_values(config_path)
     seed = args.seed or config_values.get("random_seed", "")
     command = args.command or f"python train_GTPJ_CUB.py --config {rel(config_path)}"
-    pre_run_freeze_commit = args.pre_run_freeze_commit or git(["rev-parse", "HEAD"], check=False)
+    pre_run_freeze_commit = args.pre_run_freeze_commit or (
+        "" if parameter_matrix_policy_is_active() else git(["rev-parse", "HEAD"], check=False)
+    )
     recorded_at = utc_now()
     matrix_path: Path | None = None
     matrix_rows: list[dict[str, str]] = []
     matrix_result_row: dict[str, str] | None = None
-    if parameter_matrix_policy_is_active():
+    matrix_exists = (attempt_dir / PARAMETER_MATRIX_CSV).exists()
+    legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
+        raise WorkflowError(
+            "Active parameter-matrix policy requires PARAMETER_MATRIX.csv for a new module attempt; "
+            "use --legacy-summary-only only for a pre-policy historical result"
+        )
+    if legacy_summary_only and matrix_exists:
+        raise WorkflowError("--legacy-summary-only cannot bypass an existing parameter matrix")
+    if legacy_summary_only and args.decision not in {"reject", "rejected", "blocked", "debug"}:
+        raise WorkflowError("--legacy-summary-only cannot create keep/best evidence; use a non-promoting decision")
+    if parameter_matrix_policy_is_active() and matrix_exists:
         if not seed:
             raise WorkflowError("record-module-attempt under the parameter-matrix policy requires a seed")
         matrix_path = attempt_dir / PARAMETER_MATRIX_CSV
@@ -5350,6 +5383,15 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
             matrix_path=matrix_path,
             config_path=config_path,
             seed=seed,
+            baseline_config_path=trial_dir / "config.yaml",
+        )
+        runtime_errors.extend(
+            parameter_matrix_freeze_commit_errors(
+                commit_ref=pre_run_freeze_commit,
+                matrix_path=matrix_path,
+                config_path=config_path,
+                job_id=matrix_result_row["job_id"],
+            )
         )
         if runtime_errors:
             raise WorkflowError("Formal module result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
@@ -12297,6 +12339,23 @@ PARAMETER_MATRIX_COLUMNS = [
     "decision",
     "artifact_ref",
 ]
+PARAMETER_MATRIX_RESULT_FIELDS = {
+    "status",
+    "U",
+    "S",
+    "H",
+    "ZS",
+    "best_epoch",
+    "decision",
+    "artifact_ref",
+}
+PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS = {
+    "changed_parameters",
+    "config_fingerprint",
+    "repeat_of",
+    "duplicate_resolution",
+}
+PARAMETER_MATRIX_TERMINAL_STATUSES = {"completed", "failed", "skipped", "cancelled"}
 
 
 def parameter_matrix_policy_is_active() -> bool:
@@ -12373,7 +12432,7 @@ def build_parameter_matrix_rows(
                 "job_id": matrix_cell(job.get("job_id")),
                 "work_item_id": matrix_cell(job.get("work_item_id")),
                 "job_kind": job_kind,
-                "status": "planned",
+                "status": "frozen",
                 "group": matrix_cell(job.get("group")),
                 "name": matrix_cell(job.get("name")),
                 "base_version": base_version,
@@ -12399,16 +12458,22 @@ def build_parameter_matrix_rows(
     return rows
 
 
+def parse_parameter_matrix_text(text: str, *, label: str) -> list[dict[str, str]]:
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames != PARAMETER_MATRIX_COLUMNS:
+        raise WorkflowError(f"{label} has an invalid header; use the parameter-matrix template.")
+    rows: list[dict[str, str]] = []
+    for line_number, row in enumerate(reader, start=2):
+        if None in row:
+            raise WorkflowError(f"{label} line {line_number} has cells outside the fixed header")
+        rows.append({key: matrix_cell(row.get(key, "")) for key in PARAMETER_MATRIX_COLUMNS})
+    return rows
+
+
 def read_parameter_matrix(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         raise WorkflowError(f"Missing parameter matrix: {display_path(path)}")
-    with path.open("r", newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != PARAMETER_MATRIX_COLUMNS:
-            raise WorkflowError(
-                f"{display_path(path)} has an invalid header; use the parameter-matrix template."
-            )
-        return [{key: matrix_cell(row.get(key, "")) for key in PARAMETER_MATRIX_COLUMNS} for row in reader]
+    return parse_parameter_matrix_text(read_text(path), label=display_path(path))
 
 
 def validate_parameter_matrix_rows(
@@ -12416,6 +12481,7 @@ def validate_parameter_matrix_rows(
     *,
     expected_job_ids: set[str] | None = None,
     require_ready: bool = False,
+    require_recordable: bool = False,
     matrix_path: Path | None = None,
 ) -> list[str]:
     errors: list[str] = []
@@ -12423,7 +12489,17 @@ def validate_parameter_matrix_rows(
         return ["parameter matrix must contain at least one job row"]
     job_ids: set[str] = set()
     fingerprints: dict[str, str] = {}
-    allowed_status = {"draft", "planned", "running", "completed", "failed", "skipped", "cancelled"}
+    allowed_status = {
+        "draft",
+        "planned",
+        "frozen",
+        "running",
+        "completed",
+        "failed",
+        "skipped",
+        "cancelled",
+        "legacy_summary_only",
+    }
     repeat_rows: list[tuple[int, dict[str, str]]] = []
     for line_number, row in enumerate(rows, start=2):
         job_id = row.get("job_id", "").strip()
@@ -12462,8 +12538,15 @@ def validate_parameter_matrix_rows(
                 raise ValueError("not an object")
         except (json.JSONDecodeError, ValueError):
             errors.append(f"line {line_number} changed_parameters must be a JSON object")
-        if require_ready and row.get("status") == "draft":
-            errors.append(f"line {line_number} is still draft and cannot enter a formal run")
+        if require_ready and row.get("status") != "frozen":
+            errors.append(
+                f"line {line_number} status {row.get('status')!r} cannot enter a formal run; "
+                "every row must be frozen and unused"
+            )
+        if require_recordable and row.get("status") in {"draft", "planned", "legacy_summary_only"}:
+            errors.append(
+                f"line {line_number} status {row.get('status')!r} cannot accept a formal result"
+            )
         if require_ready and snapshot_ref and not snapshot_ref.startswith("generated-from-frozen-plan:"):
             snapshot_path = Path(snapshot_ref)
             if not snapshot_path.is_absolute():
@@ -12476,7 +12559,7 @@ def validate_parameter_matrix_rows(
         job_id = row.get("job_id", "")
         repeat_of = row.get("repeat_of", "").strip()
         fingerprint = row.get("config_fingerprint", "")
-        if fingerprint.startswith("pending_after_top_rank:") and row.get("status") in {"completed", "failed"}:
+        if fingerprint.startswith("pending_after_top_rank:") and row.get("status") in PARAMETER_MATRIX_TERMINAL_STATUSES:
             errors.append(f"line {line_number} finished but still has an unresolved top-rank configuration")
         if not repeat_of:
             continue
@@ -12640,7 +12723,7 @@ def refresh_parameter_matrix_view(csv_path: Path, rows: list[dict[str, str]], so
 
 def ready_parameter_matrix_rows(csv_path: Path) -> list[dict[str, str]]:
     rows = read_parameter_matrix(csv_path)
-    errors = validate_parameter_matrix_rows(rows, require_ready=True, matrix_path=csv_path)
+    errors = validate_parameter_matrix_rows(rows, require_recordable=True, matrix_path=csv_path)
     errors.extend(parameter_matrix_view_errors(csv_path, rows))
     errors.extend(
         parameter_matrix_conflicts(
@@ -12664,7 +12747,7 @@ def select_parameter_matrix_result_row(
     if matrix_job_id:
         matches = [row for row in rows if row.get("job_id", "") == matrix_job_id]
     else:
-        matches = [row for row in rows if row.get("status") in {"planned", "running"}]
+        matches = [row for row in rows if row.get("status") in {"frozen", "running"}]
         if seed:
             seed_matches = [row for row in matches if row.get("seed", "") == seed]
             if seed_matches:
@@ -12675,8 +12758,8 @@ def select_parameter_matrix_result_row(
             f"pass --matrix-job-id when the seed is not unique (matched {len(matches)} rows)"
         )
     row = matches[0]
-    if row.get("status") not in {"planned", "running"}:
-        raise WorkflowError(f"{label} can only record a planned or running matrix row, not {row.get('status')!r}")
+    if row.get("status") not in {"frozen", "running"}:
+        raise WorkflowError(f"{label} can only record a frozen or running matrix row, not {row.get('status')!r}")
     if seed and row.get("seed", "") != seed:
         raise WorkflowError(
             f"{label} seed {seed!r} does not match matrix row {row.get('job_id')} seed {row.get('seed')!r}"
@@ -12712,6 +12795,14 @@ def parameter_matrix_runtime_errors(
             errors.append(f"{row.get('job_id')} config_snapshot_ref does not point to the actual training config")
     if seed and row.get("seed", "") != seed:
         errors.append(f"{row.get('job_id')} seed does not match the training command")
+    if baseline_config_path is not None:
+        errors.extend(
+            parameter_matrix_changed_parameter_errors(
+                row,
+                baseline_config_path=baseline_config_path,
+                config_path=config_path,
+            )
+        )
     if tune_parameter:
         changed = json.loads(row.get("changed_parameters", "{}"))
         config_values = read_config_values(config_path)
@@ -12737,6 +12828,16 @@ def sync_parameter_matrix_result_row(
     run_id: str,
     artifact_ref: str,
 ) -> None:
+    if row.get("status") not in {"frozen", "running"}:
+        raise WorkflowError(
+            f"Refusing to overwrite result row {row.get('job_id')} with status {row.get('status')!r}"
+        )
+    if any(row.get(key, "") for key in ["U", "S", "H", "ZS", "best_epoch", "decision", "artifact_ref"]):
+        raise WorkflowError(f"Refusing to overwrite an existing result for {row.get('job_id')}")
+    if row.get("run_id", "") and row.get("run_id") != run_id:
+        raise WorkflowError(
+            f"{row.get('job_id')} is frozen for run_id {row.get('run_id')}, not {run_id}"
+        )
     row["status"] = "completed"
     for key in ["U", "S", "H", "ZS", "best_epoch"]:
         row[key] = metrics.get(key, row.get(key, ""))
@@ -12758,6 +12859,113 @@ def parameter_matrix_identity(row: dict[str, str]) -> tuple[str, str, str]:
         row.get("code_ref", ""),
         row.get("config_fingerprint", ""),
     )
+
+
+def parameter_matrix_frozen_fields(row: dict[str, str]) -> dict[str, str]:
+    """Return the pre-run fields that result collection is never allowed to rewrite."""
+    return {
+        key: row.get(key, "")
+        for key in PARAMETER_MATRIX_COLUMNS
+        if key not in PARAMETER_MATRIX_RESULT_FIELDS
+    }
+
+
+def parameter_matrix_frozen_digest(row: dict[str, str]) -> str:
+    payload = json.dumps(
+        parameter_matrix_frozen_fields(row),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return parameter_matrix_sha256(payload)
+
+
+def parameter_value_text(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return "null"
+    return str(value)
+
+
+def parameter_matrix_actual_changes(
+    baseline_config_path: Path,
+    config_path: Path,
+) -> dict[str, str]:
+    baseline_values = read_config_values(baseline_config_path)
+    config_values = read_config_values(config_path)
+    return {
+        key: value
+        for key, value in config_values.items()
+        if key != "random_seed" and baseline_values.get(key) != value
+    }
+
+
+def parameter_matrix_changed_parameter_errors(
+    row: dict[str, str],
+    *,
+    baseline_config_path: Path,
+    config_path: Path,
+) -> list[str]:
+    if not baseline_config_path.exists():
+        return [f"{row.get('job_id')} baseline config does not exist: {display_path(baseline_config_path)}"]
+    try:
+        declared_raw = json.loads(row.get("changed_parameters", "{}"))
+    except json.JSONDecodeError:
+        return [f"{row.get('job_id')} changed_parameters is not valid JSON"]
+    if not isinstance(declared_raw, dict):
+        return [f"{row.get('job_id')} changed_parameters must be a JSON object"]
+    declared = {key: parameter_value_text(value) for key, value in declared_raw.items()}
+    actual = parameter_matrix_actual_changes(baseline_config_path, config_path)
+    if declared != actual:
+        return [
+            f"{row.get('job_id')} changed_parameters does not match the actual config diff; "
+            f"declared={json.dumps(declared, ensure_ascii=False, sort_keys=True)} "
+            f"actual={json.dumps(actual, ensure_ascii=False, sort_keys=True)}"
+        ]
+    return []
+
+
+def parameter_matrix_freeze_commit_errors(
+    *,
+    commit_ref: str,
+    matrix_path: Path,
+    config_path: Path,
+    job_id: str,
+) -> list[str]:
+    errors: list[str] = []
+    if not commit_ref.strip():
+        return ["formal result requires --pre-run-freeze-commit"]
+    try:
+        commit = resolve_commit(commit_ref)
+        require_ancestor(commit, "HEAD", "pre-run freeze commit must be an ancestor of current HEAD")
+        matrix_rel = repo_relative_path(matrix_path, "parameter matrix")
+        config_rel = repo_relative_path(config_path, "training config")
+        committed_rows = parse_parameter_matrix_text(
+            read_text_at_commit(commit, matrix_rel),
+            label=f"{matrix_rel} at {commit}",
+        )
+        committed_config = read_text_at_commit(commit, config_rel)
+    except WorkflowError as exc:
+        return [str(exc)]
+    matches = [row for row in committed_rows if row.get("job_id", "") == job_id]
+    if len(matches) != 1:
+        errors.append(f"pre-run freeze commit does not contain exactly one row for {job_id}")
+        return errors
+    current_rows = read_parameter_matrix(matrix_path)
+    current_matches = [row for row in current_rows if row.get("job_id", "") == job_id]
+    if len(current_matches) != 1:
+        errors.append(f"current parameter matrix does not contain exactly one row for {job_id}")
+        return errors
+    committed_row = matches[0]
+    current_row = current_matches[0]
+    if committed_row.get("status") != "frozen":
+        errors.append(f"{job_id} was not frozen in pre-run commit {commit}")
+    if parameter_matrix_frozen_fields(committed_row) != parameter_matrix_frozen_fields(current_row):
+        errors.append(f"{job_id} frozen parameter fields differ from pre-run commit {commit}")
+    if committed_config != read_text(config_path):
+        errors.append(f"{job_id} training config differs from pre-run commit {commit}")
+    return errors
 
 
 def parameter_matrix_conflicts(
@@ -12847,8 +13055,8 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
     if len(matches) != 1:
         raise WorkflowError("freeze-parameter-matrix --job-id must name exactly one matrix row")
     row = matches[0]
-    if row.get("status") not in {"draft", "planned", "running"}:
-        raise WorkflowError("freeze-parameter-matrix can only freeze a draft, planned, or running row")
+    if row.get("status") != "draft":
+        raise WorkflowError("freeze-parameter-matrix can only freeze a draft row once")
     try:
         relative_snapshot = config_path.resolve().relative_to(matrix_path.parent.resolve()).as_posix()
     except ValueError as exc:
@@ -12859,8 +13067,7 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
     config_values = read_config_values(config_path)
     if config_values.get("random_seed", ""):
         row["seed"] = config_values["random_seed"]
-    if row.get("status") == "draft":
-        row["status"] = "planned"
+    row["status"] = "frozen"
     # Freeze one row at a time.  A 50-job matrix is intentionally allowed to
     # contain other drafts while its remaining config snapshots are prepared;
     # validate-parameter-matrix --require-ready is the later all-rows gate.
@@ -12886,6 +13093,67 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_init_parameter_matrix(args: argparse.Namespace) -> int:
+    directory = Path(args.directory)
+    if not directory.is_absolute():
+        directory = REPO_ROOT / directory
+    require_path_inside(directory, REPO_ROOT / "experiments", "parameter-matrix directory")
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = REPO_ROOT / config_path
+    baseline_path = Path(args.base_config)
+    if not baseline_path.is_absolute():
+        baseline_path = REPO_ROOT / baseline_path
+    for path, label in [(config_path, "config"), (baseline_path, "base config")]:
+        if not path.exists() or not path.is_file():
+            raise WorkflowError(f"Missing {label}: {display_path(path)}")
+    require_path_inside(config_path, directory, "config snapshot")
+    config_text = read_text(config_path)
+    seed = str(args.seed or read_config_values(config_path).get("random_seed", ""))
+    if not seed:
+        raise WorkflowError("init-parameter-matrix requires --seed or random_seed in the config")
+    changed = parameter_matrix_actual_changes(baseline_path, config_path)
+    snapshot_ref = config_path.resolve().relative_to(directory.resolve()).as_posix()
+    row = {
+        "job_id": args.job_id,
+        "work_item_id": args.work_item_id or args.job_id,
+        "job_kind": args.job_kind,
+        "status": "draft",
+        "group": args.group or args.job_kind,
+        "name": args.name or args.job_id,
+        "base_version": args.base_version,
+        "base_config_sha256": parameter_matrix_sha256(read_text(baseline_path)),
+        "code_ref": args.code_ref or args.base_version,
+        "config_snapshot_ref": snapshot_ref,
+        "seed": seed,
+        "changed_parameters": json.dumps(changed, ensure_ascii=False, sort_keys=True),
+        "config_fingerprint": parameter_matrix_sha256(config_text),
+        "repeat_of": args.repeat_of,
+        "duplicate_resolution": "明确复跑" if args.repeat_of else "唯一配置",
+        "purpose": args.purpose or args.job_kind,
+        "run_id": args.run_id,
+        "U": "",
+        "S": "",
+        "H": "",
+        "ZS": "",
+        "best_epoch": "",
+        "decision": "",
+        "artifact_ref": "",
+    }
+    errors = validate_parameter_matrix_rows([row], matrix_path=directory / PARAMETER_MATRIX_CSV)
+    if errors:
+        raise WorkflowError("Cannot initialize parameter matrix:\n" + "\n".join(errors))
+    csv_path, _md_path = write_parameter_matrix(
+        directory=directory,
+        title=directory.name,
+        rows=[row],
+        source_note=f"由 init-parameter-matrix 从 {display_path(config_path)} 建立草稿。",
+    )
+    print("parameter-matrix-initialized")
+    print(f"csv: {display_path(csv_path)}")
+    return 0
+
+
 def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     trial_dir = Path(args.trial_dir)
     if not trial_dir.is_absolute():
@@ -12902,14 +13170,28 @@ def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     jobs = limit_dynamic_routing_jobs(jobs, int(args.limit_jobs or 0))
     if int(args.jobs) != len(jobs):
         raise WorkflowError(f"Profile {args.profile!r} has {len(jobs)} jobs, not --jobs {args.jobs}.")
+    run_id = str(getattr(args, "run_id", "") or "").strip()
+    if parameter_matrix_policy_is_active() and not run_id:
+        raise WorkflowError("Active parameter-matrix policy requires --run-id before pre-run freeze")
     base_text = read_text(base_config)
     rows = build_parameter_matrix_rows(
         jobs=jobs,
         base_config_text=base_text,
         base_version=args.base_version,
         code_ref=args.base_code_tag or args.base_version,
+        run_id=run_id,
     )
     attempt_dir = trial_dir / "attempts" / attempt_upper
+    existing_matrix = attempt_dir / PARAMETER_MATRIX_CSV
+    if existing_matrix.exists() and bool(args.overwrite):
+        existing_rows = read_parameter_matrix(existing_matrix)
+        if any(
+            row.get("run_id")
+            or row.get("status") not in {"draft", "frozen"}
+            or any(row.get(field) for field in ["U", "S", "H", "ZS", "best_epoch", "artifact_ref"])
+            for row in existing_rows
+        ):
+            raise WorkflowError("Refusing to overwrite a bound, started, or completed parameter matrix")
     errors = validate_parameter_matrix_rows(rows, require_ready=True)
     errors.extend(
         parameter_matrix_conflicts(
@@ -12932,6 +13214,69 @@ def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     print(f"csv: {display_path(csv_path)}")
     print(f"view: {display_path(md_path)}")
     return 0
+
+
+def normalized_posix_path(value: str) -> PurePosixPath:
+    return PurePosixPath(value.replace("\\", "/"))
+
+
+def expected_dynamic_warehouse_dir(plan: dict[str, object], job_id: str) -> PurePosixPath:
+    return (
+        normalized_posix_path(str(plan.get("warehouse_root", "")))
+        / "runs"
+        / str(plan.get("base_version", "v5"))
+        / "module_trial"
+        / str(plan.get("trial_id", "TRIAL-001"))
+        / str(plan.get("warehouse_attempt_id", ""))
+        / str(plan.get("run_id", ""))
+        / job_id
+    )
+
+
+def dynamic_warehouse_result_errors(
+    plan: dict[str, object],
+    result: dict[str, str],
+) -> list[str]:
+    job_id = result.get("job_id", "")
+    warehouse_dir = result.get("warehouse_dir", "").strip()
+    if not warehouse_dir:
+        return [f"{job_id} has no warehouse_dir in summary.csv"]
+    expected_dir = expected_dynamic_warehouse_dir(plan, job_id)
+    if normalized_posix_path(warehouse_dir) != expected_dir:
+        return [f"{job_id} warehouse_dir does not match its frozen run/job directory"]
+    manifest_path = result.get("artifact_manifest", "").strip()
+    expected_manifest = expected_dir / "artifact_manifest.json"
+    if not manifest_path or normalized_posix_path(manifest_path) != expected_manifest:
+        return [f"{job_id} artifact_manifest does not match its expected Warehouse manifest"]
+    manifest_sha256 = result.get("artifact_manifest_sha256", "").strip()
+    if not re.fullmatch(r"[0-9a-f]{64}", manifest_sha256):
+        return [f"{job_id} has no valid artifact_manifest_sha256"]
+    identity = {
+        "artifact_manifest_job_id": job_id,
+        "artifact_manifest_run_id": str(plan.get("run_id", "")),
+        "artifact_manifest_attempt_id": str(plan.get("warehouse_attempt_id", "")),
+    }
+    errors = [
+        f"{job_id} {field} does not match the frozen plan"
+        for field, expected in identity.items()
+        if result.get(field, "").strip() != expected
+    ]
+    local_manifest = Path(manifest_path)
+    if local_manifest.exists() and local_manifest.is_file():
+        if sha256_file(local_manifest) != manifest_sha256:
+            errors.append(f"{job_id} artifact manifest hash does not match the file")
+        try:
+            payload = json.loads(read_text(local_manifest))
+        except json.JSONDecodeError:
+            errors.append(f"{job_id} artifact manifest is not valid JSON")
+        else:
+            if str(payload.get("job_id", "")) != job_id:
+                errors.append(f"{job_id} artifact manifest job_id mismatch")
+            if str(payload.get("run_id", "")) != str(plan.get("run_id", "")):
+                errors.append(f"{job_id} artifact manifest run_id mismatch")
+            if str(payload.get("warehouse_attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
+                errors.append(f"{job_id} artifact manifest attempt_id mismatch")
+    return errors
 
 
 def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
@@ -12962,12 +13307,29 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     if errors:
         raise WorkflowError("Refusing to sync an invalid parameter matrix:\n" + "\n".join(errors))
     summary_rows = _read_summary_rows(run_dir)
+    if not summary_rows:
+        raise WorkflowError("summary.csv is missing or empty; no formal result can be synchronized")
     matrix_by_job = {row["job_id"]: row for row in rows}
     plan_jobs = plan.get("jobs", [])
     if not isinstance(plan_jobs, list) or {
         str(job.get("job_id", "")) for job in plan_jobs if isinstance(job, dict)
     } != set(matrix_by_job):
         raise WorkflowError("Run plan jobs do not match the frozen parameter-matrix job set")
+    frozen_rows = plan.get("parameter_matrix_frozen_rows", {})
+    if not isinstance(frozen_rows, dict) or set(frozen_rows) != set(matrix_by_job):
+        raise WorkflowError("Run plan has no complete frozen parameter-matrix snapshot")
+    for job_id, row in matrix_by_job.items():
+        expected = frozen_rows.get(job_id)
+        if not isinstance(expected, dict):
+            errors.append(f"Run plan has no frozen fields for {job_id}")
+            continue
+        current = parameter_matrix_frozen_fields(row)
+        pending_top_rank = str(expected.get("config_fingerprint", "")).startswith("pending_after_top_rank:")
+        for field, expected_value in expected.items():
+            if pending_top_rank and field in PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS:
+                continue
+            if current.get(field, "") != str(expected_value):
+                errors.append(f"{job_id} frozen field {field} changed after plan creation")
     summary: dict[str, dict[str, str]] = {}
     for result in summary_rows:
         job_id = result.get("job_id", "")
@@ -12983,6 +13345,24 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     for row in rows:
         result = summary.get(row["job_id"])
         if not result:
+            continue
+        incoming_status = result.get("status", row["status"])
+        warehouse_dir = result.get("warehouse_dir", "").strip()
+        incoming_artifact = f"warehouse_dir:{warehouse_dir}" if warehouse_dir else ""
+        if row.get("status") in PARAMETER_MATRIX_TERMINAL_STATUSES:
+            same_result = (
+                row.get("status") == incoming_status
+                and row.get("run_id", "") == str(plan.get("run_id", ""))
+                and all(row.get(key, "") == result.get(key, "") for key in ["U", "S", "H", "ZS", "best_epoch"])
+                and row.get("artifact_ref", "") == incoming_artifact
+            )
+            if not same_result:
+                errors.append(f"Refusing to overwrite an existing result for {row['job_id']}")
+            elif incoming_status in {"completed", "failed"}:
+                errors.extend(dynamic_warehouse_result_errors(plan, result))
+            continue
+        if row.get("status") not in {"frozen", "running"}:
+            errors.append(f"{row['job_id']} status {row.get('status')!r} cannot accept a result")
             continue
         resolved_from = result.get("resolved_from_job_id", "").strip()
         if row["config_fingerprint"].startswith("pending_after_top_rank:") and result.get("status") in {
@@ -13002,11 +13382,13 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
             row["config_fingerprint"] = source["config_fingerprint"]
             row["changed_parameters"] = source["changed_parameters"]
             row["duplicate_resolution"] = f"运行时解析为原样复跑 {resolved_from}"
-        row["status"] = result.get("status", row["status"])
+        row["status"] = incoming_status
         for key in ["U", "S", "H", "ZS", "best_epoch"]:
             row[key] = result.get(key, row[key])
         row["run_id"] = str(plan.get("run_id", ""))
-        warehouse_dir = result.get("warehouse_dir", "").strip()
+        if row.get("status") in PARAMETER_MATRIX_TERMINAL_STATUSES:
+            if result.get("status") in {"completed", "failed"}:
+                errors.extend(dynamic_warehouse_result_errors(plan, result))
         if result.get("status") in {"completed", "failed"} and not warehouse_dir:
             errors.append(f"{row['job_id']} has no warehouse_dir in summary.csv")
         elif warehouse_dir:
@@ -13034,6 +13416,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import re
@@ -13317,7 +13700,8 @@ def append_summary(run_dir, row):
         fields = [
             "job_id", "work_item_id", "attempt_id", "phase", "group", "name", "seed", "source_rank",
             "resolved_from_job_id", "status", "U", "S", "H", "ZS", "best_epoch", "gpu",
-            "log_path", "warehouse_dir",
+            "log_path", "warehouse_dir", "artifact_manifest", "artifact_manifest_sha256",
+            "artifact_manifest_job_id", "artifact_manifest_run_id", "artifact_manifest_attempt_id",
         ]
         with summary.open("a", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fields)
@@ -13586,6 +13970,18 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
     return str(attempt_dir)
 
 
+def artifact_manifest_evidence(plan, job, warehouse_dir):
+    manifest_path = Path(warehouse_dir) / "artifact_manifest.json"
+    digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    return {
+        "artifact_manifest": str(manifest_path),
+        "artifact_manifest_sha256": digest,
+        "artifact_manifest_job_id": str(job["job_id"]),
+        "artifact_manifest_run_id": str(plan.get("run_id", "")),
+        "artifact_manifest_attempt_id": str(plan.get("warehouse_attempt_id", "")),
+    }
+
+
 def run_job(run_dir, plan, job, gpu):
     job_id = job["job_id"]
     update_job(run_dir, job_id, status="running", gpu=str(gpu), started_at=utc_now())
@@ -13599,6 +13995,7 @@ def run_job(run_dir, plan, job, gpu):
     worktree = None
     start_ts = time.time()
     warehouse_dir = ""
+    manifest_evidence = {}
     try:
         worktree = ensure_worktree(plan, gpu)
         config_dir = run_dir / "configs"
@@ -13633,9 +14030,11 @@ def run_job(run_dir, plan, job, gpu):
             ]
         code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
         warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
+        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir)
         if code != 0:
             row = {
                 **job,
+                **manifest_evidence,
                 "status": "failed",
                 "gpu": gpu,
                 "resolved_from_job_id": resolved_from,
@@ -13649,7 +14048,7 @@ def run_job(run_dir, plan, job, gpu):
 
         metrics = parse_metrics(log_path)
         status = "completed" if metrics.get("H") else "failed"
-        row = {**job, **metrics, "status": status, "gpu": gpu, "resolved_from_job_id": resolved_from, "log_path": str(log_path), "warehouse_dir": warehouse_dir}
+        row = {**job, **metrics, **manifest_evidence, "status": status, "gpu": gpu, "resolved_from_job_id": resolved_from, "log_path": str(log_path), "warehouse_dir": warehouse_dir}
         update_job(run_dir, job_id, status=status, returncode=code, log_path=str(log_path), resolved_from_job_id=resolved_from, metrics=metrics, warehouse_dir=warehouse_dir)
         append_summary(run_dir, row)
         append_jsonl(run_dir / "events.jsonl", {"time": utc_now(), "event": f"job_{status}", "job_id": job_id, "gpu": gpu, "metrics": metrics, "warehouse_dir": warehouse_dir})
@@ -13688,8 +14087,10 @@ def run_job(run_dir, plan, job, gpu):
                 encoding="utf-8",
             )
             warehouse_dir = str(attempt_dir)
+        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir)
         row = {
             **job,
+            **manifest_evidence,
             "status": "failed",
             "gpu": gpu,
             "resolved_from_job_id": resolved_from,
@@ -13818,7 +14219,9 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         for job in jobs:
             job["attempt_id"] = warehouse_attempt_id
 
+    run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     parameter_matrix_path = ""
+    parameter_matrix_frozen_rows: dict[str, dict[str, str]] = {}
     if formal_evidence and parameter_matrix_policy_is_active():
         if not warehouse_attempt_id:
             raise WorkflowError(
@@ -13827,6 +14230,9 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             )
         matrix_path = trial_dir / "attempts" / warehouse_attempt_id / PARAMETER_MATRIX_CSV
         rows = read_parameter_matrix(matrix_path)
+        matrix_rel = repo_relative_path(matrix_path, "Formal dynamic routing parameter matrix")
+        if read_text_at_commit(commit, matrix_rel) != read_text(matrix_path):
+            raise WorkflowError("Formal parameter matrix must be committed unchanged in the training commit")
         base_text_for_matrix = read_text_at_commit(
             commit,
             repo_relative_path(base_config, "Formal dynamic routing base config"),
@@ -13836,6 +14242,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             base_config_text=base_text_for_matrix,
             base_version=args.base_version,
             code_ref=args.base_code_tag or args.base_version,
+            run_id=run_id,
         )
         expected_by_job = {row["job_id"]: row for row in expected_rows}
         matrix_errors = validate_parameter_matrix_rows(
@@ -13849,7 +14256,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             expected = expected_by_job.get(row.get("job_id", ""))
             if expected is None:
                 continue
-            for field in ["base_config_sha256", "code_ref", "config_fingerprint", "seed", "repeat_of"]:
+            for field in parameter_matrix_frozen_fields(expected):
                 if row.get(field, "") != expected.get(field, ""):
                     matrix_errors.append(
                         f"{row.get('job_id')} {field} differs from the frozen batch plan; "
@@ -13865,8 +14272,11 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         if matrix_errors:
             raise WorkflowError("Formal parameter-matrix gate failed:\n" + "\n".join(matrix_errors))
         parameter_matrix_path = display_path(matrix_path)
+        parameter_matrix_frozen_rows = {
+            row["job_id"]: parameter_matrix_frozen_fields(row)
+            for row in rows
+        }
 
-    run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
     run_dir = run_root / run_id
     if run_dir.exists():
@@ -13911,6 +14321,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "warehouse_scope": "attempt_run" if warehouse_attempt_id else "legacy_job_attempt",
         "warehouse_attempt_id": warehouse_attempt_id,
         "parameter_matrix": parameter_matrix_path,
+        "parameter_matrix_frozen_rows": parameter_matrix_frozen_rows,
         "confirmation_policy": confirmation_policy_for_profile(
             args.profile,
             target_h=str(getattr(args, "restore_target_h", "") or ""),
@@ -14670,12 +15081,37 @@ def build_parser() -> argparse.ArgumentParser:
     freeze_matrix.add_argument("--job-id", required=True)
     freeze_matrix.set_defaults(func=cmd_freeze_parameter_matrix)
 
+    init_matrix = sub.add_parser(
+        "init-parameter-matrix",
+        help="为版本实验或普通 module attempt 建立一行参数矩阵草稿",
+    )
+    init_matrix.add_argument("--directory", required=True)
+    init_matrix.add_argument("--job-id", required=True)
+    init_matrix.add_argument("--work-item-id", default="")
+    init_matrix.add_argument(
+        "--job-kind",
+        required=True,
+        choices=["param_tune", "ablation", "control", "repeat", "confirmation"],
+    )
+    init_matrix.add_argument("--base-version", required=True)
+    init_matrix.add_argument("--code-ref", default="")
+    init_matrix.add_argument("--base-config", required=True)
+    init_matrix.add_argument("--config", required=True)
+    init_matrix.add_argument("--seed", default="")
+    init_matrix.add_argument("--group", default="")
+    init_matrix.add_argument("--name", default="")
+    init_matrix.add_argument("--purpose", default="")
+    init_matrix.add_argument("--repeat-of", default="")
+    init_matrix.add_argument("--run-id", default="")
+    init_matrix.set_defaults(func=cmd_init_parameter_matrix)
+
     prepare_dynamic_matrix = sub.add_parser(
         "prepare-dynamic-routing-matrix",
         help="在 pre-run freeze 前生成动态路由批次的逐任务参数表",
     )
     prepare_dynamic_matrix.add_argument("--trial-dir", required=True)
     prepare_dynamic_matrix.add_argument("--attempt-id", required=True)
+    prepare_dynamic_matrix.add_argument("--run-id", default="")
     prepare_dynamic_matrix.add_argument("--base-config", default="")
     prepare_dynamic_matrix.add_argument("--base-version", default="v5")
     prepare_dynamic_matrix.add_argument("--base-code-tag", default="")
@@ -14730,6 +15166,8 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--old-value", default="")
     record.add_argument("--new-value", default="")
     record.add_argument("--matrix-job-id", default="")
+    record.add_argument("--pre-run-freeze-commit", default="")
+    record.add_argument("--legacy-summary-only", action="store_true")
     record.set_defaults(func=cmd_record_result)
 
     record_module = sub.add_parser(
@@ -14754,6 +15192,7 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--old-value", default="")
     record_module.add_argument("--new-value", default="")
     record_module.add_argument("--matrix-job-id", default="")
+    record_module.add_argument("--legacy-summary-only", action="store_true")
     record_module.add_argument(
         "--decision",
         default="keep",

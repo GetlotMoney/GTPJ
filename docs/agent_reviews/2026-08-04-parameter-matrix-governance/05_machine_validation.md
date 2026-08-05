@@ -7,9 +7,7 @@
 
 `python -m py_compile workflow\\gtpj_workflow.py tests\\test_gtpj_workflow.py`
 
-参数表专项测试共 7 项通过，覆盖：真实参数行读取、动态路由建表和回写、阅读版过期检查、跨版本重复判断、Top-Rank 解析、结果回写门禁，以及多行逐步冻结。
-
-已有流程回归测试共 5 项通过，覆盖调参结果记录、工作目录状态、动态路由计划和运行产物。
+第一次实现的参数表专项测试共 7 项通过，已有流程回归测试共 5 项通过。
 
 `python workflow\\gtpj_workflow.py validate`
 
@@ -19,7 +17,19 @@
 
 `git diff --check`
 
-以上命令均通过。
+第一次检查时，后续独立审核发现基础提交相对目标提交仍有两处空白格式问题，因此原先“以上命令均通过”的说法不完整，不能作为最终放行依据。
+
+## 2026-08-05 修复后复验
+
+- `python -m unittest -v`：198 项全部通过。
+- 新增边界覆盖：完成行不能重复开跑、旧摘要不能冒充正式结果、CSV 多余单元格拒绝、普通 Attempt 建表入口、Warehouse 路径和清单身份、正式批次全部冻结字段核对、相同结果幂等同步与不同结果防覆盖。
+- `python -m py_compile workflow\gtpj_workflow.py`：通过。
+- `python workflow\gtpj_workflow.py validate`：通过。
+- `python workflow\gtpj_workflow.py validate-workflow-consistency`：通过。
+- `python workflow\gtpj_workflow.py audit-boundary`：通过。
+- `git diff --check`：通过。
+
+最终是否放行以新的三轮审核包为准。
 
 ## 验证范围说明
 

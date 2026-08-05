@@ -2208,7 +2208,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         with (matrix_dir / "PARAMETER_MATRIX.csv").open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual(["DR-001", "DR-002", "DR-003"], [row["job_id"] for row in rows])
-        self.assertTrue(all(row["status"] == "planned" for row in rows))
+        self.assertTrue(all(row["status"] == "frozen" for row in rows))
         self.assertTrue(all(row["config_fingerprint"] for row in rows))
         view = (matrix_dir / "PARAMETER_MATRIX.md").read_text(encoding="utf-8")
         self.assertIn("| DR-001 |", view)
@@ -2249,6 +2249,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             trial_dir,
             "--attempt-id",
             "ATTEMPT-009",
+            "--run-id",
+            "RUN-TEST-MATRIX-SYNC",
             "--profile",
             "dr035-min3-confirm",
             "--jobs",
@@ -2279,8 +2281,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
         run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC"
         self._write(
             ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC/summary.csv",
-            "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir\n"
-            "DR-001,completed,70.1,72.2,71.1,73.3,12,,/warehouse/RUN-TEST-MATRIX-SYNC/DR-001\n",
+            "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir,"
+            "artifact_manifest,artifact_manifest_sha256,artifact_manifest_job_id,"
+            "artifact_manifest_run_id,artifact_manifest_attempt_id\n"
+            "DR-001,completed,70.1,72.2,71.1,73.3,12,,"
+            "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/"
+            "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001,"
+            "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/"
+            "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001/artifact_manifest.json,"
+            f"{'a' * 64},DR-001,RUN-TEST-MATRIX-SYNC,ATTEMPT-009\n",
         )
 
         code, stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
@@ -2294,7 +2303,22 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("completed", rows[0]["status"])
         self.assertEqual("71.1", rows[0]["H"])
         self.assertEqual("RUN-TEST-MATRIX-SYNC", rows[0]["run_id"])
-        self.assertEqual("warehouse_dir:/warehouse/RUN-TEST-MATRIX-SYNC/DR-001", rows[0]["artifact_ref"])
+        self.assertEqual(
+            "warehouse_dir:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/"
+            "TRIAL-001/ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001",
+            rows[0]["artifact_ref"],
+        )
+        code, _stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        summary_path = run_dir / "summary.csv"
+        self._write(
+            str(summary_path.relative_to(self.repo)).replace("\\", "/"),
+            summary_path.read_text(encoding="utf-8").replace(",71.1,73.3,", ",71.2,73.3,"),
+        )
+        code, _stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
+        self.assertEqual(1, code)
+        self.assertIn("Refusing to overwrite an existing result", stderr)
 
     def test_parameter_matrix_refresh_rejects_a_stale_reading_view(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -2314,7 +2338,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("", stderr)
         matrix_path = f"{trial_dir}/attempts/ATTEMPT-010/PARAMETER_MATRIX.csv"
         csv_path = self.repo / matrix_path
-        self._write(matrix_path, csv_path.read_text(encoding="utf-8").replace(",planned,", ",running,", 1))
+        self._write(matrix_path, csv_path.read_text(encoding="utf-8").replace(",frozen,", ",running,", 1))
 
         code, _stdout, stderr = self._run_main("validate-parameter-matrix", "--path", matrix_path)
         self.assertEqual(1, code)
@@ -2386,9 +2410,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 {
                     "run_id": "RUN-TEST-TOP-RANK-SYNC",
                     "trial_dir": trial_dir,
+                    "warehouse_root": "/warehouse",
+                    "base_version": "v5",
+                    "trial_id": "TRIAL-001",
                     "warehouse_attempt_id": "ATTEMPT-011",
                     "formal_evidence": True,
                     "parameter_matrix": str(matrix_path.relative_to(self.repo)).replace("\\", "/"),
+                    "parameter_matrix_frozen_rows": {
+                        row["job_id"]: self.module.parameter_matrix_frozen_fields(row) for row in before_rows
+                    },
                     "jobs": [{"job_id": row["job_id"]} for row in before_rows],
                 }
             ),
@@ -2419,8 +2449,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self._write(
             ".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/summary.csv",
-            "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir\n"
-            f"{pending['job_id']},completed,70,71,70.5,72,9,DR-001,/warehouse/{pending['job_id']}\n",
+            "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir,"
+            "artifact_manifest,artifact_manifest_sha256,artifact_manifest_job_id,"
+            "artifact_manifest_run_id,artifact_manifest_attempt_id\n"
+            f"{pending['job_id']},completed,70,71,70.5,72,9,DR-001,"
+            f"/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
+            f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']},"
+            f"/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
+            f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']}/artifact_manifest.json,"
+            f"{'a' * 64},{pending['job_id']},RUN-TEST-TOP-RANK-SYNC,ATTEMPT-011\n",
         )
         code, stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
         self.assertEqual(0, code)
@@ -2431,7 +2468,11 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("DR-001", resolved["repeat_of"])
         self.assertEqual(source["config_fingerprint"], resolved["config_fingerprint"])
         self.assertEqual(source["changed_parameters"], resolved["changed_parameters"])
-        self.assertEqual(f"warehouse_dir:/warehouse/{pending['job_id']}", resolved["artifact_ref"])
+        self.assertEqual(
+            f"warehouse_dir:/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
+            f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']}",
+            resolved["artifact_ref"],
+        )
 
     def test_record_result_requires_a_ready_matrix_and_syncs_the_matching_job(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-001-topo008")
@@ -2476,12 +2517,14 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "5",
             "--log",
             "train_log/tune.log",
+            "--pre-run-freeze-commit",
+            "HEAD",
             "--command",
             "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
         )
         code, _stdout, stderr = self._run_main(*record_args)
         self.assertEqual(1, code)
-        self.assertIn("still draft", stderr)
+        self.assertIn("cannot accept a formal result", stderr)
 
         matrix_path = self.repo / "experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv"
         rows = self.module.read_parameter_matrix(matrix_path)
@@ -2511,6 +2554,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertIn("parameter-matrix-frozen", stdout)
+        no_commit_args = list(record_args)
+        freeze_arg = no_commit_args.index("--pre-run-freeze-commit")
+        del no_commit_args[freeze_arg : freeze_arg + 2]
+        code, _stdout, stderr = self._run_main(*no_commit_args)
+        self.assertEqual(1, code)
+        self.assertIn("requires --pre-run-freeze-commit", stderr)
+        self._commit_all("freeze parameter matrix before result")
         bad_seed_args = list(record_args)
         bad_seed_args[bad_seed_args.index("5")] = "6"
         code, _stdout, stderr = self._run_main(*bad_seed_args)
@@ -2536,8 +2586,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--job-id",
             "TUNE-001-001",
         )
-        self.assertEqual(0, code)
-        self.assertEqual("", stderr)
+        self.assertEqual(1, code)
+        self.assertIn("only freeze a draft row once", stderr)
         code, stdout, stderr = self._run_main(*record_args)
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
@@ -2547,7 +2597,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("71.0", rows[0]["H"])
         code, _stdout, stderr = self._run_main(*record_args)
         self.assertEqual(1, code)
-        self.assertIn("planned or running", stderr)
+        self.assertIn("frozen or running", stderr)
 
     def test_freeze_parameter_matrix_allows_multi_job_rows_to_be_frozen_one_at_a_time(self) -> None:
         matrix_dir = self.repo / "experiments/v1/tune/TUNE-002_batch"
@@ -2606,7 +2656,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("", stderr)
         self.assertIn("parameter-matrix-frozen", stdout)
         rows = self.module.read_parameter_matrix(matrix_path)
-        self.assertEqual("planned", rows[0]["status"])
+        self.assertEqual("frozen", rows[0]["status"])
         self.assertEqual("draft", rows[1]["status"])
 
         code, _stdout, stderr = self._run_main(
@@ -2631,6 +2681,172 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertIn("parameter-matrix-validate-ok", stdout)
+
+    def test_parameter_matrix_ready_gate_rejects_terminal_and_legacy_rows(self) -> None:
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[
+                {
+                    "job_id": "JOB-001",
+                    "work_item_id": "WORK-001",
+                    "job_kind": "ablation",
+                    "group": "local-branch",
+                    "name": "baseline",
+                    "seed": 5,
+                    "config_updates": {"local_weight": 0.2},
+                }
+            ],
+            base_config_text="version: v5\nlocal_weight:\n  value: 0.2\n",
+            base_version="v5",
+            code_ref="v5",
+            run_id="RUN-READY-GATE",
+        )
+        rows[0]["status"] = "completed"
+        completed_errors = self.module.validate_parameter_matrix_rows(rows, require_ready=True)
+        self.assertIn("must be frozen and unused", "\n".join(completed_errors))
+        rows[0]["status"] = "legacy_summary_only"
+        self.assertEqual([], self.module.validate_parameter_matrix_rows(rows))
+        ready_errors = self.module.validate_parameter_matrix_rows(rows, require_ready=True)
+        record_errors = self.module.validate_parameter_matrix_rows(rows, require_recordable=True)
+        self.assertIn("must be frozen and unused", "\n".join(ready_errors))
+        self.assertIn("cannot accept a formal result", "\n".join(record_errors))
+
+    def test_parameter_matrix_reader_rejects_cells_outside_the_fixed_header(self) -> None:
+        matrix_dir = self.repo / "experiments/v5/ablation/ABLATION-900_extra-cell"
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "JOB-001", "seed": 5, "config_updates": {}}],
+            base_config_text="version: v5\n",
+            base_version="v5",
+            code_ref="v5",
+        )
+        matrix_path, _view = self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="extra-cell test",
+        )
+        matrix_path.write_text(matrix_path.read_text(encoding="utf-8").rstrip() + ",unexpected\n", encoding="utf-8")
+        with self.assertRaisesRegex(self.module.WorkflowError, "cells outside the fixed header"):
+            self.module.read_parameter_matrix(matrix_path)
+
+    def test_init_parameter_matrix_supports_an_ordinary_module_attempt(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        attempt_dir = f"{trial_dir}/attempts/ATTEMPT-012"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\nrandom_seed:\n  value: 5\nalpha:\n  value: 0.1\n")
+        self._write(
+            f"{attempt_dir}/config.yaml",
+            "version: v5\nrandom_seed:\n  value: 5\nalpha:\n  value: 0.2\n",
+        )
+        code, stdout, stderr = self._run_main(
+            "init-parameter-matrix",
+            "--directory",
+            attempt_dir,
+            "--job-id",
+            "ATTEMPT-012-001",
+            "--job-kind",
+            "ablation",
+            "--base-version",
+            "v5",
+            "--base-config",
+            f"{trial_dir}/config.yaml",
+            "--config",
+            f"{attempt_dir}/config.yaml",
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        self.assertIn("parameter-matrix-initialized", stdout)
+        matrix_path = self.repo / attempt_dir / "PARAMETER_MATRIX.csv"
+        rows = self.module.read_parameter_matrix(matrix_path)
+        self.assertEqual("draft", rows[0]["status"])
+        self.assertIn("alpha", rows[0]["changed_parameters"])
+        code, _stdout, stderr = self._run_main(
+            "freeze-parameter-matrix",
+            "--path",
+            str(matrix_path),
+            "--config",
+            f"{attempt_dir}/config.yaml",
+            "--job-id",
+            "ATTEMPT-012-001",
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+
+    def test_dynamic_warehouse_result_must_match_frozen_identity_and_manifest(self) -> None:
+        plan = {
+            "warehouse_root": "/warehouse",
+            "base_version": "v5",
+            "trial_id": "TRIAL-001",
+            "warehouse_attempt_id": "ATTEMPT-013",
+            "run_id": "RUN-WAREHOUSE-GATE",
+        }
+        result = {
+            "job_id": "DR-001",
+            "warehouse_dir": "/warehouse/arbitrary",
+        }
+        self.assertIn("does not match", "\n".join(self.module.dynamic_warehouse_result_errors(plan, result)))
+        expected = "/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-013/RUN-WAREHOUSE-GATE/DR-001"
+        result["warehouse_dir"] = expected
+        self.assertIn("artifact_manifest", "\n".join(self.module.dynamic_warehouse_result_errors(plan, result)))
+        result.update(
+            {
+                "artifact_manifest": expected + "/artifact_manifest.json",
+                "artifact_manifest_sha256": "a" * 64,
+                "artifact_manifest_job_id": "DR-001",
+                "artifact_manifest_run_id": "RUN-WAREHOUSE-GATE",
+                "artifact_manifest_attempt_id": "ATTEMPT-013",
+            }
+        )
+        self.assertEqual([], self.module.dynamic_warehouse_result_errors(plan, result))
+
+    def test_formal_dynamic_plan_rejects_a_changed_frozen_field(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze formal changed-field fixture")
+        code, _stdout, stderr = self._run_main(
+            "prepare-dynamic-routing-matrix",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-014",
+            "--run-id",
+            "RUN-CHANGED-FROZEN-FIELD",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        matrix_path = self.repo / trial_dir / "attempts/ATTEMPT-014/PARAMETER_MATRIX.csv"
+        rows = self.module.read_parameter_matrix(matrix_path)
+        rows[0]["base_version"] = "v4"
+        self.module.write_parameter_matrix(
+            directory=matrix_path.parent,
+            title=matrix_path.parent.name,
+            rows=rows,
+            source_note="changed frozen field test",
+            overwrite=True,
+        )
+        self._commit_all("commit altered frozen field fixture")
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-CHANGED-FROZEN-FIELD",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--attempt-id",
+            "ATTEMPT-014",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("base_version differs from the frozen batch plan", stderr)
 
     def test_plan_dynamic_routing_batch_writes_start_script_with_lf_newlines(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
