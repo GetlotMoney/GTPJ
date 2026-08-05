@@ -10,6 +10,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -3575,6 +3576,127 @@ log:v1:module_trial:TRIAL-001:attempt-001
             .startswith("GTPJ_TRAINING_PROCESS_FINISHED ")
         )
 
+    def test_finished_training_waits_for_a_short_matrix_lock_before_sealing(self) -> None:
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-775_seal-wait"
+        config_path = matrix_dir / "config.yaml"
+        matrix_path = matrix_dir / "PARAMETER_MATRIX.csv"
+        lock_path = self.module.parameter_matrix_lock_path(matrix_path)
+        self._write(
+            str(config_path.relative_to(self.repo)).replace("\\", "/"),
+            "version: v1\nrandom_seed:\n  value: 5\n",
+        )
+        cleanup_code = (
+            "import time\n"
+            "from pathlib import Path\n"
+            "time.sleep(0.3)\n"
+            f"Path({str(lock_path)!r}).unlink(missing_ok=True)\n"
+        )
+        self._write(
+            "train_GTPJ_CUB.py",
+            "import subprocess\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "print('Best Results @ Epoch 2')\n"
+            "print('  GZSL-U : 70.0%')\n"
+            "print('  GZSL-S : 72.0%')\n"
+            "print('  GZSL-H : 71.0%')\n"
+            "print('  ZSL : 73.0%')\n"
+            f"lock_path = Path({str(lock_path)!r})\n"
+            "lock_path.write_text('temporary external writer\\n', encoding='utf-8')\n"
+            f"subprocess.Popen([sys.executable, '-c', {cleanup_code!r}], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n",
+        )
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "TUNE-775-001", "seed": 5, "config_updates": {}}],
+            base_config_text=config_path.read_text(encoding="utf-8"),
+            base_version="v1",
+            code_ref="HEAD",
+            run_id="",
+        )
+        rows[0]["config_snapshot_ref"] = "config.yaml"
+        rows[0]["config_fingerprint"] = self.module.parameter_matrix_sha256(
+            config_path.read_text(encoding="utf-8")
+        )
+        rows[0]["status"] = "frozen"
+        self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="seal wait test",
+        )
+        self._commit_all("freeze seal wait fixture")
+
+        receipt_args = (
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_path),
+            "--config",
+            str(config_path),
+            "--job-id",
+            "TUNE-775-001",
+            "--run-id",
+            "RUN-SEAL-WAIT",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-775_seal-wait/config.yaml",
+            "--receipt",
+            "train_log/seal-wait.json",
+            "--log",
+            "train_log/seal-wait.log",
+        )
+        code, _stdout, stderr = self._run_main(*receipt_args)
+
+        for _ in range(100):
+            if not lock_path.exists():
+                break
+            time.sleep(0.01)
+        self.assertEqual(0, code, stderr)
+        row = self.module.read_parameter_matrix(matrix_path)[0]
+        self.assertEqual("0", row["run_exit_code"])
+        self.assertTrue(row["run_log_sha256"])
+        self.assertFalse(lock_path.exists())
+
+        recovery_code, recovery_stdout, recovery_stderr = self._run_main(*receipt_args)
+        self.assertEqual(0, recovery_code, recovery_stderr)
+        self.assertIn("finished-run-recovered", recovery_stdout)
+        self.assertEqual(row, self.module.read_parameter_matrix(matrix_path)[0])
+
+        log_path = self.repo / "train_log/seal-wait.log"
+        log_path.write_text(
+            log_path.read_text(encoding="utf-8").replace("  GZSL-H : 71.0%", "  GZSL-H : 99.0%"),
+            encoding="utf-8",
+        )
+        tamper_code, _tamper_stdout, tamper_stderr = self._run_main(*receipt_args)
+        self.assertEqual(1, tamper_code)
+        self.assertIn("already-sealed log hash", tamper_stderr)
+
+    def test_training_output_without_final_newline_keeps_finish_marker_on_its_own_line(self) -> None:
+        self._write(
+            "no_final_newline.py",
+            "print('Best Results @ Epoch 2')\n"
+            "print('  GZSL-U : 70.0%')\n"
+            "print('  GZSL-S : 72.0%')\n"
+            "print('  GZSL-H : 71.0%')\n"
+            "print('  ZSL : 73.0%', end='')\n",
+        )
+        log_path = self.repo / "train_log/no-final-newline.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        process_evidence = self.module.run_training_with_start_receipt(
+            f"{sys.executable} no_final_newline.py",
+            log_path,
+        )
+
+        self.assertEqual(0, process_evidence["returncode"])
+        log_lines = log_path.read_text(encoding="utf-8").splitlines()
+        self.assertEqual("  ZSL : 73.0%", log_lines[-2])
+        self.assertTrue(log_lines[-1].startswith("GTPJ_TRAINING_PROCESS_FINISHED "))
+        captured = self.module.captured_training_log_text(
+            log_path,
+            f"{sys.executable} no_final_newline.py",
+        )
+        self.assertEqual("73.0", self.module.parse_training_log_text(captured, "no-newline test")["ZS"])
+
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
         code, _stdout, stderr = self._run_main(
@@ -3854,6 +3976,129 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+
+    def test_record_module_attempt_resolves_head_to_the_frozen_commit(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        attempt_dir = f"{trial_dir}/attempts/ATTEMPT-001"
+        self._write(
+            f"{trial_dir}/README.md",
+            "# Trial\n\n"
+            "base_version: v1\n"
+            "base_code_tag: v1\n"
+            "code_branch: test-module-attempt\n",
+        )
+        self._write(
+            f"{trial_dir}/ATTEMPTS.md",
+            "# Attempts\n\n"
+            "| Attempt | Type | Change | Old | New | Seed | U | S | H | ZS | Best epoch | Log | Decision | Directory |\n"
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|\n\n"
+            "## Notes\n",
+        )
+        self._write(
+            f"{attempt_dir}/config.yaml",
+            "version: v1\nrandom_seed:\n  value: 5\n",
+        )
+        self._write(
+            "train_log/module-head.log",
+            "Best Results @ Epoch 2\n"
+            "  GZSL-U : 70.0%\n"
+            "  GZSL-S : 72.0%\n"
+            "  GZSL-H : 71.0%\n"
+            "  ZSL : 73.0%\n",
+        )
+        warehouse_root = self.repo / "warehouse"
+        self._write(".gtpj/local_paths.yaml", f"warehouse_root: {warehouse_root.as_posix()}\n")
+        self._commit_all("freeze module attempt fixture")
+        frozen_commit = self._git("rev-parse", "HEAD").stdout.strip()
+
+        code, _stdout, stderr = self._run_main(
+            "record-module-attempt",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-001",
+            "--log",
+            "train_log/module-head.log",
+            "--config",
+            f"{attempt_dir}/config.yaml",
+            "--command",
+            f"python train_GTPJ_CUB.py --config {attempt_dir}/config.yaml",
+            "--run-id",
+            "RUN-MODULE-HEAD",
+            "--seed",
+            "5",
+            "--version",
+            "v1",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--decision",
+            "keep",
+        )
+
+        self.assertEqual(0, code, stderr)
+        manifest = (self.repo / attempt_dir / "manifest.yaml").read_text(encoding="utf-8")
+        result = (self.repo / attempt_dir / "result.yaml").read_text(encoding="utf-8")
+        runner_receipt = (
+            warehouse_root
+            / "runs/v1/module_trial/TRIAL-001/attempt-001/receipts/runner_console_conda.log"
+        ).read_text(encoding="utf-8")
+        self.assertIn(f'code_commit: "{frozen_commit}"', manifest)
+        self.assertIn(f'pre_run_freeze_commit: "{frozen_commit}"', manifest)
+        self.assertIn(f'pre_run_freeze_commit: "{frozen_commit}"', result)
+        self.assertIn(f"started_from_freeze_commit: {frozen_commit}", runner_receipt)
+
+    def test_record_module_attempt_checks_attempts_ledger_before_writing_any_evidence(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_missing-ledger"
+        attempt_dir = f"{trial_dir}/attempts/ATTEMPT-001"
+        self._write(
+            f"{trial_dir}/README.md",
+            "# Trial\n\nbase_version: v1\nbase_code_tag: v1\ncode_branch: missing-ledger-test\n",
+        )
+        self._write(f"{attempt_dir}/config.yaml", "version: v1\nrandom_seed:\n  value: 5\n")
+        self._write(
+            "train_log/module-missing-ledger.log",
+            "Best Results @ Epoch 2\n"
+            "  GZSL-U : 70.0%\n"
+            "  GZSL-S : 72.0%\n"
+            "  GZSL-H : 71.0%\n"
+            "  ZSL : 73.0%\n",
+        )
+        warehouse_root = self.repo / "warehouse"
+        self._write(".gtpj/local_paths.yaml", f"warehouse_root: {warehouse_root.as_posix()}\n")
+        self._commit_all("freeze missing attempts-ledger fixture")
+
+        code, _stdout, stderr = self._run_main(
+            "record-module-attempt",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-001",
+            "--log",
+            "train_log/module-missing-ledger.log",
+            "--config",
+            f"{attempt_dir}/config.yaml",
+            "--command",
+            f"python train_GTPJ_CUB.py --config {attempt_dir}/config.yaml",
+            "--run-id",
+            "RUN-MISSING-LEDGER",
+            "--seed",
+            "5",
+            "--version",
+            "v1",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--decision",
+            "keep",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("Missing attempts ledger", stderr)
+        self.assertFalse((self.repo / attempt_dir / "manifest.yaml").exists())
+        self.assertFalse((self.repo / attempt_dir / "result.yaml").exists())
+        self.assertFalse((warehouse_root / "ARTIFACT_REGISTRY.yaml").exists())
+        self.assertFalse(
+            (warehouse_root / "runs/v1/module_trial/TRIAL-001/attempt-001/logs/module-missing-ledger.log").exists()
+        )
 
     def test_dynamic_warehouse_result_must_match_frozen_identity_and_manifest(self) -> None:
         plan = {

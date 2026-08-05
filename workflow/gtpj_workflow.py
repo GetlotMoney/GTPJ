@@ -21,6 +21,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -5570,6 +5571,9 @@ def _cmd_record_module_attempt_locked(args: argparse.Namespace) -> int:
     if not trial_dir.exists():
         raise WorkflowError(f"Missing trial directory: {display_path(trial_dir)}")
     require_path_inside(trial_dir, REPO_ROOT / "experiments" / "module_trials", "trial-dir")
+    attempts_path = trial_dir / "ATTEMPTS.md"
+    if not attempts_path.exists():
+        raise WorkflowError(f"Missing attempts ledger: {rel(attempts_path)}")
     trial_id, slug = parse_trial_folder_name(trial_dir)
     attempt_upper, attempt_lower = normalize_attempt_ids(args.attempt_id)
     attempt_dir = trial_dir / "attempts" / attempt_upper
@@ -5590,9 +5594,10 @@ def _cmd_record_module_attempt_locked(args: argparse.Namespace) -> int:
     config_values = read_config_values(config_path)
     seed = args.seed or config_values.get("random_seed", "")
     command = args.command or f"python train_GTPJ_CUB.py --config {rel(config_path)}"
-    pre_run_freeze_commit = args.pre_run_freeze_commit or (
+    pre_run_freeze_ref = args.pre_run_freeze_commit or (
         "" if parameter_matrix_policy_is_active() else git(["rev-parse", "HEAD"], check=False)
     )
+    pre_run_freeze_commit = resolve_commit(pre_run_freeze_ref) if pre_run_freeze_ref.strip() else ""
     recorded_at = utc_now()
     matrix_path: Path | None = None
     matrix_rows: list[dict[str, str]] = []
@@ -12812,6 +12817,8 @@ PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS = {
 }
 PARAMETER_MATRIX_TERMINAL_STATUSES = {"completed", "failed", "skipped", "cancelled"}
 _HELD_PARAMETER_MATRIX_LOCKS: set[str] = set()
+PARAMETER_MATRIX_FINISH_LOCK_TIMEOUT_SECONDS = 30.0
+PARAMETER_MATRIX_LOCK_POLL_INTERVAL_SECONDS = 0.05
 
 
 def parameter_matrix_lock_path(matrix_path: Path) -> Path:
@@ -12825,6 +12832,8 @@ def parameter_matrix_mutation_lock(
     operation: str,
     job_id: str = "",
     run_id: str = "",
+    wait_timeout_seconds: float = 0.0,
+    poll_interval_seconds: float = PARAMETER_MATRIX_LOCK_POLL_INTERVAL_SECONDS,
 ):
     """Serialize every CSV/Markdown mutation, including nested writer calls."""
     lock_path = parameter_matrix_lock_path(matrix_path)
@@ -12833,11 +12842,17 @@ def parameter_matrix_mutation_lock(
         yield
         return
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with lock_path.open("x", encoding="utf-8") as lock_handle:
-            lock_handle.write(f"operation={operation}\njob_id={job_id}\nrun_id={run_id}\n")
-    except FileExistsError as exc:
-        raise WorkflowError("another process is already updating this parameter matrix") from exc
+    deadline = time.monotonic() + max(0.0, wait_timeout_seconds)
+    while True:
+        try:
+            with lock_path.open("x", encoding="utf-8") as lock_handle:
+                lock_handle.write(f"operation={operation}\njob_id={job_id}\nrun_id={run_id}\n")
+            break
+        except FileExistsError as exc:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise WorkflowError("another process is already updating this parameter matrix") from exc
+            time.sleep(min(max(0.001, poll_interval_seconds), remaining))
     _HELD_PARAMETER_MATRIX_LOCKS.add(lock_key)
     try:
         yield
@@ -13726,12 +13741,16 @@ def run_training_with_start_receipt(command: str, log_path: Path) -> dict[str, o
             ).encode("utf-8")
         )
         log_handle.flush()
+        last_output_byte = b""
         with process.stdout:
             for chunk in iter(lambda: process.stdout.read(1024 * 1024), b""):
                 log_handle.write(chunk)
+                last_output_byte = chunk[-1:]
                 log_handle.flush()
         return_code = process.wait()
         finished_at = utc_now()
+        if last_output_byte not in {b"", b"\n"}:
+            log_handle.write(b"\n")
         log_handle.write(
             (
                 "GTPJ_TRAINING_PROCESS_FINISHED "
@@ -13758,6 +13777,8 @@ def run_start_receipt_errors(
     run_id: str,
     pre_run_freeze_commit: str,
     command: str,
+    require_success: bool = True,
+    allowed_statuses: set[str] | None = None,
 ) -> list[str]:
     if not str(receipt_path).strip() or not receipt_path.exists() or not receipt_path.is_file():
         return ["formal result requires a real --run-start-receipt file created before training"]
@@ -13802,7 +13823,8 @@ def run_start_receipt_errors(
     except ValueError:
         errors.append("run-start receipt started_at must be a timezone-aware ISO timestamp")
     receipt_sha256 = sha256_file(receipt_path)
-    if row.get("status") != "running":
+    accepted_statuses = allowed_statuses or {"running"}
+    if row.get("status") not in accepted_statuses:
         errors.append("parameter-matrix row is not bound to an active run-start receipt")
     if row.get("run_id", "") != run_id:
         errors.append("parameter-matrix run_id does not match the run-start receipt")
@@ -13836,22 +13858,125 @@ def run_start_receipt_errors(
         errors.append("training process start/finish markers do not name the same process")
     if len(finish_matches) == 1 and (not log_lines or finish_matches[0].string != log_lines[-1]):
         errors.append("training process finish marker must be the last line of the sealed log")
-    if len(finish_matches) == 1 and finish_matches[0].group(2) != "0":
+    process_return_code = finish_matches[0].group(2) if len(finish_matches) == 1 else ""
+    if require_success and process_return_code and process_return_code != "0":
         errors.append("training process finished with a non-zero exit code")
-    if row.get("run_exit_code", "") != "0":
+    if process_return_code and row.get("run_exit_code", "") != process_return_code:
+        errors.append("parameter-matrix run_exit_code does not match the sealed training process")
+    elif require_success and row.get("run_exit_code", "") != "0":
         errors.append("parameter-matrix run_exit_code does not prove a successful process")
     if row.get("run_log_sha256", "") != sha256_file(log_path):
         errors.append("parameter-matrix run_log_sha256 does not match the sealed training log")
-    try:
-        parse_training_log_text(
-            captured_training_log_text(log_path, command),
-            f"workflow-captured output in {display_path(log_path)}",
-        )
-    except WorkflowError as exc:
-        errors.append(str(exc))
+    if require_success:
+        try:
+            parse_training_log_text(
+                captured_training_log_text(log_path, command),
+                f"workflow-captured output in {display_path(log_path)}",
+            )
+        except WorkflowError as exc:
+            errors.append(str(exc))
     if receipt_path.stat().st_mtime > log_path.stat().st_mtime:
         errors.append("run-start receipt was written after the training log")
     return errors
+
+
+def sealed_training_process_evidence(log_path: Path, command: str) -> dict[str, object]:
+    """Read the immutable finish marker needed to seal or recover a completed process."""
+    if not log_path.exists() or not log_path.is_file():
+        raise WorkflowError(f"Missing sealed training log: {display_path(log_path)}")
+    log_lines = read_text(log_path).splitlines()
+    command_sha256 = parameter_matrix_sha256(command)
+    start_pattern = re.compile(
+        rf"^GTPJ_TRAINING_PROCESS_STARTED command_sha256={command_sha256} "
+        r"pid=([1-9][0-9]*) started_at=(\S+)$"
+    )
+    finish_pattern = re.compile(
+        rf"^GTPJ_TRAINING_PROCESS_FINISHED command_sha256={command_sha256} "
+        r"pid=([1-9][0-9]*) returncode=(-?[0-9]+) finished_at=(\S+)$"
+    )
+    start_matches = [match for line in log_lines if (match := start_pattern.fullmatch(line))]
+    finish_matches = [match for line in log_lines if (match := finish_pattern.fullmatch(line))]
+    errors: list[str] = []
+    if len(start_matches) != 1:
+        errors.append("training log has no unique workflow-launched process start marker")
+    if len(finish_matches) != 1:
+        errors.append("training log has no unique workflow-captured process finish marker")
+    if start_matches and finish_matches and start_matches[0].group(1) != finish_matches[0].group(1):
+        errors.append("training process start/finish markers do not name the same process")
+    if len(finish_matches) == 1 and (not log_lines or finish_matches[0].string != log_lines[-1]):
+        errors.append("training process finish marker must be the last line of the sealed log")
+    if errors:
+        raise WorkflowError("Cannot seal the finished training process:\n" + "\n".join(errors))
+    return {
+        "pid": int(finish_matches[0].group(1)),
+        "returncode": int(finish_matches[0].group(2)),
+        "log_sha256": sha256_file(log_path),
+    }
+
+
+def seal_finished_parameter_matrix_run(
+    *,
+    matrix_path: Path,
+    config_path: Path,
+    receipt_path: Path,
+    log_path: Path,
+    job_id: str,
+    run_id: str,
+    pre_run_freeze_commit: str,
+    command: str,
+) -> dict[str, object]:
+    """Idempotently bind a sealed process log back to its already-running row."""
+    process_result = sealed_training_process_evidence(log_path, command)
+    return_code = int(process_result["returncode"])
+    source_note = parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD))
+    with parameter_matrix_mutation_lock(
+        matrix_path,
+        operation="seal-finished-run",
+        job_id=job_id,
+        run_id=run_id,
+        wait_timeout_seconds=PARAMETER_MATRIX_FINISH_LOCK_TIMEOUT_SECONDS,
+    ):
+        current_rows = read_parameter_matrix(matrix_path)
+        current_matches = [item for item in current_rows if item.get("job_id") == job_id]
+        if len(current_matches) != 1:
+            raise WorkflowError("cannot seal the training log because its matrix row changed")
+        current_row = current_matches[0]
+        existing_log_sha256 = current_row.get("run_log_sha256", "")
+        if existing_log_sha256 and existing_log_sha256 != str(process_result["log_sha256"]):
+            raise WorkflowError("cannot replace an already-sealed log hash during finished-run recovery")
+        existing_exit_code = current_row.get("run_exit_code", "")
+        if existing_exit_code and existing_exit_code != str(return_code):
+            raise WorkflowError("cannot replace an already-sealed exit code during finished-run recovery")
+        prospective_row = dict(current_row)
+        prospective_row["run_log_sha256"] = str(process_result["log_sha256"])
+        prospective_row["run_exit_code"] = str(return_code)
+        if return_code != 0:
+            prospective_row["status"] = "failed"
+            prospective_row["decision"] = "process_failed"
+        allowed_statuses = {"running"} if return_code == 0 else {"running", "failed"}
+        errors = run_start_receipt_errors(
+            receipt_path=receipt_path,
+            log_path=log_path,
+            config_path=config_path,
+            row=prospective_row,
+            run_id=run_id,
+            pre_run_freeze_commit=pre_run_freeze_commit,
+            command=command,
+            require_success=return_code == 0,
+            allowed_statuses=allowed_statuses,
+        )
+        if errors:
+            raise WorkflowError("Cannot seal the finished training process:\n" + "\n".join(errors))
+        if current_row != prospective_row:
+            current_row.update(prospective_row)
+            write_parameter_matrix(
+                directory=matrix_path.parent,
+                title=matrix_path.parent.name,
+                rows=current_rows,
+                source_note=source_note,
+                overwrite=True,
+            )
+    return process_result
 
 
 def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
@@ -13867,6 +13992,26 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
     log_path = Path(args.log)
     if not log_path.is_absolute():
         log_path = REPO_ROOT / log_path
+    if receipt_path.exists() and log_path.exists():
+        recovered = seal_finished_parameter_matrix_run(
+            matrix_path=matrix_path,
+            config_path=config_path,
+            receipt_path=receipt_path,
+            log_path=log_path,
+            job_id=args.job_id,
+            run_id=args.run_id,
+            pre_run_freeze_commit=args.pre_run_freeze_commit,
+            command=args.command,
+        )
+        if int(recovered["returncode"]) != 0:
+            raise WorkflowError(
+                f"frozen training command exited with code {recovered['returncode']}; "
+                f"finished-run evidence recovered from {display_path(log_path)}"
+            )
+        print("finished-run-recovered")
+        print(f"receipt: {display_path(receipt_path)}")
+        print(f"log: {display_path(log_path)}")
+        return 0
     if receipt_path.exists() or log_path.exists():
         raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
     if receipt_path.resolve() == log_path.resolve():
@@ -14003,6 +14148,7 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
             operation="rollback-unstarted-run",
             job_id=args.job_id,
             run_id=args.run_id,
+            wait_timeout_seconds=PARAMETER_MATRIX_FINISH_LOCK_TIMEOUT_SECONDS,
         ):
             current_rows = read_parameter_matrix(matrix_path)
             current_matches = [item for item in current_rows if item.get("job_id") == args.job_id]
@@ -14031,36 +14177,22 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         log_path.unlink(missing_ok=True)
         raise
 
-    return_code = int(process_result["returncode"])
-    with parameter_matrix_mutation_lock(
-        matrix_path,
-        operation="seal-finished-run",
+    sealed_process_result = seal_finished_parameter_matrix_run(
+        matrix_path=matrix_path,
+        config_path=config_path,
+        receipt_path=receipt_path,
+        log_path=log_path,
         job_id=args.job_id,
         run_id=args.run_id,
+        pre_run_freeze_commit=args.pre_run_freeze_commit,
+        command=args.command,
+    )
+    if any(
+        sealed_process_result[key] != process_result[key]
+        for key in ("pid", "returncode", "log_sha256")
     ):
-        current_rows = read_parameter_matrix(matrix_path)
-        current_matches = [item for item in current_rows if item.get("job_id") == args.job_id]
-        if len(current_matches) != 1:
-            raise WorkflowError("cannot seal the training log because its matrix row changed")
-        current_row = current_matches[0]
-        if (
-            current_row.get("status") != "running"
-            or current_row.get("run_id") != args.run_id
-            or current_row.get("run_start_receipt_sha256") != receipt_sha256
-        ):
-            raise WorkflowError("cannot seal the training log because its receipt binding changed")
-        current_row["run_log_sha256"] = str(process_result["log_sha256"])
-        current_row["run_exit_code"] = str(return_code)
-        if return_code != 0:
-            current_row["status"] = "failed"
-            current_row["decision"] = "process_failed"
-        write_parameter_matrix(
-            directory=matrix_path.parent,
-            title=matrix_path.parent.name,
-            rows=current_rows,
-            source_note=source_note,
-            overwrite=True,
-        )
+        raise WorkflowError("sealed training evidence changed between process completion and matrix update")
+    return_code = int(sealed_process_result["returncode"])
     if return_code != 0:
         raise WorkflowError(
             f"frozen training command exited with code {return_code}; see {display_path(log_path)}"
