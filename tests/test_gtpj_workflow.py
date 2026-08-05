@@ -4926,10 +4926,10 @@ decision:
     def test_validate_ai_cross_review_accepts_independent_codex_fallback_rounds(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-codex-fallback"
         self._write_valid_ai_cross_review_pack(pack_dir)
-        for round_number, filename in [
-            (1, "05_claude_review_round_1.md"),
-            (2, "07_claude_review_round_2.md"),
-            (3, "09_claude_review_round_3.md"),
+        for round_number, filename, reviewer_instance_id in [
+            (1, "05_claude_review_round_1.md", "/root/audit_freeze_receipt"),
+            (2, "07_claude_review_round_2.md", "/root/audit_warehouse_integrity"),
+            (3, "09_claude_review_round_3.md", "/root/audit_legacy_review_gate"),
         ]:
             self._write(
                 f"{pack_dir}/{filename}",
@@ -4937,8 +4937,12 @@ decision:
                 "reviewer: independent_codex_fallback\n"
                 "independent_codex_read_only: true\n"
                 "fallback_reason: claude_code_unavailable\n"
-                f"reviewer_instance_id: reviewer-{round_number}\n"
+                f"reviewer_instance_id: {reviewer_instance_id}\n"
                 "independent_context: true\n"
+                "files_reviewed:\n"
+                "- workflow/gtpj_workflow.py\n"
+                "commands_run:\n"
+                "- python -m unittest\n"
                 "verdict: pass\n"
                 "blocking_issues:\n",
             )
@@ -4965,6 +4969,10 @@ decision:
             "independent_codex_read_only: true\n"
             "fallback_reason: claude_code_unavailable\n"
             "independent_context: true\n"
+            "files_reviewed:\n"
+            "- workflow/gtpj_workflow.py\n"
+            "commands_run:\n"
+            "- python -m unittest\n"
             "verdict: pass\n"
             "blocking_issues:\n",
         )
@@ -4972,6 +4980,99 @@ decision:
         self.assertEqual(1, code)
         self.assertEqual("", stdout)
         self.assertIn("reviewer_instance_id", stderr)
+
+    def test_validate_ai_cross_review_rejects_placeholder_codex_fallback_identity(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-placeholder-codex-fallback"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        self._write(
+            f"{pack_dir}/05_claude_review_round_1.md",
+            "round: 1\n"
+            "reviewer: independent_codex_fallback\n"
+            "independent_codex_read_only: true\n"
+            "fallback_reason: claude_code_unavailable\n"
+            "reviewer_instance_id: reviewer-1\n"
+            "independent_context: true\n"
+            "files_reviewed:\n"
+            "- workflow/gtpj_workflow.py\n"
+            "commands_run:\n"
+            "- python -m unittest\n"
+            "verdict: pass\n"
+            "blocking_issues:\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("no real reviewer_instance_id", stderr)
+
+    def test_validate_ai_cross_review_rejects_reused_codex_fallback_identity(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-reused-codex-fallback"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        for round_number, filename in [
+            (1, "05_claude_review_round_1.md"),
+            (2, "07_claude_review_round_2.md"),
+            (3, "09_claude_review_round_3.md"),
+        ]:
+            self._write(
+                f"{pack_dir}/{filename}",
+                f"round: {round_number}\n"
+                "reviewer: independent_codex_fallback\n"
+                "independent_codex_read_only: true\n"
+                "fallback_reason: claude_code_unavailable\n"
+                "reviewer_instance_id: /root/audit_same_reviewer\n"
+                "independent_context: true\n"
+                "files_reviewed:\n"
+                "- workflow/gtpj_workflow.py\n"
+                "commands_run:\n"
+                "- python -m unittest\n"
+                "verdict: pass\n"
+                "blocking_issues:\n",
+            )
+        final_path = self.repo / pack_dir / "10_final_decision.md"
+        final_path.write_text(
+            final_path.read_text(encoding="utf-8").replace(
+                "claude_code_read_only: true",
+                "claude_code_read_only: false\nindependent_codex_fallback_read_only: true",
+            ),
+            encoding="utf-8",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("distinct real reviewer_instance_id", stderr)
+
+    def test_validate_ai_cross_review_rejects_fallback_pack_claiming_claude_only(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-fallback-claims-claude"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        for round_number, filename, reviewer_instance_id in [
+            (1, "05_claude_review_round_1.md", "/root/audit_freeze_receipt"),
+            (2, "07_claude_review_round_2.md", "/root/audit_warehouse_integrity"),
+            (3, "09_claude_review_round_3.md", "/root/audit_legacy_review_gate"),
+        ]:
+            self._write(
+                f"{pack_dir}/{filename}",
+                f"round: {round_number}\n"
+                "reviewer: independent_codex_fallback\n"
+                "independent_codex_read_only: true\n"
+                "fallback_reason: claude_code_unavailable\n"
+                f"reviewer_instance_id: {reviewer_instance_id}\n"
+                "independent_context: true\n"
+                "files_reviewed:\n"
+                "- workflow/gtpj_workflow.py\n"
+                "commands_run:\n"
+                "- python -m unittest\n"
+                "verdict: pass\n"
+                "blocking_issues:\n",
+            )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("cannot claim Claude Code review", stderr)
 
     def test_validate_ai_cross_review_rejects_non_pass_claude_verdict(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-non-pass"

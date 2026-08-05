@@ -7395,6 +7395,8 @@ def ai_cross_review_round_provider_errors(filename: str, text: str) -> list[str]
         "fallback_reason: claude_code_unavailable",
         "reviewer_instance_id:",
         "independent_context: true",
+        "files_reviewed:",
+        "commands_run:",
     ]
     missing = [marker for marker in fallback_markers if marker not in text]
     if missing:
@@ -7403,8 +7405,16 @@ def ai_cross_review_round_provider_errors(filename: str, text: str) -> list[str]
             "missing: " + ", ".join(missing)
         ]
     reviewer_instance_id = scalar_from_text(text, "reviewer_instance_id")
-    if not reviewer_instance_id or reviewer_instance_id in {"missing", "unknown", "none"}:
+    placeholder_pattern = r"(?i)^(missing|unknown|none|placeholder|example|test|reviewer[-_]?\d*|agent[-_]?\d*|codex[-_]?\d*)$"
+    if not reviewer_instance_id or re.fullmatch(placeholder_pattern, reviewer_instance_id):
         return [f"{filename} has no real reviewer_instance_id for the independent Codex fallback"]
+    for field in ["files_reviewed", "commands_run"]:
+        section_match = re.search(
+            rf"(?ms)^\s*{re.escape(field)}:\s*\n(?P<body>.*?)(?=^[A-Za-z_][A-Za-z0-9_-]*:\s*|\Z)",
+            text,
+        )
+        if not section_match or not re.search(r"(?m)^\s*-\s+\S", section_match.group("body")):
+            return [f"{filename} must record at least one item under {field}"]
     return []
 
 
@@ -7433,6 +7443,9 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             if codex_file and index + 1 < rounds_required:
                 allowed_round_files.add(codex_file)
         round_marker_items = [(filename, markers) for filename, markers in round_marker_items if filename in allowed_round_files]
+    fallback_instance_ids: list[str] = []
+    claude_rounds = 0
+    fallback_rounds = 0
     for filename, markers in round_marker_items:
         path = pack_dir / filename
         if not path.is_file():
@@ -7443,11 +7456,20 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
                 errors.append(f"{filename} missing marker: {marker}")
         if filename in AI_CROSS_REVIEW_REVIEW_ROUND_FILES:
             errors.extend(ai_cross_review_round_provider_errors(filename, text))
+            if "reviewer: independent_codex_fallback" in text:
+                fallback_rounds += 1
+                reviewer_instance_id = scalar_from_text(text, "reviewer_instance_id")
+                if reviewer_instance_id:
+                    fallback_instance_ids.append(reviewer_instance_id)
+            elif "reviewer: claude_code" in text:
+                claude_rounds += 1
             verdict_match = re.search(r"(?im)^\s*verdict:\s*(\S+)\s*$", text)
             if not verdict_match:
                 errors.append(f"{filename} missing verdict value")
             elif verdict_match.group(1).strip().lower() != "pass":
                 errors.append(f"{filename} verdict must be pass")
+    if fallback_rounds and len(set(fallback_instance_ids)) != fallback_rounds:
+        errors.append("independent Codex fallback rounds must use distinct real reviewer_instance_id values")
 
     pre_review_path = pack_dir / "02_codex_named_thread_pre_review.md"
     if tiered_pack and pre_review_path.is_file():
@@ -7491,12 +7513,17 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
         for marker in sorted(AI_CROSS_REVIEW_FINAL_MARKERS):
             if marker not in final_text:
                 errors.append(f"10_final_decision.md missing marker: {marker}")
-        if not (
-            "claude_code_read_only: true" in final_text
-            or "independent_codex_fallback_read_only: true" in final_text
-        ):
+        if claude_rounds and "claude_code_read_only: true" not in final_text:
+            errors.append("10_final_decision.md must declare claude_code_read_only: true for Claude rounds")
+        if fallback_rounds and "independent_codex_fallback_read_only: true" not in final_text:
             errors.append(
-                "10_final_decision.md must declare claude_code_read_only or independent_codex_fallback_read_only"
+                "10_final_decision.md must declare independent_codex_fallback_read_only: true for fallback rounds"
+            )
+        if not claude_rounds and fallback_rounds and "claude_code_read_only: true" in final_text:
+            errors.append("10_final_decision.md cannot claim Claude Code review when every round used Codex fallback")
+        if rounds_required > 0 and not claude_rounds and not fallback_rounds:
+            errors.append(
+                "10_final_decision.md has no recognized read-only review provider rounds"
             )
         if tiered_pack:
             for marker in [

@@ -9,7 +9,7 @@
 - Codex 负责实现、修复、反驳、重跑验证和写回证据。
 - owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
 - `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
-- Claude 备用路线不是 `--skip-claude`：它仍需完成对应 tier 的 1 或 3 个独立只读审核轮次，且每轮 verdict 都必须为 pass；校验器会拒绝没有真实 instance id 或没有独立上下文声明的手写占位文件。
+- Claude 备用路线不是 `--skip-claude`：它仍需完成对应 tier 的 1 或 3 个独立只读审核轮次，且每轮 verdict 都必须为 pass。每轮必须使用不同的真实 reviewer instance id，并列出实际看过的文件和运行过的命令；校验器会拒绝占位名称、重复审核者、空证据，以及与实际审核来源不一致的最终说明。
 - 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须先在专用代码审核分支完成本协议。
 - 如果改动已经先发生在旧脏分支，后补切分支只能算草稿隔离；正式 Runner 前必须重新从干净基线切专用分支，迁移最小 diff，通过本协议和机器验证后再做 `pre-run freeze commit`。
 
@@ -145,11 +145,19 @@ review_tier: fast | review-1 | strict-3
 claude_rounds_required: 0 | 1 | 3
 claude_rounds_completed: 0 | 1 | 3
 claude_code_read_only: true
+independent_codex_fallback_read_only: false
 codex_named_thread_pre_review: pass
 codex_named_thread_lifecycle: completed_archived
 codex_fixes_or_rebuttals_recorded: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
+```
+
+若全部轮次由独立 Codex Reviewer 备用完成，上面两行必须改为：
+
+```text
+claude_code_read_only: false
+independent_codex_fallback_read_only: true
 ```
 
 任一 blocking issue 未关闭时，最终决定必须是：
