@@ -13991,8 +13991,10 @@ def run_finish_receipt_errors(
         return ["finished training process requires an immutable run-finish receipt"]
     try:
         payload = json.loads(read_text(finish_path))
-    except json.JSONDecodeError:
+    except (UnicodeError, json.JSONDecodeError):
         return ["run-finish receipt is not valid JSON"]
+    if not isinstance(payload, dict):
+        return ["run-finish receipt must be a JSON object"]
     try:
         process_result = sealed_training_process_evidence(log_path, command)
     except WorkflowError as exc:

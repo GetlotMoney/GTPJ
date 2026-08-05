@@ -3754,6 +3754,16 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("running", row_after_recovery["status"])
         self.assertEqual("", row_after_recovery["run_log_sha256"])
 
+        finish_receipt_path.write_text("[]\n", encoding="utf-8")
+        wrong_shape_code, _wrong_shape_stdout, wrong_shape_stderr = self._run_main(*receipt_args)
+        self.assertEqual(1, wrong_shape_code)
+        self.assertIn("run-finish receipt must be a JSON object", wrong_shape_stderr)
+
+        finish_receipt_path.write_bytes(b"\xff")
+        invalid_encoding_code, _invalid_encoding_stdout, invalid_encoding_stderr = self._run_main(*receipt_args)
+        self.assertEqual(1, invalid_encoding_code)
+        self.assertIn("run-finish receipt is not valid JSON", invalid_encoding_stderr)
+
     def test_training_output_without_final_newline_keeps_finish_marker_on_its_own_line(self) -> None:
         self._write(
             "no_final_newline.py",
