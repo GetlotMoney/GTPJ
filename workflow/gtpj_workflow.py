@@ -13403,7 +13403,7 @@ def run_start_training_entry_path(command: str) -> Path | None:
         if executable not in {"conda", "conda.exe"} or len(tokens) < 3 or unquote(tokens[1]).lower() != "run":
             return None
         allowed_flags = {"--no-capture-output", "--live-stream", "--debug-wrapper-scripts", "--dev", "--"}
-        value_flags = {"-n", "--name", "-p", "--prefix", "--cwd"}
+        value_flags = {"-n", "--name", "-p", "--prefix"}
         index = 2
         while index < python_index:
             token = unquote(tokens[index])
@@ -13415,7 +13415,7 @@ def run_start_training_entry_path(command: str) -> Path | None:
                     return None
                 index += 2
                 continue
-            if any(token.startswith(f"{flag}=") for flag in {"--name", "--prefix", "--cwd"}):
+            if any(token.startswith(f"{flag}=") for flag in {"--name", "--prefix"}):
                 index += 1
                 continue
             return None

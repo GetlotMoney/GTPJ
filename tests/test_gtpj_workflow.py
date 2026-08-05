@@ -3144,6 +3144,20 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self.assertEqual(1, code)
             self.assertIn("must be inside repository", stderr)
 
+            shadow_entry = Path(outside_tmp) / "train_GTPJ_CUB.py"
+            shadow_entry.write_text("print('shadow entry')\n", encoding="utf-8")
+            cwd_args = list(receipt_args)
+            cwd_args[cwd_args.index("--command") + 1] = (
+                f"conda run --cwd {outside_tmp} python train_GTPJ_CUB.py --config {config_path}"
+            )
+            code, _stdout, stderr = self._run_main(
+                *cwd_args,
+                "--pre-run-freeze-commit",
+                "HEAD",
+            )
+            self.assertEqual(1, code)
+            self.assertIn("directly invoke", stderr)
+
         matrix_lock = matrix_path.with_name(f".{matrix_path.name}.run-start.lock")
         matrix_lock.write_text("job_id=ANOTHER-JOB\n", encoding="utf-8")
         code, _stdout, stderr = self._run_main(
