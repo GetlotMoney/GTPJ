@@ -7526,7 +7526,9 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             if not path.is_file():
                 continue
             risk_levels = top_level_scalar_values(read_text(path), "risk_level")
-            if risk_levels == ["high"] and declarations.get(filename) != ("strict-3", "3"):
+            if len(risk_levels) != 1:
+                errors.append(f"{filename} must declare exactly one top-level risk_level")
+            elif risk_levels[0] == "high" and declarations.get(filename) != ("strict-3", "3"):
                 errors.append(f"{filename} risk_level high requires review_tier strict-3 and 3 rounds")
 
     round_marker_items = list(AI_CROSS_REVIEW_ROUND_MARKERS.items())

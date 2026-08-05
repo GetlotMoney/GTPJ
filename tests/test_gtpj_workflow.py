@@ -3028,6 +3028,15 @@ log:v1:module_trial:TRIAL-001:attempt-001
         freeze_commit = self._git("rev-parse", "HEAD").stdout.strip()
         self._write("train_GTPJ_CUB.py", "print('changed training entry')\n")
         self._commit_all("change training code after old freeze")
+        self.assertEqual(
+            [],
+            self.module.run_start_command_errors(
+                "conda run --no-capture-output -n dvsr_gpu python train_GTPJ_CUB.py "
+                "--config experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
+                config_path,
+                commit_ref="HEAD",
+            ),
+        )
         receipt_args = (
             "prepare-run-start-receipt",
             "--path",
@@ -5735,6 +5744,44 @@ decision:
         self.assertEqual(1, code)
         self.assertEqual("", stdout)
         self.assertIn("risk_level high requires review_tier strict-3", stderr)
+
+    def test_validate_ai_cross_review_rejects_duplicate_risk_level_downgrade(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-duplicate-risk-downgrade"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        self._write(
+            f"{pack_dir}/00_task.md",
+            "task_id: TEST\nrisk_level: high\nrisk_level: low\n"
+            "review_tier: review-1\nclaude_rounds_required: 1\n",
+        )
+        self._write(
+            f"{pack_dir}/02_review_brief.md",
+            "risk_level: low\nreview_tier: review-1\nclaude_rounds_required: 1\n",
+        )
+        self._write(f"{pack_dir}/02_focused_diff.md", "changed files\n")
+        self._write(
+            f"{pack_dir}/02_codex_named_thread_pre_review.md",
+            "named_thread_required: true\nthread_id: thread-test-001\n"
+            "lifecycle: completed_archived\narchived_before_claude: true\n"
+            "archive_result_confirms_completion: true\n"
+            "archive_result: thread_id=thread-test-001 previous_status=completed archived: true\n"
+            "verdict: pass\n",
+        )
+        self._write(
+            f"{pack_dir}/10_final_decision.md",
+            "ai_cross_review_status: pass\nowner_participation: not_required\n"
+            "review_tier: review-1\nclaude_rounds_required: 1\nrounds_completed: 1\n"
+            "claude_rounds_completed: 1\nclaude_code_read_only: true\n"
+            "codex_named_thread_pre_review: pass\n"
+            "codex_named_thread_lifecycle: completed_archived\n"
+            "codex_fixes_or_rebuttals_recorded: true\nmachine_gates_passed: true\n"
+            "unresolved_blocking_issues: 0\n",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("exactly one top-level risk_level", stderr)
 
     def test_validate_ai_cross_review_rejects_a_forged_top_level_provider(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-forged-provider"
