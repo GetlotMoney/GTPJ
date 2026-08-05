@@ -4241,6 +4241,35 @@ No training result has been recorded.
 """,
         )
 
+        attempt_manifest_path = self.repo / trial_dir / "attempts/ATTEMPT-001/manifest.yaml"
+        attempt_result_path = self.repo / trial_dir / "attempts/ATTEMPT-001/result.yaml"
+        original_manifest = attempt_manifest_path.read_text(encoding="utf-8")
+        original_result = attempt_result_path.read_text(encoding="utf-8")
+        attempt_manifest_path.write_text(
+            original_manifest.replace('  status: "completed"', '  status: "completed"\n  evidence_mode: "legacy_summary_only"'),
+            encoding="utf-8",
+        )
+        attempt_result_path.write_text(
+            original_result.replace('  status: "revise"', '  status: "rejected"\n  result_status: "legacy_summary_only"')
+            .replace('  evidence_level: "quick_local"', '  evidence_level: "legacy_summary_only"'),
+            encoding="utf-8",
+        )
+        code, _stdout, stderr = self._run_main(
+            "sync-trial-summary",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-001",
+            "--decision",
+            "promote",
+            "--promotion-decision",
+            "promote",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("legacy_summary_only attempt cannot be synced", stderr)
+        attempt_manifest_path.write_text(original_manifest, encoding="utf-8")
+        attempt_result_path.write_text(original_result, encoding="utf-8")
+
         code, stdout, stderr = self._run_main(
             "sync-trial-summary",
             "--trial-dir",

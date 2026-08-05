@@ -153,6 +153,6 @@ python workflow\gtpj_workflow.py sync-dynamic-routing-matrix --run-dir .gtpj_run
 
 ## 历史记录迁移
 
-历史 Attempt 和 v3/v4 不能补造数据。迁移时只允许从 Warehouse 的 `plan.json`、`summary.csv`、每任务配置和日志登记中恢复；恢复不了的行可以标成 `legacy_summary_only`，但这种行不能开跑、不能写成 keep/best，也不能进入 promotion。旧目录确实没有矩阵时，结果迁移必须显式使用 `--legacy-summary-only` 和非提升决定；helper 会强制清空 `promote_to`、把 `promotion_decision` 固定为 `blocked`，并在 `result.yaml` 永久写入 `result_status/evidence_level: legacy_summary_only`。新实验不得借这个开关绕过矩阵。历史缺口不会伪装成已经完成的参数表，也不阻碍新规范从今天起执行。
+历史 Attempt 和 v3/v4 不能补造数据。迁移时只允许从 Warehouse 的 `plan.json`、`summary.csv`、每任务配置和日志登记中恢复；恢复不了的行可以标成 `legacy_summary_only`，但这种行不能开跑、不能写成 keep/best，也不能进入 promotion。旧目录确实没有矩阵时，结果迁移必须显式使用 `--legacy-summary-only` 和非提升决定；helper 会强制清空 `promote_to`、把 `promotion_decision` 固定为 `blocked`，并在 `result.yaml` 永久写入 `result_status/evidence_level: legacy_summary_only`。后续 `sync-trial-summary` 也会读取这个标记，拒绝把历史摘要改写成 keep、best 或 promote，并继续在 trial 根结果中保留 legacy 身份。新实验不得借这个开关绕过矩阵。历史缺口不会伪装成已经完成的参数表，也不阻碍新规范从今天起执行。
 
 跨历史矩阵复跑时，`repeat_of` 使用 `matrix:<历史 PARAMETER_MATRIX.csv 路径>#<job_id>`；同一张表内则直接写原 `job_id`。helper 会确认来源任务存在，且版本、代码引用和完整配置指纹完全相同；不同参数不能借用一个旧任务号绕过查重。

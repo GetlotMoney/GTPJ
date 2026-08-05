@@ -5140,19 +5140,44 @@ def cmd_sync_trial_summary(args: argparse.Namespace) -> int:
     decision = args.decision or yaml_section_value(attempt_result, "decision", "status") or "revise"
     raw_evidence_level = args.evidence_level or yaml_section_value(attempt_result, "evidence", "evidence_level")
     promotion_decision = args.promotion_decision or yaml_section_value(attempt_result, "decision", "promotion_decision")
+    legacy_summary_only = (
+        yaml_section_value(attempt_manifest, "experiment", "evidence_mode") == "legacy_summary_only"
+        or yaml_section_value(attempt_result, "evidence", "evidence_level") == "legacy_summary_only"
+        or yaml_section_value(attempt_result, "decision", "result_status") == "legacy_summary_only"
+    )
+    if legacy_summary_only:
+        if decision not in {"reject", "rejected", "blocked", "debug"}:
+            raise WorkflowError("legacy_summary_only attempt cannot be synced as keep/best/promote evidence")
+        if promotion_decision == "promote":
+            raise WorkflowError("legacy_summary_only attempt cannot set promotion_decision=promote")
+        if args.evidence_level and args.evidence_level != "legacy_summary_only":
+            raise WorkflowError("legacy_summary_only attempt cannot change its evidence level during sync")
+        raw_evidence_level = "legacy_summary_only"
+        promotion_decision = "blocked"
     if promotion_decision == "not_applicable" and decision == "promote":
         promotion_decision = "promote"
-    evidence_defaults = sync_evidence_defaults(
-        decision=decision,
-        metrics=metrics,
-        raw_evidence_level=raw_evidence_level,
-        promotion_decision=promotion_decision if promotion_decision != "not_applicable" or decision == "promote" else "",
-    )
-    evidence_defaults = preserve_trial_best_observed_for_sync(
-        evidence_defaults,
-        trial_fields,
-        decision,
-    )
+    if legacy_summary_only:
+        evidence_defaults = {
+            "evidence_level": "legacy_summary_only",
+            "result_status": "legacy_summary_only",
+            "best_observed_H": "",
+            "confirmed_H": "",
+            "confirmation_status": "not_applicable",
+            "promotion_decision": "blocked",
+            "promote_to": "",
+        }
+    else:
+        evidence_defaults = sync_evidence_defaults(
+            decision=decision,
+            metrics=metrics,
+            raw_evidence_level=raw_evidence_level,
+            promotion_decision=promotion_decision if promotion_decision != "not_applicable" or decision == "promote" else "",
+        )
+        evidence_defaults = preserve_trial_best_observed_for_sync(
+            evidence_defaults,
+            trial_fields,
+            decision,
+        )
 
     if args.dry_run:
         print("sync-trial-summary-dry-run-ok")
@@ -15489,7 +15514,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_trial.add_argument(
         "--evidence-level",
         default="",
-        choices=["", "debug_smoke", "quick_local", "valid_single_run", "confirmation_grade", "baseline_grade"],
+        choices=["", "debug_smoke", "quick_local", "valid_single_run", "confirmation_grade", "baseline_grade", "legacy_summary_only"],
     )
     sync_trial.add_argument(
         "--promotion-decision",
