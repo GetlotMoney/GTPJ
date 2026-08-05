@@ -7,7 +7,7 @@ source_legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003
 framework_branch: framework/v5
 framework_tag: v5
 framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
-governance_source_commit: 6f4a511327ecd4b0e2770712a0c6a9858d4d2e45
+governance_source_commit: 2b92fc68961c22d4037381ed183343ae233a4361
 lineage_status: legacy_owner_activated
 change_type: combo
 modules: ["PSE", "ICSA", "FGVD", "conditional BVSA", "SGMP", "local/global fusion"]
