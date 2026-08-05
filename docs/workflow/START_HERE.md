@@ -303,6 +303,8 @@ strict-3: 3 轮 Claude，训练入口、评估语义、正式实验结论、prom
 validate-ai-cross-review -> 通过后才信任改动
 ```
 
+Claude Code 若因连接拒绝、超时或空输出没有给出有效结论，该调用不算审核轮次。此时按同一 tier 改用彼此独立的只读 Codex Reviewer；每轮必须留下真实实例 id、独立上下文和失败原因，不能把 Codex 写成 Claude，也不能用 `--skip-claude` 冒充通过。
+
 正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。通过包必须包含：
 
 ```text
@@ -312,6 +314,8 @@ claude_code_read_only: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
 ```
+
+使用备用审核时，`claude_code_read_only: false`，并改为记录 `independent_codex_fallback_read_only: true`。
 
 ## 8. 命名线程
 

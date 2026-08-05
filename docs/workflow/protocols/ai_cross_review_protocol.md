@@ -5,10 +5,11 @@
 ## 不可跳过规则
 
 - 机器验证永远必须运行。`run-ai-cross-review` 在没有验证命令时必须失败。
-- Claude Code 只读审核，不改文件、不启动训练、不 push、不删除用户数据。
+- Claude Code 只读审核，不改文件、不启动训练、不 push、不删除用户数据。若 Claude Code 已登录但连续出现连接拒绝、超时或空输出，这些失败不算审核轮次；改用彼此独立的只读 Codex Reviewer，每轮必须记录真实 reviewer instance id、独立上下文和 `fallback_reason: claude_code_unavailable`，不得伪装成 Claude。
 - Codex 负责实现、修复、反驳、重跑验证和写回证据。
 - owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
 - `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
+- Claude 备用路线不是 `--skip-claude`：它仍需完成对应 tier 的 1 或 3 个独立只读审核轮次，且每轮 verdict 都必须为 pass；校验器会拒绝没有真实 instance id 或没有独立上下文声明的手写占位文件。
 - 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须先在专用代码审核分支完成本协议。
 - 如果改动已经先发生在旧脏分支，后补切分支只能算草稿隔离；正式 Runner 前必须重新从干净基线切专用分支，迁移最小 diff，通过本协议和机器验证后再做 `pre-run freeze commit`。
 
@@ -17,9 +18,9 @@
 `review_tier` 只有三档：
 
 ```text
-fast: 0 轮 Claude Code
-review-1: 1 轮 Claude Code
-strict-3: 3 轮 Claude Code
+fast: 0 轮只读外部 Reviewer
+review-1: 1 轮 Claude Code；Claude 不可用时为 1 个独立 Codex Reviewer
+strict-3: 3 轮 Claude Code；Claude 不可用时为 3 个彼此独立的 Codex Reviewer
 ```
 
 使用规则：

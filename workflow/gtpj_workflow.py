@@ -6716,21 +6716,25 @@ AI_CROSS_REVIEW_REQUIRED_FILES = [
 ]
 
 AI_CROSS_REVIEW_ROUND_MARKERS = {
-    "05_claude_review_round_1.md": ["round: 1", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
+    "05_claude_review_round_1.md": ["round: 1", "verdict:", "blocking_issues:"],
     "06_codex_response_round_1.md": ["round: 1", "reviewer: codex", "addressed_claude_findings:", "validation_rerun:", "remaining_blocking_issues:"],
-    "07_claude_review_round_2.md": ["round: 2", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
+    "07_claude_review_round_2.md": ["round: 2", "verdict:", "blocking_issues:"],
     "08_codex_response_round_2.md": ["round: 2", "reviewer: codex", "addressed_claude_findings:", "validation_rerun:", "remaining_blocking_issues:"],
-    "09_claude_review_round_3.md": ["round: 3", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
+    "09_claude_review_round_3.md": ["round: 3", "verdict:", "blocking_issues:"],
 }
 
 AI_CROSS_REVIEW_FINAL_MARKERS = {
     "ai_cross_review_status: pass",
     "owner_participation: not_required",
     "rounds_completed:",
-    "claude_code_read_only: true",
     "codex_fixes_or_rebuttals_recorded: true",
     "machine_gates_passed: true",
     "unresolved_blocking_issues: 0",
+}
+AI_CROSS_REVIEW_REVIEW_ROUND_FILES = {
+    "05_claude_review_round_1.md",
+    "07_claude_review_round_2.md",
+    "09_claude_review_round_3.md",
 }
 AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS = [
     "python workflow\\gtpj_workflow.py validate",
@@ -7382,6 +7386,28 @@ def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], 
     return required, rounds_required, True
 
 
+def ai_cross_review_round_provider_errors(filename: str, text: str) -> list[str]:
+    if "reviewer: claude_code" in text and "claude_code_read_only: true" in text:
+        return []
+    fallback_markers = [
+        "reviewer: independent_codex_fallback",
+        "independent_codex_read_only: true",
+        "fallback_reason: claude_code_unavailable",
+        "reviewer_instance_id:",
+        "independent_context: true",
+    ]
+    missing = [marker for marker in fallback_markers if marker not in text]
+    if missing:
+        return [
+            f"{filename} must contain Claude Code read-only evidence or complete independent Codex fallback evidence; "
+            "missing: " + ", ".join(missing)
+        ]
+    reviewer_instance_id = scalar_from_text(text, "reviewer_instance_id")
+    if not reviewer_instance_id or reviewer_instance_id in {"missing", "unknown", "none"}:
+        return [f"{filename} has no real reviewer_instance_id for the independent Codex fallback"]
+    return []
+
+
 def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     errors: list[str] = []
     if not pack_dir.exists():
@@ -7415,7 +7441,8 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
         for marker in markers:
             if marker not in text:
                 errors.append(f"{filename} missing marker: {marker}")
-        if filename in {"05_claude_review_round_1.md", "07_claude_review_round_2.md", "09_claude_review_round_3.md"}:
+        if filename in AI_CROSS_REVIEW_REVIEW_ROUND_FILES:
+            errors.extend(ai_cross_review_round_provider_errors(filename, text))
             verdict_match = re.search(r"(?im)^\s*verdict:\s*(\S+)\s*$", text)
             if not verdict_match:
                 errors.append(f"{filename} missing verdict value")
@@ -7464,6 +7491,13 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
         for marker in sorted(AI_CROSS_REVIEW_FINAL_MARKERS):
             if marker not in final_text:
                 errors.append(f"10_final_decision.md missing marker: {marker}")
+        if not (
+            "claude_code_read_only: true" in final_text
+            or "independent_codex_fallback_read_only: true" in final_text
+        ):
+            errors.append(
+                "10_final_decision.md must declare claude_code_read_only or independent_codex_fallback_read_only"
+            )
         if tiered_pack:
             for marker in [
                 "review_tier:",

@@ -7,6 +7,7 @@
 - `review-1` 只需要 1 轮 Claude Code，用于普通 workflow/helper/template 修补。
 - `strict-3` 才需要 3 轮 Claude Code，只用于会污染正式实验结论、promotion、baseline 或论文 claim 的改动。
 - Claude Code 前必须读取 `02_codex_named_thread_pre_review.md`，确认命名 Codex 线程已 `completed_archived`。
+- Claude Code 若连接拒绝、超时或空输出，该调用不算审核轮次；可以由相同数量的独立只读 Codex Reviewer 备用，但必须明确标注 fallback，不得冒充 Claude。
 
 本文件是 GTPJ 给 Claude Code 的轻量共享上下文。它只记录稳定规则，当前事实仍以本次审核包、仓库文件、验证命令和实验 artifact 为准。
 
