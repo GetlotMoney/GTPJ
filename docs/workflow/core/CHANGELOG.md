@@ -1,5 +1,13 @@
 # Workflow Changelog
 
+## SKILL-GTPJ-WORKFLOW-V2.2（2026-08-05）
+
+参数矩阵正式证据门加固：同一任务只能领取一张启动收据；领取时必须位于精确、干净的冻结提交，
+命令必须使用冻结配置。动态结果会重新计算 `top_rank:n`、固定 manifest 哈希、核对 Attempt 身份，
+Warehouse 已有任务目录禁止覆盖。参数矩阵硬门不能通过编辑说明文档关闭；历史摘要必须提供规则生效前
+就存在的 Git 提交，且 legacy 身份不能被后续覆盖。AI 审核的任务、brief 和最终档位必须一致，
+Provider 与 verdict 改为只认唯一顶层字段。
+
 ## SKILL-GTPJ-WORKFLOW-V2.1（2026-08-04）
 
 新增“参数矩阵”正式规则：

@@ -1,9 +1,9 @@
 # Workflow Version
 
 ```yaml
-current_workflow_version: SKILL-GTPJ-WORKFLOW-V2.1
-previous_workflow_version: workflow-v2-runtime-gate
-workflow_v2_status: evidence_state_machine_plus_agent_runtime_gate_plus_preflight_plus_parameter_matrix
+current_workflow_version: SKILL-GTPJ-WORKFLOW-V2.2
+previous_workflow_version: SKILL-GTPJ-WORKFLOW-V2.1
+workflow_v2_status: evidence_state_machine_plus_agent_runtime_gate_plus_hardened_parameter_matrix
 model_version_scope: separate_from_v1_v2_v3_v4_v5
 ```
 
@@ -63,3 +63,8 @@ limited to the current active roles.
 是同一张表的阅读版。相同完整配置必须标明是复跑，避免以后不知不觉重复调参。
 
 唯一正式说明在：`docs/workflow/protocols/parameter_matrix_protocol.md`。
+
+## SKILL-GTPJ-WORKFLOW-V2.2：正式证据加固
+
+V2.2 不改变模型结构，只把逐任务参数表、唯一启动收据、Warehouse 只写一次、动态排名复核、
+历史身份永久保留和三轮审核一致性变成可执行检查。

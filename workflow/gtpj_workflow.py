@@ -3485,6 +3485,9 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 "duplicate_resolution": "待填写后检查",
                 "purpose": "开跑前填写要改的参数、目的和随机种子",
                 "run_id": "",
+                "run_start_receipt_ref": "",
+                "run_start_receipt_sha256": "",
+                "run_command_sha256": "",
                 "U": "",
                 "S": "",
                 "H": "",
@@ -3492,6 +3495,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 "best_epoch": "",
                 "decision": "",
                 "artifact_ref": "",
+                "artifact_manifest_sha256": "",
             }
         ],
         source_note="由 new-experiment 生成；该草稿必须填写并通过校验后才能用于正式运行。",
@@ -3737,6 +3741,8 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     exp_dir = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}"
     if not exp_dir.exists():
         raise WorkflowError(f"Missing experiment directory: {rel(exp_dir)}")
+    if existing_legacy_identity(exp_dir):
+        raise WorkflowError("legacy_summary_only identity is permanent; refusing to overwrite this experiment ledger")
     if args.kind == "tune":
         if not args.parameter or not args.old_value or not args.new_value:
             raise WorkflowError("record-result --kind tune requires --parameter, --old-value, and --new-value")
@@ -3750,6 +3756,13 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     run_start_receipt_sha256 = ""
     matrix_exists = (exp_dir / PARAMETER_MATRIX_CSV).exists()
     legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    if legacy_summary_only:
+        legacy_errors = legacy_summary_only_eligibility_errors(
+            exp_dir,
+            str(getattr(args, "legacy_source_commit", "") or ""),
+        )
+        if legacy_errors:
+            raise WorkflowError("Legacy summary eligibility failed:\n" + "\n".join(legacy_errors))
     if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
         raise WorkflowError(
             "Active parameter-matrix policy requires PARAMETER_MATRIX.csv; "
@@ -3799,6 +3812,7 @@ def cmd_record_result(args: argparse.Namespace) -> int:
                 run_start_receipt_errors(
                     receipt_path=run_start_receipt_path,
                     log_path=log_path,
+                    config_path=exp_dir / "config.yaml",
                     row=matrix_result_row,
                     run_id=args.attempt_id,
                     pre_run_freeze_commit=str(getattr(args, "pre_run_freeze_commit", "") or ""),
@@ -5450,6 +5464,8 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     trial_id, slug = parse_trial_folder_name(trial_dir)
     attempt_upper, attempt_lower = normalize_attempt_ids(args.attempt_id)
     attempt_dir = trial_dir / "attempts" / attempt_upper
+    if existing_legacy_identity(attempt_dir):
+        raise WorkflowError("legacy_summary_only identity is permanent; refusing to overwrite this attempt ledger")
     config_path = Path(args.config) if args.config else attempt_dir / "config.yaml"
     if not config_path.is_absolute():
         config_path = REPO_ROOT / config_path
@@ -5475,6 +5491,13 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     run_start_receipt_path: Path | None = None
     matrix_exists = (attempt_dir / PARAMETER_MATRIX_CSV).exists()
     legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    if legacy_summary_only:
+        legacy_errors = legacy_summary_only_eligibility_errors(
+            attempt_dir,
+            str(getattr(args, "legacy_source_commit", "") or ""),
+        )
+        if legacy_errors:
+            raise WorkflowError("Legacy summary eligibility failed:\n" + "\n".join(legacy_errors))
     if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
         raise WorkflowError(
             "Active parameter-matrix policy requires PARAMETER_MATRIX.csv for a new module attempt; "
@@ -5519,6 +5542,7 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
                 run_start_receipt_errors(
                     receipt_path=run_start_receipt_path,
                     log_path=log_path,
+                    config_path=config_path,
                     row=matrix_result_row,
                     run_id=args.run_id or attempt_upper,
                     pre_run_freeze_commit=pre_run_freeze_commit,
@@ -7342,20 +7366,49 @@ def scalar_from_text(text: str, key: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def top_level_scalar_values(text: str, key: str) -> list[str]:
+    return [
+        match.group(1).strip()
+        for match in re.finditer(rf"(?im)^{re.escape(key)}\s*:\s*(.*?)\s*$", text)
+    ]
+
+
+def single_top_level_scalar(text: str, key: str) -> str:
+    values = top_level_scalar_values(text, key)
+    return values[0] if len(values) == 1 else ""
+
+
+def normalize_attested_identifier(value: str) -> str:
+    normalized = value.strip()
+    while len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {'"', "'"}:
+        normalized = normalized[1:-1].strip()
+    return normalized
+
+
 def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], int, bool]:
-    final_path = pack_dir / "10_final_decision.md"
-    if not final_path.is_file():
+    declaration_files = ["00_task.md", "02_review_brief.md", "10_final_decision.md"]
+    declared_rounds: list[int] = []
+    tiered_pack = False
+    for filename in declaration_files:
+        path = pack_dir / filename
+        if not path.is_file():
+            continue
+        text = read_text(path)
+        review_tier = single_top_level_scalar(text, "review_tier")
+        if not review_tier:
+            continue
+        tiered_pack = True
+        rounds_text = single_top_level_scalar(text, "claude_rounds_required")
+        try:
+            rounds = int(rounds_text)
+        except ValueError:
+            rounds = AI_CROSS_REVIEW_TIER_ROUNDS.get(review_tier, -1)
+        if review_tier in AI_CROSS_REVIEW_TIER_ROUNDS and rounds in AI_CROSS_REVIEW_TIER_ROUNDS.values():
+            declared_rounds.append(max(rounds, AI_CROSS_REVIEW_TIER_ROUNDS[review_tier]))
+    if not tiered_pack:
         return AI_CROSS_REVIEW_REQUIRED_FILES, 3, False
-    final_text = read_text(final_path)
-    review_tier = scalar_from_text(final_text, "review_tier")
-    if not review_tier:
-        return AI_CROSS_REVIEW_REQUIRED_FILES, 3, False
-    rounds_text = scalar_from_text(final_text, "claude_rounds_required")
-    try:
-        rounds_required = int(rounds_text)
-    except ValueError:
-        rounds_required = AI_CROSS_REVIEW_TIER_ROUNDS.get(review_tier, -1)
-    if review_tier not in AI_CROSS_REVIEW_TIER_ROUNDS or rounds_required not in AI_CROSS_REVIEW_TIER_ROUNDS.values():
+    rounds_required = max(declared_rounds, default=-1)
+    if rounds_required not in AI_CROSS_REVIEW_TIER_ROUNDS.values():
         return [
             "00_task.md",
             "01_codex_actions.md",
@@ -7387,31 +7440,43 @@ def ai_cross_review_required_files_for_pack(pack_dir: Path) -> tuple[list[str], 
 
 
 def ai_cross_review_round_provider_errors(filename: str, text: str) -> list[str]:
-    if "reviewer: claude_code" in text and "claude_code_read_only: true" in text:
+    attestation_text = text.split("\n## Claude Code 原始 stdout", 1)[0]
+    reviewers = top_level_scalar_values(attestation_text, "reviewer")
+    if len(reviewers) != 1:
+        return [f"{filename} must contain exactly one top-level reviewer value"]
+    reviewer = reviewers[0]
+    if reviewer == "claude_code":
+        read_only_values = top_level_scalar_values(attestation_text, "claude_code_read_only")
+        if read_only_values != ["true"]:
+            return [f"{filename} must declare one top-level claude_code_read_only: true"]
         return []
-    fallback_markers = [
-        "reviewer: independent_codex_fallback",
-        "independent_codex_read_only: true",
-        "fallback_reason: claude_code_unavailable",
-        "reviewer_instance_id:",
-        "independent_context: true",
-        "files_reviewed:",
-        "commands_run:",
+    if reviewer != "independent_codex_fallback":
+        return [f"{filename} has unsupported top-level reviewer: {reviewer!r}"]
+    expected_scalars = {
+        "independent_codex_read_only": "true",
+        "fallback_reason": "claude_code_unavailable",
+        "independent_context": "true",
+    }
+    invalid_scalars = [
+        f"{key}: {expected}"
+        for key, expected in expected_scalars.items()
+        if top_level_scalar_values(attestation_text, key) != [expected]
     ]
-    missing = [marker for marker in fallback_markers if marker not in text]
-    if missing:
-        return [
-            f"{filename} must contain Claude Code read-only evidence or complete independent Codex fallback evidence; "
-            "missing: " + ", ".join(missing)
-        ]
-    reviewer_instance_id = scalar_from_text(text, "reviewer_instance_id")
-    placeholder_pattern = r"(?i)^(missing|unknown|none|placeholder|example|test|reviewer[-_]?\d*|agent[-_]?\d*|codex[-_]?\d*)$"
+    if invalid_scalars:
+        return [f"{filename} has missing or duplicate top-level fallback evidence: " + ", ".join(invalid_scalars)]
+    reviewer_instance_id = normalize_attested_identifier(
+        single_top_level_scalar(attestation_text, "reviewer_instance_id")
+    )
+    placeholder_pattern = (
+        r"(?i)^(missing|unknown|none|placeholder|example|test|fake(?:[-_/].*)?|dummy(?:[-_/].*)?|"
+        r"same[-_]?reviewer|reviewer[-_]?\d*|agent[-_]?\d*|codex[-_]?\d*|/root/fake(?:[-_/].*)?)$"
+    )
     if not reviewer_instance_id or re.fullmatch(placeholder_pattern, reviewer_instance_id):
         return [f"{filename} has no real reviewer_instance_id for the independent Codex fallback"]
     for field in ["files_reviewed", "commands_run"]:
         section_match = re.search(
-            rf"(?ms)^\s*{re.escape(field)}:\s*\n(?P<body>.*?)(?=^[A-Za-z_][A-Za-z0-9_-]*:\s*|\Z)",
-            text,
+            rf"(?ms)^{re.escape(field)}:\s*\n(?P<body>.*?)(?=^[A-Za-z_][A-Za-z0-9_-]*:\s*|\Z)",
+            attestation_text,
         )
         if not section_match or not re.search(r"(?m)^\s*-\s+\S", section_match.group("body")):
             return [f"{filename} must record at least one item under {field}"]
@@ -7433,6 +7498,27 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
             continue
         if not path.is_file():
             errors.append(f"review entry must be a file: {filename}")
+
+    if tiered_pack:
+        declarations: dict[str, tuple[str, str]] = {}
+        for filename in ["00_task.md", "02_review_brief.md", "10_final_decision.md"]:
+            path = pack_dir / filename
+            if not path.is_file():
+                continue
+            text = read_text(path)
+            tiers = top_level_scalar_values(text, "review_tier")
+            rounds = top_level_scalar_values(text, "claude_rounds_required")
+            if len(tiers) != 1 or len(rounds) != 1:
+                errors.append(f"{filename} must declare exactly one top-level review_tier and claude_rounds_required")
+                continue
+            declarations[filename] = (tiers[0], rounds[0])
+        if len(set(declarations.values())) > 1:
+            errors.append("00_task.md, 02_review_brief.md, and 10_final_decision.md must use the same review tier")
+        for filename in ["00_task.md", "02_review_brief.md"]:
+            path = pack_dir / filename
+            if path.is_file() and re.search(r"(?im)^risk_level:\s*high\s*$", read_text(path)):
+                if declarations.get(filename) != ("strict-3", "3"):
+                    errors.append(f"{filename} risk_level high requires review_tier strict-3 and 3 rounds")
 
     round_marker_items = list(AI_CROSS_REVIEW_ROUND_MARKERS.items())
     if tiered_pack:
@@ -7456,17 +7542,21 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
                 errors.append(f"{filename} missing marker: {marker}")
         if filename in AI_CROSS_REVIEW_REVIEW_ROUND_FILES:
             errors.extend(ai_cross_review_round_provider_errors(filename, text))
-            if "reviewer: independent_codex_fallback" in text:
+            attestation_text = text.split("\n## Claude Code 原始 stdout", 1)[0]
+            reviewer = single_top_level_scalar(attestation_text, "reviewer")
+            if reviewer == "independent_codex_fallback":
                 fallback_rounds += 1
-                reviewer_instance_id = scalar_from_text(text, "reviewer_instance_id")
+                reviewer_instance_id = normalize_attested_identifier(
+                    single_top_level_scalar(attestation_text, "reviewer_instance_id")
+                )
                 if reviewer_instance_id:
                     fallback_instance_ids.append(reviewer_instance_id)
-            elif "reviewer: claude_code" in text:
+            elif reviewer == "claude_code":
                 claude_rounds += 1
-            verdict_match = re.search(r"(?im)^\s*verdict:\s*(\S+)\s*$", text)
-            if not verdict_match:
-                errors.append(f"{filename} missing verdict value")
-            elif verdict_match.group(1).strip().lower() != "pass":
+            verdict_values = top_level_scalar_values(attestation_text, "verdict")
+            if len(verdict_values) != 1:
+                errors.append(f"{filename} must contain exactly one top-level verdict value")
+            elif verdict_values[0].lower() != "pass":
                 errors.append(f"{filename} verdict must be pass")
     if fallback_rounds and len(set(fallback_instance_ids)) != fallback_rounds:
         errors.append("independent Codex fallback rounds must use distinct real reviewer_instance_id values")
@@ -12539,6 +12629,9 @@ PARAMETER_MATRIX_COLUMNS = [
     "duplicate_resolution",
     "purpose",
     "run_id",
+    "run_start_receipt_ref",
+    "run_start_receipt_sha256",
+    "run_command_sha256",
     "U",
     "S",
     "H",
@@ -12546,9 +12639,14 @@ PARAMETER_MATRIX_COLUMNS = [
     "best_epoch",
     "decision",
     "artifact_ref",
+    "artifact_manifest_sha256",
 ]
 PARAMETER_MATRIX_RESULT_FIELDS = {
     "status",
+    "run_id",
+    "run_start_receipt_ref",
+    "run_start_receipt_sha256",
+    "run_command_sha256",
     "U",
     "S",
     "H",
@@ -12556,6 +12654,7 @@ PARAMETER_MATRIX_RESULT_FIELDS = {
     "best_epoch",
     "decision",
     "artifact_ref",
+    "artifact_manifest_sha256",
 }
 PARAMETER_MATRIX_TOP_RANK_RESOLUTION_FIELDS = {
     "changed_parameters",
@@ -12567,9 +12666,63 @@ PARAMETER_MATRIX_TERMINAL_STATUSES = {"completed", "failed", "skipped", "cancell
 
 
 def parameter_matrix_policy_is_active() -> bool:
-    """Return true only for repositories that explicitly adopted the matrix rule."""
+    """Keep pre-adoption repositories compatible, but never let an adopted repository turn the gate off."""
     path = REPO_ROOT / PARAMETER_MATRIX_PROTOCOL
-    return path.exists() and "policy_status: active" in read_text(path)
+    if path.is_file() and "policy_status: active" in read_text(path):
+        return True
+    if path.exists():
+        raise WorkflowError("parameter-matrix policy file exists but is not active; the formal gate cannot be disabled")
+    history = git(["log", "--all", "--format=%H", "--", PARAMETER_MATRIX_PROTOCOL], check=False)
+    if history.strip():
+        raise WorkflowError("parameter-matrix policy was adopted in Git history but its active protocol file is missing")
+    return False
+
+
+def git_object_exists(ref_path: str) -> bool:
+    result = subprocess.run(
+        ["git", "cat-file", "-e", ref_path],
+        cwd=REPO_ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
+def legacy_summary_only_eligibility_errors(target_dir: Path, source_commit_ref: str) -> list[str]:
+    if not source_commit_ref.strip():
+        return ["--legacy-summary-only requires --legacy-source-commit proving the directory predates the policy"]
+    try:
+        source_commit = resolve_commit(source_commit_ref)
+        require_ancestor(source_commit, "HEAD", "legacy source commit must be an ancestor of HEAD")
+        target_rel = repo_relative_path(target_dir, "legacy target directory")
+    except WorkflowError as exc:
+        return [str(exc)]
+    if not git_object_exists(f"{source_commit}:{target_rel}"):
+        return [f"legacy target directory did not exist at source commit {source_commit}"]
+    matrix_rel = f"{target_rel}/{PARAMETER_MATRIX_CSV}"
+    if git_object_exists(f"{source_commit}:{matrix_rel}"):
+        return [f"legacy target already had {PARAMETER_MATRIX_CSV} at source commit {source_commit}"]
+    protocol_text = git_show(f"{source_commit}:{PARAMETER_MATRIX_PROTOCOL}", check=False)
+    if "policy_status: active" in protocol_text:
+        return [f"legacy source commit {source_commit} is not pre-policy evidence"]
+    policy_history = git(
+        ["log", "--format=%H", source_commit, "--", PARAMETER_MATRIX_PROTOCOL],
+        check=False,
+    ).splitlines()
+    if any(
+        "policy_status: active" in git_show(f"{commit}:{PARAMETER_MATRIX_PROTOCOL}", check=False)
+        for commit in policy_history
+    ):
+        return [f"legacy source commit {source_commit} comes after the parameter-matrix policy was adopted"]
+    return []
+
+
+def existing_legacy_identity(directory: Path) -> bool:
+    for name in ["manifest.yaml", "result.yaml", "result.md", "quality_check.md"]:
+        path = directory / name
+        if path.is_file() and "legacy_summary_only" in read_text(path):
+            return True
+    return False
 
 
 def parameter_matrix_sha256(text: str) -> str:
@@ -12654,6 +12807,9 @@ def build_parameter_matrix_rows(
                 "duplicate_resolution": duplicate_resolution,
                 "purpose": matrix_cell(job.get("group")),
                 "run_id": run_id,
+                "run_start_receipt_ref": "",
+                "run_start_receipt_sha256": "",
+                "run_command_sha256": "",
                 "U": "",
                 "S": "",
                 "H": "",
@@ -12661,6 +12817,7 @@ def build_parameter_matrix_rows(
                 "best_epoch": "",
                 "decision": "",
                 "artifact_ref": "",
+                "artifact_manifest_sha256": "",
             }
         )
     return rows
@@ -12829,8 +12986,8 @@ def render_parameter_matrix_markdown(
         "",
         f"来源：{source_note}",
         "",
-        "| 任务 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | H | 决定 |",
-        "|---|---|---|---|---:|---|---:|---|",
+        "| 任务 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | H | 决定 | 证据清单 SHA256 |",
+        "|---|---|---|---|---:|---|---:|---|---|",
     ]
     for row in rows:
         lines.append(
@@ -12845,6 +13002,7 @@ def render_parameter_matrix_markdown(
                     markdown_table_cell(row["repeat_of"]),
                     markdown_table_cell(row["H"]),
                     markdown_table_cell(row["decision"]),
+                    markdown_table_cell(row.get("artifact_manifest_sha256", "")),
                 ]
             )
             + " |"
@@ -13140,6 +13298,8 @@ def parameter_matrix_freeze_commit_errors(
     matrix_path: Path,
     config_path: Path,
     job_id: str,
+    require_exact_checkout: bool = False,
+    require_clean_checkout: bool = False,
 ) -> list[str]:
     errors: list[str] = []
     if not commit_ref.strip():
@@ -13147,6 +13307,16 @@ def parameter_matrix_freeze_commit_errors(
     try:
         commit = resolve_commit(commit_ref)
         require_ancestor(commit, "HEAD", "pre-run freeze commit must be an ancestor of current HEAD")
+        if require_exact_checkout and resolve_commit("HEAD") != commit:
+            errors.append("run-start receipt must be created while HEAD exactly equals the pre-run freeze commit")
+        if require_clean_checkout:
+            dirty_lines = [
+                line
+                for line in git(["status", "--short"], check=False).splitlines()
+                if ".run-start.lock" not in line
+            ]
+            if dirty_lines:
+                errors.append("run-start receipt requires a clean worktree at the pre-run freeze commit")
         matrix_rel = repo_relative_path(matrix_path, "parameter matrix")
         config_rel = repo_relative_path(config_path, "training config")
         committed_rows = parse_parameter_matrix_text(
@@ -13176,10 +13346,32 @@ def parameter_matrix_freeze_commit_errors(
     return errors
 
 
+def run_start_command_errors(command: str, config_path: Path) -> list[str]:
+    command_text = command.strip()
+    if not command_text:
+        return ["run-start receipt requires a non-empty training command"]
+    lowered = command_text.lower()
+    if re.match(r"^(echo|printf|write-output|python\s+-c)\b", lowered):
+        return ["run-start receipt command must launch a training script, not a placeholder command"]
+    if not re.search(r"(?i)(?:^|\s)(?:python(?:\.exe)?|[^\s]*python)(?:\s|$)", command_text):
+        return ["run-start receipt command must invoke Python"]
+    if not re.search(r"(?i)\.py(?:\s|$)", command_text):
+        return ["run-start receipt command must name a Python training entry script"]
+    normalized_command = command_text.replace("\\", "/")
+    config_candidates = {
+        display_path(config_path).replace("\\", "/"),
+        str(config_path.resolve()).replace("\\", "/"),
+    }
+    if "--config" not in normalized_command or not any(candidate in normalized_command for candidate in config_candidates):
+        return ["run-start receipt command must pass the frozen config path through --config"]
+    return []
+
+
 def run_start_receipt_errors(
     *,
     receipt_path: Path,
     log_path: Path,
+    config_path: Path,
     row: dict[str, str],
     run_id: str,
     pre_run_freeze_commit: str,
@@ -13200,6 +13392,9 @@ def run_start_receipt_errors(
         "pre_run_freeze_commit": commit,
         "config_fingerprint": row.get("config_fingerprint", ""),
         "matrix_frozen_digest": parameter_matrix_frozen_digest(row),
+        "config_path": display_path(config_path),
+        "code_ref": row.get("code_ref", ""),
+        "command": command,
         "command_sha256": parameter_matrix_sha256(command),
     }
     errors = [
@@ -13220,6 +13415,17 @@ def run_start_receipt_errors(
     except ValueError:
         errors.append("run-start receipt started_at must be a timezone-aware ISO timestamp")
     receipt_sha256 = sha256_file(receipt_path)
+    if row.get("status") != "running":
+        errors.append("parameter-matrix row is not bound to an active run-start receipt")
+    if row.get("run_id", "") != run_id:
+        errors.append("parameter-matrix run_id does not match the run-start receipt")
+    if row.get("run_start_receipt_ref", "") != display_path(receipt_path):
+        errors.append("parameter-matrix run_start_receipt_ref does not match the receipt file")
+    if row.get("run_start_receipt_sha256", "") != receipt_sha256:
+        errors.append("parameter-matrix run_start_receipt_sha256 does not match the receipt file")
+    if row.get("run_command_sha256", "") != parameter_matrix_sha256(command):
+        errors.append("parameter-matrix run_command_sha256 does not match the training command")
+    errors.extend(run_start_command_errors(command, config_path))
     first_line = read_text(log_path).splitlines()[0] if read_text(log_path).splitlines() else ""
     if first_line != f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}":
         errors.append("training log is not anchored to the run-start receipt in its first line")
@@ -13243,37 +13449,74 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         log_path = REPO_ROOT / log_path
     if receipt_path.exists() or log_path.exists():
         raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
-    rows = read_parameter_matrix(matrix_path)
-    matches = [row for row in rows if row.get("job_id", "") == args.job_id]
-    if len(matches) != 1:
-        raise WorkflowError("prepare-run-start-receipt --job-id must name exactly one matrix row")
-    row = matches[0]
-    if row.get("status") != "frozen":
-        raise WorkflowError("prepare-run-start-receipt requires an unused frozen row")
-    errors = parameter_matrix_freeze_commit_errors(
-        commit_ref=args.pre_run_freeze_commit,
-        matrix_path=matrix_path,
-        config_path=config_path,
-        job_id=args.job_id,
-    )
-    if errors:
-        raise WorkflowError("Cannot create run-start receipt:\n" + "\n".join(errors))
-    commit = resolve_commit(args.pre_run_freeze_commit)
-    payload = {
-        "schema_version": "gtpj-run-start-receipt/v1",
-        "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
-        "job_id": args.job_id,
-        "run_id": args.run_id,
-        "pre_run_freeze_commit": commit,
-        "config_fingerprint": row.get("config_fingerprint", ""),
-        "matrix_frozen_digest": parameter_matrix_frozen_digest(row),
-        "command_sha256": parameter_matrix_sha256(args.command),
-        "started_at": utc_now(),
-    }
-    receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    log_path.write_text(f"GTPJ_RUN_START_RECEIPT_SHA256={sha256_file(receipt_path)}\n", encoding="utf-8")
+    lock_path = matrix_path.with_name(f".{matrix_path.name}.{args.job_id}.run-start.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with lock_path.open("x", encoding="utf-8") as lock_handle:
+            lock_handle.write(f"job_id={args.job_id}\nrun_id={args.run_id}\n")
+    except FileExistsError as exc:
+        raise WorkflowError("another process is already binding this parameter-matrix row") from exc
+    try:
+        rows = read_parameter_matrix(matrix_path)
+        matches = [row for row in rows if row.get("job_id", "") == args.job_id]
+        if len(matches) != 1:
+            raise WorkflowError("prepare-run-start-receipt --job-id must name exactly one matrix row")
+        row = matches[0]
+        if row.get("status") != "frozen":
+            raise WorkflowError("prepare-run-start-receipt requires an unused frozen row")
+        errors = parameter_matrix_freeze_commit_errors(
+            commit_ref=args.pre_run_freeze_commit,
+            matrix_path=matrix_path,
+            config_path=config_path,
+            job_id=args.job_id,
+            require_exact_checkout=True,
+            require_clean_checkout=True,
+        )
+        errors.extend(run_start_command_errors(args.command, config_path))
+        if not args.run_id.strip():
+            errors.append("run-start receipt requires a non-empty run_id")
+        if errors:
+            raise WorkflowError("Cannot create run-start receipt:\n" + "\n".join(errors))
+        commit = resolve_commit(args.pre_run_freeze_commit)
+        code_ref = row.get("code_ref", "").strip()
+        try:
+            code_ref_commit = resolve_commit(code_ref)
+            require_ancestor(code_ref_commit, commit, "parameter-matrix code_ref must resolve within the frozen training history")
+        except WorkflowError as exc:
+            raise WorkflowError(f"Cannot create run-start receipt:\n{exc}") from exc
+        payload = {
+            "schema_version": "gtpj-run-start-receipt/v1",
+            "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
+            "job_id": args.job_id,
+            "run_id": args.run_id,
+            "pre_run_freeze_commit": commit,
+            "config_fingerprint": row.get("config_fingerprint", ""),
+            "matrix_frozen_digest": parameter_matrix_frozen_digest(row),
+            "config_path": display_path(config_path),
+            "code_ref": code_ref,
+            "code_ref_commit": code_ref_commit,
+            "command": args.command,
+            "command_sha256": parameter_matrix_sha256(args.command),
+            "started_at": utc_now(),
+        }
+        receipt_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+        receipt_sha256 = hashlib.sha256(receipt_text.encode("utf-8")).hexdigest()
+        row["status"] = "running"
+        row["run_id"] = args.run_id
+        row["run_start_receipt_ref"] = display_path(receipt_path)
+        row["run_start_receipt_sha256"] = receipt_sha256
+        row["run_command_sha256"] = parameter_matrix_sha256(args.command)
+        write_parameter_matrix(
+            directory=matrix_path.parent,
+            title=matrix_path.parent.name,
+            rows=rows,
+            source_note=parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD)),
+            overwrite=True,
+        )
+        write_new_lf(receipt_path, receipt_text)
+        write_new_lf(log_path, f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}\n")
+    finally:
+        lock_path.unlink(missing_ok=True)
     print("run-start-receipt-created")
     print(f"receipt: {display_path(receipt_path)}")
     print(f"log: {display_path(log_path)}")
@@ -13445,6 +13688,9 @@ def cmd_init_parameter_matrix(args: argparse.Namespace) -> int:
         "duplicate_resolution": "明确复跑" if args.repeat_of else "唯一配置",
         "purpose": args.purpose or args.job_kind,
         "run_id": args.run_id,
+        "run_start_receipt_ref": "",
+        "run_start_receipt_sha256": "",
+        "run_command_sha256": "",
         "U": "",
         "S": "",
         "H": "",
@@ -13452,6 +13698,7 @@ def cmd_init_parameter_matrix(args: argparse.Namespace) -> int:
         "best_epoch": "",
         "decision": "",
         "artifact_ref": "",
+        "artifact_manifest_sha256": "",
     }
     errors = validate_parameter_matrix_rows([row], matrix_path=directory / PARAMETER_MATRIX_CSV)
     if errors:
@@ -13567,6 +13814,7 @@ def dynamic_warehouse_result_errors(
     if not re.fullmatch(r"[0-9a-f]{64}", manifest_sha256):
         return [f"{job_id} has no valid artifact_manifest_sha256"]
     identity = {
+        "attempt_id": str(plan.get("warehouse_attempt_id", "")),
         "artifact_manifest_job_id": job_id,
         "artifact_manifest_run_id": str(plan.get("run_id", "")),
         "artifact_manifest_attempt_id": str(plan.get("warehouse_attempt_id", "")),
@@ -13591,11 +13839,70 @@ def dynamic_warehouse_result_errors(
         errors.append(f"{job_id} artifact manifest job_id mismatch")
     if str(payload.get("run_id", "")) != str(plan.get("run_id", "")):
         errors.append(f"{job_id} artifact manifest run_id mismatch")
-    if str(payload.get("warehouse_attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
+    if str(payload.get("attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
         errors.append(f"{job_id} artifact manifest attempt_id mismatch")
+    if str(payload.get("warehouse_attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
+        errors.append(f"{job_id} artifact manifest warehouse_attempt_id mismatch")
     if normalized_posix_path(str(payload.get("warehouse_dir", ""))) != expected_dir:
         errors.append(f"{job_id} artifact manifest warehouse_dir mismatch")
     return errors
+
+
+def dynamic_top_rank_resolution_errors(
+    row: dict[str, str],
+    result: dict[str, str],
+    *,
+    summary: dict[str, dict[str, str]],
+    matrix_by_job: dict[str, dict[str, str]],
+) -> list[str]:
+    match = re.fullmatch(r"pending_after_top_rank:([1-9][0-9]*)", row.get("config_fingerprint", ""))
+    if match is None or result.get("status") not in {"completed", "failed"}:
+        return []
+    job_id = row.get("job_id", "")
+    rank = int(match.group(1))
+    resolved_from = result.get("resolved_from_job_id", "").strip()
+    source = matrix_by_job.get(resolved_from)
+    if source is None:
+        return [f"{job_id} completed a top-rank repeat but summary.csv has no valid resolved_from_job_id"]
+    if source.get("config_fingerprint", "").startswith("pending_after_top_rank:"):
+        return [f"{job_id} resolved through another unresolved top-rank repeat"]
+
+    explore_job_ids = [
+        candidate_id
+        for candidate_id, candidate in matrix_by_job.items()
+        if not candidate.get("config_fingerprint", "").startswith("pending_after_top_rank:")
+    ]
+    incomplete = [
+        candidate_id
+        for candidate_id in explore_job_ids
+        if candidate_id not in summary
+        or summary[candidate_id].get("status") not in {"completed", "failed", "skipped"}
+    ]
+    if incomplete:
+        return [
+            f"{job_id} cannot verify top_rank:{rank}; exploration summary is incomplete: "
+            + ", ".join(sorted(incomplete))
+        ]
+    completed: list[tuple[float, str]] = []
+    for candidate_id in explore_job_ids:
+        candidate_result = summary[candidate_id]
+        if candidate_result.get("status") != "completed":
+            continue
+        try:
+            score = float(candidate_result.get("H", ""))
+        except ValueError:
+            return [f"{job_id} cannot verify top_rank:{rank}; {candidate_id} has no numeric H"]
+        completed.append((score, candidate_id))
+    completed.sort(key=lambda item: (-item[0], item[1]))
+    if len(completed) < rank:
+        return [f"{job_id} cannot verify top_rank:{rank}; only {len(completed)} completed candidates exist"]
+    expected_source = completed[rank - 1][1]
+    if resolved_from != expected_source:
+        return [
+            f"{job_id} resolved_from_job_id {resolved_from!r} is not verified top_rank:{rank} "
+            f"({expected_source})"
+        ]
+    return []
 
 
 def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
@@ -13674,6 +13981,8 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
                 and row.get("run_id", "") == str(plan.get("run_id", ""))
                 and all(row.get(key, "") == result.get(key, "") for key in ["U", "S", "H", "ZS", "best_epoch"])
                 and row.get("artifact_ref", "") == incoming_artifact
+                and row.get("artifact_manifest_sha256", "")
+                == result.get("artifact_manifest_sha256", "").strip()
             )
             if not same_result:
                 errors.append(f"Refusing to overwrite an existing result for {row['job_id']}")
@@ -13688,15 +13997,17 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
             "completed",
             "failed",
         }:
+            top_rank_errors = dynamic_top_rank_resolution_errors(
+                row,
+                result,
+                summary=summary,
+                matrix_by_job=matrix_by_job,
+            )
+            if top_rank_errors:
+                errors.extend(top_rank_errors)
+                continue
             source = matrix_by_job.get(resolved_from)
-            if source is None:
-                errors.append(
-                    f"{row['job_id']} completed a top-rank repeat but summary.csv has no valid resolved_from_job_id"
-                )
-                continue
-            if source["config_fingerprint"].startswith("pending_after_top_rank:"):
-                errors.append(f"{row['job_id']} resolved through another unresolved top-rank repeat")
-                continue
+            assert source is not None
             row["repeat_of"] = resolved_from
             row["config_fingerprint"] = source["config_fingerprint"]
             row["changed_parameters"] = source["changed_parameters"]
@@ -13712,6 +14023,7 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
             errors.append(f"{row['job_id']} has no warehouse_dir in summary.csv")
         elif warehouse_dir:
             row["artifact_ref"] = f"warehouse_dir:{warehouse_dir}"
+            row["artifact_manifest_sha256"] = result.get("artifact_manifest_sha256", "").strip()
     if errors:
         raise WorkflowError("Refusing to sync unresolved or non-reproducible results:\n" + "\n".join(errors))
     errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
@@ -14114,7 +14426,7 @@ def refresh_batch_status(run_dir):
 
 def top_job_for_rank(run_dir, rank):
     rows = completed_explore_rows(run_dir)
-    rows.sort(key=lambda row: float(row.get("H") or "-inf"), reverse=True)
+    rows.sort(key=lambda row: (-float(row.get("H") or "-inf"), str(row.get("job_id", ""))))
     if len(rows) < rank:
         return None
     return rows[rank - 1]
@@ -14205,6 +14517,17 @@ def warehouse_attempt_dir(plan, job):
     )
 
 
+def reserve_warehouse_attempt_dir(plan, job):
+    attempt_dir = warehouse_attempt_dir(plan, job)
+    try:
+        attempt_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        raise RuntimeError(
+            f"Refusing to overwrite existing Warehouse job directory: {attempt_dir}"
+        ) from exc
+    return attempt_dir
+
+
 def copy_if_newer(src, dst_dir, start_ts):
     copied = []
     if not src.exists():
@@ -14252,7 +14575,8 @@ def prune_model_artifacts(attempt_dir, keep=3):
 
 def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts):
     attempt_dir = warehouse_attempt_dir(plan, job)
-    attempt_dir.mkdir(parents=True, exist_ok=True)
+    if not attempt_dir.is_dir():
+        raise RuntimeError(f"Warehouse job directory was not reserved before artifact copy: {attempt_dir}")
     copied = []
     copied += copy_if_newer(worktree / "train_log" / "CUB", attempt_dir / "logs", start_ts)
     copied += copy_if_newer(worktree / "checkpoints" / "CUB", attempt_dir / "checkpoints", start_ts)
@@ -14317,8 +14641,11 @@ def run_job(run_dir, plan, job, gpu):
     worktree = None
     start_ts = time.time()
     warehouse_dir = ""
+    warehouse_reserved = False
     manifest_evidence = {}
     try:
+        reserve_warehouse_attempt_dir(plan, job)
+        warehouse_reserved = True
         worktree = ensure_worktree(plan, gpu)
         config_dir = run_dir / "configs"
         runtime_config_dir = run_dir / "runtime_configs"
@@ -14379,12 +14706,12 @@ def run_job(run_dir, plan, job, gpu):
     except Exception as exc:
         error_path = log_dir / f"{job_id}_gpu{gpu}.error.txt"
         error_path.write_text(traceback.format_exc(), encoding="utf-8")
-        if worktree is not None:
+        if worktree is not None and warehouse_reserved:
             try:
                 warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
             except Exception:
                 warehouse_dir = ""
-        if not warehouse_dir:
+        if not warehouse_dir and warehouse_reserved:
             attempt_dir = warehouse_attempt_dir(plan, job)
             (attempt_dir / "receipts").mkdir(parents=True, exist_ok=True)
             dst = attempt_dir / "receipts" / error_path.name
@@ -14409,7 +14736,8 @@ def run_job(run_dir, plan, job, gpu):
                 encoding="utf-8",
             )
             warehouse_dir = str(attempt_dir)
-        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir, run_dir)
+        if warehouse_dir:
+            manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir, run_dir)
         row = {
             **job,
             **manifest_evidence,
@@ -14731,6 +15059,7 @@ Outputs:
 - `events.jsonl`
 - `logs/`
 - `runtime_configs/`
+- `artifact_manifests/`（逐任务 Warehouse 证据清单；取回结果时必须一起复制）
 
 Stop policy:
 
@@ -15505,6 +15834,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--pre-run-freeze-commit", default="")
     record.add_argument("--run-start-receipt", default="")
     record.add_argument("--legacy-summary-only", action="store_true")
+    record.add_argument("--legacy-source-commit", default="")
     record.set_defaults(func=cmd_record_result)
 
     record_module = sub.add_parser(
@@ -15531,6 +15861,7 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--new-value", default="")
     record_module.add_argument("--matrix-job-id", default="")
     record_module.add_argument("--legacy-summary-only", action="store_true")
+    record_module.add_argument("--legacy-source-commit", default="")
     record_module.add_argument(
         "--decision",
         default="keep",

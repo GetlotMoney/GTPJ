@@ -10,6 +10,8 @@
 - owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
 - `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
 - Claude 备用路线不是 `--skip-claude`：它仍需完成对应 tier 的 1 或 3 个独立只读审核轮次，且每轮 verdict 都必须为 pass。每轮必须使用不同的真实 reviewer instance id，并列出实际看过的文件和运行过的命令；校验器会拒绝占位名称、重复审核者、空证据，以及与实际审核来源不一致的最终说明。
+- `00_task.md`、`02_review_brief.md` 和 `10_final_decision.md` 的审核档位与轮数必须完全一致；高风险任务固定为 `strict-3 / 3`，不能只改最终文件把三轮降成一轮。
+- 每轮只能有一个顶层 `reviewer` 和一个顶层 `verdict`。把支持字段藏在正文里、写两个相互冲突的 verdict，或用未知 provider 都会被拒绝。Reviewer instance id 是运行环境留下的身份声明，不是密码学签名；正式证据还必须保留创建/归档结果和主助手收到的原始审核输出，离线校验只负责检查结构与交叉一致性。
 - 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须先在专用代码审核分支完成本协议。
 - 如果改动已经先发生在旧脏分支，后补切分支只能算草稿隔离；正式 Runner 前必须重新从干净基线切专用分支，迁移最小 diff，通过本协议和机器验证后再做 `pre-run freeze commit`。
 
