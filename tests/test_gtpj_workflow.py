@@ -2670,6 +2670,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertIn("exploration summary is incomplete: DR-002", "\n".join(errors))
 
+    def test_dynamic_top_rank_resolution_rejects_non_finite_scores(self) -> None:
+        repeat_row = {"job_id": "DR-003", "config_fingerprint": "pending_after_top_rank:1"}
+        matrix_by_job = {
+            "DR-001": {"job_id": "DR-001", "config_fingerprint": "config-a"},
+            "DR-002": {"job_id": "DR-002", "config_fingerprint": "config-b"},
+            "DR-003": repeat_row,
+        }
+        result = {
+            "job_id": "DR-003",
+            "status": "completed",
+            "resolved_from_job_id": "DR-001",
+        }
+        summary = {
+            "DR-001": {"job_id": "DR-001", "status": "completed", "H": "NaN"},
+            "DR-002": {"job_id": "DR-002", "status": "skipped", "H": ""},
+        }
+
+        errors = self.module.dynamic_top_rank_resolution_errors(
+            repeat_row,
+            result,
+            summary=summary,
+            matrix_by_job=matrix_by_job,
+        )
+
+        self.assertIn("non-finite H", "\n".join(errors))
+
     def test_record_result_requires_a_ready_matrix_and_syncs_the_matching_job(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-001-topo008")
         self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
@@ -3025,7 +3051,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("HEAD exactly equals", stderr)
 
-        self._write("dirty-marker.txt", "dirty\n")
+        self._write("malicious.run-start.lock", "dirty training code or config\n")
         code, _stdout, stderr = self._run_main(
             *receipt_args,
             "--pre-run-freeze-commit",
@@ -3033,7 +3059,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(1, code)
         self.assertIn("clean worktree", stderr)
-        (self.repo / "dirty-marker.txt").unlink()
+        (self.repo / "malicious.run-start.lock").unlink()
 
         placeholder_args = list(receipt_args)
         command_index = placeholder_args.index("--command") + 1
@@ -3045,6 +3071,38 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(1, code)
         self.assertIn("placeholder command", stderr)
+
+        wrong_config_args = list(receipt_args)
+        command_index = wrong_config_args.index("--command") + 1
+        wrong_config_args[command_index] = (
+            "python train_GTPJ_CUB.py --config evil.yaml "
+            "--note experiments/v1/tune/TUNE-777_receipt-gate/config.yaml"
+        )
+        code, _stdout, stderr = self._run_main(
+            *wrong_config_args,
+            "--pre-run-freeze-commit",
+            "HEAD",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("exactly match the frozen config path", stderr)
+        self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+
+        with tempfile.TemporaryDirectory() as output_tmp:
+            output_root = Path(output_tmp)
+            blocked_parent = output_root / "blocked-parent"
+            blocked_parent.write_text("not a directory\n", encoding="utf-8")
+            atomic_args = list(receipt_args)
+            atomic_args[atomic_args.index("--receipt") + 1] = str(blocked_parent / "receipt.json")
+            atomic_args[atomic_args.index("--log") + 1] = str(output_root / "training.log")
+            code, _stdout, stderr = self._run_main(
+                *atomic_args,
+                "--pre-run-freeze-commit",
+                "HEAD",
+            )
+            self.assertEqual(1, code)
+            self.assertIn("run-start receipt transaction failed", stderr)
+            self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+            self.assertFalse((output_root / "training.log").exists())
 
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
@@ -3205,6 +3263,14 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         with self.assertRaisesRegex(self.module.WorkflowError, "adopted in Git history"):
             self.module.parameter_matrix_policy_is_active()
+
+    def test_historical_inactive_policy_file_does_not_count_as_adoption(self) -> None:
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: inactive\n")
+        self._commit_all("add inactive parameter-matrix placeholder")
+        (self.repo / "docs/workflow/protocols/parameter_matrix_protocol.md").unlink()
+        self._commit_all("remove inactive parameter-matrix placeholder")
+
+        self.assertFalse(self.module.parameter_matrix_policy_is_active())
 
     def test_parameter_matrix_ready_gate_rejects_terminal_and_legacy_rows(self) -> None:
         rows = self.module.build_parameter_matrix_rows(
@@ -5531,6 +5597,24 @@ decision:
         self.assertEqual(1, code)
         self.assertEqual("", stdout)
         self.assertIn("exactly one top-level verdict", stderr)
+
+    def test_validate_ai_cross_review_rejects_false_final_gate_with_true_text_in_note(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-false-final-gate"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+        final_path = self.repo / pack_dir / "10_final_decision.md"
+        final_path.write_text(
+            final_path.read_text(encoding="utf-8").replace(
+                "machine_gates_passed: true",
+                "machine_gates_passed: false\nnote: machine_gates_passed: true",
+            ),
+            encoding="utf-8",
+        )
+
+        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
+
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("machine_gates_passed: true", stderr)
 
     def test_validate_ai_cross_review_rejects_non_pass_claude_verdict(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-non-pass"

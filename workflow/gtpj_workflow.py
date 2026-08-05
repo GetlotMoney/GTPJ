@@ -13,7 +13,10 @@ import csv
 import hashlib
 import io
 import json
+import math
+import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -7564,17 +7567,20 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     pre_review_path = pack_dir / "02_codex_named_thread_pre_review.md"
     if tiered_pack and pre_review_path.is_file():
         pre_text = read_text(pre_review_path)
-        for marker in [
-            "named_thread_required: true",
-            "verdict: pass",
-            "lifecycle: completed_archived",
-            "archived_before_claude: true",
-            "archive_result_confirms_completion: true",
-        ]:
-            if marker not in pre_text:
-                errors.append(f"02_codex_named_thread_pre_review.md missing marker: {marker}")
-        pre_thread_id = scalar_from_text(pre_text, "thread_id")
-        pre_archive_result = scalar_from_text(pre_text, "archive_result")
+        expected_pre_scalars = {
+            "named_thread_required": "true",
+            "verdict": "pass",
+            "lifecycle": "completed_archived",
+            "archived_before_claude": "true",
+            "archive_result_confirms_completion": "true",
+        }
+        for key, expected_value in expected_pre_scalars.items():
+            if top_level_scalar_values(pre_text, key) != [expected_value]:
+                errors.append(
+                    f"02_codex_named_thread_pre_review.md must declare one top-level {key}: {expected_value}"
+                )
+        pre_thread_id = single_top_level_scalar(pre_text, "thread_id")
+        pre_archive_result = single_top_level_scalar(pre_text, "archive_result")
         if not codex_pre_review_archive_result_text_valid(pre_thread_id, pre_archive_result):
             errors.append(
                 "02_codex_named_thread_pre_review.md archive_result must include matching thread id, previous_status=completed, and archived: true"
@@ -7583,11 +7589,20 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     final_path = pack_dir / "10_final_decision.md"
     if final_path.is_file():
         final_text = read_text(final_path)
-        if "ai_cross_review_status: blocked" in final_text:
-            errors.append("ai cross review is blocked")
+        expected_final_scalars = {
+            "ai_cross_review_status": "pass",
+            "owner_participation": "not_required",
+            "rounds_completed": str(rounds_required),
+            "codex_fixes_or_rebuttals_recorded": "true",
+            "machine_gates_passed": "true",
+            "unresolved_blocking_issues": "0",
+        }
+        for key, expected_value in expected_final_scalars.items():
+            if top_level_scalar_values(final_text, key) != [expected_value]:
+                errors.append(f"10_final_decision.md must declare one top-level {key}: {expected_value}")
         if tiered_pack:
-            review_tier = scalar_from_text(final_text, "review_tier")
-            rounds_text = scalar_from_text(final_text, "claude_rounds_required")
+            review_tier = single_top_level_scalar(final_text, "review_tier")
+            rounds_text = single_top_level_scalar(final_text, "claude_rounds_required")
             if review_tier not in AI_CROSS_REVIEW_TIER_ROUNDS:
                 errors.append(f"10_final_decision.md invalid review_tier: {review_tier}")
             else:
@@ -7600,32 +7615,28 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
                     errors.append(
                         f"10_final_decision.md claude_rounds_required must be {expected_rounds} for {review_tier}"
                     )
-        for marker in sorted(AI_CROSS_REVIEW_FINAL_MARKERS):
-            if marker not in final_text:
-                errors.append(f"10_final_decision.md missing marker: {marker}")
-        if claude_rounds and "claude_code_read_only: true" not in final_text:
+        claude_read_only = single_top_level_scalar(final_text, "claude_code_read_only")
+        fallback_read_only = single_top_level_scalar(final_text, "independent_codex_fallback_read_only")
+        if claude_rounds and claude_read_only != "true":
             errors.append("10_final_decision.md must declare claude_code_read_only: true for Claude rounds")
-        if fallback_rounds and "independent_codex_fallback_read_only: true" not in final_text:
+        if fallback_rounds and fallback_read_only != "true":
             errors.append(
                 "10_final_decision.md must declare independent_codex_fallback_read_only: true for fallback rounds"
             )
-        if not claude_rounds and fallback_rounds and "claude_code_read_only: true" in final_text:
+        if not claude_rounds and fallback_rounds and claude_read_only == "true":
             errors.append("10_final_decision.md cannot claim Claude Code review when every round used Codex fallback")
         if rounds_required > 0 and not claude_rounds and not fallback_rounds:
             errors.append(
                 "10_final_decision.md has no recognized read-only review provider rounds"
             )
         if tiered_pack:
-            for marker in [
-                "review_tier:",
-                "claude_rounds_required:",
-                "codex_named_thread_pre_review: pass",
-                "codex_named_thread_lifecycle: completed_archived",
-            ]:
-                if marker not in final_text:
-                    errors.append(f"10_final_decision.md missing marker: {marker}")
-        if re.search(r"unresolved_blocking_issues:\s*[1-9]", final_text):
-            errors.append("10_final_decision.md has unresolved blocking issues")
+            for key, expected_value in {
+                "codex_named_thread_pre_review": "pass",
+                "codex_named_thread_lifecycle": "completed_archived",
+                "claude_rounds_completed": str(claude_rounds),
+            }.items():
+                if top_level_scalar_values(final_text, key) != [expected_value]:
+                    errors.append(f"10_final_decision.md must declare one top-level {key}: {expected_value}")
 
     return errors
 
@@ -12672,8 +12683,11 @@ def parameter_matrix_policy_is_active() -> bool:
         return True
     if path.exists():
         raise WorkflowError("parameter-matrix policy file exists but is not active; the formal gate cannot be disabled")
-    history = git(["log", "--all", "--format=%H", "--", PARAMETER_MATRIX_PROTOCOL], check=False)
-    if history.strip():
+    history = git(["log", "--all", "--format=%H", "--", PARAMETER_MATRIX_PROTOCOL], check=False).splitlines()
+    if any(
+        "policy_status: active" in git_show(f"{commit}:{PARAMETER_MATRIX_PROTOCOL}", check=False)
+        for commit in history
+    ):
         raise WorkflowError("parameter-matrix policy was adopted in Git history but its active protocol file is missing")
     return False
 
@@ -13310,10 +13324,13 @@ def parameter_matrix_freeze_commit_errors(
         if require_exact_checkout and resolve_commit("HEAD") != commit:
             errors.append("run-start receipt must be created while HEAD exactly equals the pre-run freeze commit")
         if require_clean_checkout:
+            ignored_lock = display_path(
+                matrix_path.with_name(f".{matrix_path.name}.{job_id}.run-start.lock")
+            ).replace("\\", "/")
             dirty_lines = [
                 line
                 for line in git(["status", "--short"], check=False).splitlines()
-                if ".run-start.lock" not in line
+                if line[3:].strip().replace("\\", "/") != ignored_lock
             ]
             if dirty_lines:
                 errors.append("run-start receipt requires a clean worktree at the pre-run freeze commit")
@@ -13357,13 +13374,37 @@ def run_start_command_errors(command: str, config_path: Path) -> list[str]:
         return ["run-start receipt command must invoke Python"]
     if not re.search(r"(?i)\.py(?:\s|$)", command_text):
         return ["run-start receipt command must name a Python training entry script"]
-    normalized_command = command_text.replace("\\", "/")
-    config_candidates = {
-        display_path(config_path).replace("\\", "/"),
-        str(config_path.resolve()).replace("\\", "/"),
-    }
-    if "--config" not in normalized_command or not any(candidate in normalized_command for candidate in config_candidates):
-        return ["run-start receipt command must pass the frozen config path through --config"]
+    try:
+        tokens = shlex.split(command_text, posix=False)
+    except ValueError as exc:
+        return [f"run-start receipt command cannot be parsed: {exc}"]
+
+    def unquote(value: str) -> str:
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            return value[1:-1]
+        return value
+
+    config_values: list[str] = []
+    index = 0
+    while index < len(tokens):
+        token = unquote(tokens[index])
+        if token == "--config":
+            if index + 1 >= len(tokens):
+                return ["run-start receipt command has --config without a path"]
+            config_values.append(unquote(tokens[index + 1]))
+            index += 2
+            continue
+        if token.startswith("--config="):
+            config_values.append(unquote(token.split("=", 1)[1]))
+        index += 1
+    if len(config_values) != 1:
+        return ["run-start receipt command must pass exactly one frozen config through --config"]
+    supplied_path = Path(config_values[0])
+    if not supplied_path.is_absolute():
+        supplied_path = REPO_ROOT / supplied_path
+    if os.path.normcase(str(supplied_path.resolve())) != os.path.normcase(str(config_path.resolve())):
+        return ["run-start receipt --config must exactly match the frozen config path"]
     return []
 
 
@@ -13449,6 +13490,8 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         log_path = REPO_ROOT / log_path
     if receipt_path.exists() or log_path.exists():
         raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
+    if receipt_path.resolve() == log_path.resolve():
+        raise WorkflowError("prepare-run-start-receipt requires different receipt and log paths")
     lock_path = matrix_path.with_name(f".{matrix_path.name}.{args.job_id}.run-start.lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -13458,6 +13501,8 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         raise WorkflowError("another process is already binding this parameter-matrix row") from exc
     try:
         rows = read_parameter_matrix(matrix_path)
+        original_rows = [dict(item) for item in rows]
+        source_note = parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD))
         matches = [row for row in rows if row.get("job_id", "") == args.job_id]
         if len(matches) != 1:
             raise WorkflowError("prepare-run-start-receipt --job-id must name exactly one matrix row")
@@ -13501,20 +13546,59 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         }
         receipt_text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
         receipt_sha256 = hashlib.sha256(receipt_text.encode("utf-8")).hexdigest()
-        row["status"] = "running"
-        row["run_id"] = args.run_id
-        row["run_start_receipt_ref"] = display_path(receipt_path)
-        row["run_start_receipt_sha256"] = receipt_sha256
-        row["run_command_sha256"] = parameter_matrix_sha256(args.command)
-        write_parameter_matrix(
-            directory=matrix_path.parent,
-            title=matrix_path.parent.name,
-            rows=rows,
-            source_note=parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD)),
-            overwrite=True,
-        )
-        write_new_lf(receipt_path, receipt_text)
-        write_new_lf(log_path, f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}\n")
+        receipt_temp = receipt_path.with_name(f".{receipt_path.name}.{args.job_id}.tmp")
+        log_temp = log_path.with_name(f".{log_path.name}.{args.job_id}.tmp")
+        matrix_write_attempted = False
+        receipt_published = False
+        log_published = False
+        try:
+            if receipt_temp.exists() or log_temp.exists():
+                raise WorkflowError("prepare-run-start-receipt refuses stale transaction temp files")
+            write_new_lf(receipt_temp, receipt_text)
+            write_new_lf(log_temp, f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}\n")
+            row["status"] = "running"
+            row["run_id"] = args.run_id
+            row["run_start_receipt_ref"] = display_path(receipt_path)
+            row["run_start_receipt_sha256"] = receipt_sha256
+            row["run_command_sha256"] = parameter_matrix_sha256(args.command)
+            matrix_write_attempted = True
+            write_parameter_matrix(
+                directory=matrix_path.parent,
+                title=matrix_path.parent.name,
+                rows=rows,
+                source_note=source_note,
+                overwrite=True,
+            )
+            os.replace(receipt_temp, receipt_path)
+            receipt_published = True
+            os.replace(log_temp, log_path)
+            log_published = True
+        except Exception as exc:
+            rollback_error = ""
+            if matrix_write_attempted:
+                try:
+                    write_parameter_matrix(
+                        directory=matrix_path.parent,
+                        title=matrix_path.parent.name,
+                        rows=original_rows,
+                        source_note=source_note,
+                        overwrite=True,
+                    )
+                except Exception as restore_exc:
+                    rollback_error = f"; matrix rollback also failed: {restore_exc}"
+            cleanup_paths = [receipt_temp, log_temp]
+            if receipt_published:
+                cleanup_paths.append(receipt_path)
+            if log_published:
+                cleanup_paths.append(log_path)
+            for cleanup_path in cleanup_paths:
+                try:
+                    cleanup_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            if isinstance(exc, WorkflowError) and not rollback_error:
+                raise
+            raise WorkflowError(f"run-start receipt transaction failed: {exc}{rollback_error}") from exc
     finally:
         lock_path.unlink(missing_ok=True)
     print("run-start-receipt-created")
@@ -13892,6 +13976,8 @@ def dynamic_top_rank_resolution_errors(
             score = float(candidate_result.get("H", ""))
         except ValueError:
             return [f"{job_id} cannot verify top_rank:{rank}; {candidate_id} has no numeric H"]
+        if not math.isfinite(score):
+            return [f"{job_id} cannot verify top_rank:{rank}; {candidate_id} has a non-finite H"]
         completed.append((score, candidate_id))
     completed.sort(key=lambda item: (-item[0], item[1]))
     if len(completed) < rank:
@@ -14049,6 +14135,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -14426,10 +14513,16 @@ def refresh_batch_status(run_dir):
 
 def top_job_for_rank(run_dir, rank):
     rows = completed_explore_rows(run_dir)
-    rows.sort(key=lambda row: (-float(row.get("H") or "-inf"), str(row.get("job_id", ""))))
-    if len(rows) < rank:
+    scored_rows = []
+    for row in rows:
+        score = float(row.get("H") or "nan")
+        if not math.isfinite(score):
+            raise RuntimeError(f"non-finite H cannot participate in top-rank resolution: {row.get('job_id')}")
+        scored_rows.append((score, row))
+    scored_rows.sort(key=lambda item: (-item[0], str(item[1].get("job_id", ""))))
+    if len(scored_rows) < rank:
         return None
-    return rows[rank - 1]
+    return scored_rows[rank - 1][1]
 
 
 def link_runtime_resources(plan, worktree):
