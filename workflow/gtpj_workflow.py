@@ -12710,6 +12710,10 @@ def git_object_exists(ref_path: str) -> bool:
     return result.returncode == 0
 
 
+def git_object_type(ref_path: str) -> str:
+    return git(["cat-file", "-t", ref_path], check=False).strip()
+
+
 def legacy_summary_only_eligibility_errors(target_dir: Path, source_commit_ref: str) -> list[str]:
     if not source_commit_ref.strip():
         return ["--legacy-summary-only requires --legacy-source-commit proving the directory predates the policy"]
@@ -12719,8 +12723,11 @@ def legacy_summary_only_eligibility_errors(target_dir: Path, source_commit_ref: 
         target_rel = repo_relative_path(target_dir, "legacy target directory")
     except WorkflowError as exc:
         return [str(exc)]
-    if not git_object_exists(f"{source_commit}:{target_rel}"):
+    target_object_type = git_object_type(f"{source_commit}:{target_rel}")
+    if not target_object_type:
         return [f"legacy target directory did not exist at source commit {source_commit}"]
+    if target_object_type != "tree":
+        return [f"legacy target path was not a directory at source commit {source_commit}"]
     matrix_rel = f"{target_rel}/{PARAMETER_MATRIX_CSV}"
     if git_object_exists(f"{source_commit}:{matrix_rel}"):
         return [f"legacy target already had {PARAMETER_MATRIX_CSV} at source commit {source_commit}"]
@@ -13431,6 +13438,8 @@ def run_start_command_errors(command: str, config_path: Path, *, commit_ref: str
     command_text = command.strip()
     if not command_text:
         return ["run-start receipt requires a non-empty training command"]
+    if "\r" in command_text or "\n" in command_text:
+        return ["run-start receipt command must be a single line"]
     lowered = command_text.lower()
     if re.match(r"^(echo|printf|write-output|python\s+-c)\b", lowered):
         return ["run-start receipt command must launch a training script, not a placeholder command"]

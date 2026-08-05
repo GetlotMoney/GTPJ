@@ -3115,6 +3115,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml",
             "python train_GTPJ_CUB.py --config "
             "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml && echo done",
+            "python train_GTPJ_CUB.py --config "
+            "experiments/v1/tune/TUNE-777_receipt-gate/config.yaml\necho second-command",
         ]:
             wrapped_args = list(receipt_args)
             wrapped_args[wrapped_args.index("--command") + 1] = wrapped_command
@@ -3124,7 +3126,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 "HEAD",
             )
             self.assertEqual(1, code)
-            self.assertTrue("direct" in stderr or "shell chaining" in stderr)
+            self.assertTrue("direct" in stderr or "shell chaining" in stderr or "single line" in stderr)
 
         with tempfile.TemporaryDirectory() as outside_tmp:
             outside_entry = Path(outside_tmp) / "outside_training.py"
@@ -3365,6 +3367,22 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual(1, code)
         self.assertIn("did not exist at source commit", stderr)
+
+    def test_legacy_source_path_must_have_been_a_directory_tree(self) -> None:
+        target_rel = "experiments/v1/tune/TUNE-903_blob-source"
+        target_path = self.repo / target_rel
+        self._write(target_rel, "historical file, not an experiment directory\n")
+        self._commit_all("add historical blob at future experiment path")
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        target_path.unlink()
+        self._commit_all("remove historical blob")
+        target_path.mkdir(parents=True)
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        self._commit_all("activate parameter-matrix policy after blob")
+
+        errors = self.module.legacy_summary_only_eligibility_errors(target_path, source_commit)
+
+        self.assertIn("was not a directory", "\n".join(errors))
 
     def test_adopted_parameter_matrix_policy_cannot_be_disabled_by_deleting_its_file(self) -> None:
         self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
