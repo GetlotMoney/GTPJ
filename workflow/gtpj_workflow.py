@@ -13969,7 +13969,12 @@ def write_run_finish_receipt(
         "returncode": int(process_result["returncode"]),
         "log_sha256": str(process_result["log_sha256"]),
     }
-    write_new_lf(finish_path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    finish_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with finish_path.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    except FileExistsError as exc:
+        raise WorkflowError(f"Refusing to overwrite existing run-finish receipt: {display_path(finish_path)}") from exc
     return finish_path
 
 
