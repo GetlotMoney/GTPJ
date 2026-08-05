@@ -72,8 +72,8 @@ python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/t
 python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
 # 提交上述冻结表后，才运行训练。
 python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
-python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id TUNE-001-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python workflow/gtpj_workflow.py prepare-run-start-receipt --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id TUNE-001-001 --run-id attempt-001 --pre-run-freeze-commit <FREEZE_COMMIT> --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --receipt train_log/tune.run_start.json --log train_log/CUB/<log>.txt
+python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id TUNE-001-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --run-start-receipt train_log/tune.run_start.json --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
 python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
 
 # idea and version view

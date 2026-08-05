@@ -4,7 +4,7 @@
 
 - 以审核包 `10_final_decision.md` 中的 `review_tier` 和 `claude_rounds_required` 为准。
 - `review-1` 只做第 1 轮；`strict-3` 才做 3 轮。
-- Claude Code 审核前必须已有 `02_codex_temp_agent_pre_review.md`，且临时 Codex agent 已关闭并记录 `lifecycle: completed_closed`。
+- Claude Code 审核前必须已有 `02_codex_named_thread_pre_review.md`，且命名 Codex 审核任务已归档并记录 `lifecycle: completed_archived`。
 
 本文件是 Claude Code 的项目级只读上下文。它用于让 Claude 快速理解 GTPJ 的稳定规则，不能替代当前 diff、测试、workflow validate 或实验 artifact 证据。
 

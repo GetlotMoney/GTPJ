@@ -2914,7 +2914,18 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("requires --pre-run-freeze-commit", stderr)
         log_path = self.repo / "train_log/tune.log"
         log_path.unlink()
+        self._write(
+            "train_GTPJ_CUB.py",
+            "print('Best Results @ Epoch 2')\n"
+            "print('  GZSL-U : 70.0%')\n"
+            "print('  GZSL-S : 72.0%')\n"
+            "print('  GZSL-H : 71.0%')\n"
+            "print('  ZSL : 73.0%')\n",
+        )
         self._commit_all("freeze parameter matrix before result")
+        freeze_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        record_args = list(record_args)
+        record_args[record_args.index("--pre-run-freeze-commit") + 1] = freeze_commit
         self._write("train_log/tune.log", "existing output\n")
         code, _stdout, stderr = self._run_main(
             "prepare-run-start-receipt",
@@ -2963,11 +2974,17 @@ log:v1:module_trial:TRIAL-001:attempt-001
         log_lines = log_path.read_text(encoding="utf-8").splitlines()
         self.assertTrue(any(line.startswith("GTPJ_TRAINING_PROCESS_STARTED ") for line in log_lines))
         self.assertTrue(any(line.startswith("GTPJ_TRAINING_PROCESS_FINISHED ") for line in log_lines))
-        self.assertIn("training entry", "\n".join(log_lines))
+        self.assertIn("Best Results @ Epoch 2", "\n".join(log_lines))
         rows = self.module.read_parameter_matrix(matrix_path)
         self.assertEqual("running", rows[0]["status"])
         self.assertEqual("attempt-001", rows[0]["run_id"])
         self.assertTrue(rows[0]["run_start_receipt_sha256"])
+        self.assertTrue(rows[0]["run_log_sha256"])
+        self.assertEqual("0", rows[0]["run_exit_code"])
+        self._write("post_training_planner_fix.txt", "advance HEAD without changing frozen training files\n")
+        self._git("add", "post_training_planner_fix.txt")
+        self._git("commit", "-m", "advance planner after training")
+        self.assertNotEqual(freeze_commit, self._git("rev-parse", "HEAD").stdout.strip())
         code, _stdout, stderr = self._run_main(
             "prepare-run-start-receipt",
             "--path",
@@ -2989,14 +3006,19 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(1, code)
         self.assertIn("unused frozen row", stderr)
+        successful_log_bytes = log_path.read_bytes()
+        successful_log_text = successful_log_bytes.decode("utf-8")
         with log_path.open("a", encoding="utf-8") as handle:
             handle.write(training_log_text)
-        successful_log_text = log_path.read_text(encoding="utf-8")
-        log_path.write_text(successful_log_text.replace("returncode=0", "returncode=7"), encoding="utf-8")
+        code, _stdout, stderr = self._run_main(*record_args)
+        self.assertEqual(1, code)
+        self.assertTrue("last line" in stderr or "run_log_sha256" in stderr)
+        log_path.write_bytes(successful_log_bytes)
+        log_path.write_bytes(successful_log_bytes.replace(b"returncode=0", b"returncode=7"))
         code, _stdout, stderr = self._run_main(*record_args)
         self.assertEqual(1, code)
         self.assertIn("non-zero exit code", stderr)
-        log_path.write_text(successful_log_text, encoding="utf-8")
+        log_path.write_bytes(successful_log_bytes)
         bad_seed_args = list(record_args)
         bad_seed_args[bad_seed_args.index("5")] = "6"
         code, _stdout, stderr = self._run_main(*bad_seed_args)
@@ -3024,6 +3046,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(1, code)
         self.assertIn("only freeze a draft row once", stderr)
+        ledger_paths = [
+            matrix_path.parent / name
+            for name in ["README.md", "manifest.yaml", "result.yaml", "result.md"]
+        ]
+        ledger_before_lock = {path: path.read_bytes() for path in ledger_paths}
+        matrix_before_lock = matrix_path.read_bytes()
+        result_lock = self.module.parameter_matrix_lock_path(matrix_path)
+        result_lock.write_text("operation=competing-result-writer\n", encoding="utf-8")
+        try:
+            code, _stdout, stderr = self._run_main(*record_args)
+        finally:
+            result_lock.unlink()
+        self.assertEqual(1, code)
+        self.assertIn("another process is already updating this parameter matrix", stderr)
+        self.assertEqual(matrix_before_lock, matrix_path.read_bytes())
+        self.assertEqual(ledger_before_lock, {path: path.read_bytes() for path in ledger_paths})
+        allowed_runtime_paths = [
+            matrix_path,
+            matrix_path.with_name("PARAMETER_MATRIX.md"),
+            log_path,
+            self.repo / "train_log/tune.run_start.json",
+        ]
+        self.assertFalse(
+            self.module.git_dirty_outside(allowed_runtime_paths),
+            self.module.git(["status", "--short", "--untracked-files=all"], check=False),
+        )
         code, stdout, stderr = self._run_main(*record_args)
         self.assertEqual(0, code, stderr)
         self.assertEqual("", stderr)
@@ -3034,8 +3082,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         receipt_copy = self.repo / "experiments/v1/tune/TUNE-001_topo008/run_start_receipt.json"
         self.assertTrue(receipt_copy.is_file())
         result_yaml = (self.repo / "experiments/v1/tune/TUNE-001_topo008/result.yaml").read_text(encoding="utf-8")
+        manifest_yaml = (self.repo / "experiments/v1/tune/TUNE-001_topo008/manifest.yaml").read_text(encoding="utf-8")
+        readme_text = (self.repo / "experiments/v1/tune/TUNE-001_topo008/README.md").read_text(encoding="utf-8")
         self.assertIn("run_start_receipt_sha256:", result_yaml)
         self.assertIn("run_start_receipt_ref:", result_yaml)
+        self.assertIn(f'code_commit: "{freeze_commit}"', manifest_yaml)
+        self.assertIn('git_dirty: "false"', manifest_yaml)
+        self.assertIn(f"run_commit: {freeze_commit}", readme_text)
         code, _stdout, stderr = self._run_main(*record_args)
         self.assertEqual(1, code)
         self.assertIn("frozen or running", stderr)
@@ -3436,6 +3489,91 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self.assertFalse(receipt_path.exists())
             self.assertFalse(training_log.exists())
             self.assertFalse(list(output_root.glob(".*.tmp")))
+
+        with tempfile.TemporaryDirectory() as output_tmp:
+            output_root = Path(output_tmp)
+            launch_receipt = output_root / "launch-failure.json"
+            launch_log = output_root / "launch-failure.log"
+            launch_args = list(receipt_args)
+            launch_args[launch_args.index("--receipt") + 1] = str(launch_receipt)
+            launch_args[launch_args.index("--log") + 1] = str(launch_log)
+            with mock.patch.object(
+                self.module,
+                "run_training_with_start_receipt",
+                side_effect=self.module.TrainingLaunchError("injected launch failure: could not start"),
+            ):
+                code, _stdout, stderr = self._run_main(
+                    *launch_args,
+                    "--pre-run-freeze-commit",
+                    "HEAD",
+                )
+            self.assertEqual(1, code)
+            self.assertIn("could not start", stderr)
+            row = self.module.read_parameter_matrix(matrix_path)[0]
+            self.assertEqual("frozen", row["status"])
+            self.assertEqual("", row["run_start_receipt_sha256"])
+            self.assertFalse(launch_receipt.exists())
+            self.assertFalse(launch_log.exists())
+
+    def test_nonzero_training_exit_is_sealed_as_failed(self) -> None:
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-776_nonzero"
+        config_path = matrix_dir / "config.yaml"
+        self._write(
+            str(config_path.relative_to(self.repo)).replace("\\", "/"),
+            "version: v1\nrandom_seed:\n  value: 5\n",
+        )
+        self._write("train_GTPJ_CUB.py", "raise SystemExit(7)\n")
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "TUNE-776-001", "seed": 5, "config_updates": {}}],
+            base_config_text=config_path.read_text(encoding="utf-8"),
+            base_version="v1",
+            code_ref="HEAD",
+            run_id="",
+        )
+        rows[0]["config_snapshot_ref"] = "config.yaml"
+        rows[0]["config_fingerprint"] = self.module.parameter_matrix_sha256(
+            config_path.read_text(encoding="utf-8")
+        )
+        rows[0]["status"] = "frozen"
+        matrix_path, _view = self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="nonzero process test",
+        )
+        self._commit_all("freeze nonzero process fixture")
+        code, _stdout, stderr = self._run_main(
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_path),
+            "--config",
+            str(config_path),
+            "--job-id",
+            "TUNE-776-001",
+            "--run-id",
+            "RUN-NONZERO",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-776_nonzero/config.yaml",
+            "--receipt",
+            "train_log/nonzero.json",
+            "--log",
+            "train_log/nonzero.log",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("exited with code 7", stderr)
+        row = self.module.read_parameter_matrix(matrix_path)[0]
+        self.assertEqual("failed", row["status"])
+        self.assertEqual("7", row["run_exit_code"])
+        self.assertTrue(row["run_log_sha256"])
+        self.assertEqual("process_failed", row["decision"])
+        self.assertTrue(
+            (self.repo / "train_log/nonzero.log")
+            .read_text(encoding="utf-8")
+            .splitlines()[-1]
+            .startswith("GTPJ_TRAINING_PROCESS_FINISHED ")
+        )
 
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
@@ -3971,6 +4109,47 @@ log:v1:module_trial:TRIAL-001:attempt-001
         code, _stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
         self.assertEqual(1, code)
         self.assertIn("training commit", stderr)
+
+    def test_formal_dynamic_plan_rejects_matrix_from_another_run_id(self) -> None:
+        trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
+        self._write(f"{trial_dir}/config.yaml", "version: v5\n")
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        gate_path = self._write_agent_runtime_gate(path=f"{trial_dir}/agent_runtime.yaml")
+        self._commit_all("freeze run-id binding fixture")
+        code, _stdout, stderr = self._run_main(
+            "prepare-dynamic-routing-matrix",
+            "--trial-dir",
+            trial_dir,
+            "--attempt-id",
+            "ATTEMPT-016",
+            "--run-id",
+            "RUN-MATRIX-A",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+        )
+        self.assertEqual(0, code, stderr)
+        self._commit_all("commit matrix for run A")
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            trial_dir,
+            "--run-id",
+            "RUN-PLAN-B",
+            "--profile",
+            "dr035-min3-confirm",
+            "--jobs",
+            "3",
+            "--agent-runtime-gate",
+            str(gate_path),
+            "--attempt-id",
+            "ATTEMPT-016",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("run_id", stderr)
+        self.assertFalse((self.repo / ".gtpj_runtime/batches/RUN-PLAN-B").exists())
 
     def test_plan_dynamic_routing_batch_writes_start_script_with_lf_newlines(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -6313,6 +6492,7 @@ decision:
             debug_review = "\n".join(
                 (pack / name).read_text(encoding="utf-8")
                 for name in [
+                    "03_validation.md",
                     "05_claude_review_round_1.md",
                     "07_claude_review_round_2.md",
                     "09_claude_review_round_3.md",

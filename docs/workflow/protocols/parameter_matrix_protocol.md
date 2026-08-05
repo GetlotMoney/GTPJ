@@ -2,7 +2,7 @@
 
 ```text
 policy_status: active
-policy_version: LEDGER-V1.2
+policy_version: LEDGER-V1.3
 effective_date: 2026-08-05
 scope: 所有新建的 tune、ablation、confirmation 和 module trial attempt
 ```
@@ -45,6 +45,10 @@ changed_parameters     相对基线只改了什么，使用 JSON 对象
 config_fingerprint     完整配置的指纹，用于查重
 repeat_of              若是原样复跑，明确写复跑哪一行
 seed                   随机种子
+run_start_receipt_sha256 启动收据的固定哈希
+run_command_sha256      实际训练命令的固定哈希
+run_log_sha256          helper 封口后的完整训练日志哈希
+run_exit_code           helper 真实子进程的退出码
 U/S/H/ZS、best_epoch   实际结果；未跑时为空
 decision               保留、放弃、继续确认等决定
 artifact_ref           Warehouse 中结果摘要的位置
@@ -92,11 +96,15 @@ python workflow\gtpj_workflow.py prepare-run-start-receipt `
 
 这个命令拒绝已有收据或已有日志，只能在训练前创建。创建时必须正好位于指定的冻结提交，且工作树没有未提交变化；命令只能直接调用 Python，或使用 `conda run ... python`，不能套 `cmd /c echo`、PowerShell 输出命令或多个 shell 命令。`--config` 的实际参数必须精确等于这一行冻结的配置，`--conf`、`--con` 等缩写一律拒绝；训练入口本身也关闭 argparse 的参数缩写。训练入口脚本必须在仓库内、存在于冻结提交且内容没有变化。启动收据会记录训练入口相对路径及其冻结内容哈希。
 
-helper 会先准备临时收据和临时日志，再把该行从 `frozen` 改成 `running`，写入唯一的 Run 编号、收据路径、收据 SHA-256 和命令 SHA-256，最后发布收据和日志首行；其中任何一步失败，参数表会恢复到原来的 `frozen` 状态并清理本次临时文件。随后 helper 自己用无 shell 的子进程直接执行 `--command`，把进程号、开始时间、退出码和完整标准输出/错误输出追加到同一日志。正式入账会同时检查日志首行、进程开始标记和进程结束标记；只有手工造一张收据、却没有由 helper 启动训练的结果会被拒绝。
+helper 会先准备临时收据和临时日志，再把该行从 `frozen` 改成 `running`，写入唯一的 Run 编号、收据路径、收据 SHA-256 和命令 SHA-256，最后发布收据和日志首行；其中任何一步失败，参数表会恢复到原来的 `frozen` 状态并清理本次临时文件。随后 helper 自己用无 shell 的子进程直接执行 `--command`，把进程号、开始时间、退出码和完整标准输出/错误输出追加到同一日志。子进程无法启动时，该行恢复为 `frozen` 并清理收据和日志；子进程已经启动但非零退出时，该行明确写成 `failed`，保留收据、退出码和日志供排障，不能一直停在 `running`。
+
+进程结束标记必须是日志最后一行。helper 随后把整份日志的 SHA-256 和退出码写回参数表，相当于给日志“封口”；正式入账只解析开始标记和结束标记之间的真实进程输出，并同时核对日志哈希、退出码和标记顺序。任何在结束标记后补写指标、改写中间输出或手工伪造成功退出码的日志都会被拒绝。
 
 同一张参数表的所有改写动作共用同一把锁，不只是领取启动收据。冻结配置、刷新阅读版、登记普通结果、准备动态批次和回填动态结果都会在锁内重新读取并检查当前表，再一起写回 CSV 与 Markdown，避免两个进程各自拿旧表覆盖对方。
 
-即使有人绕过这一步单独运行训练，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。模块内部 Attempt 同样由 `record-module-attempt` 执行这一检查。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对收据内容、真实文件哈希、训练入口路径与冻结哈希、日志首行、进程标记和文件先后关系。版本级实验会把这份小收据复制为实验目录内的 `run_start_receipt.json`，模块 Attempt 会把它登记为 Warehouse receipt，避免验证完就丢失。
+即使有人绕过这一步单独运行训练，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。模块内部 Attempt 同样由 `record-module-attempt` 执行这一检查。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对收据内容、真实文件哈希、训练入口路径与冻结哈希、日志首行、进程标记、日志封口哈希和文件先后关系。正式账本中的代码提交固定写训练前的冻结提交，不会被训练后推进的当前 `HEAD` 偷换；helper 自己产生的参数表运行状态、收据和日志也不会被误判成训练代码变脏。版本级实验会把这份小收据复制为实验目录内的 `run_start_receipt.json`，模块 Attempt 会把它登记为 Warehouse receipt，避免验证完就丢失。
+
+`record-result` 和 `record-module-attempt` 在写任何正式账本或 Warehouse 文件前先取得整张参数表的锁；拿不到锁时不会先写一半。这样参数表与结果账本不会出现“一边完成、一边仍在运行”的矛盾状态。
 
 普通 module attempt 没有专用批次建表器时，先用最小入口建立一行草稿，再冻结：
 
@@ -125,7 +133,7 @@ python workflow\gtpj_workflow.py validate-parameter-matrix `
 若基线代码标签不是版本号，在“生成矩阵”和“规划正式批次”两步都传同一个
 `--base-code-tag <tag-or-commit>`，否则会因冻结对象不一致被拒绝。
 
-从本规范生效后，正式动态路由批次必须传入同一个 `--attempt-id` 和 `--run-id`；一张矩阵只能绑定一个 Run。正式计划逐行核对全部冻结字段并保存不可变快照，结果回填不能覆盖既有结果。`debug_smoke` 仅用于排障，不受此硬门限制，也不能作为正式证据。
+从本规范生效后，正式动态路由批次必须传入同一个 `--attempt-id` 和 `--run-id`；一张矩阵只能绑定一个 Run。正式计划会逐行核对矩阵中的 `run_id` 是否等于本次计划的 Run 编号，再核对全部冻结字段并保存不可变快照；因此为 `RUN-A` 冻结的表不能拿去规划或回填 `RUN-B`。结果回填不能覆盖既有结果。`debug_smoke` 仅用于排障，不受此硬门限制，也不能作为正式证据。
 
 ## 跑完后
 

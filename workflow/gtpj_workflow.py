@@ -1186,8 +1186,7 @@ def append_readme_result_row(readme: Path, row: str) -> None:
     readme.write_text(content.rstrip() + "\n\n" + row + "\n", encoding="utf-8")
 
 
-def parse_training_log(log_path: Path) -> dict[str, str]:
-    text = read_text(log_path)
+def parse_training_log_text(text: str, label: str) -> dict[str, str]:
     best_start = text.rfind("Best Results")
     metric_text = text[best_start:] if best_start != -1 else text
     metrics: dict[str, str] = {}
@@ -1205,10 +1204,27 @@ def parse_training_log(log_path: Path) -> dict[str, str]:
     missing = [name for name in (*METRIC_NAMES, "best_epoch") if not metrics.get(name)]
     if missing:
         raise WorkflowError(
-            f"Unable to parse training log metrics from {display_path(log_path)}: "
+            f"Unable to parse training log metrics from {label}: "
             + ", ".join(missing)
         )
     return metrics
+
+
+def parse_training_log(log_path: Path) -> dict[str, str]:
+    return parse_training_log_text(read_text(log_path), display_path(log_path))
+
+
+def captured_training_log_text(log_path: Path, command: str) -> str:
+    """Return only output emitted by the workflow-launched process."""
+    lines = read_text(log_path).splitlines()
+    command_sha256 = parameter_matrix_sha256(command)
+    start_prefix = f"GTPJ_TRAINING_PROCESS_STARTED command_sha256={command_sha256} "
+    finish_prefix = f"GTPJ_TRAINING_PROCESS_FINISHED command_sha256={command_sha256} "
+    starts = [index for index, line in enumerate(lines) if line.startswith(start_prefix)]
+    finishes = [index for index, line in enumerate(lines) if line.startswith(finish_prefix)]
+    if len(starts) != 1 or len(finishes) != 1 or starts[0] >= finishes[0]:
+        raise WorkflowError("training log has no unique workflow-captured process interval")
+    return "\n".join(lines[starts[0] + 1 : finishes[0]]) + "\n"
 
 
 def git(args: list[str], check: bool = True) -> str:
@@ -1224,6 +1240,26 @@ def git(args: list[str], check: bool = True) -> str:
     if check and result.returncode != 0:
         raise WorkflowError(result.stderr.strip() or result.stdout.strip())
     return result.stdout.strip()
+
+
+def git_dirty_outside(allowed_paths: Iterable[Path]) -> bool:
+    """Ignore only the runtime evidence files created by the official helper."""
+    allowed: set[str] = set()
+    for path in allowed_paths:
+        try:
+            allowed.add(path.resolve().relative_to(REPO_ROOT.resolve()).as_posix())
+        except ValueError:
+            continue
+    for line in git(["status", "--short", "--untracked-files=all"], check=False).splitlines():
+        # git() strips the complete output, so the leading blank of the first
+        # worktree-only status line (for example `` M file``) may be removed.
+        offset = 2 if len(line) >= 2 and line[1] == " " else 3
+        candidate = line[offset:].strip().replace("\\", "/")
+        if " -> " in candidate:
+            candidate = candidate.split(" -> ", 1)[1]
+        if candidate not in allowed:
+            return True
+    return False
 
 
 def git_show(ref_path: str, check: bool = True) -> str:
@@ -3170,6 +3206,7 @@ def make_experiment_manifest(
     log_size_bytes: str = "",
     recorded_at: str = "",
     code_branch: str = "",
+    code_commit: str = "",
     git_dirty: str | None = None,
     idea_id: str = "",
     idea_uri: str = "",
@@ -3193,11 +3230,12 @@ version:
   base_version: {yaml_scalar(version)}
   base_code_tag: {yaml_scalar(version)}
   code_branch: {yaml_scalar(code_branch or experiment_branch_name(version, kind, exp_id, slug))}
-  code_commit: {yaml_scalar(git(["rev-parse", "--short", "HEAD"], check=False))}
+  code_commit: {yaml_scalar(code_commit or git(["rev-parse", "--short", "HEAD"], check=False))}
   git_dirty: {yaml_scalar(git_dirty if git_dirty is not None else ("true" if git(["status", "--short"], check=False) else "false"))}
 reproducibility:
   config_file: {yaml_scalar(config_rel)}
   config_sha256: {yaml_scalar(sha256_file(config_path) if config_path.exists() else "")}
+  pre_run_freeze_commit: {yaml_scalar(code_commit)}
   command: {yaml_scalar(command)}
   run_start_receipt_sha256: {yaml_scalar(run_start_receipt_sha256)}
   run_start_receipt_ref: {yaml_scalar(run_start_receipt_ref)}
@@ -3492,6 +3530,8 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 "run_start_receipt_ref": "",
                 "run_start_receipt_sha256": "",
                 "run_command_sha256": "",
+                "run_log_sha256": "",
+                "run_exit_code": "",
                 "U": "",
                 "S": "",
                 "H": "",
@@ -3656,6 +3696,7 @@ def update_manifest_and_result_files(
     log_sha256: str,
     log_size_bytes: str,
     git_dirty: str,
+    code_commit: str = "",
     legacy_summary_only: bool = False,
     run_start_receipt_sha256: str = "",
     run_start_receipt_ref: str = "",
@@ -3676,6 +3717,7 @@ def update_manifest_and_result_files(
         log_sha256=log_sha256,
         log_size_bytes=log_size_bytes,
         git_dirty=git_dirty,
+        code_commit=code_commit,
         recorded_at=recorded_at,
         evidence_mode="legacy_summary_only" if legacy_summary_only else "formal",
         run_start_receipt_sha256=run_start_receipt_sha256,
@@ -3738,6 +3780,28 @@ def artifact_uri_for_log(
 
 
 def cmd_record_result(args: argparse.Namespace) -> int:
+    """Hold the matrix lock before any ledger or artifact can be written."""
+    version = require_clean_id(args.version, r"v[0-9]+", "version")
+    kind = KINDS[args.kind]
+    exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
+    slug = require_slug(args.slug)
+    matrix_path = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}" / PARAMETER_MATRIX_CSV
+    if (
+        matrix_path.exists()
+        and parameter_matrix_policy_is_active()
+        and not bool(getattr(args, "legacy_summary_only", False))
+    ):
+        with parameter_matrix_mutation_lock(
+            matrix_path,
+            operation="record-result-transaction",
+            job_id=str(getattr(args, "matrix_job_id", "") or ""),
+            run_id=str(getattr(args, "attempt_id", "") or ""),
+        ):
+            return _cmd_record_result_locked(args)
+    return _cmd_record_result_locked(args)
+
+
+def _cmd_record_result_locked(args: argparse.Namespace) -> int:
     version = require_clean_id(args.version, r"v[0-9]+", "version")
     kind = KINDS[args.kind]
     exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
@@ -3829,6 +3893,10 @@ def cmd_record_result(args: argparse.Namespace) -> int:
             runtime_errors.append("formal result requires --run-start-receipt created before training")
         if runtime_errors:
             raise WorkflowError("Formal result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
+        metrics = parse_training_log_text(
+            captured_training_log_text(log_path, args.command),
+            f"workflow-captured output in {display_path(log_path)}",
+        )
     log_sha256 = sha256_file(log_path)
     log_size_bytes = str(log_path.stat().st_size)
     log_uri = artifact_uri_for_log(
@@ -3841,7 +3909,20 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         args.artifact_uri,
     )
     log_artifact_id = args.log_artifact_id or default_log_artifact_id(exp_id, slug, args.attempt_id)
-    dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
+    formal_commit = ""
+    if matrix_path is not None:
+        formal_commit = resolve_commit(str(getattr(args, "pre_run_freeze_commit", "") or ""))
+        allowed_runtime_paths = [
+            matrix_path,
+            matrix_path.with_name(PARAMETER_MATRIX_MD),
+            parameter_matrix_lock_path(matrix_path),
+            log_path,
+        ]
+        if run_start_receipt_path is not None:
+            allowed_runtime_paths.append(run_start_receipt_path)
+        dirty_before = "dirty" if git_dirty_outside(allowed_runtime_paths) else "clean"
+    else:
+        dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
     git_dirty = "true" if dirty_before == "dirty" else "false"
     run_start_receipt_ref = ""
     if run_start_receipt_path is not None:
@@ -3870,7 +3951,7 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     content = read_text(readme_path)
     fields = {
         "kind": kind.name,
-        "run_commit": git(["rev-parse", "--short", "HEAD"], check=False),
+        "run_commit": formal_commit or git(["rev-parse", "--short", "HEAD"], check=False),
         "dirty_state": dirty_before,
         "command": args.command,
         "seed": args.seed,
@@ -3933,6 +4014,7 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         log_sha256=log_sha256,
         log_size_bytes=log_size_bytes,
         git_dirty=git_dirty,
+        code_commit=formal_commit,
         legacy_summary_only=legacy_summary_only,
         run_start_receipt_sha256=run_start_receipt_sha256,
         run_start_receipt_ref=run_start_receipt_ref,
@@ -3997,6 +4079,7 @@ def make_module_attempt_manifest(
     pre_run_freeze_commit: str,
     artifacts: dict[str, dict[str, str]],
     recorded_at: str,
+    git_dirty: str = "false",
     legacy_summary_only: bool = False,
 ) -> str:
     artifact_lines: list[str] = []
@@ -4028,7 +4111,7 @@ version:
   base_code_tag: {yaml_scalar(trial_fields.get("base_code_tag", version))}
   code_branch: {yaml_scalar(trial_fields.get("code_branch", current_branch()))}
   code_commit: {yaml_scalar(pre_run_freeze_commit or git(["rev-parse", "--short", "HEAD"], check=False))}
-  git_dirty: {yaml_scalar("true" if git(["status", "--short"], check=False) else "false")}
+  git_dirty: {yaml_scalar(git_dirty)}
 reproducibility:
   config_file: {yaml_scalar(rel(config_path))}
   config_sha256: {yaml_scalar(sha256_file(config_path))}
@@ -5459,6 +5542,28 @@ def update_attempts_table(
 
 
 def cmd_record_module_attempt(args: argparse.Namespace) -> int:
+    """Hold the matrix lock before any Attempt or Warehouse file can change."""
+    trial_dir = Path(args.trial_dir)
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    attempt_upper, _attempt_lower = normalize_attempt_ids(args.attempt_id)
+    matrix_path = trial_dir / "attempts" / attempt_upper / PARAMETER_MATRIX_CSV
+    if (
+        matrix_path.exists()
+        and parameter_matrix_policy_is_active()
+        and not bool(getattr(args, "legacy_summary_only", False))
+    ):
+        with parameter_matrix_mutation_lock(
+            matrix_path,
+            operation="record-module-attempt-transaction",
+            job_id=str(getattr(args, "matrix_job_id", "") or ""),
+            run_id=str(getattr(args, "run_id", "") or attempt_upper),
+        ):
+            return _cmd_record_module_attempt_locked(args)
+    return _cmd_record_module_attempt_locked(args)
+
+
+def _cmd_record_module_attempt_locked(args: argparse.Namespace) -> int:
     trial_dir = Path(args.trial_dir)
     if not trial_dir.is_absolute():
         trial_dir = REPO_ROOT / trial_dir
@@ -5557,6 +5662,10 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
             runtime_errors.append("formal module result requires --run-start-receipt created before training")
         if runtime_errors:
             raise WorkflowError("Formal module result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
+        metrics = parse_training_log_text(
+            captured_training_log_text(log_path, command),
+            f"workflow-captured output in {display_path(log_path)}",
+        )
 
     if not args.dry_run:
         attempt_dir.mkdir(parents=True, exist_ok=True)
@@ -5713,6 +5822,20 @@ note: Full per-epoch output is stored in the training_log artifact.
             print(f"{entry['artifact_id']} -> {entry['uri']}")
         return 0
 
+    module_git_dirty = "true"
+    if matrix_path is not None:
+        allowed_runtime_paths = [
+            matrix_path,
+            matrix_path.with_name(PARAMETER_MATRIX_MD),
+            parameter_matrix_lock_path(matrix_path),
+            log_path,
+        ]
+        if run_start_receipt_path is not None:
+            allowed_runtime_paths.append(run_start_receipt_path)
+        module_git_dirty = "true" if git_dirty_outside(allowed_runtime_paths) else "false"
+    elif not git(["status", "--short"], check=False):
+        module_git_dirty = "false"
+
     manifest = make_module_attempt_manifest(
         trial_id=trial_id,
         slug=slug,
@@ -5725,6 +5848,7 @@ note: Full per-epoch output is stored in the training_log artifact.
         pre_run_freeze_commit=pre_run_freeze_commit,
         artifacts=artifacts,
         recorded_at=recorded_at,
+        git_dirty=module_git_dirty,
         legacy_summary_only=legacy_summary_only,
     )
     result_yaml = make_module_attempt_result_yaml(
@@ -12652,6 +12776,8 @@ PARAMETER_MATRIX_COLUMNS = [
     "run_start_receipt_ref",
     "run_start_receipt_sha256",
     "run_command_sha256",
+    "run_log_sha256",
+    "run_exit_code",
     "U",
     "S",
     "H",
@@ -12667,6 +12793,8 @@ PARAMETER_MATRIX_RESULT_FIELDS = {
     "run_start_receipt_ref",
     "run_start_receipt_sha256",
     "run_command_sha256",
+    "run_log_sha256",
+    "run_exit_code",
     "U",
     "S",
     "H",
@@ -12873,6 +13001,8 @@ def build_parameter_matrix_rows(
                 "run_start_receipt_ref": "",
                 "run_start_receipt_sha256": "",
                 "run_command_sha256": "",
+                "run_log_sha256": "",
+                "run_exit_code": "",
                 "U": "",
                 "S": "",
                 "H": "",
@@ -13569,7 +13699,11 @@ def run_start_command_tokens(command: str) -> list[str]:
         raise WorkflowError(f"run-start receipt command cannot be parsed: {exc}") from exc
 
 
-def run_training_with_start_receipt(command: str, log_path: Path) -> int:
+class TrainingLaunchError(WorkflowError):
+    """The frozen process never started, so its row may safely return to frozen."""
+
+
+def run_training_with_start_receipt(command: str, log_path: Path) -> dict[str, object]:
     """Launch the frozen command directly and capture its complete output in the anchored log."""
     command_sha256 = parameter_matrix_sha256(command)
     tokens = run_start_command_tokens(command)
@@ -13581,7 +13715,7 @@ def run_training_with_start_receipt(command: str, log_path: Path) -> int:
             stderr=subprocess.STDOUT,
         )
     except OSError as exc:
-        raise WorkflowError(f"frozen training command could not start: {exc}") from exc
+        raise TrainingLaunchError(f"frozen training command could not start: {exc}") from exc
     assert process.stdout is not None
     with log_path.open("ab") as log_handle:
         started_at = utc_now()
@@ -13597,17 +13731,22 @@ def run_training_with_start_receipt(command: str, log_path: Path) -> int:
                 log_handle.write(chunk)
                 log_handle.flush()
         return_code = process.wait()
+        finished_at = utc_now()
         log_handle.write(
             (
                 "GTPJ_TRAINING_PROCESS_FINISHED "
                 f"command_sha256={command_sha256} pid={process.pid} "
-                f"returncode={return_code} finished_at={utc_now()}\n"
+                f"returncode={return_code} finished_at={finished_at}\n"
             ).encode("utf-8")
         )
         log_handle.flush()
-    if return_code != 0:
-        raise WorkflowError(f"frozen training command exited with code {return_code}; see {display_path(log_path)}")
-    return return_code
+    return {
+        "pid": process.pid,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "returncode": return_code,
+        "log_sha256": sha256_file(log_path),
+    }
 
 
 def run_start_receipt_errors(
@@ -13695,8 +13834,21 @@ def run_start_receipt_errors(
         errors.append("training log has no unique workflow-captured process finish marker")
     if start_matches and finish_matches and start_matches[0].group(1) != finish_matches[0].group(1):
         errors.append("training process start/finish markers do not name the same process")
+    if len(finish_matches) == 1 and (not log_lines or finish_matches[0].string != log_lines[-1]):
+        errors.append("training process finish marker must be the last line of the sealed log")
     if len(finish_matches) == 1 and finish_matches[0].group(2) != "0":
         errors.append("training process finished with a non-zero exit code")
+    if row.get("run_exit_code", "") != "0":
+        errors.append("parameter-matrix run_exit_code does not prove a successful process")
+    if row.get("run_log_sha256", "") != sha256_file(log_path):
+        errors.append("parameter-matrix run_log_sha256 does not match the sealed training log")
+    try:
+        parse_training_log_text(
+            captured_training_log_text(log_path, command),
+            f"workflow-captured output in {display_path(log_path)}",
+        )
+    except WorkflowError as exc:
+        errors.append(str(exc))
     if receipt_path.stat().st_mtime > log_path.stat().st_mtime:
         errors.append("run-start receipt was written after the training log")
     return errors
@@ -13841,7 +13993,78 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
     finally:
         _HELD_PARAMETER_MATRIX_LOCKS.discard(lock_key)
         lock_path.unlink(missing_ok=True)
-    run_training_with_start_receipt(args.command, log_path)
+    try:
+        process_result = run_training_with_start_receipt(args.command, log_path)
+    except TrainingLaunchError:
+        # No child process existed, so return the row to its exact pre-launch
+        # state and remove the start artifacts.  This keeps the job retryable.
+        with parameter_matrix_mutation_lock(
+            matrix_path,
+            operation="rollback-unstarted-run",
+            job_id=args.job_id,
+            run_id=args.run_id,
+        ):
+            current_rows = read_parameter_matrix(matrix_path)
+            current_matches = [item for item in current_rows if item.get("job_id") == args.job_id]
+            if len(current_matches) != 1:
+                raise WorkflowError("cannot roll back an unstarted run because its matrix row changed")
+            current_row = current_matches[0]
+            if (
+                current_row.get("status") != "running"
+                or current_row.get("run_id") != args.run_id
+                or current_row.get("run_start_receipt_sha256") != receipt_sha256
+            ):
+                raise WorkflowError("cannot roll back an unstarted run because its receipt binding changed")
+            original_by_job = {item["job_id"]: item for item in original_rows}
+            restored_rows = [
+                dict(original_by_job[item["job_id"]]) if item.get("job_id") == args.job_id else item
+                for item in current_rows
+            ]
+            write_parameter_matrix(
+                directory=matrix_path.parent,
+                title=matrix_path.parent.name,
+                rows=restored_rows,
+                source_note=source_note,
+                overwrite=True,
+            )
+        receipt_path.unlink(missing_ok=True)
+        log_path.unlink(missing_ok=True)
+        raise
+
+    return_code = int(process_result["returncode"])
+    with parameter_matrix_mutation_lock(
+        matrix_path,
+        operation="seal-finished-run",
+        job_id=args.job_id,
+        run_id=args.run_id,
+    ):
+        current_rows = read_parameter_matrix(matrix_path)
+        current_matches = [item for item in current_rows if item.get("job_id") == args.job_id]
+        if len(current_matches) != 1:
+            raise WorkflowError("cannot seal the training log because its matrix row changed")
+        current_row = current_matches[0]
+        if (
+            current_row.get("status") != "running"
+            or current_row.get("run_id") != args.run_id
+            or current_row.get("run_start_receipt_sha256") != receipt_sha256
+        ):
+            raise WorkflowError("cannot seal the training log because its receipt binding changed")
+        current_row["run_log_sha256"] = str(process_result["log_sha256"])
+        current_row["run_exit_code"] = str(return_code)
+        if return_code != 0:
+            current_row["status"] = "failed"
+            current_row["decision"] = "process_failed"
+        write_parameter_matrix(
+            directory=matrix_path.parent,
+            title=matrix_path.parent.name,
+            rows=current_rows,
+            source_note=source_note,
+            overwrite=True,
+        )
+    if return_code != 0:
+        raise WorkflowError(
+            f"frozen training command exited with code {return_code}; see {display_path(log_path)}"
+        )
     print("run-start-receipt-created")
     print(f"receipt: {display_path(receipt_path)}")
     print(f"log: {display_path(log_path)}")
@@ -14030,6 +14253,8 @@ def cmd_init_parameter_matrix(args: argparse.Namespace) -> int:
         "run_start_receipt_ref": "",
         "run_start_receipt_sha256": "",
         "run_command_sha256": "",
+        "run_log_sha256": "",
+        "run_exit_code": "",
         "U": "",
         "S": "",
         "H": "",
@@ -14410,6 +14635,11 @@ def formal_dynamic_plan_commit_errors(
     if not isinstance(frozen_rows, dict) or set(frozen_rows) != set(committed_by_job):
         errors.append("run plan has no complete parameter-matrix snapshot from the training commit")
     for job_id, committed_row in committed_by_job.items():
+        plan_run_id = str(plan.get("run_id", ""))
+        if committed_row.get("run_id", "") != plan_run_id:
+            errors.append(f"{job_id} training-commit run_id does not match the runtime plan")
+        if current_by_job[job_id].get("run_id", "") != plan_run_id:
+            errors.append(f"{job_id} current run_id does not match the runtime plan")
         committed_frozen = parameter_matrix_frozen_fields(committed_row)
         plan_frozen = frozen_rows.get(job_id) if isinstance(frozen_rows, dict) else None
         if plan_frozen != committed_frozen:
@@ -14470,6 +14700,8 @@ def formal_dynamic_plan_commit_errors(
             continue
         if parameter_matrix_frozen_fields(committed_row) != parameter_matrix_frozen_fields(expected_row):
             errors.append(f"{job_id} training-commit matrix differs from the deterministic batch plan")
+        if committed_row.get("run_id", "") != expected_row.get("run_id", ""):
+            errors.append(f"{job_id} training-commit run_id differs from the deterministic batch plan")
     return errors
 
 
@@ -14499,6 +14731,10 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
     matrix_source_rows = [dict(row) for row in rows]
     errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
     errors.extend(parameter_matrix_view_errors(matrix_path, rows))
+    plan_run_id = str(plan.get("run_id", ""))
+    for row in rows:
+        if row.get("run_id", "") != plan_run_id:
+            errors.append(f"{row.get('job_id')} run_id does not match the runtime plan")
     if errors:
         raise WorkflowError("Refusing to sync an invalid parameter matrix:\n" + "\n".join(errors))
     commit_errors = formal_dynamic_plan_commit_errors(plan, matrix_path=matrix_path, current_rows=rows)
@@ -15620,6 +15856,10 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         )
         matrix_errors.extend(parameter_matrix_view_errors(matrix_path, rows))
         for row in rows:
+            if row.get("run_id", "") != run_id:
+                matrix_errors.append(
+                    f"{row.get('job_id')} run_id {row.get('run_id', '')!r} does not match requested {run_id!r}"
+                )
             expected = expected_by_job.get(row.get("job_id", ""))
             if expected is None:
                 continue
