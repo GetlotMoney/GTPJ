@@ -2,6 +2,8 @@
 
 Project: GTPJ
 
+参数表总入口：`experiments/PARAMETER_MATRIX_CATALOG.md`。从 2026-08-04 起，每个新实验必须在自己的目录中保存逐任务 `PARAMETER_MATRIX.csv` 与阅读版 `PARAMETER_MATRIX.md`；本文件仍只管理版本和实验的总索引。
+
 ## Versions
 
 | Version | Status | Code tag | Config | Note |

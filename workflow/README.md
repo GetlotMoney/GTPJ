@@ -67,9 +67,13 @@ git switch main
 git status --short
 git switch -c exp/v1-tune-001-topo008
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+# 填写 experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv 的真实参数、seed 和目的后：
+python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id TUNE-001-001
+python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
+# 提交上述冻结表后，才运行训练。
 python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
 python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id TUNE-001-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
 python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
 
 # idea and version view
@@ -81,7 +85,7 @@ git switch main
 git status --short
 git switch -c dev/v1-idea-xxxx-trial-001-short-name
 python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
-python workflow/gtpj_workflow.py record-module-attempt --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --log train_log/CUB/<log>.txt --decision revise
+python workflow/gtpj_workflow.py record-module-attempt --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --matrix-job-id JOB-001 --log train_log/CUB/<log>.txt --decision revise
 python workflow/gtpj_workflow.py sync-trial-summary --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --decision revise
 python workflow/gtpj_workflow.py closeout-check --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001
 ```
@@ -108,3 +112,7 @@ If interface, label mapping, seen/unseen split, class order, logits shape, or me
 `runner-lock` and `runner-unlock` use `.gtpj_runtime/gpu_runner.lock` as a local file lock. This lock is not tracked by Git and does not replace checking actual GPU state.
 
 The current OpenClaw/Codex runtime entrypoints, and any future runtime integration, must use the same repository docs, templates, schemas, and CLI checks.
+
+## 参数矩阵入口（2026-08-04 起）
+
+新的正式实验必须先有逐任务参数表，不能只保留批次总结果。先填写 `PARAMETER_MATRIX.csv`，再用 `freeze-parameter-matrix` 把实际配置快照、种子和完整指纹冻结并生成阅读版；通过 `validate-parameter-matrix --require-ready` 后提交 pre-run freeze commit。`record-result` 和 `record-module-attempt` 会拒绝未准备好、阅读版过期或和实际配置/种子不一致的表，并把指标回填到对应行。动态路由额外使用 `prepare-dynamic-routing-matrix` 和 `sync-dynamic-routing-matrix`。完整规则见 `docs/workflow/protocols/parameter_matrix_protocol.md`。

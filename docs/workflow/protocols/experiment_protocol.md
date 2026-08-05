@@ -114,6 +114,10 @@ near_miss_not_restored:
 confirmation_status: not_applicable | pending | confirmed | failed
 ```
 
+## 参数矩阵（2026-08-04 起）
+
+上述字段记录“一次实验”的总结果；从本规则生效后，还必须用 `PARAMETER_MATRIX.csv` 逐行记录该实验内的每个真实任务。CSV 是唯一机器来源，`PARAMETER_MATRIX.md` 由它生成，给人直接阅读。每一行必须有基线版本、基线配置哈希、改动参数、配置指纹、种子、复跑来源、结果和决定。正式运行前，矩阵必须没有草稿行、任务数量必须与冻结计划一致，并且同一配置指纹若再次出现必须写 `repeat_of`。完整规则见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+
 ## 证据等级和做数规则
 
 实验结果不是只有“做数/不做数”两种状态。以后所有结果必须先标证据等级，再决定能不能用于

@@ -261,6 +261,10 @@ formal_evidence: false
 eligible_for_keep_best_promotion_confirmation: false
 ```
 
+## 6.0 参数矩阵入口（2026-08-04 起）
+
+从今天起，任何新实验都不能只写“这一批跑了 50/100 个”。必须为每个具体任务建立 `PARAMETER_MATRIX.csv` 和阅读版 `PARAMETER_MATRIX.md`：一行对应一套参数、一个种子和一次结果。先生成参数矩阵、查重、提交 pre-run freeze commit，再进入正式 Runner；训练完成后把每个任务的结果回填原表。版本级的 `record-result` 和模块内的 `record-module-attempt` 会拒绝草稿、过期阅读版或找不到对应行的表。详见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+
 ## 6.1 正式待跑实验入口
 
 Owner 问“现在有哪些待跑实验”时，只读正式 ledger，不从 `.gtpj_runtime/` 反推。正式待跑实验必须能在对应类型的正式表格里看到：

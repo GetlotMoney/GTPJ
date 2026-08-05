@@ -73,3 +73,7 @@ rerun_required
 rejected
 stopped_no_gain
 ```
+
+## 参数矩阵（2026-08-04 起）
+
+每个具体调参任务都必须写入同一批次的 `PARAMETER_MATRIX.csv`，并自动生成给人阅读的 `PARAMETER_MATRIX.md`。一行是一个参数组合，不是一行概括整个 50/100 任务批次。开跑前必须写清相对基线的改动、随机种子、配置指纹和是否复跑；同一指纹已经出现时，必须明确 `repeat_of`，否则不得重复运行。详见 `docs/workflow/protocols/parameter_matrix_protocol.md`。

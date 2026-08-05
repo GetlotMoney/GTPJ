@@ -51,3 +51,7 @@ Interface / Quality / Runner Monitor 没有独立 allow/pass 时，不得把消�
 
 ablation 只有在组件贡献证据成立时才能进入 `ablation_supported`；如果消融不支持贡献，必须记录
 `stopped_ablation_not_supported` 或 `rejected` transition。
+
+## 参数矩阵（2026-08-04 起）
+
+消融也必须逐任务登记到 `PARAMETER_MATRIX.csv`：每行写清关掉或替换了哪个因素、对照是什么、随机种子、配置指纹、结果和最终判断。批次摘要不能替代逐行表。重复运行相同消融时必须标明 `repeat_of`，完整规则见 `docs/workflow/protocols/parameter_matrix_protocol.md`。

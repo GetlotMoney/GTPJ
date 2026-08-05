@@ -1,5 +1,20 @@
 # Workflow Changelog
 
+## SKILL-GTPJ-WORKFLOW-V2.1（2026-08-04）
+
+新增“参数矩阵”正式规则：
+
+```text
+PARAMETER_MATRIX.csv  每一个真实任务一行，机器查重和结果回填的唯一来源
+PARAMETER_MATRIX.md   从 CSV 生成的阅读版
+config_fingerprint    用完整配置检查是否误重复
+repeat_of             原样复跑时必须明确指向原任务
+```
+
+新的动态路由批次必须先生成、检查并提交 Attempt 参数矩阵，随后才允许创建正式 Runner。
+训练结束后，`sync-dynamic-routing-matrix` 把每个任务的指标回填同一张表。历史批次
+只允许从 Warehouse 的可验证资料恢复；缺失信息明确保留为缺失，不补造。
+
 ## workflow-v1
 
 原始的大范围 workflow 协议集合。

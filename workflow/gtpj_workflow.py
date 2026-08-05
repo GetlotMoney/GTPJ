@@ -2080,6 +2080,40 @@ def cmd_validate(_: argparse.Namespace) -> int:
             if marker not in text:
                 raise WorkflowError(f"{path_text} missing reproducibility marker: {marker}")
 
+    # The parameter-matrix rule is opt-in for older archived checkouts, but once
+    # the active protocol exists it is part of the repository's formal contract.
+    # This keeps historical test fixtures readable while preventing a live repo
+    # from silently losing the rule, its global entry, or its usable CSV header.
+    if parameter_matrix_policy_is_active():
+        parameter_matrix_markers = {
+            PARAMETER_MATRIX_PROTOCOL: [
+                "policy_status: active",
+                "PARAMETER_MATRIX.csv",
+                "PARAMETER_MATRIX.md",
+                "config_fingerprint",
+                "repeat_of",
+                "pre-run freeze",
+                "refresh-parameter-matrix-view",
+                "freeze-parameter-matrix",
+                "record-result",
+                "sync-dynamic-routing-matrix",
+            ],
+            "experiments/PARAMETER_MATRIX_CATALOG.md": [
+                "参数矩阵总看板",
+                "历史迁移队列",
+                "PARAMETER_MATRIX.md",
+            ],
+        }
+        for path_text, markers in parameter_matrix_markers.items():
+            text = read_text(REPO_ROOT / path_text)
+            for marker in markers:
+                if marker not in text:
+                    raise WorkflowError(f"{path_text} missing parameter-matrix marker: {marker}")
+        template_path = REPO_ROOT / "experiments" / "templates" / "PARAMETER_MATRIX_template.csv"
+        template_header = template_path.read_text(encoding="utf-8").splitlines()[0]
+        if template_header != ",".join(PARAMETER_MATRIX_COLUMNS):
+            raise WorkflowError("PARAMETER_MATRIX_template.csv has an invalid parameter-matrix header")
+
     workflow_diagrams = read_text(REPO_ROOT / "docs" / "workflow" / "archive" / "diagrams" / "workflow_diagrams.md")
     for marker in ["## Version Flow", "## Trial Flow", "## Framework Diagram", "## 总流程框架", "## Module Trial 流程框架"]:
         if marker not in workflow_diagrams:
@@ -3404,6 +3438,40 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     write_new(exp_dir / "agent_summary.md", make_agent_summary(version, kind, exp_id, slug))
     copy_new(src_config, exp_dir / "config.yaml")
+    base_config_text = read_text(exp_dir / "config.yaml")
+    write_parameter_matrix(
+        directory=exp_dir,
+        title=f"{exp_id}_{slug}",
+        rows=[
+            {
+                "job_id": f"{exp_id}-001",
+                "work_item_id": exp_id,
+                "job_kind": kind.name,
+                "status": "draft",
+                "group": "待填写",
+                "name": "请填写本次具体参数组合",
+                "base_version": version,
+                "base_config_sha256": parameter_matrix_sha256(base_config_text),
+                "code_ref": version,
+                "config_snapshot_ref": "config.yaml",
+                "seed": "",
+                "changed_parameters": "{}",
+                "config_fingerprint": parameter_matrix_sha256(base_config_text),
+                "repeat_of": "",
+                "duplicate_resolution": "待填写后检查",
+                "purpose": "开跑前填写要改的参数、目的和随机种子",
+                "run_id": "",
+                "U": "",
+                "S": "",
+                "H": "",
+                "ZS": "",
+                "best_epoch": "",
+                "decision": "",
+                "artifact_ref": "",
+            }
+        ],
+        source_note="由 new-experiment 生成；该草稿必须填写并通过校验后才能用于正式运行。",
+    )
     write_new(
         exp_dir / "manifest.yaml",
         make_experiment_manifest(
@@ -3642,6 +3710,32 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     forbid_log_copy_target(exp_dir)
     log_path = resolve_existing_path(args.log, "log file")
     metrics = parse_training_log(log_path)
+    matrix_path: Path | None = None
+    matrix_rows: list[dict[str, str]] = []
+    matrix_result_row: dict[str, str] | None = None
+    if parameter_matrix_policy_is_active():
+        if not args.seed:
+            raise WorkflowError("record-result under the parameter-matrix policy requires --seed")
+        matrix_path = exp_dir / PARAMETER_MATRIX_CSV
+        matrix_rows = ready_parameter_matrix_rows(matrix_path)
+        matrix_result_row = select_parameter_matrix_result_row(
+            matrix_rows,
+            matrix_job_id=str(getattr(args, "matrix_job_id", "") or ""),
+            seed=args.seed,
+            label="record-result",
+        )
+        runtime_errors = parameter_matrix_runtime_errors(
+            matrix_result_row,
+            matrix_path=matrix_path,
+            config_path=exp_dir / "config.yaml",
+            seed=args.seed,
+            tune_parameter=args.parameter if args.kind == "tune" else "",
+            tune_new_value=args.new_value if args.kind == "tune" else "",
+            tune_old_value=args.old_value if args.kind == "tune" else "",
+            baseline_config_path=REPO_ROOT / "experiments" / version / "config.yaml" if args.kind == "tune" else None,
+        )
+        if runtime_errors:
+            raise WorkflowError("Formal result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
     log_sha256 = sha256_file(log_path)
     log_size_bytes = str(log_path.stat().st_size)
     log_uri = artifact_uri_for_log(
@@ -3752,6 +3846,16 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         "record-result 已解析日志并入账。",
     )
 
+    if matrix_path is not None and matrix_result_row is not None:
+        sync_parameter_matrix_result_row(
+            matrix_path,
+            matrix_rows,
+            matrix_result_row,
+            metrics=metrics,
+            decision=args.decision,
+            run_id=args.attempt_id,
+            artifact_ref=log_uri,
+        )
     print("record-result-ok")
     print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
     print(f"log_artifact_id: {log_artifact_id}")
@@ -5227,6 +5331,28 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     command = args.command or f"python train_GTPJ_CUB.py --config {rel(config_path)}"
     pre_run_freeze_commit = args.pre_run_freeze_commit or git(["rev-parse", "HEAD"], check=False)
     recorded_at = utc_now()
+    matrix_path: Path | None = None
+    matrix_rows: list[dict[str, str]] = []
+    matrix_result_row: dict[str, str] | None = None
+    if parameter_matrix_policy_is_active():
+        if not seed:
+            raise WorkflowError("record-module-attempt under the parameter-matrix policy requires a seed")
+        matrix_path = attempt_dir / PARAMETER_MATRIX_CSV
+        matrix_rows = ready_parameter_matrix_rows(matrix_path)
+        matrix_result_row = select_parameter_matrix_result_row(
+            matrix_rows,
+            matrix_job_id=str(getattr(args, "matrix_job_id", "") or ""),
+            seed=seed,
+            label="record-module-attempt",
+        )
+        runtime_errors = parameter_matrix_runtime_errors(
+            matrix_result_row,
+            matrix_path=matrix_path,
+            config_path=config_path,
+            seed=seed,
+        )
+        if runtime_errors:
+            raise WorkflowError("Formal module result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
 
     if not args.dry_run:
         attempt_dir.mkdir(parents=True, exist_ok=True)
@@ -5428,6 +5554,16 @@ note: Full per-epoch output is stored in the training_log artifact.
         decision=args.decision,
     )
     append_warehouse_registry(entries, dry_run=False)
+    if matrix_path is not None and matrix_result_row is not None:
+        sync_parameter_matrix_result_row(
+            matrix_path,
+            matrix_rows,
+            matrix_result_row,
+            metrics=metrics,
+            decision=args.decision,
+            run_id=args.run_id or attempt_upper,
+            artifact_ref=artifacts["train_log"]["uri"],
+        )
 
     print("record-module-attempt-ok")
     print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
@@ -12132,6 +12268,766 @@ def render_config_with_updates(base_text: str, updates: dict[str, object]) -> st
     return text.rstrip() + "\n"
 
 
+PARAMETER_MATRIX_PROTOCOL = "docs/workflow/protocols/parameter_matrix_protocol.md"
+PARAMETER_MATRIX_CSV = "PARAMETER_MATRIX.csv"
+PARAMETER_MATRIX_MD = "PARAMETER_MATRIX.md"
+PARAMETER_MATRIX_COLUMNS = [
+    "job_id",
+    "work_item_id",
+    "job_kind",
+    "status",
+    "group",
+    "name",
+    "base_version",
+    "base_config_sha256",
+    "code_ref",
+    "config_snapshot_ref",
+    "seed",
+    "changed_parameters",
+    "config_fingerprint",
+    "repeat_of",
+    "duplicate_resolution",
+    "purpose",
+    "run_id",
+    "U",
+    "S",
+    "H",
+    "ZS",
+    "best_epoch",
+    "decision",
+    "artifact_ref",
+]
+
+
+def parameter_matrix_policy_is_active() -> bool:
+    """Return true only for repositories that explicitly adopted the matrix rule."""
+    path = REPO_ROOT / PARAMETER_MATRIX_PROTOCOL
+    return path.exists() and "policy_status: active" in read_text(path)
+
+
+def parameter_matrix_sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def parameter_matrix_job_kind(job: dict[str, object]) -> str:
+    group = str(job.get("group", "")).lower()
+    phase = str(job.get("phase", "")).lower()
+    if phase == "repeat":
+        return "repeat"
+    if "ablat" in group:
+        return "ablation"
+    if "control" in group or "sanity" in group:
+        return "control"
+    return "param_tune"
+
+
+def matrix_cell(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _matrix_changed_parameters(updates: dict[str, object]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in updates.items()
+        if key not in {"random_seed", "copy_from_top_rank"}
+    }
+
+
+def build_parameter_matrix_rows(
+    *,
+    jobs: list[dict[str, object]],
+    base_config_text: str,
+    base_version: str,
+    code_ref: str,
+    run_id: str = "",
+) -> list[dict[str, str]]:
+    """Create one human/audit row for every planned job, never just one batch summary."""
+    base_config_sha256 = parameter_matrix_sha256(base_config_text)
+    first_job_by_fingerprint: dict[str, str] = {}
+    rows: list[dict[str, str]] = []
+    for job in jobs:
+        updates = dict(job.get("config_updates", {}))
+        source_rank = int(job.get("source_rank", 0) or 0)
+        repeat_of = ""
+        if "copy_from_top_rank" in updates:
+            repeat_of = f"top_rank:{updates['copy_from_top_rank']}"
+            fingerprint = f"pending_after_{repeat_of}"
+            duplicate_resolution = "等待前序候选确定后原样复跑"
+        else:
+            config_text = render_config_with_updates(base_config_text, updates)
+            fingerprint = parameter_matrix_sha256(config_text)
+            duplicate_resolution = "唯一配置"
+            if fingerprint in first_job_by_fingerprint:
+                repeat_of = first_job_by_fingerprint[fingerprint]
+                duplicate_resolution = f"与 {repeat_of} 相同，已明确标为复跑"
+            else:
+                first_job_by_fingerprint[fingerprint] = str(job["job_id"])
+        changed = _matrix_changed_parameters(updates)
+        job_kind = parameter_matrix_job_kind(job)
+        if source_rank and not repeat_of:
+            repeat_of = f"top_rank:{source_rank}"
+        rows.append(
+            {
+                "job_id": matrix_cell(job.get("job_id")),
+                "work_item_id": matrix_cell(job.get("work_item_id")),
+                "job_kind": job_kind,
+                "status": "planned",
+                "group": matrix_cell(job.get("group")),
+                "name": matrix_cell(job.get("name")),
+                "base_version": base_version,
+                "base_config_sha256": base_config_sha256,
+                "code_ref": code_ref,
+                "config_snapshot_ref": f"generated-from-frozen-plan:{matrix_cell(job.get('job_id'))}",
+                "seed": matrix_cell(job.get("seed")),
+                "changed_parameters": json.dumps(changed, ensure_ascii=False, sort_keys=True),
+                "config_fingerprint": fingerprint,
+                "repeat_of": repeat_of,
+                "duplicate_resolution": duplicate_resolution,
+                "purpose": matrix_cell(job.get("group")),
+                "run_id": run_id,
+                "U": "",
+                "S": "",
+                "H": "",
+                "ZS": "",
+                "best_epoch": "",
+                "decision": "",
+                "artifact_ref": "",
+            }
+        )
+    return rows
+
+
+def read_parameter_matrix(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        raise WorkflowError(f"Missing parameter matrix: {display_path(path)}")
+    with path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != PARAMETER_MATRIX_COLUMNS:
+            raise WorkflowError(
+                f"{display_path(path)} has an invalid header; use the parameter-matrix template."
+            )
+        return [{key: matrix_cell(row.get(key, "")) for key in PARAMETER_MATRIX_COLUMNS} for row in reader]
+
+
+def validate_parameter_matrix_rows(
+    rows: list[dict[str, str]],
+    *,
+    expected_job_ids: set[str] | None = None,
+    require_ready: bool = False,
+    matrix_path: Path | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    if not rows:
+        return ["parameter matrix must contain at least one job row"]
+    job_ids: set[str] = set()
+    fingerprints: dict[str, str] = {}
+    allowed_status = {"draft", "planned", "running", "completed", "failed", "skipped", "cancelled"}
+    repeat_rows: list[tuple[int, dict[str, str]]] = []
+    for line_number, row in enumerate(rows, start=2):
+        job_id = row.get("job_id", "").strip()
+        if not job_id:
+            errors.append(f"line {line_number} has an empty job_id")
+            continue
+        if job_id in job_ids:
+            errors.append(f"line {line_number} repeats job_id {job_id}")
+        job_ids.add(job_id)
+        if row.get("status", "") not in allowed_status:
+            errors.append(f"line {line_number} has invalid status {row.get('status', '')!r}")
+        if not row.get("base_version", "") or not row.get("base_config_sha256", "") or not row.get("code_ref", ""):
+            errors.append(f"line {line_number} is missing base_version, base_config_sha256, or code_ref")
+        snapshot_ref = row.get("config_snapshot_ref", "").strip()
+        if require_ready and not snapshot_ref:
+            errors.append(f"line {line_number} is missing config_snapshot_ref")
+        if require_ready and not row.get("seed", "").strip():
+            errors.append(f"line {line_number} is missing seed")
+        fingerprint = row.get("config_fingerprint", "")
+        if not fingerprint:
+            errors.append(f"line {line_number} is missing config_fingerprint")
+        elif fingerprint.startswith("pending_after_top_rank:"):
+            if not row.get("repeat_of", ""):
+                errors.append(f"line {line_number} is a pending repeat without repeat_of")
+        elif fingerprint in fingerprints and not row.get("repeat_of", ""):
+            errors.append(
+                f"line {line_number} duplicates {fingerprints[fingerprint]} without repeat_of; "
+                "declare an intentional repeat instead of silently rerunning it"
+            )
+        else:
+            fingerprints.setdefault(fingerprint, job_id)
+        repeat_rows.append((line_number, row))
+        try:
+            changed = json.loads(row.get("changed_parameters", "{}"))
+            if not isinstance(changed, dict):
+                raise ValueError("not an object")
+        except (json.JSONDecodeError, ValueError):
+            errors.append(f"line {line_number} changed_parameters must be a JSON object")
+        if require_ready and row.get("status") == "draft":
+            errors.append(f"line {line_number} is still draft and cannot enter a formal run")
+        if require_ready and snapshot_ref and not snapshot_ref.startswith("generated-from-frozen-plan:"):
+            snapshot_path = Path(snapshot_ref)
+            if not snapshot_path.is_absolute():
+                snapshot_path = (matrix_path.parent if matrix_path is not None else REPO_ROOT) / snapshot_path
+            if not snapshot_path.exists() or not snapshot_path.is_file():
+                errors.append(f"line {line_number} config_snapshot_ref does not exist: {snapshot_ref}")
+            elif parameter_matrix_sha256(read_text(snapshot_path)) != fingerprint:
+                errors.append(f"line {line_number} config_fingerprint does not match config_snapshot_ref")
+    for line_number, row in repeat_rows:
+        job_id = row.get("job_id", "")
+        repeat_of = row.get("repeat_of", "").strip()
+        fingerprint = row.get("config_fingerprint", "")
+        if fingerprint.startswith("pending_after_top_rank:") and row.get("status") in {"completed", "failed"}:
+            errors.append(f"line {line_number} finished but still has an unresolved top-rank configuration")
+        if not repeat_of:
+            continue
+        if repeat_of in job_ids:
+            if repeat_of == job_id:
+                errors.append(f"line {line_number} repeat_of cannot point to itself")
+            source = next(source for source in rows if source.get("job_id", "") == repeat_of)
+            if parameter_matrix_identity(source) != parameter_matrix_identity(row):
+                errors.append(f"line {line_number} repeat_of {repeat_of} does not have the same version/code/config identity")
+            continue
+        if re.fullmatch(r"top_rank:[1-9][0-9]*", repeat_of) and fingerprint.startswith("pending_after_top_rank:"):
+            continue
+        if repeat_of.startswith("matrix:") and "#" in repeat_of and matrix_path is not None:
+            path_text, source_job_id = repeat_of[len("matrix:") :].rsplit("#", 1)
+            source_path = Path(path_text)
+            if not source_path.is_absolute():
+                source_path = REPO_ROOT / source_path
+            try:
+                require_path_inside(source_path, REPO_ROOT / "experiments", "repeat_of matrix")
+                source_rows = read_parameter_matrix(source_path)
+            except WorkflowError as exc:
+                errors.append(f"line {line_number} repeat_of reference is invalid: {exc}")
+                continue
+            if source_job_id not in {source.get("job_id", "") for source in source_rows}:
+                errors.append(f"line {line_number} repeat_of does not name a job in {display_path(source_path)}")
+            else:
+                source = next(source for source in source_rows if source.get("job_id", "") == source_job_id)
+                if parameter_matrix_identity(source) != parameter_matrix_identity(row):
+                    errors.append(f"line {line_number} repeat_of does not have the same version/code/config identity")
+            continue
+        errors.append(
+            f"line {line_number} repeat_of must name a job in this matrix, a pending top_rank:n, "
+            "or matrix:<path>#<job_id>"
+        )
+    if expected_job_ids is not None and job_ids != expected_job_ids:
+        missing = sorted(expected_job_ids - job_ids)
+        extra = sorted(job_ids - expected_job_ids)
+        if missing:
+            errors.append("matrix is missing planned jobs: " + ", ".join(missing))
+        if extra:
+            errors.append("matrix has jobs outside the frozen plan: " + ", ".join(extra))
+    return errors
+
+
+def markdown_table_cell(value: object) -> str:
+    return matrix_cell(value).replace("|", "\\|").replace("\n", "<br>")
+
+
+def render_parameter_matrix_markdown(
+    *,
+    title: str,
+    rows: list[dict[str, str]],
+    source_note: str,
+) -> str:
+    lines = [
+        f"# 参数矩阵：{title}",
+        "",
+        "这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。",
+        "",
+        f"来源：{source_note}",
+        "",
+        "| 任务 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | H | 决定 |",
+        "|---|---|---|---|---:|---|---:|---|",
+    ]
+    for row in rows:
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    markdown_table_cell(row["job_id"]),
+                    markdown_table_cell(row["job_kind"]),
+                    markdown_table_cell(row["status"]),
+                    markdown_table_cell(row["changed_parameters"]),
+                    markdown_table_cell(row["seed"]),
+                    markdown_table_cell(row["repeat_of"]),
+                    markdown_table_cell(row["H"]),
+                    markdown_table_cell(row["decision"]),
+                ]
+            )
+            + " |"
+        )
+    lines.extend(
+        [
+            "",
+            "## 查重说明",
+            "",
+            "- `config_fingerprint` 相同的行必须写明 `repeat_of`，否则它被视为误重复。",
+            "- 复跑必须保持同一配置；若只是接近，不得写成复跑成功。",
+            "- 机器使用同目录的 `PARAMETER_MATRIX.csv` 做校验；本 Markdown 只负责让人快速阅读。",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def write_parameter_matrix(
+    *,
+    directory: Path,
+    title: str,
+    rows: list[dict[str, str]],
+    source_note: str,
+    overwrite: bool = False,
+) -> tuple[Path, Path]:
+    csv_path = directory / PARAMETER_MATRIX_CSV
+    md_path = directory / PARAMETER_MATRIX_MD
+    if (csv_path.exists() or md_path.exists()) and not overwrite:
+        raise WorkflowError(f"Parameter matrix already exists under {display_path(directory)}")
+    directory.mkdir(parents=True, exist_ok=True)
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=PARAMETER_MATRIX_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+    md_path.write_text(
+        render_parameter_matrix_markdown(title=title, rows=rows, source_note=source_note), encoding="utf-8"
+    )
+    return csv_path, md_path
+
+
+def parameter_matrix_source_note_from_view(md_path: Path) -> str:
+    if not md_path.exists():
+        return "从 PARAMETER_MATRIX.csv 生成"
+    match = re.search(r"^来源：(.*)$", read_text(md_path), flags=re.MULTILINE)
+    if match is None:
+        raise WorkflowError(f"Parameter matrix view has no source line: {display_path(md_path)}")
+    return match.group(1)
+
+
+def parameter_matrix_view_errors(csv_path: Path, rows: list[dict[str, str]]) -> list[str]:
+    md_path = csv_path.with_name(PARAMETER_MATRIX_MD)
+    if not md_path.exists():
+        return [f"missing human-readable matrix view: {display_path(md_path)}"]
+    try:
+        source_note = parameter_matrix_source_note_from_view(md_path)
+    except WorkflowError as exc:
+        return [str(exc)]
+    expected = render_parameter_matrix_markdown(
+        title=csv_path.parent.name,
+        rows=rows,
+        source_note=source_note,
+    )
+    if read_text(md_path) != expected:
+        return [
+            f"{display_path(md_path)} is stale or was edited separately; "
+            f"run refresh-parameter-matrix-view --path {display_path(csv_path)}"
+        ]
+    return []
+
+
+def refresh_parameter_matrix_view(csv_path: Path, rows: list[dict[str, str]], source_note: str = "") -> Path:
+    md_path = csv_path.with_name(PARAMETER_MATRIX_MD)
+    resolved_source_note = source_note or parameter_matrix_source_note_from_view(md_path)
+    md_path.write_text(
+        render_parameter_matrix_markdown(
+            title=csv_path.parent.name,
+            rows=rows,
+            source_note=resolved_source_note,
+        ),
+        encoding="utf-8",
+    )
+    return md_path
+
+
+def ready_parameter_matrix_rows(csv_path: Path) -> list[dict[str, str]]:
+    rows = read_parameter_matrix(csv_path)
+    errors = validate_parameter_matrix_rows(rows, require_ready=True, matrix_path=csv_path)
+    errors.extend(parameter_matrix_view_errors(csv_path, rows))
+    errors.extend(
+        parameter_matrix_conflicts(
+            rows,
+            REPO_ROOT / "experiments",
+            exclude_paths={csv_path},
+        )
+    )
+    if errors:
+        raise WorkflowError("Formal result requires a ready parameter matrix:\n" + "\n".join(errors))
+    return rows
+
+
+def select_parameter_matrix_result_row(
+    rows: list[dict[str, str]],
+    *,
+    matrix_job_id: str,
+    seed: str,
+    label: str,
+) -> dict[str, str]:
+    if matrix_job_id:
+        matches = [row for row in rows if row.get("job_id", "") == matrix_job_id]
+    else:
+        matches = [row for row in rows if row.get("status") in {"planned", "running"}]
+        if seed:
+            seed_matches = [row for row in matches if row.get("seed", "") == seed]
+            if seed_matches:
+                matches = seed_matches
+    if len(matches) != 1:
+        raise WorkflowError(
+            f"{label} must identify exactly one planned parameter-matrix row; "
+            f"pass --matrix-job-id when the seed is not unique (matched {len(matches)} rows)"
+        )
+    row = matches[0]
+    if row.get("status") not in {"planned", "running"}:
+        raise WorkflowError(f"{label} can only record a planned or running matrix row, not {row.get('status')!r}")
+    if seed and row.get("seed", "") != seed:
+        raise WorkflowError(
+            f"{label} seed {seed!r} does not match matrix row {row.get('job_id')} seed {row.get('seed')!r}"
+        )
+    return row
+
+
+def parameter_matrix_runtime_errors(
+    row: dict[str, str],
+    *,
+    matrix_path: Path,
+    config_path: Path,
+    seed: str,
+    tune_parameter: str = "",
+    tune_new_value: str = "",
+    tune_old_value: str = "",
+    baseline_config_path: Path | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    expected_fingerprint = parameter_matrix_sha256(read_text(config_path))
+    if row.get("config_fingerprint", "") != expected_fingerprint:
+        errors.append(f"{row.get('job_id')} config_fingerprint does not match the actual training config")
+    snapshot_ref = row.get("config_snapshot_ref", "")
+    if snapshot_ref.startswith("generated-from-frozen-plan:"):
+        errors.append(f"{row.get('job_id')} is a dynamic planned row and must be recorded through its batch sync")
+    else:
+        snapshot_path = Path(snapshot_ref)
+        if not snapshot_path.is_absolute():
+            # The matrix row was already validated against its own directory;
+            # here we additionally ensure the runtime command used that same file.
+            snapshot_path = matrix_path.parent / snapshot_path
+        if snapshot_path.resolve() != config_path.resolve():
+            errors.append(f"{row.get('job_id')} config_snapshot_ref does not point to the actual training config")
+    if seed and row.get("seed", "") != seed:
+        errors.append(f"{row.get('job_id')} seed does not match the training command")
+    if tune_parameter:
+        changed = json.loads(row.get("changed_parameters", "{}"))
+        config_values = read_config_values(config_path)
+        actual_value = config_values.get(tune_parameter, "")
+        if str(changed.get(tune_parameter, "")) != str(tune_new_value):
+            errors.append(f"{row.get('job_id')} changed_parameters does not match --new-value")
+        if str(actual_value) != str(tune_new_value):
+            errors.append(f"{row.get('job_id')} training config does not match --new-value")
+        if baseline_config_path is not None and baseline_config_path.exists():
+            baseline_value = read_config_values(baseline_config_path).get(tune_parameter, "")
+            if str(baseline_value) != str(tune_old_value):
+                errors.append(f"{row.get('job_id')} --old-value does not match the version baseline config")
+    return errors
+
+
+def sync_parameter_matrix_result_row(
+    csv_path: Path,
+    rows: list[dict[str, str]],
+    row: dict[str, str],
+    *,
+    metrics: dict[str, str],
+    decision: str,
+    run_id: str,
+    artifact_ref: str,
+) -> None:
+    row["status"] = "completed"
+    for key in ["U", "S", "H", "ZS", "best_epoch"]:
+        row[key] = metrics.get(key, row.get(key, ""))
+    row["decision"] = decision
+    row["run_id"] = run_id
+    row["artifact_ref"] = artifact_ref
+    write_parameter_matrix(
+        directory=csv_path.parent,
+        title=csv_path.parent.name,
+        rows=rows,
+        source_note=parameter_matrix_source_note_from_view(csv_path.with_name(PARAMETER_MATRIX_MD)),
+        overwrite=True,
+    )
+
+
+def parameter_matrix_identity(row: dict[str, str]) -> tuple[str, str, str]:
+    return (
+        row.get("base_version", ""),
+        row.get("code_ref", ""),
+        row.get("config_fingerprint", ""),
+    )
+
+
+def parameter_matrix_conflicts(
+    rows: list[dict[str, str]],
+    matrix_root: Path,
+    *,
+    exclude_paths: set[Path] | None = None,
+) -> list[str]:
+    """Find accidental reruns against already recorded matrices, without touching raw artifacts."""
+    excluded = {path.resolve() for path in (exclude_paths or set())}
+    seen: dict[tuple[str, str, str], tuple[str, str]] = {}
+    for path in matrix_root.rglob(PARAMETER_MATRIX_CSV):
+        if path.resolve() in excluded:
+            continue
+        try:
+            existing_rows = read_parameter_matrix(path)
+        except WorkflowError:
+            continue
+        for row in existing_rows:
+            identity = parameter_matrix_identity(row)
+            if identity[2] and not identity[2].startswith("pending_after_"):
+                seen.setdefault(identity, (display_path(path), row.get("job_id", "")))
+    conflicts: list[str] = []
+    for row in rows:
+        identity = parameter_matrix_identity(row)
+        fingerprint = identity[2]
+        if not fingerprint or fingerprint.startswith("pending_after_") or row.get("repeat_of", ""):
+            continue
+        if identity in seen:
+            path_text, job_id = seen[identity]
+            conflicts.append(
+                f"{row['job_id']} matches {job_id} in {path_text}; add repeat_of or change the planned parameters"
+            )
+    return conflicts
+
+
+def cmd_validate_parameter_matrix(args: argparse.Namespace) -> int:
+    path = Path(args.path)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    rows = read_parameter_matrix(path)
+    expected_jobs = int(args.expected_jobs or 0)
+    errors = validate_parameter_matrix_rows(rows, require_ready=bool(args.require_ready), matrix_path=path)
+    errors.extend(parameter_matrix_view_errors(path, rows))
+    if args.require_ready:
+        errors.extend(
+            parameter_matrix_conflicts(
+                rows,
+                REPO_ROOT / "experiments",
+                exclude_paths={path},
+            )
+        )
+    if expected_jobs and len(rows) != expected_jobs:
+        errors.append(f"matrix has {len(rows)} rows but the frozen plan requires {expected_jobs}")
+    if errors:
+        raise WorkflowError("Parameter matrix validation failed:\n" + "\n".join(errors))
+    print("parameter-matrix-validate-ok")
+    print(f"rows: {len(rows)}")
+    return 0
+
+
+def cmd_refresh_parameter_matrix_view(args: argparse.Namespace) -> int:
+    path = Path(args.path)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    rows = read_parameter_matrix(path)
+    errors = validate_parameter_matrix_rows(rows, matrix_path=path)
+    if errors:
+        raise WorkflowError("Parameter matrix cannot refresh its view:\n" + "\n".join(errors))
+    view_path = refresh_parameter_matrix_view(path, rows, source_note=str(args.source_note or ""))
+    print("parameter-matrix-view-refreshed")
+    print(f"view: {display_path(view_path)}")
+    return 0
+
+
+def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
+    matrix_path = Path(args.path)
+    if not matrix_path.is_absolute():
+        matrix_path = REPO_ROOT / matrix_path
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = REPO_ROOT / config_path
+    if not config_path.exists() or not config_path.is_file():
+        raise WorkflowError(f"Missing config snapshot: {display_path(config_path)}")
+    rows = read_parameter_matrix(matrix_path)
+    matches = [row for row in rows if row.get("job_id", "") == args.job_id]
+    if len(matches) != 1:
+        raise WorkflowError("freeze-parameter-matrix --job-id must name exactly one matrix row")
+    row = matches[0]
+    if row.get("status") not in {"draft", "planned", "running"}:
+        raise WorkflowError("freeze-parameter-matrix can only freeze a draft, planned, or running row")
+    try:
+        relative_snapshot = config_path.resolve().relative_to(matrix_path.parent.resolve()).as_posix()
+    except ValueError as exc:
+        raise WorkflowError("Config snapshot must stay inside the parameter-matrix directory") from exc
+    config_text = read_text(config_path)
+    row["config_snapshot_ref"] = relative_snapshot
+    row["config_fingerprint"] = parameter_matrix_sha256(config_text)
+    config_values = read_config_values(config_path)
+    if config_values.get("random_seed", ""):
+        row["seed"] = config_values["random_seed"]
+    if row.get("status") == "draft":
+        row["status"] = "planned"
+    # Freeze one row at a time.  A 50-job matrix is intentionally allowed to
+    # contain other drafts while its remaining config snapshots are prepared;
+    # validate-parameter-matrix --require-ready is the later all-rows gate.
+    errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
+    if not row.get("seed", "").strip():
+        errors.append(f"{row['job_id']} has no seed; fill it before freezing")
+    if not row.get("config_snapshot_ref", "").strip():
+        errors.append(f"{row['job_id']} has no config_snapshot_ref")
+    if row.get("config_fingerprint", "") != parameter_matrix_sha256(config_text):
+        errors.append(f"{row['job_id']} config_fingerprint does not match the selected config")
+    if errors:
+        raise WorkflowError("Parameter matrix cannot be frozen:\n" + "\n".join(errors))
+    write_parameter_matrix(
+        directory=matrix_path.parent,
+        title=matrix_path.parent.name,
+        rows=rows,
+        source_note=parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD)),
+        overwrite=True,
+    )
+    print("parameter-matrix-frozen")
+    print(f"job_id: {row['job_id']}")
+    print(f"csv: {display_path(matrix_path)}")
+    return 0
+
+
+def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
+    trial_dir = Path(args.trial_dir)
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    if not trial_dir.exists():
+        raise WorkflowError(f"Missing trial dir: {display_path(trial_dir)}")
+    attempt_upper, _attempt_lower = normalize_attempt_ids(args.attempt_id)
+    base_config = Path(args.base_config) if args.base_config else trial_dir / "config.yaml"
+    if not base_config.is_absolute():
+        base_config = REPO_ROOT / base_config
+    if not base_config.exists():
+        raise WorkflowError(f"Missing base config: {display_path(base_config)}")
+    jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
+    jobs = limit_dynamic_routing_jobs(jobs, int(args.limit_jobs or 0))
+    if int(args.jobs) != len(jobs):
+        raise WorkflowError(f"Profile {args.profile!r} has {len(jobs)} jobs, not --jobs {args.jobs}.")
+    base_text = read_text(base_config)
+    rows = build_parameter_matrix_rows(
+        jobs=jobs,
+        base_config_text=base_text,
+        base_version=args.base_version,
+        code_ref=args.base_code_tag or args.base_version,
+    )
+    attempt_dir = trial_dir / "attempts" / attempt_upper
+    errors = validate_parameter_matrix_rows(rows, require_ready=True)
+    errors.extend(
+        parameter_matrix_conflicts(
+            rows,
+            REPO_ROOT / "experiments",
+            exclude_paths={attempt_dir / PARAMETER_MATRIX_CSV},
+        )
+    )
+    if errors:
+        raise WorkflowError("Refusing to create a duplicate or invalid matrix:\n" + "\n".join(errors))
+    csv_path, md_path = write_parameter_matrix(
+        directory=attempt_dir,
+        title=attempt_upper,
+        rows=rows,
+        source_note=f"profile={args.profile}; base_config={display_path(base_config)}",
+        overwrite=bool(args.overwrite),
+    )
+    print("dynamic-routing-parameter-matrix-created")
+    print(f"rows: {len(rows)}")
+    print(f"csv: {display_path(csv_path)}")
+    print(f"view: {display_path(md_path)}")
+    return 0
+
+
+def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir)
+    if not run_dir.is_absolute():
+        run_dir = REPO_ROOT / run_dir
+    plan_path = run_dir / "plan.json"
+    if not plan_path.exists():
+        raise WorkflowError(f"Missing plan.json: {display_path(plan_path)}")
+    plan = json.loads(read_text(plan_path))
+    attempt_id = str(plan.get("warehouse_attempt_id", "")).strip()
+    trial_dir = Path(str(plan.get("trial_dir", "")))
+    if not trial_dir.is_absolute():
+        trial_dir = REPO_ROOT / trial_dir
+    if not attempt_id:
+        raise WorkflowError("Run plan has no warehouse_attempt_id; cannot find its formal parameter matrix")
+    matrix_path = trial_dir / "attempts" / attempt_id / PARAMETER_MATRIX_CSV
+    if not bool(plan.get("formal_evidence")):
+        raise WorkflowError("Refusing to sync a debug or non-formal plan into a formal parameter matrix")
+    plan_matrix_path = Path(str(plan.get("parameter_matrix", "")))
+    if not plan_matrix_path.is_absolute():
+        plan_matrix_path = REPO_ROOT / plan_matrix_path
+    if plan_matrix_path.resolve() != matrix_path.resolve():
+        raise WorkflowError("Run plan parameter_matrix does not point to this Attempt matrix")
+    rows = read_parameter_matrix(matrix_path)
+    errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
+    errors.extend(parameter_matrix_view_errors(matrix_path, rows))
+    if errors:
+        raise WorkflowError("Refusing to sync an invalid parameter matrix:\n" + "\n".join(errors))
+    summary_rows = _read_summary_rows(run_dir)
+    matrix_by_job = {row["job_id"]: row for row in rows}
+    plan_jobs = plan.get("jobs", [])
+    if not isinstance(plan_jobs, list) or {
+        str(job.get("job_id", "")) for job in plan_jobs if isinstance(job, dict)
+    } != set(matrix_by_job):
+        raise WorkflowError("Run plan jobs do not match the frozen parameter-matrix job set")
+    summary: dict[str, dict[str, str]] = {}
+    for result in summary_rows:
+        job_id = result.get("job_id", "")
+        if not job_id:
+            continue
+        if job_id not in matrix_by_job:
+            errors.append(f"summary.csv contains unregistered job {job_id}")
+        elif job_id in summary:
+            errors.append(f"summary.csv repeats job {job_id}")
+        summary[job_id] = result
+    if errors:
+        raise WorkflowError("Refusing to sync a summary outside the frozen parameter matrix:\n" + "\n".join(errors))
+    for row in rows:
+        result = summary.get(row["job_id"])
+        if not result:
+            continue
+        resolved_from = result.get("resolved_from_job_id", "").strip()
+        if row["config_fingerprint"].startswith("pending_after_top_rank:") and result.get("status") in {
+            "completed",
+            "failed",
+        }:
+            source = matrix_by_job.get(resolved_from)
+            if source is None:
+                errors.append(
+                    f"{row['job_id']} completed a top-rank repeat but summary.csv has no valid resolved_from_job_id"
+                )
+                continue
+            if source["config_fingerprint"].startswith("pending_after_top_rank:"):
+                errors.append(f"{row['job_id']} resolved through another unresolved top-rank repeat")
+                continue
+            row["repeat_of"] = resolved_from
+            row["config_fingerprint"] = source["config_fingerprint"]
+            row["changed_parameters"] = source["changed_parameters"]
+            row["duplicate_resolution"] = f"运行时解析为原样复跑 {resolved_from}"
+        row["status"] = result.get("status", row["status"])
+        for key in ["U", "S", "H", "ZS", "best_epoch"]:
+            row[key] = result.get(key, row[key])
+        row["run_id"] = str(plan.get("run_id", ""))
+        warehouse_dir = result.get("warehouse_dir", "").strip()
+        if result.get("status") in {"completed", "failed"} and not warehouse_dir:
+            errors.append(f"{row['job_id']} has no warehouse_dir in summary.csv")
+        elif warehouse_dir:
+            row["artifact_ref"] = f"warehouse_dir:{warehouse_dir}"
+    if errors:
+        raise WorkflowError("Refusing to sync unresolved or non-reproducible results:\n" + "\n".join(errors))
+    errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
+    if errors:
+        raise WorkflowError("Refusing to write an invalid parameter matrix:\n" + "\n".join(errors))
+    write_parameter_matrix(
+        directory=matrix_path.parent,
+        title=attempt_id,
+        rows=rows,
+        source_note=f"已从 {display_path(run_dir / 'summary.csv')} 回填；原始证据留在 Warehouse。",
+        overwrite=True,
+    )
+    print("dynamic-routing-parameter-matrix-synced")
+    print(f"rows: {len(rows)}")
+    return 0
+
+
 def _dynamic_runner_script() -> str:
     return r'''#!/usr/bin/env python
 from __future__ import annotations
@@ -12914,6 +13810,62 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
             "missing_fingerprint_paths": [],
         }
 
+    jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
+    jobs = limit_dynamic_routing_jobs(jobs, int(getattr(args, "limit_jobs", 0) or 0))
+    if int(args.jobs) != len(jobs):
+        raise WorkflowError(f"Dynamic routing batch profile {args.profile!r} expects {len(jobs)} jobs, got --jobs {args.jobs}.")
+    if warehouse_attempt_id:
+        for job in jobs:
+            job["attempt_id"] = warehouse_attempt_id
+
+    parameter_matrix_path = ""
+    if formal_evidence and parameter_matrix_policy_is_active():
+        if not warehouse_attempt_id:
+            raise WorkflowError(
+                "Formal parameter-matrix policy requires --attempt-id. Run prepare-dynamic-routing-matrix, "
+                "commit its matrix, then plan the formal batch."
+            )
+        matrix_path = trial_dir / "attempts" / warehouse_attempt_id / PARAMETER_MATRIX_CSV
+        rows = read_parameter_matrix(matrix_path)
+        base_text_for_matrix = read_text_at_commit(
+            commit,
+            repo_relative_path(base_config, "Formal dynamic routing base config"),
+        )
+        expected_rows = build_parameter_matrix_rows(
+            jobs=jobs,
+            base_config_text=base_text_for_matrix,
+            base_version=args.base_version,
+            code_ref=args.base_code_tag or args.base_version,
+        )
+        expected_by_job = {row["job_id"]: row for row in expected_rows}
+        matrix_errors = validate_parameter_matrix_rows(
+            rows,
+            expected_job_ids=set(expected_by_job),
+            require_ready=True,
+            matrix_path=matrix_path,
+        )
+        matrix_errors.extend(parameter_matrix_view_errors(matrix_path, rows))
+        for row in rows:
+            expected = expected_by_job.get(row.get("job_id", ""))
+            if expected is None:
+                continue
+            for field in ["base_config_sha256", "code_ref", "config_fingerprint", "seed", "repeat_of"]:
+                if row.get(field, "") != expected.get(field, ""):
+                    matrix_errors.append(
+                        f"{row.get('job_id')} {field} differs from the frozen batch plan; "
+                        "regenerate and commit the parameter matrix before running"
+                    )
+        matrix_errors.extend(
+            parameter_matrix_conflicts(
+                rows,
+                REPO_ROOT / "experiments",
+                exclude_paths={matrix_path},
+            )
+        )
+        if matrix_errors:
+            raise WorkflowError("Formal parameter-matrix gate failed:\n" + "\n".join(matrix_errors))
+        parameter_matrix_path = display_path(matrix_path)
+
     run_id = args.run_id or f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}-dynroute50-2gpu"
     run_root = REPO_ROOT / ".gtpj_runtime" / "batches"
     run_dir = run_root / run_id
@@ -12928,13 +13880,6 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
     gpus = [int(part.strip()) for part in args.gpus.split(",") if part.strip()]
     if not gpus:
         raise WorkflowError("At least one GPU id is required.")
-    jobs = build_dynamic_routing_jobs(seed=int(args.seed), profile=args.profile)
-    jobs = limit_dynamic_routing_jobs(jobs, int(getattr(args, "limit_jobs", 0) or 0))
-    if int(args.jobs) != len(jobs):
-        raise WorkflowError(f"Dynamic routing batch profile {args.profile!r} expects {len(jobs)} jobs, got --jobs {args.jobs}.")
-    if warehouse_attempt_id:
-        for job in jobs:
-            job["attempt_id"] = warehouse_attempt_id
     for index, job in enumerate(jobs):
         job["gpu_slot"] = index % len(gpus)
 
@@ -12950,6 +13895,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "trial_dir": display_path(trial_dir),
         "base_config": display_path(base_config),
         "base_version": base_version,
+        "base_code_tag": args.base_code_tag or base_version,
         "trial_id": trial_id,
         "branch": branch,
         "commit": commit,
@@ -12964,6 +13910,7 @@ def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
         "warehouse_root": args.warehouse_root,
         "warehouse_scope": "attempt_run" if warehouse_attempt_id else "legacy_job_attempt",
         "warehouse_attempt_id": warehouse_attempt_id,
+        "parameter_matrix": parameter_matrix_path,
         "confirmation_policy": confirmation_policy_for_profile(
             args.profile,
             target_h=str(getattr(args, "restore_target_h", "") or ""),
@@ -13424,6 +14371,7 @@ def cmd_run_workflow(args: argparse.Namespace) -> int:
         limit_jobs=int(args.limit_jobs or 0),
         profile=profile,
         base_version=args.base_version,
+        base_code_tag=args.base_code_tag,
         seed=int(args.seed),
         gpus=args.gpus,
         branch=args.branch,
@@ -13699,6 +14647,52 @@ def build_parser() -> argparse.ArgumentParser:
     new_exp.add_argument("--slug", required=True)
     new_exp.set_defaults(func=cmd_new_experiment)
 
+    validate_matrix = sub.add_parser("validate-parameter-matrix", help="校验一张参数矩阵是否可进入正式实验")
+    validate_matrix.add_argument("--path", required=True)
+    validate_matrix.add_argument("--expected-jobs", type=int, default=0)
+    validate_matrix.add_argument("--require-ready", action="store_true")
+    validate_matrix.set_defaults(func=cmd_validate_parameter_matrix)
+
+    refresh_matrix_view = sub.add_parser(
+        "refresh-parameter-matrix-view",
+        help="从 CSV 重新生成参数矩阵的 Markdown 阅读版",
+    )
+    refresh_matrix_view.add_argument("--path", required=True)
+    refresh_matrix_view.add_argument("--source-note", default="")
+    refresh_matrix_view.set_defaults(func=cmd_refresh_parameter_matrix_view)
+
+    freeze_matrix = sub.add_parser(
+        "freeze-parameter-matrix",
+        help="用真实配置快照更新并冻结参数矩阵的一行",
+    )
+    freeze_matrix.add_argument("--path", required=True)
+    freeze_matrix.add_argument("--config", required=True)
+    freeze_matrix.add_argument("--job-id", required=True)
+    freeze_matrix.set_defaults(func=cmd_freeze_parameter_matrix)
+
+    prepare_dynamic_matrix = sub.add_parser(
+        "prepare-dynamic-routing-matrix",
+        help="在 pre-run freeze 前生成动态路由批次的逐任务参数表",
+    )
+    prepare_dynamic_matrix.add_argument("--trial-dir", required=True)
+    prepare_dynamic_matrix.add_argument("--attempt-id", required=True)
+    prepare_dynamic_matrix.add_argument("--base-config", default="")
+    prepare_dynamic_matrix.add_argument("--base-version", default="v5")
+    prepare_dynamic_matrix.add_argument("--base-code-tag", default="")
+    prepare_dynamic_matrix.add_argument("--profile", default="balanced-aggressive")
+    prepare_dynamic_matrix.add_argument("--jobs", type=int, default=50)
+    prepare_dynamic_matrix.add_argument("--limit-jobs", type=int, default=0)
+    prepare_dynamic_matrix.add_argument("--seed", type=int, default=5)
+    prepare_dynamic_matrix.add_argument("--overwrite", action="store_true")
+    prepare_dynamic_matrix.set_defaults(func=cmd_prepare_dynamic_routing_matrix)
+
+    sync_dynamic_matrix = sub.add_parser(
+        "sync-dynamic-routing-matrix",
+        help="将动态路由 summary.csv 的每任务结果回填到同一张参数表",
+    )
+    sync_dynamic_matrix.add_argument("--run-dir", required=True)
+    sync_dynamic_matrix.set_defaults(func=cmd_sync_dynamic_routing_matrix)
+
     tune_suggest = sub.add_parser("tune-suggest", help="生成最多 3 个调参候选，不启动训练")
     tune_suggest.add_argument("--version", required=True)
     tune_suggest.add_argument("--limit", type=int, default=3)
@@ -13735,6 +14729,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--parameter", default="")
     record.add_argument("--old-value", default="")
     record.add_argument("--new-value", default="")
+    record.add_argument("--matrix-job-id", default="")
     record.set_defaults(func=cmd_record_result)
 
     record_module = sub.add_parser(
@@ -13758,6 +14753,7 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--parameter-change", default="")
     record_module.add_argument("--old-value", default="")
     record_module.add_argument("--new-value", default="")
+    record_module.add_argument("--matrix-job-id", default="")
     record_module.add_argument(
         "--decision",
         default="keep",
@@ -13855,6 +14851,7 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_plan.add_argument("--limit-jobs", type=int, default=0)
     dyn_plan.add_argument("--profile", default="balanced-aggressive")
     dyn_plan.add_argument("--base-version", default="v5")
+    dyn_plan.add_argument("--base-code-tag", default="")
     dyn_plan.add_argument("--seed", type=int, default=5)
     dyn_plan.add_argument("--gpus", default="0,1")
     dyn_plan.add_argument("--branch", default="")
@@ -13903,6 +14900,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_workflow.add_argument("--limit-jobs", type=int, default=0)
     run_workflow.add_argument("--profile", default="")
     run_workflow.add_argument("--base-version", default="v5")
+    run_workflow.add_argument("--base-code-tag", default="")
     run_workflow.add_argument("--seed", type=int, default=5)
     run_workflow.add_argument("--gpus", default="0,1")
     run_workflow.add_argument("--branch", default="")

@@ -121,6 +121,10 @@ mixed campaign            -> experiments/campaigns/.../WORK_ITEMS.md / RESULT_IN
 `orphan_runtime_plan`；它可以用于历史参考或排障，但不得自动续跑、不得写入 keep / best /
 confirmation / promotion。
 
+## 2.1.1 参数矩阵硬规则（2026-08-04 起）
+
+一轮 batch 只是很多具体任务的容器，不能替代参数表。任何新建正式实验必须把每个 job 写进 `PARAMETER_MATRIX.csv`，并提供自动生成的 `PARAMETER_MATRIX.md` 阅读版。相同配置指纹必须明确标注为 `repeat_of`，否则视为误重复；参数矩阵必须与 pre-run freeze commit 一起冻结，跑完后只允许回填状态和结果。阅读版与 CSV 不一致时，必须先刷新阅读版；`record-result` 和 `record-module-attempt` 不会接受草稿或找不到对应任务行的结果。动态路由正式批次由 helper 校验 Attempt 矩阵和冻结计划逐行一致。完整规范：`docs/workflow/protocols/parameter_matrix_protocol.md`。
+
 ## 2.2 实验规划门（Experiment Planning Gate）
 
 正式 batch、Runner、server frozen run 或 promotion-prep run 生成前，必须先通过 `experiment_planning`。

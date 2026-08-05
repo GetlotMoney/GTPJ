@@ -1,9 +1,9 @@
 # Workflow Version
 
 ```yaml
-current_workflow_version: workflow-v2-runtime-gate
-next_target: workflow-v2
-workflow_v2_status: evidence_state_machine_plus_agent_runtime_gate_plus_preflight
+current_workflow_version: SKILL-GTPJ-WORKFLOW-V2.1
+previous_workflow_version: workflow-v2-runtime-gate
+workflow_v2_status: evidence_state_machine_plus_agent_runtime_gate_plus_preflight_plus_parameter_matrix
 model_version_scope: separate_from_v1_v2_v3_v4_v5
 ```
 
@@ -55,3 +55,11 @@ archive_completed_threads_on_stage_end
 The evidence state machine records state changes. The agent runtime gate decides whether
 a formal Runner is allowed to start and whether the owner-visible right sidebar stays
 limited to the current active roles.
+
+## SKILL-GTPJ-WORKFLOW-V2.1：参数矩阵规则
+
+这次升级改的是工作流规则，不是模型版本。新实验必须先有一张逐任务的
+`PARAMETER_MATRIX.csv`，再提交冻结并生成正式批次；`PARAMETER_MATRIX.md`
+是同一张表的阅读版。相同完整配置必须标明是复跑，避免以后不知不觉重复调参。
+
+唯一正式说明在：`docs/workflow/protocols/parameter_matrix_protocol.md`。

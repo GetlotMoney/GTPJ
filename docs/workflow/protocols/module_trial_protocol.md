@@ -117,6 +117,10 @@ attempt_id / type / run_id 或计划目录 / formal_evidence / status / evidence
 `.gtpj_runtime/batches/<run_id>` 只能作为 runner 缓存核对；没有 `ATTEMPTS.md` 行的 runtime
 目录必须标为 `orphan_runtime_plan`，不得自动续跑。
 
+### 参数矩阵硬规则（2026-08-04 起）
+
+`ATTEMPTS.md` 只负责告诉人“这一批 Attempt 是什么”。每个 Attempt 内所有真正运行的 job 必须另有 `PARAMETER_MATRIX.csv` 和自动阅读版 `PARAMETER_MATRIX.md`。表里一行对应一套具体参数和一次训练，必须能看出：改了什么、是否是原样复跑、种子、结果和后续决定。开跑前参数表要和冻结计划逐行一致；跑完只回填结果，不能改动冻结参数。完整列定义、查重和历史迁移办法见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+
 Trial-internal tuning and ablation are required parts of judging whether a new module is useful. They stay inside the trial because they answer:
 
 ```text
