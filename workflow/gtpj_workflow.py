@@ -3171,6 +3171,9 @@ def make_experiment_manifest(
     idea_uri: str = "",
     idea_title: str = "",
     hypothesis: str = "Tune hyperparameters without changing code.",
+    evidence_mode: str = "formal",
+    run_start_receipt_sha256: str = "",
+    run_start_receipt_ref: str = "",
 ) -> str:
     config_rel = rel(config_path)
     return f"""schema_version: gtpj-manifest/v1
@@ -3179,6 +3182,7 @@ experiment:
   name: {yaml_scalar(f"{exp_id}_{slug}")}
   kind: {yaml_scalar(kind.name)}
   status: {yaml_scalar(status)}
+  evidence_mode: {yaml_scalar(evidence_mode)}
   attempt_id: {yaml_scalar(attempt_id)}
   created_or_recorded_at: {yaml_scalar(recorded_at or utc_now())}
 version:
@@ -3191,6 +3195,8 @@ reproducibility:
   config_file: {yaml_scalar(config_rel)}
   config_sha256: {yaml_scalar(sha256_file(config_path) if config_path.exists() else "")}
   command: {yaml_scalar(command)}
+  run_start_receipt_sha256: {yaml_scalar(run_start_receipt_sha256)}
+  run_start_receipt_ref: {yaml_scalar(run_start_receipt_ref)}
   seed: {yaml_scalar(seed)}
   dataset: {yaml_scalar(dataset)}
   split_id: {yaml_scalar("standard_v1")}
@@ -3233,6 +3239,9 @@ def make_result_yaml(
     log_artifact_id: str = "",
     recorded_at: str = "",
     git_dirty: str = "false",
+    legacy_summary_only: bool = False,
+    run_start_receipt_sha256: str = "",
+    run_start_receipt_ref: str = "",
 ) -> str:
     metrics = metrics or {}
     baseline_h = comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
@@ -3244,6 +3253,18 @@ def make_result_yaml(
         except ValueError:
             delta_h = ""
     evidence_defaults = result_evidence_defaults(kind.name, h_value, decision, git_dirty)
+    if legacy_summary_only:
+        evidence_defaults.update(
+            {
+                "evidence_level": "legacy_summary_only",
+                "result_status": "legacy_summary_only",
+                "best_observed_H": "",
+                "confirmed_H": "",
+                "restore_target_H": "",
+                "near_miss_not_restored": "false",
+                "confirmation_status": "not_applicable",
+            }
+        )
     return f"""schema_version: gtpj-result/v1
 experiment_id: {yaml_scalar(exp_id)}
 experiment_name: {yaml_scalar(f"{exp_id}_{slug}")}
@@ -3272,6 +3293,8 @@ delta:
   H: {yaml_scalar(delta_h)}
 run:
   seed: {yaml_scalar(seed)}
+  run_start_receipt_sha256: {yaml_scalar(run_start_receipt_sha256)}
+  run_start_receipt_ref: {yaml_scalar(run_start_receipt_ref)}
 decision:
   status: {yaml_scalar(decision)}
   result_status: {yaml_scalar(evidence_defaults["result_status"])}
@@ -3625,6 +3648,9 @@ def update_manifest_and_result_files(
     log_sha256: str,
     log_size_bytes: str,
     git_dirty: str,
+    legacy_summary_only: bool = False,
+    run_start_receipt_sha256: str = "",
+    run_start_receipt_ref: str = "",
 ) -> None:
     recorded_at = utc_now()
     manifest = make_experiment_manifest(
@@ -3643,6 +3669,9 @@ def update_manifest_and_result_files(
         log_size_bytes=log_size_bytes,
         git_dirty=git_dirty,
         recorded_at=recorded_at,
+        evidence_mode="legacy_summary_only" if legacy_summary_only else "formal",
+        run_start_receipt_sha256=run_start_receipt_sha256,
+        run_start_receipt_ref=run_start_receipt_ref,
     )
     result_yaml = make_result_yaml(
         version=version,
@@ -3657,6 +3686,9 @@ def update_manifest_and_result_files(
         log_artifact_id=log_artifact_id,
         recorded_at=recorded_at,
         git_dirty=git_dirty,
+        legacy_summary_only=legacy_summary_only,
+        run_start_receipt_sha256=run_start_receipt_sha256,
+        run_start_receipt_ref=run_start_receipt_ref,
     )
     result_md = make_result_md(
         exp_id=exp_id,
@@ -3714,6 +3746,8 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     matrix_path: Path | None = None
     matrix_rows: list[dict[str, str]] = []
     matrix_result_row: dict[str, str] | None = None
+    run_start_receipt_path: Path | None = None
+    run_start_receipt_sha256 = ""
     matrix_exists = (exp_dir / PARAMETER_MATRIX_CSV).exists()
     legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
     if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
@@ -3725,6 +3759,8 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         raise WorkflowError("--legacy-summary-only cannot bypass an existing parameter matrix")
     if legacy_summary_only and args.decision not in {"reject", "rejected", "blocked"}:
         raise WorkflowError("--legacy-summary-only cannot create keep/best evidence; use a non-promoting decision")
+    if legacy_summary_only and (args.promotion_decision == "promote" or args.promote_to):
+        raise WorkflowError("--legacy-summary-only cannot set promotion_decision=promote or promote_to")
     if parameter_matrix_policy_is_active() and matrix_exists:
         if not args.seed:
             raise WorkflowError("record-result under the parameter-matrix policy requires --seed")
@@ -3754,6 +3790,25 @@ def cmd_record_result(args: argparse.Namespace) -> int:
                 job_id=matrix_result_row["job_id"],
             )
         )
+        receipt_text = str(getattr(args, "run_start_receipt", "") or "").strip()
+        if receipt_text:
+            run_start_receipt_path = Path(receipt_text)
+            if not run_start_receipt_path.is_absolute():
+                run_start_receipt_path = REPO_ROOT / run_start_receipt_path
+            runtime_errors.extend(
+                run_start_receipt_errors(
+                    receipt_path=run_start_receipt_path,
+                    log_path=log_path,
+                    row=matrix_result_row,
+                    run_id=args.attempt_id,
+                    pre_run_freeze_commit=str(getattr(args, "pre_run_freeze_commit", "") or ""),
+                    command=args.command,
+                )
+            )
+            if run_start_receipt_path.exists() and run_start_receipt_path.is_file():
+                run_start_receipt_sha256 = sha256_file(run_start_receipt_path)
+        else:
+            runtime_errors.append("formal result requires --run-start-receipt created before training")
         if runtime_errors:
             raise WorkflowError("Formal result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
     log_sha256 = sha256_file(log_path)
@@ -3770,7 +3825,29 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     log_artifact_id = args.log_artifact_id or default_log_artifact_id(exp_id, slug, args.attempt_id)
     dirty_before = "dirty" if git(["status", "--short"], check=False) else "clean"
     git_dirty = "true" if dirty_before == "dirty" else "false"
+    run_start_receipt_ref = ""
+    if run_start_receipt_path is not None:
+        receipt_dest = exp_dir / "run_start_receipt.json"
+        if receipt_dest.exists() and sha256_file(receipt_dest) != run_start_receipt_sha256:
+            raise WorkflowError("Refusing to overwrite a different run_start_receipt.json")
+        if run_start_receipt_path.resolve() != receipt_dest.resolve():
+            shutil.copy2(run_start_receipt_path, receipt_dest)
+        run_start_receipt_ref = rel(receipt_dest)
     evidence_defaults = result_evidence_defaults(kind.name, metrics["H"], args.decision, git_dirty)
+    if legacy_summary_only:
+        evidence_defaults.update(
+            {
+                "evidence_level": "legacy_summary_only",
+                "result_status": "legacy_summary_only",
+                "best_observed_H": "",
+                "confirmed_H": "",
+                "restore_target_H": "",
+                "near_miss_not_restored": "false",
+                "confirmation_status": "not_applicable",
+            }
+        )
+    effective_promotion_decision = "blocked" if legacy_summary_only else args.promotion_decision
+    effective_promote_to = "" if legacy_summary_only else args.promote_to
     readme_path = exp_dir / "README.md"
     content = read_text(readme_path)
     fields = {
@@ -3794,8 +3871,8 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         "ZS": metrics["ZS"],
         "best_epoch": metrics["best_epoch"],
         "decision": args.decision,
-        "promotion_decision": args.promotion_decision,
-        "promote_to": args.promote_to,
+        "promotion_decision": effective_promotion_decision,
+        "promote_to": effective_promote_to,
         "evidence_level": evidence_defaults["evidence_level"],
         "result_status": evidence_defaults["result_status"],
         "best_observed_H": evidence_defaults["best_observed_H"],
@@ -3804,6 +3881,7 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         "near_miss_tolerance_H": evidence_defaults["near_miss_tolerance_H"],
         "near_miss_not_restored": evidence_defaults["near_miss_not_restored"],
         "confirmation_status": evidence_defaults["confirmation_status"],
+        "run_start_receipt_sha256": run_start_receipt_sha256,
         "status": "recorded",
     }
     if args.kind == "tune":
@@ -3829,14 +3907,17 @@ def cmd_record_result(args: argparse.Namespace) -> int:
         seed=args.seed,
         metrics=metrics,
         decision=args.decision,
-        promotion_decision=args.promotion_decision,
-        promote_to=args.promote_to,
+        promotion_decision=effective_promotion_decision,
+        promote_to=effective_promote_to,
         attempt_id=args.attempt_id,
         log_artifact_id=log_artifact_id,
         log_uri=log_uri,
         log_sha256=log_sha256,
         log_size_bytes=log_size_bytes,
         git_dirty=git_dirty,
+        legacy_summary_only=legacy_summary_only,
+        run_start_receipt_sha256=run_start_receipt_sha256,
+        run_start_receipt_ref=run_start_receipt_ref,
     )
     append_readme_result_row(
         readme_path,
@@ -3898,6 +3979,7 @@ def make_module_attempt_manifest(
     pre_run_freeze_commit: str,
     artifacts: dict[str, dict[str, str]],
     recorded_at: str,
+    legacy_summary_only: bool = False,
 ) -> str:
     artifact_lines: list[str] = []
     for key, info in artifacts.items():
@@ -3920,6 +4002,7 @@ experiment:
   name: {yaml_scalar(f"{trial_id}_{slug}")}
   kind: {yaml_scalar("module-trial")}
   status: {yaml_scalar("completed")}
+  evidence_mode: {yaml_scalar("legacy_summary_only" if legacy_summary_only else "formal")}
   attempt_id: {yaml_scalar(attempt_lower)}
   created_or_recorded_at: {yaml_scalar(recorded_at)}
 version:
@@ -3967,6 +4050,7 @@ def make_module_attempt_result_yaml(
     pre_run_freeze_commit: str,
     artifacts: dict[str, dict[str, str]],
     recorded_at: str,
+    legacy_summary_only: bool = False,
 ) -> str:
     baseline_h = comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
     delta_h = ""
@@ -3980,6 +4064,13 @@ def make_module_attempt_result_yaml(
         for key, info in artifacts.items()
     ]
     evidence_block = "\n".join(evidence_lines)
+    result_status = "legacy_summary_only" if legacy_summary_only else (
+        "needs_confirmation" if decision in {"best", "keep"} else decision
+    )
+    promotion_decision = "blocked" if legacy_summary_only or decision in {"best", "keep"} else "not_applicable"
+    evidence_level = "legacy_summary_only" if legacy_summary_only else (
+        "valid_single_run" if decision in {"best", "keep"} else "quick_local"
+    )
     return f"""schema_version: gtpj-result/v1
 experiment_id: {yaml_scalar(trial_id)}
 experiment_name: {yaml_scalar(f"{trial_id}_{slug}")}
@@ -4013,12 +4104,12 @@ run:
   command: {yaml_scalar(command)}
 decision:
   status: {yaml_scalar(decision)}
-  result_status: {yaml_scalar("needs_confirmation" if decision in {"best", "keep"} else decision)}
-  promotion_decision: {yaml_scalar("blocked" if decision in {"best", "keep"} else "not_applicable")}
+  result_status: {yaml_scalar(result_status)}
+  promotion_decision: {yaml_scalar(promotion_decision)}
   promote_to: {yaml_scalar("")}
 evidence:
-  evidence_level: {yaml_scalar("valid_single_run" if decision in {"best", "keep"} else "quick_local")}
-  best_observed_H: {yaml_scalar(metrics.get("H", "") if decision in {"best", "keep"} else "")}
+  evidence_level: {yaml_scalar(evidence_level)}
+  best_observed_H: {yaml_scalar(metrics.get("H", "") if decision in {"best", "keep"} and not legacy_summary_only else "")}
   confirmed_H: {yaml_scalar("pending")}
   confirmation_status: {yaml_scalar("needs_confirmation" if decision in {"best", "keep"} else "not_applicable")}
 {evidence_block}
@@ -5356,6 +5447,7 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     matrix_path: Path | None = None
     matrix_rows: list[dict[str, str]] = []
     matrix_result_row: dict[str, str] | None = None
+    run_start_receipt_path: Path | None = None
     matrix_exists = (attempt_dir / PARAMETER_MATRIX_CSV).exists()
     legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
     if parameter_matrix_policy_is_active() and not matrix_exists and not legacy_summary_only:
@@ -5393,6 +5485,23 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
                 job_id=matrix_result_row["job_id"],
             )
         )
+        receipt_text = str(getattr(args, "run_start_receipt", "") or "").strip()
+        if receipt_text:
+            run_start_receipt_path = Path(receipt_text)
+            if not run_start_receipt_path.is_absolute():
+                run_start_receipt_path = REPO_ROOT / run_start_receipt_path
+            runtime_errors.extend(
+                run_start_receipt_errors(
+                    receipt_path=run_start_receipt_path,
+                    log_path=log_path,
+                    row=matrix_result_row,
+                    run_id=args.run_id or attempt_upper,
+                    pre_run_freeze_commit=pre_run_freeze_commit,
+                    command=command,
+                )
+            )
+        else:
+            runtime_errors.append("formal module result requires --run-start-receipt created before training")
         if runtime_errors:
             raise WorkflowError("Formal module result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
 
@@ -5457,6 +5566,17 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
         "audit",
         f"Full module-trial training log for {attempt_upper}.",
     )
+    if run_start_receipt_path is not None:
+        add_file_artifact(
+            "run_start_receipt",
+            run_start_receipt_path,
+            "receipts",
+            "run_start_receipt",
+            "runner_start",
+            f"receipt:{version}:module_trial:{trial_id}:{attempt_lower}:run_start",
+            "audit",
+            f"Runner start receipt bound to the frozen row for {attempt_upper}.",
+        )
 
     if args.best_checkpoint:
         best_path = resolve_existing_path(args.best_checkpoint, "best checkpoint")
@@ -5552,6 +5672,7 @@ note: Full per-epoch output is stored in the training_log artifact.
         pre_run_freeze_commit=pre_run_freeze_commit,
         artifacts=artifacts,
         recorded_at=recorded_at,
+        legacy_summary_only=legacy_summary_only,
     )
     result_yaml = make_module_attempt_result_yaml(
         trial_id=trial_id,
@@ -5565,6 +5686,7 @@ note: Full per-epoch output is stored in the training_log artifact.
         pre_run_freeze_commit=pre_run_freeze_commit,
         artifacts=artifacts,
         recorded_at=recorded_at,
+        legacy_summary_only=legacy_summary_only,
     )
     result_md = make_module_attempt_result_md(
         attempt_upper=attempt_upper,
@@ -5586,8 +5708,8 @@ note: Full per-epoch output is stored in the training_log artifact.
     update_attempts_table(
         trial_dir=trial_dir,
         attempt_upper=attempt_upper,
-        attempt_type=args.attempt_type,
-        parameter_change=args.parameter_change,
+        attempt_type="legacy_summary_only" if legacy_summary_only else args.attempt_type,
+        parameter_change="historical summary only; not promotion evidence" if legacy_summary_only else args.parameter_change,
         old_value=args.old_value,
         new_value=args.new_value,
         seed=seed,
@@ -12968,6 +13090,111 @@ def parameter_matrix_freeze_commit_errors(
     return errors
 
 
+def run_start_receipt_errors(
+    *,
+    receipt_path: Path,
+    log_path: Path,
+    row: dict[str, str],
+    run_id: str,
+    pre_run_freeze_commit: str,
+    command: str,
+) -> list[str]:
+    if not str(receipt_path).strip() or not receipt_path.exists() or not receipt_path.is_file():
+        return ["formal result requires a real --run-start-receipt file created before training"]
+    try:
+        payload = json.loads(read_text(receipt_path))
+    except json.JSONDecodeError:
+        return ["run-start receipt is not valid JSON"]
+    commit = resolve_commit(pre_run_freeze_commit)
+    expected = {
+        "schema_version": "gtpj-run-start-receipt/v1",
+        "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
+        "job_id": row.get("job_id", ""),
+        "run_id": run_id,
+        "pre_run_freeze_commit": commit,
+        "config_fingerprint": row.get("config_fingerprint", ""),
+        "matrix_frozen_digest": parameter_matrix_frozen_digest(row),
+        "command_sha256": parameter_matrix_sha256(command),
+    }
+    errors = [
+        f"run-start receipt {field} does not match the frozen run"
+        for field, value in expected.items()
+        if str(payload.get(field, "")) != value
+    ]
+    started_at_text = str(payload.get("started_at", "")).strip()
+    try:
+        started_at = datetime.fromisoformat(started_at_text.replace("Z", "+00:00"))
+        if started_at.tzinfo is None:
+            raise ValueError("timezone missing")
+        commit_time = datetime.fromisoformat(
+            git(["show", "-s", "--format=%cI", commit]).strip().replace("Z", "+00:00")
+        )
+        if started_at < commit_time:
+            errors.append("run-start receipt timestamp predates the pre-run freeze commit")
+    except ValueError:
+        errors.append("run-start receipt started_at must be a timezone-aware ISO timestamp")
+    receipt_sha256 = sha256_file(receipt_path)
+    first_line = read_text(log_path).splitlines()[0] if read_text(log_path).splitlines() else ""
+    if first_line != f"GTPJ_RUN_START_RECEIPT_SHA256={receipt_sha256}":
+        errors.append("training log is not anchored to the run-start receipt in its first line")
+    if receipt_path.stat().st_mtime > log_path.stat().st_mtime:
+        errors.append("run-start receipt was written after the training log")
+    return errors
+
+
+def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
+    matrix_path = Path(args.path)
+    if not matrix_path.is_absolute():
+        matrix_path = REPO_ROOT / matrix_path
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = REPO_ROOT / config_path
+    receipt_path = Path(args.receipt)
+    if not receipt_path.is_absolute():
+        receipt_path = REPO_ROOT / receipt_path
+    log_path = Path(args.log)
+    if not log_path.is_absolute():
+        log_path = REPO_ROOT / log_path
+    if receipt_path.exists() or log_path.exists():
+        raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files")
+    rows = read_parameter_matrix(matrix_path)
+    matches = [row for row in rows if row.get("job_id", "") == args.job_id]
+    if len(matches) != 1:
+        raise WorkflowError("prepare-run-start-receipt --job-id must name exactly one matrix row")
+    row = matches[0]
+    if row.get("status") != "frozen":
+        raise WorkflowError("prepare-run-start-receipt requires an unused frozen row")
+    errors = parameter_matrix_freeze_commit_errors(
+        commit_ref=args.pre_run_freeze_commit,
+        matrix_path=matrix_path,
+        config_path=config_path,
+        job_id=args.job_id,
+    )
+    if errors:
+        raise WorkflowError("Cannot create run-start receipt:\n" + "\n".join(errors))
+    commit = resolve_commit(args.pre_run_freeze_commit)
+    payload = {
+        "schema_version": "gtpj-run-start-receipt/v1",
+        "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
+        "job_id": args.job_id,
+        "run_id": args.run_id,
+        "pre_run_freeze_commit": commit,
+        "config_fingerprint": row.get("config_fingerprint", ""),
+        "matrix_frozen_digest": parameter_matrix_frozen_digest(row),
+        "command_sha256": parameter_matrix_sha256(args.command),
+        "started_at": utc_now(),
+    }
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    log_path.write_text(f"GTPJ_RUN_START_RECEIPT_SHA256={sha256_file(receipt_path)}\n", encoding="utf-8")
+    print("run-start-receipt-created")
+    print(f"receipt: {display_path(receipt_path)}")
+    print(f"log: {display_path(log_path)}")
+    print("next: start the frozen training command and append stdout/stderr to this log; never overwrite its first line")
+    return 0
+
+
 def parameter_matrix_conflicts(
     rows: list[dict[str, str]],
     matrix_root: Path,
@@ -13236,6 +13463,8 @@ def expected_dynamic_warehouse_dir(plan: dict[str, object], job_id: str) -> Pure
 def dynamic_warehouse_result_errors(
     plan: dict[str, object],
     result: dict[str, str],
+    *,
+    run_dir: Path,
 ) -> list[str]:
     job_id = result.get("job_id", "")
     warehouse_dir = result.get("warehouse_dir", "").strip()
@@ -13261,21 +13490,25 @@ def dynamic_warehouse_result_errors(
         for field, expected in identity.items()
         if result.get(field, "").strip() != expected
     ]
-    local_manifest = Path(manifest_path)
-    if local_manifest.exists() and local_manifest.is_file():
-        if sha256_file(local_manifest) != manifest_sha256:
-            errors.append(f"{job_id} artifact manifest hash does not match the file")
-        try:
-            payload = json.loads(read_text(local_manifest))
-        except json.JSONDecodeError:
-            errors.append(f"{job_id} artifact manifest is not valid JSON")
-        else:
-            if str(payload.get("job_id", "")) != job_id:
-                errors.append(f"{job_id} artifact manifest job_id mismatch")
-            if str(payload.get("run_id", "")) != str(plan.get("run_id", "")):
-                errors.append(f"{job_id} artifact manifest run_id mismatch")
-            if str(payload.get("warehouse_attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
-                errors.append(f"{job_id} artifact manifest attempt_id mismatch")
+    local_manifest = run_dir / "artifact_manifests" / f"{job_id}.json"
+    if not local_manifest.exists() or not local_manifest.is_file():
+        errors.append(f"{job_id} has no downloaded artifact manifest receipt")
+        return errors
+    if sha256_file(local_manifest) != manifest_sha256:
+        errors.append(f"{job_id} artifact manifest hash does not match the downloaded file")
+    try:
+        payload = json.loads(read_text(local_manifest))
+    except json.JSONDecodeError:
+        errors.append(f"{job_id} artifact manifest receipt is not valid JSON")
+        return errors
+    if str(payload.get("job_id", "")) != job_id:
+        errors.append(f"{job_id} artifact manifest job_id mismatch")
+    if str(payload.get("run_id", "")) != str(plan.get("run_id", "")):
+        errors.append(f"{job_id} artifact manifest run_id mismatch")
+    if str(payload.get("warehouse_attempt_id", "")) != str(plan.get("warehouse_attempt_id", "")):
+        errors.append(f"{job_id} artifact manifest attempt_id mismatch")
+    if normalized_posix_path(str(payload.get("warehouse_dir", ""))) != expected_dir:
+        errors.append(f"{job_id} artifact manifest warehouse_dir mismatch")
     return errors
 
 
@@ -13359,7 +13592,7 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
             if not same_result:
                 errors.append(f"Refusing to overwrite an existing result for {row['job_id']}")
             elif incoming_status in {"completed", "failed"}:
-                errors.extend(dynamic_warehouse_result_errors(plan, result))
+                errors.extend(dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
             continue
         if row.get("status") not in {"frozen", "running"}:
             errors.append(f"{row['job_id']} status {row.get('status')!r} cannot accept a result")
@@ -13388,7 +13621,7 @@ def cmd_sync_dynamic_routing_matrix(args: argparse.Namespace) -> int:
         row["run_id"] = str(plan.get("run_id", ""))
         if row.get("status") in PARAMETER_MATRIX_TERMINAL_STATUSES:
             if result.get("status") in {"completed", "failed"}:
-                errors.extend(dynamic_warehouse_result_errors(plan, result))
+                errors.extend(dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
         if result.get("status") in {"completed", "failed"} and not warehouse_dir:
             errors.append(f"{row['job_id']} has no warehouse_dir in summary.csv")
         elif warehouse_dir:
@@ -13970,9 +14203,12 @@ def copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, s
     return str(attempt_dir)
 
 
-def artifact_manifest_evidence(plan, job, warehouse_dir):
+def artifact_manifest_evidence(plan, job, warehouse_dir, run_dir):
     manifest_path = Path(warehouse_dir) / "artifact_manifest.json"
     digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    receipt_dir = run_dir / "artifact_manifests"
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(manifest_path, receipt_dir / f"{job['job_id']}.json")
     return {
         "artifact_manifest": str(manifest_path),
         "artifact_manifest_sha256": digest,
@@ -14030,7 +14266,7 @@ def run_job(run_dir, plan, job, gpu):
             ]
         code = run(cmd, cwd=worktree, env=env, log_path=log_path).returncode
         warehouse_dir = copy_artifacts_to_warehouse(plan, job, worktree, log_path, runtime_config, start_ts)
-        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir)
+        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir, run_dir)
         if code != 0:
             row = {
                 **job,
@@ -14087,7 +14323,7 @@ def run_job(run_dir, plan, job, gpu):
                 encoding="utf-8",
             )
             warehouse_dir = str(attempt_dir)
-        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir)
+        manifest_evidence = artifact_manifest_evidence(plan, job, warehouse_dir, run_dir)
         row = {
             **job,
             **manifest_evidence,
@@ -15081,6 +15317,20 @@ def build_parser() -> argparse.ArgumentParser:
     freeze_matrix.add_argument("--job-id", required=True)
     freeze_matrix.set_defaults(func=cmd_freeze_parameter_matrix)
 
+    prepare_receipt = sub.add_parser(
+        "prepare-run-start-receipt",
+        help="在正式训练启动前生成冻结任务收据和不可覆盖的日志首行",
+    )
+    prepare_receipt.add_argument("--path", required=True)
+    prepare_receipt.add_argument("--config", required=True)
+    prepare_receipt.add_argument("--job-id", required=True)
+    prepare_receipt.add_argument("--run-id", required=True)
+    prepare_receipt.add_argument("--pre-run-freeze-commit", required=True)
+    prepare_receipt.add_argument("--command", required=True)
+    prepare_receipt.add_argument("--receipt", required=True)
+    prepare_receipt.add_argument("--log", required=True)
+    prepare_receipt.set_defaults(func=cmd_prepare_run_start_receipt)
+
     init_matrix = sub.add_parser(
         "init-parameter-matrix",
         help="为版本实验或普通 module attempt 建立一行参数矩阵草稿",
@@ -15167,6 +15417,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--new-value", default="")
     record.add_argument("--matrix-job-id", default="")
     record.add_argument("--pre-run-freeze-commit", default="")
+    record.add_argument("--run-start-receipt", default="")
     record.add_argument("--legacy-summary-only", action="store_true")
     record.set_defaults(func=cmd_record_result)
 
@@ -15187,6 +15438,7 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--seed", default="")
     record_module.add_argument("--version", default="")
     record_module.add_argument("--pre-run-freeze-commit", default="")
+    record_module.add_argument("--run-start-receipt", default="")
     record_module.add_argument("--attempt-type", default="")
     record_module.add_argument("--parameter-change", default="")
     record_module.add_argument("--old-value", default="")

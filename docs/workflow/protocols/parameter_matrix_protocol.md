@@ -59,7 +59,8 @@ artifact_ref           Warehouse 中结果摘要的位置
 2. 逐行看清任务数、参数变化和复跑对象。
 3. 查重：同一个 config_fingerprint 已经存在时，必须改参数，或明确写 repeat_of。
 4. 把参数矩阵和计划一起提交为 pre-run freeze commit；训练与结果入账都引用这个提交。
-5. 通过参数矩阵校验后，才能生成正式 Runner 批次。
+5. 在训练命令启动前生成 run-start receipt（启动收据），并让训练输出追加到已写好收据哈希的日志，禁止覆盖日志首行。
+6. 通过参数矩阵校验后，才能生成正式 Runner 批次。
 ```
 
 版本级 tune、ablation、confirmation 的训练入口目前由外部训练脚本执行。因此 `new-experiment`
@@ -79,8 +80,18 @@ python workflow\gtpj_workflow.py validate-parameter-matrix `
 单独冻结一行不会要求同批其余草稿已经填完；全部行都冻结后，再执行一次
 `validate-parameter-matrix --require-ready` 作为整批放行检查。
 
-即使有人绕过这一步直接运行，`record-result` 也会拒绝把结果写成正式账本。它只会把指标
-回填到已冻结的对应行。模块内部 Attempt 同样由 `record-module-attempt` 执行这一检查。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>`；helper 会确认参数行和训练配置确实存在于这个训练前提交中。
+冻结提交完成后、真正启动训练命令前，先生成启动收据：
+
+```powershell
+python workflow\gtpj_workflow.py prepare-run-start-receipt `
+  --path <PARAMETER_MATRIX.csv> --config <实际训练配置> --job-id <JOB-ID> `
+  --run-id <RUN-ID> --pre-run-freeze-commit <commit> `
+  --command "<实际训练命令>" --receipt <run_start_receipt.json> --log <train.log>
+```
+
+这个命令拒绝已有收据或已有日志，只能在训练前创建；它先写收据，再把收据 SHA-256 写成日志第一行。随后训练命令必须用“追加”方式写入这个日志，不能用覆盖方式。收据固定绑定冻结提交、任务号、Run 编号、配置指纹、整行冻结摘要和训练命令。
+
+即使有人绕过这一步直接运行，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。模块内部 Attempt 同样由 `record-module-attempt` 执行这一检查。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对收据内容、真实文件哈希、日志首行和文件先后关系。版本级实验会把这份小收据复制为实验目录内的 `run_start_receipt.json`，模块 Attempt 会把它登记为 Warehouse receipt，避免验证完就丢失。
 
 普通 module attempt 没有专用批次建表器时，先用最小入口建立一行草稿，再冻结：
 
@@ -123,7 +134,7 @@ python workflow\gtpj_workflow.py sync-dynamic-routing-matrix --run-dir .gtpj_run
 必须指向该任务在 Warehouse 的目录，不得只指向 `.gtpj_runtime` 运行缓存。参数列属于运行前冻结内容；
 跑完后只能补状态、指标、决策和 Warehouse 引用，不能暗中改参数。
 回填还必须核对逐任务 Warehouse 目录、`artifact_manifest.json`、manifest 哈希和其中的
-`job_id/run_id/attempt_id`，不能只凭一个非空路径入账。
+`job_id/run_id/attempt_id`，不能只凭一个非空路径入账。服务器 Runner 会把每个真实 manifest 复制到运行目录的 `artifact_manifests/<JOB-ID>.json`；取回运行摘要时必须把这个目录一起取回。本地同步缺少真实文件、文件哈希不符或身份不符时一律拒绝，不能用 summary.csv 里自报的一串哈希代替真实文件。
 
 对于“按前序排名复跑”的动态任务，开跑前可暂写 `top_rank:n`；回填时 helper 必须把它解析为
 真实 `DR-xxx`、实际完整配置指纹和实际参数变化。若服务器摘要没有给出这个来源任务，回填会拒绝，
@@ -142,6 +153,6 @@ python workflow\gtpj_workflow.py sync-dynamic-routing-matrix --run-dir .gtpj_run
 
 ## 历史记录迁移
 
-历史 Attempt 和 v3/v4 不能补造数据。迁移时只允许从 Warehouse 的 `plan.json`、`summary.csv`、每任务配置和日志登记中恢复；恢复不了的行可以标成 `legacy_summary_only`，但这种行不能开跑、不能写成 keep/best，也不能进入 promotion。旧目录确实没有矩阵时，结果迁移必须显式使用 `--legacy-summary-only` 和非提升决定；新实验不得借这个开关绕过矩阵。历史缺口不会伪装成已经完成的参数表，也不阻碍新规范从今天起执行。
+历史 Attempt 和 v3/v4 不能补造数据。迁移时只允许从 Warehouse 的 `plan.json`、`summary.csv`、每任务配置和日志登记中恢复；恢复不了的行可以标成 `legacy_summary_only`，但这种行不能开跑、不能写成 keep/best，也不能进入 promotion。旧目录确实没有矩阵时，结果迁移必须显式使用 `--legacy-summary-only` 和非提升决定；helper 会强制清空 `promote_to`、把 `promotion_decision` 固定为 `blocked`，并在 `result.yaml` 永久写入 `result_status/evidence_level: legacy_summary_only`。新实验不得借这个开关绕过矩阵。历史缺口不会伪装成已经完成的参数表，也不阻碍新规范从今天起执行。
 
 跨历史矩阵复跑时，`repeat_of` 使用 `matrix:<历史 PARAMETER_MATRIX.csv 路径>#<job_id>`；同一张表内则直接写原 `job_id`。helper 会确认来源任务存在，且版本、代码引用和完整配置指纹完全相同；不同参数不能借用一个旧任务号绕过查重。

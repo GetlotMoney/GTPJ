@@ -2279,6 +2279,21 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("", stderr)
         self.assertIn("dynamic-routing-plan-created", stdout)
         run_dir = self.repo / ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC"
+        manifest_rel = ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC/artifact_manifests/DR-001.json"
+        self._write(
+            manifest_rel,
+            json.dumps(
+                {
+                    "job_id": "DR-001",
+                    "run_id": "RUN-TEST-MATRIX-SYNC",
+                    "warehouse_attempt_id": "ATTEMPT-009",
+                    "warehouse_dir": "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/"
+                    "module_trial/TRIAL-001/ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001",
+                }
+            ),
+        )
+        manifest_path = self.repo / manifest_rel
+        manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         self._write(
             ".gtpj_runtime/batches/RUN-TEST-MATRIX-SYNC/summary.csv",
             "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir,"
@@ -2289,7 +2304,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001,"
             "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/"
             "ATTEMPT-009/RUN-TEST-MATRIX-SYNC/DR-001/artifact_manifest.json,"
-            f"{'a' * 64},DR-001,RUN-TEST-MATRIX-SYNC,ATTEMPT-009\n",
+            f"{manifest_sha256},DR-001,RUN-TEST-MATRIX-SYNC,ATTEMPT-009\n",
         )
 
         code, stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
@@ -2447,6 +2462,27 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("unregistered job DR-999", stderr)
 
+        expected_warehouse = (
+            f"/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
+            f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']}"
+        )
+        manifest_rel = (
+            f".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/"
+            f"artifact_manifests/{pending['job_id']}.json"
+        )
+        self._write(
+            manifest_rel,
+            json.dumps(
+                {
+                    "job_id": pending["job_id"],
+                    "run_id": "RUN-TEST-TOP-RANK-SYNC",
+                    "warehouse_attempt_id": "ATTEMPT-011",
+                    "warehouse_dir": expected_warehouse,
+                }
+            ),
+        )
+        manifest_path = self.repo / manifest_rel
+        manifest_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
         self._write(
             ".gtpj_runtime/batches/RUN-TEST-TOP-RANK-SYNC/summary.csv",
             "job_id,status,U,S,H,ZS,best_epoch,resolved_from_job_id,warehouse_dir,"
@@ -2457,7 +2493,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']},"
             f"/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-011/"
             f"RUN-TEST-TOP-RANK-SYNC/{pending['job_id']}/artifact_manifest.json,"
-            f"{'a' * 64},{pending['job_id']},RUN-TEST-TOP-RANK-SYNC,ATTEMPT-011\n",
+            f"{manifest_sha256},{pending['job_id']},RUN-TEST-TOP-RANK-SYNC,ATTEMPT-011\n",
         )
         code, stdout, stderr = self._run_main("sync-dynamic-routing-matrix", "--run-dir", str(run_dir))
         self.assertEqual(0, code)
@@ -2491,10 +2527,11 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
-        self._write(
-            "train_log/tune.log",
-            "Best Results @ Epoch 2\n  GZSL-U : 70.0%\n  GZSL-S : 72.0%\n  GZSL-H : 71.0%\n  ZSL : 73.0%\n",
+        training_log_text = (
+            "Best Results @ Epoch 2\n  GZSL-U : 70.0%\n  GZSL-S : 72.0%\n"
+            "  GZSL-H : 71.0%\n  ZSL : 73.0%\n"
         )
+        self._write("train_log/tune.log", training_log_text)
         record_args = (
             "record-result",
             "--version",
@@ -2519,6 +2556,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "train_log/tune.log",
             "--pre-run-freeze-commit",
             "HEAD",
+            "--run-start-receipt",
+            "train_log/tune.run_start.json",
             "--command",
             "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
         )
@@ -2561,6 +2600,53 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("requires --pre-run-freeze-commit", stderr)
         self._commit_all("freeze parameter matrix before result")
+        log_path = self.repo / "train_log/tune.log"
+        code, _stdout, stderr = self._run_main(
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_path),
+            "--config",
+            str(config_path),
+            "--job-id",
+            "TUNE-001-001",
+            "--run-id",
+            "attempt-001",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
+            "--receipt",
+            "train_log/tune.run_start.json",
+            "--log",
+            "train_log/tune.log",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("refuses existing receipt or log files", stderr)
+        log_path.unlink()
+        code, stdout, stderr = self._run_main(
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_path),
+            "--config",
+            str(config_path),
+            "--job-id",
+            "TUNE-001-001",
+            "--run-id",
+            "attempt-001",
+            "--pre-run-freeze-commit",
+            "HEAD",
+            "--command",
+            "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml",
+            "--receipt",
+            "train_log/tune.run_start.json",
+            "--log",
+            "train_log/tune.log",
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        self.assertIn("run-start-receipt-created", stdout)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(training_log_text)
         bad_seed_args = list(record_args)
         bad_seed_args[bad_seed_args.index("5")] = "6"
         code, _stdout, stderr = self._run_main(*bad_seed_args)
@@ -2595,6 +2681,11 @@ log:v1:module_trial:TRIAL-001:attempt-001
         rows = self.module.read_parameter_matrix(matrix_path)
         self.assertEqual("completed", rows[0]["status"])
         self.assertEqual("71.0", rows[0]["H"])
+        receipt_copy = self.repo / "experiments/v1/tune/TUNE-001_topo008/run_start_receipt.json"
+        self.assertTrue(receipt_copy.is_file())
+        result_yaml = (self.repo / "experiments/v1/tune/TUNE-001_topo008/result.yaml").read_text(encoding="utf-8")
+        self.assertIn("run_start_receipt_sha256:", result_yaml)
+        self.assertIn("run_start_receipt_ref:", result_yaml)
         code, _stdout, stderr = self._run_main(*record_args)
         self.assertEqual(1, code)
         self.assertIn("frozen or running", stderr)
@@ -2681,6 +2772,72 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertIn("parameter-matrix-validate-ok", stdout)
+
+    def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
+        self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-901",
+            "--slug",
+            "legacy-summary",
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("", stderr)
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-901_legacy-summary"
+        (exp_dir / "PARAMETER_MATRIX.csv").unlink()
+        (exp_dir / "PARAMETER_MATRIX.md").unlink()
+        self._write(
+            "train_log/legacy-summary.log",
+            "Best Results @ Epoch 2\n  GZSL-U : 60.0%\n  GZSL-S : 62.0%\n"
+            "  GZSL-H : 61.0%\n  ZSL : 63.0%\n",
+        )
+        base_args = (
+            "record-result",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-901",
+            "--slug",
+            "legacy-summary",
+            "--log",
+            "train_log/legacy-summary.log",
+            "--decision",
+            "rejected",
+            "--parameter",
+            "conditional_text_ratio",
+            "--old-value",
+            "0.008",
+            "--new-value",
+            "0.006",
+            "--legacy-summary-only",
+        )
+        code, _stdout, stderr = self._run_main(
+            *base_args,
+            "--promotion-decision",
+            "promote",
+            "--promote-to",
+            "v2",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("cannot set promotion_decision=promote or promote_to", stderr)
+        code, stdout, stderr = self._run_main(*base_args)
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        self.assertIn("record-result-ok", stdout)
+        result = (exp_dir / "result.yaml").read_text(encoding="utf-8")
+        manifest = (exp_dir / "manifest.yaml").read_text(encoding="utf-8")
+        self.assertIn('result_status: "legacy_summary_only"', result)
+        self.assertIn('promotion_decision: "blocked"', result)
+        self.assertIn('evidence_level: "legacy_summary_only"', result)
+        self.assertNotIn('promote_to: "v2"', result)
+        self.assertIn('evidence_mode: "legacy_summary_only"', manifest)
 
     def test_parameter_matrix_ready_gate_rejects_terminal_and_legacy_rows(self) -> None:
         rows = self.module.build_parameter_matrix_rows(
@@ -2783,20 +2940,44 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "job_id": "DR-001",
             "warehouse_dir": "/warehouse/arbitrary",
         }
-        self.assertIn("does not match", "\n".join(self.module.dynamic_warehouse_result_errors(plan, result)))
+        run_dir = self.repo / ".gtpj_runtime/batches/RUN-WAREHOUSE-GATE"
+        self.assertIn(
+            "does not match",
+            "\n".join(self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir)),
+        )
         expected = "/warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-013/RUN-WAREHOUSE-GATE/DR-001"
         result["warehouse_dir"] = expected
-        self.assertIn("artifact_manifest", "\n".join(self.module.dynamic_warehouse_result_errors(plan, result)))
+        self.assertIn(
+            "artifact_manifest",
+            "\n".join(self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir)),
+        )
+        fake_sha = "a" * 64
         result.update(
             {
                 "artifact_manifest": expected + "/artifact_manifest.json",
-                "artifact_manifest_sha256": "a" * 64,
+                "artifact_manifest_sha256": fake_sha,
                 "artifact_manifest_job_id": "DR-001",
                 "artifact_manifest_run_id": "RUN-WAREHOUSE-GATE",
                 "artifact_manifest_attempt_id": "ATTEMPT-013",
             }
         )
-        self.assertEqual([], self.module.dynamic_warehouse_result_errors(plan, result))
+        missing_errors = self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir)
+        self.assertIn("no downloaded artifact manifest receipt", "\n".join(missing_errors))
+        manifest_rel = ".gtpj_runtime/batches/RUN-WAREHOUSE-GATE/artifact_manifests/DR-001.json"
+        self._write(
+            manifest_rel,
+            json.dumps(
+                {
+                    "job_id": "DR-001",
+                    "run_id": "RUN-WAREHOUSE-GATE",
+                    "warehouse_attempt_id": "ATTEMPT-013",
+                    "warehouse_dir": expected,
+                }
+            ),
+        )
+        manifest_path = self.repo / manifest_rel
+        result["artifact_manifest_sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        self.assertEqual([], self.module.dynamic_warehouse_result_errors(plan, result, run_dir=run_dir))
 
     def test_formal_dynamic_plan_rejects_a_changed_frozen_field(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
@@ -3724,6 +3905,8 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("copy_artifacts_to_warehouse", script)
         self.assertIn("warehouse_attempt_dir", script)
         self.assertIn("artifact_manifest.json", script)
+        self.assertIn('receipt_dir = run_dir / "artifact_manifests"', script)
+        self.assertIn('shutil.copy2(manifest_path, receipt_dir / f"{job[\'job_id\']}.json")', script)
         self.assertIn("link_runtime_resources", script)
         self.assertIn('plan.get("runtime_resource_links", ["data"])', script)
         self.assertIn("os.path.isabs(python_cmd)", script)
