@@ -1818,6 +1818,74 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(any("requires promoted parent innovation" in error for error in errors))
 
+    def test_child_framework_rejects_promoted_but_unconfirmed_result(self) -> None:
+        directory = "experiments/v1/innovation/INNOVATION-001_x"
+        self._write(
+            f"{directory}/result.yaml",
+            "decision:\n  promotion_decision: promote\n"
+            "evidence:\n  confirmation_status: pending\n  confirmed_H: pending\n",
+        )
+        self._write(
+            f"{directory}/quality_check.md",
+            "# Quality\n\n```text\ndecision: 未通过\n```\n",
+        )
+
+        errors = self.module.framework_child_lineage_errors(
+            {
+                "framework_id": "FRAMEWORK-V2",
+                "source_experiment": "V1-INNOVATION-001",
+                "lineage_status": "confirmed_promoted",
+            },
+            {
+                "experiment_id": "V1-INNOVATION-001",
+                "status": "promoted",
+                "directory": directory,
+            },
+        )
+
+        self.assertTrue(any("confirmation_status: confirmed" in error for error in errors))
+        self.assertTrue(any("finite confirmed_H" in error for error in errors))
+        self.assertTrue(any("passing quality check" in error for error in errors))
+
+    def test_record_module_attempt_is_legacy_backfill_only_under_framework_standard(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V3\nstatus: active\n",
+        )
+        args = self.module.argparse.Namespace(
+            legacy_summary_only=False,
+            legacy_source_commit="",
+        )
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "forbids new formal runs"):
+            self.module.require_legacy_module_attempt_backfill(args)
+
+        args.legacy_summary_only = True
+        with self.assertRaisesRegex(self.module.WorkflowError, "legacy-source-commit"):
+            self.module.require_legacy_module_attempt_backfill(args)
+
+    def test_new_trial_is_rejected_under_framework_standard(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V3\nstatus: active\n",
+        )
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "retired new Trial creation"):
+            self.module.cmd_new_trial(self.module.argparse.Namespace())
+
+    def test_start_new_module_routes_to_parent_framework_innovation(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V3\nstatus: active\n",
+        )
+        self._write_selected_idea_files()
+        card = self.module.mini_card_for_phrase("开新模块")
+
+        self.assertEqual("innovation", card["task_type"])
+        self.assertIn("experiments/v1/innovation", card["writes"])
+        self.assertIn("new-experiment --kind innovation", card["next_action"])
+        self.assertNotIn("module_trials", card["writes"])
+
     def test_tune_suggest_lists_at_most_three_candidates_without_writing(self) -> None:
         index_before = self._tune_index_text()
         registry_before = self._registry_text()

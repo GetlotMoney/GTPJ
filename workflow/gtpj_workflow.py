@@ -3738,11 +3738,23 @@ def framework_child_lineage_errors(
         ]
     result_path = REPO_ROOT / parent_row["directory"] / "result.yaml"
     quality_path = REPO_ROOT / parent_row["directory"] / "quality_check.md"
-    result_text = read_text(result_path) if result_path.exists() else ""
-    quality_text = read_text(quality_path) if quality_path.exists() else ""
-    if "promotion_decision: promote" not in result_text:
+    result_data = read_shallow_yaml(result_path) if result_path.exists() else {}
+    promotion_decision = yaml_section_value(result_data, "decision", "promotion_decision")
+    confirmation_status = yaml_section_value(result_data, "evidence", "confirmation_status")
+    confirmed_h = yaml_section_value(result_data, "evidence", "confirmed_H")
+    quality_fields = read_key_value_block(quality_path) if quality_path.exists() else {}
+    quality_decision = quality_fields.get("decision", "").strip().lower()
+    if promotion_decision != "promote":
         errors.append(f"{source_experiment} is promoted without promotion_decision: promote")
-    if not quality_path.exists() or not re.search(r"(?i)(allow|pass|通过)", quality_text):
+    if confirmation_status != "confirmed":
+        errors.append(f"{source_experiment} is promoted without confirmation_status: confirmed")
+    try:
+        confirmed_h_value = float(confirmed_h)
+    except ValueError:
+        confirmed_h_value = math.nan
+    if not math.isfinite(confirmed_h_value):
+        errors.append(f"{source_experiment} is promoted without a finite confirmed_H")
+    if quality_decision not in {"allow", "pass", "passed", "approved", "通过"}:
         errors.append(f"{source_experiment} is promoted without a passing quality check")
     return errors
 
@@ -6096,6 +6108,7 @@ def update_attempts_table(
 
 def cmd_record_module_attempt(args: argparse.Namespace) -> int:
     """Hold the matrix lock before any Attempt or Warehouse file can change."""
+    require_legacy_module_attempt_backfill(args)
     trial_dir = Path(args.trial_dir)
     if not trial_dir.is_absolute():
         trial_dir = REPO_ROOT / trial_dir
@@ -6114,6 +6127,26 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
         ):
             return _cmd_record_module_attempt_locked(args)
     return _cmd_record_module_attempt_locked(args)
+
+
+def framework_standard_is_active() -> bool:
+    standard_path = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    return standard_path.exists() and "SYS-WORKFLOW-V3" in read_text(standard_path)
+
+
+def require_legacy_module_attempt_backfill(args: argparse.Namespace) -> None:
+    """After SYS-WORKFLOW-V3, the old command may only backfill provably historical evidence."""
+    if not framework_standard_is_active():
+        return
+    if not bool(getattr(args, "legacy_summary_only", False)):
+        raise WorkflowError(
+            "SYS-WORKFLOW-V3 forbids new formal runs under Trial/Attempt. "
+            "Create a framework experiment and use record-result; record-module-attempt is legacy backfill only."
+        )
+    if not str(getattr(args, "legacy_source_commit", "") or "").strip():
+        raise WorkflowError(
+            "Legacy Attempt backfill requires --legacy-source-commit proving that the Attempt predates SYS-WORKFLOW-V3."
+        )
 
 
 def _cmd_record_module_attempt_locked(args: argparse.Namespace) -> int:
@@ -9576,6 +9609,20 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
         idea_id = str(idea.get("idea_id", ""))
         title = str(idea.get("title", "")).strip()
         slug = idea_folder_name(idea).removeprefix(f"{idea_id}_")
+        if framework_standard_is_active():
+            return {
+                "owner_phrase": normalized,
+                "task_type": "innovation",
+                "base_version": base_version,
+                "target": f"{idea_id} {title}".strip(),
+                "writes": f"idea_tree + experiments/{base_version}/innovation + Warehouse after run",
+                "agent_mode": "real_multi_agent, because new module code changes require Review 0-3",
+                "gates": "source_status, interface_contract, innovation_code_review Review 0-3, framework ledger, artifact_boundary",
+                "next_action": (
+                    f"create an exp/{base_version}/innovation/... branch from framework/{base_version}, "
+                    "then use new-experiment --kind innovation; do not create a Trial/Attempt"
+                ),
+            }
         branch = trial_branch_name(base_version, idea_id, "TRIAL-001", slug)
         return {
             "owner_phrase": normalized,
@@ -9836,15 +9883,20 @@ def planning_candidate_decision(task_type: str, requested_mix: dict[str, int], b
         )
     if requested_mix.get("innovation") or "innovation" in task_type:
         idea = next_ready_trial_idea(load_idea_tree(), base_version)
+        formal_framework_route = framework_standard_is_active()
         rows.append(
             [
                 str(idea.get("idea_id", "no_ready_idea")) if idea else "no_ready_idea",
                 "innovation_candidate",
                 "idea_tree selected queue",
                 "none" if idea else "missing selected ready idea",
-                "start_trial" if idea else "blocked",
-                "new method/trial evidence only after source and interface gates",
-                "create or bind trial before runner",
+                ("start_framework_innovation" if formal_framework_route else "start_trial") if idea else "blocked",
+                "new method evidence only after source, interface, and framework-ledger gates",
+                (
+                    f"create or bind experiments/{base_version}/innovation before runner"
+                    if formal_framework_route
+                    else "create or bind trial before runner"
+                ),
             ]
         )
     if requested_mix.get("ablation") or task_type == "ablation":
@@ -10486,6 +10538,11 @@ def choose_trial_base_version(args: argparse.Namespace, data: dict, idea: dict) 
 
 
 def cmd_new_trial(args: argparse.Namespace) -> int:
+    if framework_standard_is_active():
+        raise WorkflowError(
+            "SYS-WORKFLOW-V3 retired new Trial creation. Use new-experiment --kind innovation "
+            "under the parent framework; old Trial/Attempt paths are compatibility evidence only."
+        )
     idea_id = require_clean_id(args.idea_id, r"IDEA-[0-9]{4}", "idea id")
     trial_id = require_clean_id(args.trial_id, r"TRIAL-[0-9]{3}", "trial id")
     slug = require_slug(args.slug)
@@ -17643,7 +17700,7 @@ def build_parser() -> argparse.ArgumentParser:
     record_module.add_argument("--legacy-source-commit", default="")
     record_module.add_argument(
         "--decision",
-        default="keep",
+        default="blocked",
         choices=[
             "best",
             "keep",
@@ -17717,7 +17774,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_current.add_argument("--version", required=True)
     set_current.set_defaults(func=cmd_set_current_version)
 
-    new_trial = sub.add_parser("new-trial", help="在某个 idea 下创建 trial 目录")
+    new_trial = sub.add_parser("new-trial", help="历史兼容命令；SYS-WORKFLOW-V3 启用后拒绝创建新 Trial")
     new_trial.add_argument("--idea-id", required=True)
     new_trial.add_argument("--trial-id", required=True)
     new_trial.add_argument("--slug", required=True)

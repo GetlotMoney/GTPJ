@@ -103,6 +103,8 @@ TUNE-001_example/
 3. 能恢复逐运行参数时，补成 `RUN-001...RUN-N`；不能恢复时写 `legacy_summary_only`，绝不猜参数。
 4. 正在运行的旧实验先保持原样，结束后再补映射。仅处于 `planned` 的实验可以先登记为 `planned`，但不能写成已完成。
 
+规范启用后，`record-module-attempt` 只允许补录能由旧提交证明“规范生效前已经存在”的历史摘要，并且不能写成 keep / best / promotion。任何新运行必须先在所属框架四类账本创建实验，再使用 `record-result`；旧命令不能绕开正式账本。
+
 ## 8. 新框架必须记录的身份
 
 `framework.yaml` 至少记录：`framework_id`、`parent_version`、`source_experiment`、`source_legacy_ref`、`framework_branch`、`framework_tag`、`framework_commit`、`governance_source_commit`、`lineage_status`（这个子框架是怎样来的）、`change_type`、`modules`、`inherits`、`does_not_inherit` 和 `status`。
