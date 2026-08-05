@@ -1,0 +1,16 @@
+schema_version: gtpj.framework.v1
+framework_id: FRAMEWORK-V2
+framework_version: v2
+parent_version: v1
+source_experiment: V1-INNOVATION-001
+source_legacy_ref: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly#ATTEMPT-019
+framework_branch: framework/v2
+framework_tag: v2
+framework_commit: ccc4a10ddd67308e28c40d6000216917a71bf472
+governance_source_commit: 6f4a511327ecd4b0e2770712a0c6a9858d4d2e45
+lineage_status: legacy_owner_accepted_unconfirmed
+change_type: add_module
+modules: ["v1 modules", "CLIP-A-self text prototype adapter"]
+inherits: ["FRAMEWORK-V1"]
+does_not_inherit: ["unconfirmed promotion claim"]
+status: formal

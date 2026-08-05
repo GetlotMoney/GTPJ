@@ -57,6 +57,10 @@ class WorkflowHelperTest(unittest.TestCase):
             "local skill mirrors the repository rules\n"
             "docs/workflow/START_HERE.md\n"
             "docs/workflow/WORKFLOW_KERNEL.md\n"
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n"
+            "framework/vX\n"
+            "RUN-xxx\n"
+            "compatibility identifiers\n"
             "same GitHub truth source\n"
             "开启多agents智能体工作流\n"
             "不得反复确认\n"
@@ -116,6 +120,7 @@ class WorkflowHelperTest(unittest.TestCase):
         self._git("add", ".")
         self._git("commit", "-m", "seed minimal governance repo")
         self._git("tag", "v1")
+        self._git("branch", "framework/v1", "v1")
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
@@ -1572,13 +1577,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
 
         self.assertEqual(1, code)
-        self.assertIn("expected branch exp/v1-confirm-001-v1-seed5", stderr)
+        self.assertIn("expected branch exp/v1/confirmation/confirm-001-v1-seed5", stderr)
         self.assertFalse((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5").exists())
         self.assertEqual(registry_before, self._registry_text())
         self.assertEqual(index_before, self._confirmation_index_text())
 
     def test_new_experiment_rejects_dirty_worktree(self) -> None:
-        self._git("switch", "-c", "exp/v1-confirm-001-v1-seed5")
+        self._git("switch", "-c", "exp/v1/confirmation/confirm-001-v1-seed5")
         self._write("scratch.txt", "dirty\n")
         registry_before = self._registry_text()
         index_before = self._confirmation_index_text()
@@ -1602,7 +1607,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(index_before, self._confirmation_index_text())
 
     def test_new_experiment_rejects_wrong_exp_branch(self) -> None:
-        self._git("switch", "-c", "exp/v1-confirm-999-other")
+        self._git("switch", "-c", "exp/v1/confirmation/confirm-999-other")
         registry_before = self._registry_text()
         index_before = self._confirmation_index_text()
 
@@ -1619,13 +1624,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
 
         self.assertEqual(1, code)
-        self.assertIn("expected branch exp/v1-confirm-001-v1-seed5", stderr)
+        self.assertIn("expected branch exp/v1/confirmation/confirm-001-v1-seed5", stderr)
         self.assertFalse((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5").exists())
         self.assertEqual(registry_before, self._registry_text())
         self.assertEqual(index_before, self._confirmation_index_text())
 
-    def test_new_experiment_rejects_expected_branch_not_based_on_main(self) -> None:
-        self._git("checkout", "--orphan", "exp/v1-confirm-001-v1-seed5")
+    def test_new_experiment_rejects_expected_branch_not_based_on_framework(self) -> None:
+        self._git("checkout", "--orphan", "exp/v1/confirmation/confirm-001-v1-seed5")
         self._git("commit", "-m", "orphan experiment branch")
         registry_before = self._registry_text()
         index_before = self._confirmation_index_text()
@@ -1643,13 +1648,13 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
 
         self.assertEqual(1, code)
-        self.assertIn("new-experiment branch must contain current local main", stderr)
+        self.assertIn("new-experiment branch must contain framework/v1", stderr)
         self.assertFalse((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5").exists())
         self.assertEqual(registry_before, self._registry_text())
         self.assertEqual(index_before, self._confirmation_index_text())
 
     def test_new_experiment_succeeds_on_expected_clean_branch(self) -> None:
-        self._git("switch", "-c", "exp/v1-confirm-001-v1-seed5")
+        self._git("switch", "-c", "exp/v1/confirmation/confirm-001-v1-seed5")
 
         code, stdout, stderr = self._run_main(
             "new-experiment",
@@ -1671,9 +1676,147 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.yaml").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/result.md").exists())
         self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/agent_summary.md").exists())
+        self.assertTrue((self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/evidence/README.md").exists())
+        matrix_path = self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/PARAMETER_MATRIX.csv"
+        self.assertTrue(matrix_path.exists())
+        with matrix_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            matrix_rows = list(csv.DictReader(handle))
+        self.assertEqual("RUN-001", matrix_rows[0]["job_id"])
+        self.assertEqual("V1-CONFIRM-001", matrix_rows[0]["work_item_id"])
+        matrix_view = (self.repo / "experiments/v1/confirmation/CONFIRM-001_v1_seed5/PARAMETER_MATRIX.md").read_text(encoding="utf-8")
+        self.assertIn("| 任务 | 名称 | 类别 | 状态 |", matrix_view)
+        self.assertIn("旧任务/批次号", matrix_view)
         confirmation_index = self._confirmation_index_text()
         self.assertIn("| 实验 | 状态 | Run ID | Formal | 目录 | 说明 |", confirmation_index)
         self.assertIn("formal_pending", confirmation_index)
+
+    def test_framework_naming_and_generated_view_cover_four_peer_types(self) -> None:
+        self.assertEqual("ABLATION", self.module.KINDS["ablation"].prefix)
+        self.assertEqual("INNOVATION", self.module.KINDS["innovation"].prefix)
+        self.assertEqual(
+            "exp/v5/innovation/innovation-001-token-router",
+            self.module.experiment_branch_name(
+                "v5", self.module.KINDS["innovation"], "INNOVATION-001", "token_router"
+            ),
+        )
+        for kind in self.module.FRAMEWORK_KIND_ORDER:
+            prefix = self.module.KINDS[kind].prefix
+            experiment_id = f"V1-{prefix}-001"
+            self._write(
+                f"experiments/v1/{kind}/INDEX.md",
+                f"# {kind}\n\n"
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+                "|---|---|---|---|---|---|---|\n"
+                f"| `{experiment_id}` | planned | test | `matrix` | - | `directory` | - |\n",
+            )
+
+        rendered = self.module.render_framework_experiments_view("v1")
+
+        self.assertIn("# FRAMEWORK-V1 实验总览", rendered)
+        for label in ["调参实验", "消融实验", "创新实验", "确认实验"]:
+            self.assertIn(label, rendered)
+        for experiment_id in [
+            "V1-TUNE-001",
+            "V1-ABLATION-001",
+            "V1-INNOVATION-001",
+            "V1-CONFIRM-001",
+        ]:
+            self.assertIn(experiment_id, rendered)
+
+    def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
+        self._write(
+            "experiments/v1/tune/INDEX.md",
+            "# tune\n\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| `V1-ATTEMPT-001` | mystery | broken | matrix | - | directory |\n",
+        )
+
+        errors = self.module.framework_index_row_errors("v1", "tune")
+
+        self.assertTrue(any("must have 7 columns" in error for error in errors))
+
+    def test_collect_formal_pending_uses_the_status_column_only(self) -> None:
+        self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
+        self._write(
+            "experiments/v1/tune/INDEX.md",
+            "# tune\n\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| `V1-TUNE-001` | completed | text mentions planned but is done | matrix | - | directory | - |\n"
+            "| `V1-TUNE-002` | planned | real pending row | matrix | - | directory2 | - |\n",
+        )
+
+        rows = self.module.collect_formal_pending_rows()
+
+        self.assertEqual(["V1-TUNE-002"], [row["subject"] for row in rows])
+
+    def test_update_framework_experiment_status_refreshes_owner_view(self) -> None:
+        self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
+        for kind in self.module.FRAMEWORK_KIND_ORDER:
+            row = ""
+            if kind == "tune":
+                row = (
+                    "| `V1-TUNE-001` | planned | question | `experiments/v1/tune/TUNE-001_x/PARAMETER_MATRIX.md` "
+                    "| - | `experiments/v1/tune/TUNE-001_x` | - |\n"
+                )
+            self._write(
+                f"experiments/v1/{kind}/INDEX.md",
+                f"# {kind}\n\n"
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+                "|---|---|---|---|---|---|---|\n"
+                + (row or "| - | none | 暂无 | - | - | - | - |\n"),
+            )
+
+        changed = self.module.update_framework_experiment_status(
+            version="v1",
+            kind=self.module.KINDS["tune"],
+            exp_id="TUNE-001",
+            status="completed",
+        )
+
+        self.assertTrue(changed)
+        self.assertIn("| `V1-TUNE-001` | completed |", self._tune_index_text())
+        self.assertIn("| `V1-TUNE-001` | completed |", (self.repo / "experiments/v1/EXPERIMENTS.md").read_text(encoding="utf-8"))
+        self.assertEqual([], self.module.collect_formal_pending_rows())
+
+    def test_parameter_matrix_view_calls_out_legacy_summary_rows(self) -> None:
+        row = {column: "" for column in self.module.PARAMETER_MATRIX_COLUMNS}
+        row.update(
+            {
+                "job_id": "RUN-001",
+                "work_item_id": "V1-TUNE-001",
+                "job_kind": "tune",
+                "status": "legacy_summary_only",
+                "name": "old batch",
+                "changed_parameters": "{}",
+            }
+        )
+
+        rendered = self.module.render_parameter_matrix_markdown(
+            title="legacy",
+            rows=[row],
+            source_note="test",
+        )
+
+        self.assertIn("历史摘要，不代表一次实际 RUN", rendered)
+        self.assertNotIn("一行对应一个实际训练任务", rendered)
+
+    def test_child_framework_rejects_candidate_parent_without_promotion_evidence(self) -> None:
+        errors = self.module.framework_child_lineage_errors(
+            {
+                "framework_id": "FRAMEWORK-V2",
+                "source_experiment": "V1-INNOVATION-001",
+                "lineage_status": "confirmed_promoted",
+            },
+            {
+                "experiment_id": "V1-INNOVATION-001",
+                "status": "candidate",
+                "directory": "experiments/v1/innovation/INNOVATION-001_x",
+            },
+        )
+
+        self.assertTrue(any("requires promoted parent innovation" in error for error in errors))
 
     def test_tune_suggest_lists_at_most_three_candidates_without_writing(self) -> None:
         index_before = self._tune_index_text()
@@ -2825,7 +2968,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("non-finite H", "\n".join(errors))
 
     def test_record_result_requires_a_ready_matrix_and_syncs_the_matching_job(self) -> None:
-        self._git("switch", "-c", "exp/v1-tune-001-topo008")
+        self._git("switch", "-c", "exp/v1/tune/tune-001-topo008")
         self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
         self._commit_all("activate parameter-matrix policy")
         code, _stdout, stderr = self._run_main(
@@ -2857,7 +3000,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--slug",
             "topo008",
             "--matrix-job-id",
-            "TUNE-001-001",
+            "RUN-001",
             "--parameter",
             "conditional_text_ratio",
             "--old-value",
@@ -2902,7 +3045,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--config",
             str(config_path),
             "--job-id",
-            "TUNE-001-001",
+            "RUN-001",
         )
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
@@ -2935,7 +3078,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--config",
             str(config_path),
             "--job-id",
-            "TUNE-001-001",
+            "RUN-001",
             "--run-id",
             "attempt-001",
             "--pre-run-freeze-commit",
@@ -2957,7 +3100,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--config",
             str(config_path),
             "--job-id",
-            "TUNE-001-001",
+            "RUN-001",
             "--run-id",
             "attempt-001",
             "--pre-run-freeze-commit",
@@ -2993,7 +3136,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--config",
             str(config_path),
             "--job-id",
-            "TUNE-001-001",
+            "RUN-001",
             "--run-id",
             "attempt-002",
             "--pre-run-freeze-commit",
@@ -3043,7 +3186,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "--config",
             str(config_path),
             "--job-id",
-            "TUNE-001-001",
+            "RUN-001",
         )
         self.assertEqual(1, code)
         self.assertIn("only freeze a draft row once", stderr)
@@ -3792,7 +3935,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("73.0", self.module.parse_training_log_text(captured, "no-newline test")["ZS"])
 
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
-        self._git("switch", "-c", "exp/v1-tune-901-legacy-summary")
+        self._git("switch", "-c", "exp/v1/tune/tune-901-legacy-summary")
         code, _stdout, stderr = self._run_main(
             "new-experiment",
             "--version",
@@ -3867,7 +4010,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("legacy_summary_only identity is permanent", stderr)
 
     def test_new_experiment_cannot_claim_legacy_without_pre_policy_source(self) -> None:
-        self._git("switch", "-c", "exp/v1-tune-902-not-legacy")
+        self._git("switch", "-c", "exp/v1/tune/tune-902-not-legacy")
         code, _stdout, stderr = self._run_main(
             "new-experiment",
             "--version",
@@ -5424,7 +5567,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertFalse((self.repo / ".gtpj_runtime/gpu_runner.lock").exists())
 
     def test_tune_record_result_parses_log_updates_index_and_cleanup_prompt(self) -> None:
-        self._git("switch", "-c", "exp/v1-tune-001-topo008")
+        self._git("switch", "-c", "exp/v1/tune/tune-001-topo008")
         code, _stdout, stderr = self._run_main(
             "new-experiment",
             "--version",
@@ -5514,7 +5657,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("| `TUNE-001_topo008` | `v1` | `tune` | keep |", registry)
 
     def test_record_result_uses_entry_dirty_state_for_readme_and_manifest(self) -> None:
-        self._git("switch", "-c", "exp/v1-tune-001-topo008")
+        self._git("switch", "-c", "exp/v1/tune/tune-001-topo008")
         code, _stdout, stderr = self._run_main(
             "new-experiment",
             "--version",
@@ -7224,7 +7367,7 @@ decision:
         )
         self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "formal_pending\norphan_runtime_plan\nStatus\nFormal\n")
+        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "历史兼容\n只读\n不得作为新实验入口\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
         self._add_confirmation_rule_markers()
 
@@ -7271,7 +7414,7 @@ decision:
         )
         self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
-        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "formal_pending\norphan_runtime_plan\nStatus\nFormal\n")
+        self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "历史兼容\n只读\n不得作为新实验入口\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
         self._add_confirmation_rule_markers()
 

@@ -1,5 +1,20 @@
 # Version Tree
 
+## 正式框架树（DATA-FRAMEWORK-LEDGER-V1）
+
+```text
+FRAMEWORK-V1
+└─ V1-INNOVATION-001 -> FRAMEWORK-V2（历史接纳，未按新规确认）
+   └─ V2-INNOVATION-001 -> FRAMEWORK-V3（历史接纳，未按新规确认）
+      ├─ V3-TUNE-001 -> v4 历史配置标签（不是框架）
+      └─ V3-INNOVATION-001 -> FRAMEWORK-V5（历史 owner 激活）
+         ├─ V5-INNOVATION-001 动态路由（候选，尚无子框架）
+         └─ V5-ABLATION-001 局部分支效果（planned）
+```
+
+机器身份以各版本的 `framework.yaml` 为准，人类实验全貌以 `EXPERIMENTS.md` 为准。
+旧 Version Tree 内容继续保留用于提交、tag 和 Trial 回查。
+
 This file records formal baseline/version relationships. It does not record ordinary tune, ablation, or confirmation experiments.
 
 Core rules:

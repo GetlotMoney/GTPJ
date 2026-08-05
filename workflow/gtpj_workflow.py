@@ -61,7 +61,6 @@ CONFIRMATION_RULE_REPO_SYNC_FILES = [
     "docs/workflow/core/TASK_START_MINI.md",
     "docs/workflow/CLAUDE_CONTEXT.md",
     "experiments/templates/quality_check_template.md",
-    "experiments/templates/TRIAL_ATTEMPTS_template.md",
     "experiments/templates/run_receipt_template.yaml",
 ]
 CONFIRMATION_RULE_SKILL_REFERENCE_FILES = [
@@ -300,10 +299,51 @@ class ExperimentKind:
 
 KINDS = {
     "tune": ExperimentKind("tune", "tune", "TUNE", "TUNE-LITE", "tune"),
-    "ablation": ExperimentKind("ablation", "ablation", "ABL", "STANDARD", "ablation"),
+    "ablation": ExperimentKind("ablation", "ablation", "ABLATION", "STANDARD", "ablation"),
+    "innovation": ExperimentKind("innovation", "innovation", "INNOVATION", "STRICT", "innovation"),
     "confirmation": ExperimentKind("confirmation", "confirmation", "CONFIRM", "STRICT", "confirm"),
 }
 MODULE_TRIAL_KIND = ExperimentKind("module-trial", "module_trials", "TRIAL", "STRICT", "trial")
+FRAMEWORK_KIND_ORDER = ("tune", "ablation", "innovation", "confirmation")
+FRAMEWORK_REQUIRED_KEYS = {
+    "schema_version",
+    "framework_id",
+    "framework_version",
+    "parent_version",
+    "source_experiment",
+    "source_legacy_ref",
+    "framework_branch",
+    "framework_tag",
+    "framework_commit",
+    "governance_source_commit",
+    "lineage_status",
+    "change_type",
+    "modules",
+    "inherits",
+    "does_not_inherit",
+    "status",
+}
+FRAMEWORK_INDEX_STATUSES = {
+    "planned",
+    "pending",
+    "pre_run",
+    "pre_run_gated",
+    "ready_to_run",
+    "running",
+    "completed",
+    "candidate",
+    "promoted",
+    "blocked",
+    "rejected",
+    "failed",
+    "retired",
+    "legacy_owner_accepted_unconfirmed",
+    "legacy_owner_activated",
+}
+LEGACY_LINEAGE_STATUSES = {
+    "legacy_owner_accepted_unconfirmed",
+    "legacy_owner_activated",
+}
 
 CANONICAL_BASELINES = {
     "v1": {
@@ -1447,8 +1487,25 @@ def branch_slug(value: str) -> str:
 
 
 def experiment_branch_name(version: str, kind: ExperimentKind, exp_id: str, slug: str) -> str:
-    number = exp_id.split("-", 1)[1].lower()
-    return f"exp/{version}-{kind.branch_kind}-{number}-{branch_slug(slug)}"
+    return f"exp/{version}/{kind.name}/{exp_id.lower()}-{branch_slug(slug)}"
+
+
+def framework_branch_name(version: str) -> str:
+    return f"framework/{version}"
+
+
+def require_experiment_branch_base(version: str) -> None:
+    framework_branch = framework_branch_name(version)
+    if not git(["rev-parse", "--verify", f"refs/heads/{framework_branch}"], check=False):
+        raise WorkflowError(
+            f"new-experiment requires local framework branch {framework_branch}; "
+            "formal experiments must branch from their framework code line"
+        )
+    require_ancestor(
+        f"refs/heads/{framework_branch}",
+        "HEAD",
+        f"new-experiment branch must contain {framework_branch}",
+    )
 
 
 def trial_branch_name(base_version: str, idea_id: str, trial_id: str, slug: str) -> str:
@@ -1789,7 +1846,7 @@ def render_tuning_questions(data: dict[str, object]) -> str:
     lines = [
         "# 调参问题队列",
         *queue_markdown_note(),
-        "调参实验按 base version 写入 `experiments/vX/tune/`；trial 内部调参写入对应 trial 的 `attempts/ATTEMPT-xxx/`。",
+        "调参实验统一写入所属框架的 `experiments/vX/tune/`；旧 trial/attempt 目录只保留历史证据和兼容编号。",
         "",
     ]
     if rows:
@@ -1943,6 +2000,8 @@ def required_repository_files() -> list[str]:
         "experiments/module_trials/INDEX.md",
         "experiments/templates/IDEA_template.md",
         "experiments/templates/TRIAL_README_template.md",
+        "experiments/templates/FRAMEWORK_template.yaml",
+        "experiments/templates/FRAMEWORK_INDEX_template.md",
         "experiments/templates/VERSION_template.md",
         "experiments/templates/experiment_README_template.md",
         "experiments/templates/implementation_template.md",
@@ -2024,6 +2083,9 @@ def required_repository_files() -> list[str]:
         "schemas/result.schema.json",
         "schemas/artifact_ref.schema.json",
         "schemas/evidence_routing.schema.yaml",
+        "schemas/framework.schema.json",
+        "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+        "docs/TECH_STACK_HISTORY.md",
     ]
 
 
@@ -2645,6 +2707,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
     if offenders:
         raise WorkflowError("Forbidden legacy traces found:\n" + "\n".join(offenders))
 
+    framework_errors = validate_framework_ledgers()
+    if framework_errors:
+        raise WorkflowError("Framework ledger validation failed:\n" + "\n".join(framework_errors))
     print("validate-ok")
     return 0
 
@@ -2749,7 +2814,7 @@ status: planned
 
 ## 运行前检查
 
-- [ ] 临时分支来源符合实验类型；当前版本从 `main` 切出，历史版本可从 `{version}` tag 开只运行分支。
+- [ ] 实验分支从 `framework/{version}` 切出，并按 `exp/{version}/<type>/<experiment-id>-<slug>` 命名。
 - [ ] `base_code_tag: {version}` 和 `branch_source` 已记录。
 - [ ] 配置复制自 `experiments/{version}/config.yaml`。
 - [ ] 只改变声明过的变量或开关。
@@ -3458,8 +3523,23 @@ def append_kind_index(
     if not index.exists():
         raise WorkflowError(f"Missing experiment index: {rel(index)}")
     experiment_name = f"{exp_id}_{slug}"
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
     content = read_text(index)
-    if experiment_name in content:
+    if framework_experiment_id in content:
+        return
+    if "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |" in content:
+        lines = [
+            line
+            for line in content.splitlines()
+            if not re.match(r"^\|\s*-\s*\|\s*none\s*\|", line)
+        ]
+        child = "pending" if kind.name == "innovation" else "-"
+        lines.append(
+            f"| `{framework_experiment_id}` | planned | 待填写本实验要回答的问题 | "
+            f"`{rel(folder / PARAMETER_MATRIX_MD)}` | - | `{rel(folder)}` | {child} |"
+        )
+        index.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        refresh_framework_experiments_view(version)
         return
     lines = [
         line
@@ -3476,6 +3556,407 @@ def append_kind_index(
     index.write_text(content, encoding="utf-8")
 
 
+def framework_index_rows(version: str, kind_name: str) -> list[dict[str, str]]:
+    index_path = REPO_ROOT / "experiments" / version / kind_name / "INDEX.md"
+    if not index_path.exists():
+        return []
+    rows: list[dict[str, str]] = []
+    for line in read_text(index_path).splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip().strip("`") for cell in line.strip().strip("|").split("|")]
+        if len(cells) != 7:
+            continue
+        experiment_id = cells[0]
+        if not re.fullmatch(r"V[0-9]+-(?:TUNE|ABLATION|INNOVATION|CONFIRM)-[0-9]{3}", experiment_id):
+            continue
+        rows.append(
+            {
+                "experiment_id": experiment_id,
+                "status": cells[1],
+                "question": cells[2],
+                "parameter_matrix": cells[3],
+                "legacy_ref": cells[4],
+                "directory": cells[5],
+                "child_framework": cells[6],
+            }
+        )
+    return rows
+
+
+def framework_index_row_errors(version: str, kind_name: str) -> list[str]:
+    """Report malformed formal rows instead of silently dropping them."""
+    index_path = REPO_ROOT / "experiments" / version / kind_name / "INDEX.md"
+    if not index_path.exists():
+        return []
+    errors: list[str] = []
+    kind = KINDS[kind_name]
+    expected_pattern = rf"{version.upper()}-{kind.prefix}-[0-9]{{3}}"
+    for line_number, line in enumerate(read_text(index_path).splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
+        first = cells[0] if cells else ""
+        if first in {"Experiment ID", "---", "-"} or all(
+            re.fullmatch(r":?-{3,}:?", cell) for cell in cells
+        ):
+            continue
+        if len(cells) != 7:
+            errors.append(f"{rel(index_path)} line {line_number} must have 7 columns")
+            continue
+        if not re.fullmatch(expected_pattern, first):
+            errors.append(f"{rel(index_path)} line {line_number} has wrong ID for {kind_name}: {first}")
+        if cells[1] not in FRAMEWORK_INDEX_STATUSES:
+            errors.append(f"{rel(index_path)} line {line_number} has invalid status: {cells[1]}")
+    return errors
+
+
+def render_framework_experiments_view(version: str) -> str:
+    framework_id = f"FRAMEWORK-{version.upper()}"
+    labels = {
+        "tune": "调参",
+        "ablation": "消融",
+        "innovation": "创新",
+        "confirmation": "确认",
+    }
+    lines = [
+        f"# {framework_id} 实验总览",
+        "",
+        "> 本页由四个类型 INDEX 自动生成。请修改对应 INDEX 后运行 "
+        f"`python workflow/gtpj_workflow.py refresh-framework-view --version {version}`，不要手工维护第二份结论。",
+        "",
+        "| 类型 | 实验数 | 正式台账 |",
+        "|---|---:|---|",
+    ]
+    rows_by_kind = {kind: framework_index_rows(version, kind) for kind in FRAMEWORK_KIND_ORDER}
+    for kind in FRAMEWORK_KIND_ORDER:
+        lines.append(f"| {labels[kind]} | {len(rows_by_kind[kind])} | `{kind}/INDEX.md` |")
+    for kind in FRAMEWORK_KIND_ORDER:
+        lines.extend(
+            [
+                "",
+                f"## {labels[kind]}实验",
+                "",
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |",
+                "|---|---|---|---|---|---|---|",
+            ]
+        )
+        rows = rows_by_kind[kind]
+        if not rows:
+            lines.append("| - | none | 暂无 | - | - | - | - |")
+            continue
+        for row in rows:
+            lines.append(
+                f"| `{row['experiment_id']}` | {row['status']} | {row['question']} | "
+                f"`{row['parameter_matrix']}` | `{row['legacy_ref']}` | "
+                f"`{row['directory']}` | {row['child_framework']} |"
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def refresh_framework_experiments_view(version: str) -> Path:
+    version = require_clean_id(version, r"v[0-9]+", "version")
+    framework_path = REPO_ROOT / "experiments" / version / "framework.yaml"
+    if not framework_path.exists():
+        raise WorkflowError(f"{version} is not a formal framework; missing {rel(framework_path)}")
+    output = framework_path.with_name("EXPERIMENTS.md")
+    output.write_text(render_framework_experiments_view(version), encoding="utf-8")
+    return output
+
+
+def framework_schema_instance(data: dict[str, object]) -> tuple[dict[str, object], list[str]]:
+    instance = dict(data)
+    errors: list[str] = []
+    for key in ("modules", "inherits", "does_not_inherit"):
+        value = instance.get(key)
+        if isinstance(value, str):
+            try:
+                instance[key] = json.loads(value)
+            except json.JSONDecodeError:
+                errors.append(f"{key} must be a valid JSON-style YAML inline list")
+    return instance, errors
+
+
+def json_schema_subset_errors(
+    instance: dict[str, object], schema: dict[str, object]
+) -> list[str]:
+    """Validate the JSON-Schema keywords used by framework.schema.json without a new dependency."""
+    errors: list[str] = []
+    required = schema.get("required", [])
+    if isinstance(required, list):
+        for key in required:
+            if key not in instance:
+                errors.append(f"missing required property: {key}")
+    properties = schema.get("properties", {})
+    if not isinstance(properties, dict):
+        return errors + ["schema properties must be an object"]
+    for key, raw_rules in properties.items():
+        if key not in instance or not isinstance(raw_rules, dict):
+            continue
+        value = instance[key]
+        expected_type = raw_rules.get("type")
+        if expected_type == "array" and not isinstance(value, list):
+            errors.append(f"{key} must be an array")
+            continue
+        if expected_type == "string" and not isinstance(value, str):
+            errors.append(f"{key} must be a string")
+            continue
+        if "const" in raw_rules and value != raw_rules["const"]:
+            errors.append(f"{key} must equal {raw_rules['const']}")
+        enum = raw_rules.get("enum")
+        if isinstance(enum, list) and value not in enum:
+            errors.append(f"{key} must be one of: {', '.join(str(item) for item in enum)}")
+        pattern = raw_rules.get("pattern")
+        if isinstance(pattern, str) and (not isinstance(value, str) or not re.fullmatch(pattern, value)):
+            errors.append(f"{key} does not match schema pattern {pattern}")
+        items = raw_rules.get("items")
+        if isinstance(value, list) and isinstance(items, dict) and items.get("type") == "string":
+            if any(not isinstance(item, str) for item in value):
+                errors.append(f"{key} entries must all be strings")
+    return errors
+
+
+def framework_child_lineage_errors(
+    child_data: dict[str, object], parent_row: dict[str, str]
+) -> list[str]:
+    """Enforce the promotion gate while preserving explicitly labelled pre-standard history."""
+    errors: list[str] = []
+    framework_id = str(child_data.get("framework_id", "child framework"))
+    source_experiment = str(child_data.get("source_experiment", "source innovation"))
+    lineage_status = str(child_data.get("lineage_status", ""))
+    parent_status = parent_row["status"]
+    if lineage_status in LEGACY_LINEAGE_STATUSES:
+        if parent_status != lineage_status:
+            errors.append(
+                f"{framework_id} legacy lineage status must match parent row {lineage_status}"
+            )
+        return errors
+    if lineage_status != "confirmed_promoted" or parent_status != "promoted":
+        return [
+            f"{framework_id} child creation requires promoted parent innovation or an explicit legacy lineage status"
+        ]
+    result_path = REPO_ROOT / parent_row["directory"] / "result.yaml"
+    quality_path = REPO_ROOT / parent_row["directory"] / "quality_check.md"
+    result_text = read_text(result_path) if result_path.exists() else ""
+    quality_text = read_text(quality_path) if quality_path.exists() else ""
+    if "promotion_decision: promote" not in result_text:
+        errors.append(f"{source_experiment} is promoted without promotion_decision: promote")
+    if not quality_path.exists() or not re.search(r"(?i)(allow|pass|通过)", quality_text):
+        errors.append(f"{source_experiment} is promoted without a passing quality check")
+    return errors
+
+
+def validate_framework_ledgers() -> list[str]:
+    errors: list[str] = []
+    frameworks: dict[str, dict[str, object]] = {}
+    schema_path = REPO_ROOT / "schemas" / "framework.schema.json"
+    try:
+        framework_schema = json.loads(read_text(schema_path))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load {rel(schema_path)}: {exc}"]
+    canonical_standard = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    canonical_tree = REPO_ROOT / "experiments" / "FRAMEWORK_TREE.md"
+    canonical_active = (
+        canonical_standard.exists()
+        and "SYS-WORKFLOW-V3" in read_text(canonical_standard)
+        and canonical_tree.exists()
+    )
+    if canonical_active:
+        for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
+            if version_dir.name == "v4" or not (version_dir / "VERSION.md").exists():
+                continue
+            if not (version_dir / "framework.yaml").exists():
+                errors.append(f"{rel(version_dir)} is missing framework.yaml under the active framework standard")
+    for framework_path in sorted((REPO_ROOT / "experiments").glob("v[0-9]*/framework.yaml")):
+        version = framework_path.parent.name
+        data = read_shallow_yaml(framework_path)
+        frameworks[version] = data
+        schema_instance, instance_errors = framework_schema_instance(data)
+        errors.extend(f"{rel(framework_path)} schema: {item}" for item in instance_errors)
+        errors.extend(
+            f"{rel(framework_path)} schema: {item}"
+            for item in json_schema_subset_errors(schema_instance, framework_schema)
+        )
+        missing = sorted(FRAMEWORK_REQUIRED_KEYS - set(data))
+        if missing:
+            errors.append(f"{rel(framework_path)} missing keys: {', '.join(missing)}")
+            continue
+        expected_id = f"FRAMEWORK-{version.upper()}"
+        scalar_checks = {
+            "schema_version": "gtpj.framework.v1",
+            "framework_id": expected_id,
+            "framework_version": version,
+            "framework_branch": framework_branch_name(version),
+            "framework_tag": version,
+        }
+        for key, expected in scalar_checks.items():
+            if str(data.get(key, "")) != expected:
+                errors.append(f"{rel(framework_path)} {key} must be {expected}")
+        for key in ("framework_commit", "governance_source_commit"):
+            if not re.fullmatch(r"[0-9a-f]{40}", str(data.get(key, ""))):
+                errors.append(f"{rel(framework_path)} {key} must be a full 40-character commit")
+        governance_commit = str(data.get("governance_source_commit", ""))
+        if re.fullmatch(r"[0-9a-f]{40}", governance_commit):
+            governance_check = subprocess.run(
+                ["git", "cat-file", "-e", f"{governance_commit}:docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md"],
+                cwd=REPO_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if governance_check.returncode != 0:
+                errors.append(
+                    f"{rel(framework_path)} governance_source_commit does not contain the canonical standard"
+                )
+        for key in ("modules", "inherits", "does_not_inherit"):
+            raw = str(data.get(key, "")).strip()
+            if not (raw.startswith("[") and raw.endswith("]")):
+                errors.append(f"{rel(framework_path)} {key} must use an inline list")
+
+        branch = framework_branch_name(version)
+        branch_commit = git(["rev-parse", "--verify", f"refs/heads/{branch}"], check=False)
+        if not branch_commit:
+            errors.append(f"missing long-lived framework branch: {branch}")
+        expected_commit = str(data.get("framework_commit", ""))
+        tag_commit_value = git(["rev-parse", f"{version}^{{commit}}"], check=False)
+        if tag_commit_value and expected_commit != tag_commit_value:
+            errors.append(f"{rel(framework_path)} framework_commit does not match tag {version}")
+        if branch_commit and expected_commit:
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", expected_commit, branch],
+                cwd=REPO_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if result.returncode != 0:
+                errors.append(f"{branch} does not contain framework_commit {expected_commit}")
+
+        all_ids: set[str] = set()
+        for kind_name in FRAMEWORK_KIND_ORDER:
+            index_path = framework_path.parent / kind_name / "INDEX.md"
+            if not index_path.exists():
+                errors.append(f"{rel(framework_path.parent)} missing {kind_name}/INDEX.md")
+                continue
+            kind = KINDS[kind_name]
+            errors.extend(framework_index_row_errors(version, kind_name))
+            rows = framework_index_rows(version, kind_name)
+            for row in rows:
+                experiment_id = row["experiment_id"]
+                expected_pattern = rf"{version.upper()}-{kind.prefix}-[0-9]{{3}}"
+                if not re.fullmatch(expected_pattern, experiment_id):
+                    errors.append(f"{rel(index_path)} has wrong ID for {kind_name}: {experiment_id}")
+                if experiment_id in all_ids:
+                    errors.append(f"{rel(framework_path.parent)} repeats experiment ID {experiment_id}")
+                all_ids.add(experiment_id)
+                directory_text = row["directory"]
+                matrix_text = row["parameter_matrix"]
+                if directory_text == "-" or matrix_text == "-":
+                    errors.append(f"{experiment_id} must name a directory and parameter matrix")
+                    continue
+                directory = REPO_ROOT / directory_text
+                matrix_path = REPO_ROOT / matrix_text.replace(".md", ".csv")
+                try:
+                    require_path_inside(directory, framework_path.parent, experiment_id)
+                    require_path_inside(matrix_path, framework_path.parent, experiment_id)
+                except WorkflowError as exc:
+                    errors.append(str(exc))
+                    continue
+                expected_matrix = directory / PARAMETER_MATRIX_CSV
+                if matrix_path.resolve() != expected_matrix.resolve():
+                    errors.append(
+                        f"{experiment_id}: parameter matrix must be exactly {rel(expected_matrix)}"
+                    )
+                for required_name in ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD, "result.md"):
+                    if not (directory / required_name).exists():
+                        errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
+                if not (directory / "evidence").is_dir():
+                    errors.append(f"{experiment_id} missing evidence/ under {rel(directory)}")
+                if matrix_path.exists():
+                    try:
+                        matrix_rows = read_parameter_matrix(matrix_path)
+                        for matrix_row in matrix_rows:
+                            job_id = matrix_cell(matrix_row.get("job_id"))
+                            work_item_id = matrix_cell(matrix_row.get("work_item_id"))
+                            job_kind = matrix_cell(matrix_row.get("job_kind"))
+                            base_version = matrix_cell(matrix_row.get("base_version"))
+                            if not re.fullmatch(r"RUN-[0-9]{3}", job_id):
+                                errors.append(
+                                    f"{experiment_id}: formal job_id must be RUN-xxx, got {job_id or '<empty>'}"
+                                )
+                            if work_item_id != experiment_id:
+                                errors.append(
+                                    f"{experiment_id}: work_item_id must equal {experiment_id}, got {work_item_id or '<empty>'}"
+                                )
+                            if job_kind != kind_name:
+                                errors.append(
+                                    f"{experiment_id}: job_kind must be {kind_name}, got {job_kind or '<empty>'}"
+                                )
+                            if base_version != version:
+                                errors.append(
+                                    f"{experiment_id}: base_version must be {version}, got {base_version or '<empty>'}"
+                                )
+                        errors.extend(
+                            f"{experiment_id}: {item}"
+                            for item in validate_parameter_matrix_rows(matrix_rows, matrix_path=matrix_path)
+                        )
+                        errors.extend(
+                            f"{experiment_id}: {item}"
+                            for item in parameter_matrix_view_errors(matrix_path, matrix_rows)
+                        )
+                    except WorkflowError as exc:
+                        errors.append(f"{experiment_id}: {exc}")
+            indexed_dirs = {row["directory"] for row in rows}
+            for child in sorted((framework_path.parent / kind_name).iterdir()):
+                if child.is_dir() and rel(child) not in indexed_dirs:
+                    errors.append(f"{rel(child)} exists but is missing from {rel(index_path)}")
+
+        view_path = framework_path.parent / "EXPERIMENTS.md"
+        expected_view = render_framework_experiments_view(version)
+        if not view_path.exists():
+            errors.append(f"{rel(framework_path.parent)} missing generated EXPERIMENTS.md")
+        elif read_text(view_path) != expected_view:
+            errors.append(
+                f"{rel(view_path)} is stale; run refresh-framework-view --version {version}"
+            )
+
+    if (REPO_ROOT / "experiments" / "v4" / "framework.yaml").exists():
+        errors.append("v4 is a legacy config-only tag and must not have framework.yaml")
+    for version, data in frameworks.items():
+        parent = str(data.get("parent_version", ""))
+        if parent == "none":
+            continue
+        source_experiment = str(data.get("source_experiment", ""))
+        parent_rows = framework_index_rows(parent, "innovation")
+        matches = [
+            row
+            for row in parent_rows
+            if row["experiment_id"] == source_experiment
+            and row["child_framework"] == str(data.get("framework_id", ""))
+        ]
+        if len(matches) != 1:
+            errors.append(
+                f"{data.get('framework_id')} must have one parent innovation backlink "
+                f"{source_experiment} under FRAMEWORK-{parent.upper()}"
+            )
+            continue
+        errors.extend(framework_child_lineage_errors(data, matches[0]))
+    return errors
+
+
+def cmd_refresh_framework_view(args: argparse.Namespace) -> int:
+    output = refresh_framework_experiments_view(args.version)
+    print(f"framework-view-refreshed path={rel(output)}")
+    return 0
+
+
+def cmd_validate_framework_ledgers(_: argparse.Namespace) -> int:
+    errors = validate_framework_ledgers()
+    if errors:
+        raise WorkflowError("Framework ledger validation failed:\n" + "\n".join(errors))
+    print("validate-framework-ledgers-ok")
+    return 0
+
+
 def cmd_new_experiment(args: argparse.Namespace) -> int:
     version = require_clean_id(args.version, r"v[0-9]+", "version")
     kind = KINDS[args.kind]
@@ -3486,6 +3967,16 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     base_dir = REPO_ROOT / "experiments" / version
     if not base_dir.exists():
         raise WorkflowError(f"Unknown version directory: {rel(base_dir)}")
+    canonical_standard = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    if canonical_standard.exists() and "SYS-WORKFLOW-V3" in read_text(canonical_standard):
+        if not (base_dir / "framework.yaml").exists():
+            raise WorkflowError(f"{version} is not a formal framework; missing {rel(base_dir / 'framework.yaml')}")
+        framework_errors = validate_framework_ledgers()
+        if framework_errors:
+            raise WorkflowError(
+                "Cannot create a formal experiment while framework ledgers are invalid:\n"
+                + "\n".join(framework_errors)
+            )
     src_config = base_dir / "config.yaml"
     duplicates = sorted((base_dir / kind.folder).glob(f"{exp_id}_*"))
     if duplicates:
@@ -3499,7 +3990,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
 
     require_experiment_branch(expected_branch)
     require_clean_worktree("new-experiment")
-    require_current_branch_contains_main("new-experiment")
+    require_experiment_branch_base(version)
 
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
@@ -3511,8 +4002,8 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
         title=f"{exp_id}_{slug}",
         rows=[
             {
-                "job_id": f"{exp_id}-001",
-                "work_item_id": exp_id,
+                "job_id": "RUN-001",
+                "work_item_id": f"{version.upper()}-{exp_id}",
                 "job_kind": kind.name,
                 "status": "draft",
                 "group": "待填写",
@@ -3569,6 +4060,10 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     write_new(
         exp_dir / "result.md",
         make_result_md(exp_id=exp_id, slug=slug, kind=kind),
+    )
+    write_new(
+        exp_dir / "evidence" / "README.md",
+        "# 证据入口\n\n原始日志、模型和大文件放在 Warehouse；本目录只保存可核验的轻量指针。\n",
     )
     append_version_experiment_registry(version, kind, exp_id, slug, exp_dir)
     append_kind_index(version, kind, exp_id, slug, exp_dir)
@@ -3664,6 +4159,47 @@ def append_tune_result_index(
     else:
         content = content + "\n" + row + "\n"
     index.write_text(content, encoding="utf-8")
+
+
+def update_framework_experiment_status(
+    *,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    status: str,
+) -> bool:
+    """Update the single formal 7-column framework row and regenerate its owner view."""
+    framework_path = REPO_ROOT / "experiments" / version / "framework.yaml"
+    if not framework_path.exists():
+        return False
+    index_path = REPO_ROOT / "experiments" / version / kind.folder / "INDEX.md"
+    if not index_path.exists():
+        raise WorkflowError(f"Missing framework index: {rel(index_path)}")
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
+    lines = read_text(index_path).splitlines()
+    matched = 0
+    updated: list[str] = []
+    for line in lines:
+        if not line.startswith("|"):
+            updated.append(line)
+            continue
+        raw_cells = [cell.strip().strip("`") for cell in line.strip().strip("|").split("|")]
+        if len(raw_cells) != 7 or raw_cells[0] != framework_experiment_id:
+            updated.append(line)
+            continue
+        raw_cells[1] = status
+        updated.append(
+            f"| `{raw_cells[0]}` | {raw_cells[1]} | {raw_cells[2]} | "
+            f"`{raw_cells[3]}` | `{raw_cells[4]}` | `{raw_cells[5]}` | {raw_cells[6]} |"
+        )
+        matched += 1
+    if matched != 1:
+        raise WorkflowError(
+            f"{rel(index_path)} must contain exactly one formal row for {framework_experiment_id}; found {matched}"
+        )
+    index_path.write_text("\n".join(updated).rstrip() + "\n", encoding="utf-8")
+    refresh_framework_experiments_view(version)
+    return True
 
 
 def resolve_existing_path(path_text: str, label: str) -> Path:
@@ -4033,7 +4569,8 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
         f"{metrics['H']} | {metrics['ZS']} | {metrics['best_epoch']} | `{log_artifact_id}` |",
     )
 
-    if args.kind == "tune":
+    is_formal_framework = (REPO_ROOT / "experiments" / version / "framework.yaml").exists()
+    if args.kind == "tune" and not is_formal_framework:
         append_tune_result_index(
             version=version,
             exp_id=exp_id,
@@ -4065,12 +4602,20 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
             run_id=args.attempt_id,
             artifact_ref=log_uri,
         )
+    if is_formal_framework:
+        framework_status = "promoted" if effective_promotion_decision == "promote" else "completed"
+        update_framework_experiment_status(
+            version=version,
+            kind=kind,
+            exp_id=exp_id,
+            status=framework_status,
+        )
     print("record-result-ok")
     print(f"metrics: U={metrics['U']} S={metrics['S']} H={metrics['H']} ZS={metrics['ZS']} best_epoch={metrics['best_epoch']}")
     print(f"log_artifact_id: {log_artifact_id}")
     print(f"log_uri: {log_uri}")
     print(f"log_sha256: {log_sha256}")
-    print("临时分支清理提示: 结果入账、review 和必要提交完成后，再回到 main 并删除 exp/... 临时分支；不要 push，除非 owner 明确要求。")
+    print("临时分支清理提示: 结果写回目标框架账本、review 和必要提交完成后，再同步 main 总索引并删除 exp/... 临时分支；不要 push，除非 owner 明确要求。")
     return 0
 
 
@@ -7235,6 +7780,10 @@ def local_gtpj_workflow_skill_errors() -> list[str]:
         "local skill mirrors the repository rules",
         "docs/workflow/START_HERE.md",
         "docs/workflow/WORKFLOW_KERNEL.md",
+        "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+        "framework/vX",
+        "RUN-xxx",
+        "compatibility identifiers",
         "same GitHub truth source",
         "开启多agents智能体工作流",
         "不得反复确认",
@@ -7411,7 +7960,7 @@ def workflow_consistency_errors() -> list[str]:
             "unresolved_blocking_issues: 0",
         ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
-        "experiments/templates/TRIAL_ATTEMPTS_template.md": ["formal_pending", "orphan_runtime_plan", "Status", "Formal"],
+        "experiments/templates/TRIAL_ATTEMPTS_template.md": ["历史兼容", "只读", "不得作为新实验入口"],
         "experiments/templates/modules/README.md": [
             "standard_gzsl_module_framework_template.py",
             "standard_gzsl_training_template.py",
@@ -9078,16 +9627,16 @@ def mini_card_for_phrase(phrase: str) -> dict[str, str]:
         },
         "消融": {
             "task_type": "ablation",
-            "target": "version-level or trial-internal controlled factor",
+            "target": "one controlled factor in the selected framework",
             "writes": "none until ablation target is confirmed",
             "agent_mode": "role_only for classification; real_multi_agent if code or semantic changes",
             "gates": "interface_contract, single_factor, metric_semantics",
-            "next_action": "classify version-level vs trial-internal ablation",
+            "next_action": "identify the framework and one ablation factor",
         },
         "继续上一个": {
-            "task_type": "trial-internal attempt or current task continuation",
-            "target": "current trial or attempt",
-            "writes": "current trial attempt ledger only after state is confirmed",
+            "task_type": "current framework experiment continuation",
+            "target": "current formal experiment; legacy Trial/Attempt is lookup-only",
+            "writes": "the owning framework ledger only after state is confirmed",
             "agent_mode": "role_only unless code or result conclusion changes",
             "gates": "attempt_state, artifact_boundary, sync_check",
             "next_action": "inspect current trial state and identify the smallest next action",
@@ -9214,9 +9763,25 @@ def collect_formal_pending_rows(limit: int = 8) -> list[dict[str, str]]:
     for version_dir in sorted((REPO_ROOT / "experiments").glob("v*")):
         if not version_dir.is_dir():
             continue
-        for kind in ["tune", "ablation", "confirmation"]:
+        for kind in ["tune", "ablation", "innovation", "confirmation"]:
             index_path = version_dir / kind / "INDEX.md"
             if not index_path.exists():
+                continue
+            if (version_dir / "framework.yaml").exists():
+                for row in framework_index_rows(version_dir.name, kind):
+                    status = row["status"].lower()
+                    if status not in FORMAL_PENDING_STATUSES:
+                        continue
+                    rows.append(
+                        {
+                            "subject": row["experiment_id"],
+                            "type": f"{version_dir.name}/{kind}",
+                            "status": status,
+                            "ref": rel(index_path),
+                        }
+                    )
+                    if len(rows) >= limit:
+                        return rows
                 continue
             for cells in markdown_table_rows(read_text(index_path)):
                 lowered = [cell.lower() for cell in cells]
@@ -9232,23 +9797,6 @@ def collect_formal_pending_rows(limit: int = 8) -> list[dict[str, str]]:
                     )
                     if len(rows) >= limit:
                         return rows
-    attempts_root = REPO_ROOT / "experiments" / "module_trials"
-    for attempts_path in sorted(attempts_root.glob("**/ATTEMPTS.md")):
-        for cells in markdown_table_rows(read_text(attempts_path)):
-            lowered = [cell.lower() for cell in cells]
-            status = next((cell for cell in lowered if cell in FORMAL_PENDING_STATUSES), "")
-            subject = next((cell for cell in cells if cell.startswith("ATTEMPT-")), cells[0] if cells else "")
-            if status and subject:
-                rows.append(
-                    {
-                        "subject": subject,
-                        "type": "trial-internal",
-                        "status": status,
-                        "ref": rel(attempts_path),
-                    }
-                )
-                if len(rows) >= limit:
-                    return rows
     return rows
 
 
@@ -9346,7 +9894,7 @@ def planning_run_plan_rows(task_type: str, requested_mix: dict[str, int], base_v
                 budget = f"max {min(count, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS)} exact repeats per candidate"
                 fingerprint = "exact_repeat: code/config/data/eval/seed unchanged"
                 stop = "stop on H >= restore_target_H or after 5 attempts"
-                ledger = f"experiments/{base_version}/confirmation/INDEX.md or trial ATTEMPTS.md"
+                ledger = f"experiments/{base_version}/confirmation/INDEX.md"
             elif kind == "tune":
                 budget = f"max {count} tune jobs"
                 fingerprint = "changed_config_not_exact_repeat"
@@ -9356,12 +9904,12 @@ def planning_run_plan_rows(task_type: str, requested_mix: dict[str, int], base_v
                 budget = f"max {count} innovation work items"
                 fingerprint = "new_trial_candidate"
                 stop = "stop if source/interface/code review blocks"
-                ledger = "experiments/module_trials/INDEX.md + trial ATTEMPTS.md"
+                ledger = f"experiments/{base_version}/innovation/INDEX.md"
             elif kind == "ablation":
                 budget = f"max {count} ablation jobs"
                 fingerprint = "single_factor_change_not_exact_repeat"
                 stop = "stop if target factor or interface semantics are unclear"
-                ledger = f"experiments/{base_version}/ablation/INDEX.md or trial ATTEMPTS.md"
+                ledger = f"experiments/{base_version}/ablation/INDEX.md"
             else:
                 budget = f"max {count} debug jobs"
                 fingerprint = "debug_only"
@@ -9379,7 +9927,7 @@ def planning_run_plan_rows(task_type: str, requested_mix: dict[str, int], base_v
                 "exact_repeat: code/config/data/eval/seed unchanged",
                 f"max {min(default_jobs, CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS)} exact repeats",
                 "stop on H >= restore_target_H or after 5 attempts",
-                f"experiments/{base_version}/confirmation/INDEX.md or trial ATTEMPTS.md",
+                f"experiments/{base_version}/confirmation/INDEX.md",
             ]
         )
     elif task_type == "tune":
@@ -13205,15 +13753,21 @@ def render_parameter_matrix_markdown(
     rows: list[dict[str, str]],
     source_note: str,
 ) -> str:
+    summary_only = bool(rows) and all(row.get("status") == "legacy_summary_only" for row in rows)
+    row_meaning = (
+        "这张表每一行都是无法可靠拆回逐任务参数的历史摘要，不代表一次实际 RUN；不得据此猜补参数。"
+        if summary_only
+        else "这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。"
+    )
     lines = [
         f"# 参数矩阵：{title}",
         "",
-        "这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。",
+        row_meaning,
         "",
         f"来源：{source_note}",
         "",
-        "| 任务 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | H | 决定 | 证据清单 SHA256 |",
-        "|---|---|---|---|---:|---|---:|---|---|",
+        "| 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |",
+        "|---|---|---|---|---|---:|---|---|---|---:|---|---|",
     ]
     for row in rows:
         lines.append(
@@ -13221,11 +13775,14 @@ def render_parameter_matrix_markdown(
             + " | ".join(
                 [
                     markdown_table_cell(row["job_id"]),
+                    markdown_table_cell(row["name"]),
                     markdown_table_cell(row["job_kind"]),
                     markdown_table_cell(row["status"]),
                     markdown_table_cell(row["changed_parameters"]),
                     markdown_table_cell(row["seed"]),
                     markdown_table_cell(row["repeat_of"]),
+                    markdown_table_cell(row["run_id"]),
+                    markdown_table_cell(row["purpose"]),
                     markdown_table_cell(row["H"]),
                     markdown_table_cell(row["decision"]),
                     markdown_table_cell(row.get("artifact_manifest_sha256", "")),
@@ -16910,6 +17467,19 @@ def build_parser() -> argparse.ArgumentParser:
     closeout.add_argument("--trial-dir", required=True)
     closeout.add_argument("--attempt-id", required=True)
     closeout.set_defaults(func=cmd_closeout_check)
+
+    refresh_framework = sub.add_parser(
+        "refresh-framework-view",
+        help="从四类正式索引重新生成某个框架的实验总览",
+    )
+    refresh_framework.add_argument("--version", required=True)
+    refresh_framework.set_defaults(func=cmd_refresh_framework_view)
+
+    validate_framework = sub.add_parser(
+        "validate-framework-ledgers",
+        help="校验框架身份、四类实验、参数表和父子关系",
+    )
+    validate_framework.set_defaults(func=cmd_validate_framework_ledgers)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)

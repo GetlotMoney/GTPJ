@@ -1,247 +1,119 @@
-# 版本管理
+# 框架版本管理
 
-## Baseline 版本
+本页服从 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。它只解释代码分支、冻结 tag 和框架继承，
+不重复定义实验目录。
 
-每个 baseline 命名为：
+## 三种对象不要混在一起
 
-```text
-GTPJ-v1
-GTPJ-v2
-GTPJ-v3
-```
+| 对象 | 人话解释 | 示例 |
+|---|---|---|
+| `main` | 总管理分支，放规则、总索引和当前状态 | `main` |
+| `framework/vX` | 某个正式框架继续做实验时使用的长期代码分支 | `framework/v5` |
+| `vX` tag | 某个时点不可变的代码快照，用于准确复现 | `v5` |
 
-对应 Git tag：
+正式框架的人类编号写成 `FRAMEWORK-VX`。已登记长期分支为 `framework/v1`、`framework/v2`、
+`framework/v3`、`framework/v5`。历史 `v4` 只是配置快照，不是独立正式框架，因此不得补造
+`framework/v4` 或 `experiments/v4/framework.yaml`。
 
-```text
-v1
-v2
-v3
-```
+## 每个框架必须有什么
 
-注意：`v1`、`v2`、`v3` 是 tag，不是长期分支。仓库只有一个长期分支 `main`。
-
-当前 active baseline：
+每个正式框架目录 `experiments/vX/` 至少包含：
 
 ```text
-GTPJ-v3
-code_tag: v3
-best_observed_H: 74.27
-confirmed_H: pending
-status: owner_accepted_stochastic_unconfirmed
+VERSION.md
+framework.yaml
+framework_diagram.md
+MODULES.md
+EXPERIMENTS.md
+tune/INDEX.md
+ablation/INDEX.md
+innovation/INDEX.md
+confirmation/INDEX.md
 ```
 
-历史 baseline：
+`EXPERIMENTS.md` 是从四个 `INDEX.md` 生成的人类总览，不能手工维护第二份事实。
+
+## 框架树
+
+框架可以分叉，不要求严格线性继承。父子关系以 `framework.yaml`、
+`experiments/FRAMEWORK_TREE.md` 和 `experiments/VERSION_TREE.md` 为准，不能只靠 Git commit 的父节点猜。
 
 ```text
-GTPJ-v1
-code_tag: v1
-H: 73.93
+FRAMEWORK-V1
+├─ INNOVATION-001 -> FRAMEWORK-V2
+└─ 其他已确认创新 -> 另一条子框架
+
+FRAMEWORK-V2
+└─ INNOVATION-001 -> FRAMEWORK-V3
+
+FRAMEWORK-V3
+└─ INNOVATION-001 -> FRAMEWORK-V5
 ```
 
-每个版本拥有自己的记录目录：
+旧 `TRIAL / ATTEMPT` 目录继续保存证据，但只通过 `legacy_ref` 映射到正式实验；它们不再定义一棵
+与框架树并列的新树。
+
+## 新实验从哪里开分支
+
+新实验一律从目标框架长期分支开出：
 
 ```text
-experiments/v1/
-experiments/v2/
-experiments/v3/
+framework/v5
+└─ exp/v5/ablation/ablation-001-local-branch-effect
 ```
 
-## 版本树
-
-版本不是默认串行继承关系。
+统一格式：
 
 ```text
-v1
-|-- v2 = parent v1 + 模块A
-`-- v3 = parent v1 + 模块B
+exp/vX/<type>/<experiment-id>-<slug>
 ```
 
-每个正式版本必须在 `experiments/vX/VERSION.md` 中记录：
+其中 `<type>` 是 `tune`、`ablation`、`innovation` 或 `confirmation`。`base_code_tag` 记录不可变
+快照，`code_commit` 记录这次实际运行的代码；tag 不再作为新实验分支的日常起点。
+
+## 创新怎样变成子框架
+
+创新先留在父框架，例如：
 
 ```text
-version: v3
-parent_version: v1
-parent_tag: v1
-code_tag: v3
-change_type: add_module / replace_module / remove_module / combo
-based_on_trial: trial/v1/idea-0003/trial-001
-inherits_code_from: v1
-does_not_inherit: v2
+FRAMEWORK-V5 / V5-INNOVATION-001
 ```
 
-纯调参、纯 config search、batch size/epoch/loss weight/ratio 等数值调整，不是正式版本
-变化类型。它们只能记录为某个 `vX` 下的 tune/confirmation/confirmed config。即使复现通过，
-也不能新建 `vY`。
+只有同时满足下列条件，才创建子框架：
 
-## 版本流程图
+- 改变了框架或代码语义，不只是数值调参；
+- 结果、质量检查和确认实验完整；
+- `promotion_decision: promote`；
+- 证据达到 `confirmation_grade` 或 `baseline_grade`；
+- 新框架的代码分支、tag、`framework.yaml` 和四类索引已准备好；
+- 通过仓库机器检查和规定轮数的独立审核。
 
-每个正式版本的 `experiments/vX/VERSION.md` 必须包含：
+通过后：
 
-```text
-## Framework Diagram
-## Version Flow
-```
+1. 从已确认创新的明确 `code_commit` 创建 `framework/vY`。
+2. 创建不可变快照 tag `vY`。
+3. 在 `experiments/vY/framework.yaml` 写明 `parent_framework` 和 `source_experiment`。
+4. 给子框架建立四类空账本；不要把父框架的运行目录复制进去。
+5. 更新框架树、总索引和项目状态。
 
-图用 Markdown + Mermaid 作为 GitHub 权威版本，至少画清：
+纯调参、纯消融和纯确认不能产生新框架。创新未确认时也不能提前占用新框架编号。
 
-- 父版本和父 tag；
-- 来源 trial / attempt；
-- 当前版本 tag；
-- evidence level；
-- confirmation status；
-- 是否是 owner active mainline。
+## 提升后的代码与总账
 
-复杂图可以单独放到 `experiments/vX/flow.md`，但 `VERSION.md` 必须保留摘要图或链接。
-通用要求见：
+`main` 继续保存全局规则和全部框架索引；`framework/vX` 保存该框架继续实验所需的代码线。
+不得为了基于旧框架实验而把 `main` 回退，也不得把旧工作树整体覆盖到 `main`。
 
-```text
-docs/workflow/archive/diagrams/workflow_diagrams.md
-```
+推送 `main`、框架分支或 tag 到远端仍需要用户当前明确授权。创建本地正式记录不等于自动发布。
 
-每个正式版本目录还必须包含：
+## 提升成功标准
 
-```text
-experiments/vX/framework_diagram.md
-experiments/vX/MODULES.md
-```
+指标提高只是必要证据之一。正式子框架还必须满足：
 
-`framework_diagram.md` 负责说明 active version 的 forward path、关键张量、loss/training flow、GZSL hard rules 和 code-vs-intent；`MODULES.md` 负责解释每个模块的 purpose、input、output、config switch 和 baseline-off behavior。只列模块名不算完整版本文档。
+- 单次最高值只写 `best_observed_H`，不能冒充 `confirmed_H`；
+- `run_commit` 来自干净状态，配置、命令、seed、数据口径和评估口径可追溯；
+- class order、seen/unseen split、logits shape 和指标算法一致；
+- 模块关闭后能回到父框架行为，或明确说明为何不能；
+- 外部日志和 checkpoint 只登记 artifact id、URI、hash、size，不复制进 GitHub；
+- `framework.yaml`、四类索引、框架树、总注册表和项目状态同步完成。
 
-`parent_version` 表示代码父节点，不表示实验记录父节点。
-
-实验记录是全局账本。`experiments/v2/` 保留在最新 `main` 中，
-不表示 `v3` 继承了 `v2` 的代码。
-
-```text
-main = owner 明确选择的 active code + 全部版本账本
-```
-
-全局版本树账本：
-
-```text
-experiments/VERSION_TREE.md
-```
-
-因此，如果 owner 明确执行 `activate-version v3`，而 `v3.parent_version = v1`：
-
-- `model/`、`tools/`、`train_*.py` 等代码层应反映 `v3`；
-- `experiments/v2/` 仍然保留，作为 `v2` 历史记录；
-- `config/versions/v2.yaml` 仍然保留，作为 `v2` 配置快照；
-- `experiments/v3/VERSION.md` 必须明确写 `parent_version: v1` 和 `does_not_inherit: v2`。
-
-## 账本继承实现
-
-从旧父节点提升新版本时，使用双来源：
-
-```text
-代码来源 = parent tag + 成功 trial tag
-账本来源 = 当前 main
-```
-
-不要把从旧父节点恢复代码层的 `dev/...` 分支整体合并成 `main`。如果直接复用旧工作树，
-账本会停留在旧时间点，
-可能缺少后来的 `experiments/v2/`、`experiments/v3/`、创意树和规范更新。
-
-实现步骤：
-
-```text
-当前 main = v3 代码 + 最新账本
-目标 v4 = v1 代码 + 模块B
-
-1. 从当前 main 开 dev/v1-idea-xxxx-trial-001-b，继承最新账本。
-2. 如果当前 main 代码不是 v1，只恢复代码层到 v1，不恢复账本层。
-3. dev 分支只负责证明 v1 + 模块B。
-4. 成功后在明确 commit 上打 trial/v1/idea-xxxx/trial-001。
-5. 从当前 main 开 promote/v1-idea-xxxx-to-v4。
-6. promote 分支保留当前 main 的账本层。
-7. promote 分支把代码层切换成 v1 + 模块B。
-8. promote 分支把成功 trial 的证据回流到当前账本。
-9. promote 分支新增 experiments/v4/ 和 config/versions/v4.yaml。
-10. promote 分支更新 experiments/VERSION_TREE.md、全局索引、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
-11. 通过验证后，在 promote 分支的版本代码 commit 上打 tag v4。
-12. 回到当前 main，只把 `experiments/v4/`、`config/versions/v4.yaml`、VERSION_TREE、
-    REGISTRY、PROJECT_STATUS、README、idea_tree 等账本层回流到 main。
-13. main 当前代码保持原 active version，除非 owner 明确执行 `activate-version v4`。
-```
-
-每个 `experiments/vX/VERSION.md` 必须记录：
-
-```text
-parent_version:
-parent_tag:
-ledger_source:
-ledger_source_commit:
-code_source:
-based_on_trial:
-```
-
-## 提升规则
-
-只有成功、通过自动 promotion gate、且包含框架/代码语义变化的实验才能成为新的 baseline
-版本。完整硬门见：
-
-```text
-docs/workflow/protocols/promotion.md
-```
-
-```text
-GTPJ-v1 -> IDEA-xxxx -> TRIAL-001 -> promote -> GTPJ-v2
-```
-
-不要因为每个小尝试或纯调参高点创建一个新的 `vX`。纯 tune/config-only 结果只能成为
-父版本下的 confirmed config/reference。只有实验记录明确写 `promotion_decision: promote`、
-`evidence_level: baseline_grade`、包含框架/代码语义变化，并通过硬门后，才自动创建本地新版本材料
-和本地 tag。
-推送 `main` 或 tag 到 GitHub 仍必须由用户明确要求。promotion 不自动切换 `main` 当前代码。
-
-`vX` 不要求严格线性继承。`v3` 可以基于 `v1` 的新 trial 产生，
-也可以基于 `v2` 的新 trial 产生。
-
-```text
-v1
-|-- dev/v1-idea-0001-trial-001-a -> promote -> v2
-`-- dev/v1-idea-0002-trial-001-b -> promote -> v3
-```
-
-规则：
-
-- `main` 永远代表最新稳定项目，不要为了重新基于 `v1` 做实验而把 `main` 回退到 `v1`。
-- `main` 当前代码由 owner 明确选择；promotion 只创建正式版本，不自动改变 active code。
-- 想从哪个 baseline 做新模块，就在临时分支名和记录中写清楚 `base_code_tag`。
-- 临时分支从当前 `main` 开出，以继承最新账本；必要时只把代码层恢复到目标 baseline tag。
-- 分支名里的 `v1`、`v2` 是来源版本；提升后的 `vX` 是新的正式版本。
-- 版本提升时，必须在新版本记录中写清楚 `parent_version`。
-- 添加模块、替换模块、删除模块或组合模块，只要成为正式框架，就新增一个 `vX`。
-- 新 `vX` 不需要继承当前 `main` 的代码；它只继承自己声明的 `parent_version`。
-- 新 `vX` 不能删除旧版本账本；旧版本代码靠 tag 保存，旧版本记录靠 `experiments/vX/` 保存。
-- 版本继承关系以 `experiments/VERSION_TREE.md` 和 `experiments/vX/VERSION.md` 为准，不以 Git commit parent 推断。
-
-## Promotion 成功标准
-
-`H` 提升是必要证据，但不是唯一标准。
-
-一个实验或 trial 只有同时满足下面条件，才能提升为正式 `vX`：
-
-- 指标有效：记录父版本 baseline H、trial H、delta H、U、S、ZS、best epoch。
-- 证据等级有效：单次最高 H 只能是 `best_observed_H`；正式 baseline 必须有
-  `confirmation_grade` 或 `baseline_grade` 证据。
-- 运行干净：`run_commit` 指向 clean pre-run freeze commit，`dirty_state: clean`，
-  `git_dirty: false`。
-- 对照一致：至少同 seed 对照；高风险改动需要重复运行或多 seed 复核。
-- 口径一致：class order、seen/unseen split、logits shape、metric calculation 不变。
-- 配置可追溯：使用的 config 副本保存在 trial 或新版本目录。
-- 日志可追溯：外部 log artifact id、URI、sha256、size 和保留位置明确。
-- 接口干净：输入输出 shape、loss、eval、checkpoint 变化已声明。
-- 关闭等价：模块 switch 关闭后回到 `parent_version` 行为。
-- 决策完整：实验记录和 `quality_check.md` 的 `promotion_decision` 为 `promote`。
-- 账本完整：`experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、
-  `experiments/EXPERIMENT_REGISTRY.md`、`docs/PROJECT_STATUS.md`、`docs/PROJECT_STRUCTURE.md`、
-  `README.md` 和 `idea_tree/idea_tree.json` 已同步更新。
-- tag 正确：新 `vX` tag 指向包含正式版本代码和版本材料的明确 commit，trial tag 指向记录的
-  `code_commit`。`vX` tag 不要求指向当前 `main` commit。
-
-如果只满足 `H` 提升，但无法证明口径一致或关闭等价，结论只能是 `revise`，
-不能是 `promote`。
-
-如果只满足单次 `best_observed_H`，但 clean confirmation 失败或尚未完成，结论可以保留为
-`owner_activated_unconfirmed` 或 `needs_confirmation`，不能写成 `confirmed baseline`。
+只提高一次 H、确认失败或证据缺失时，保留为父框架下的实验结果，不能创建子框架。

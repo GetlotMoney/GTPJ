@@ -88,8 +88,8 @@ START_HERE.md
 
 ```text
 experiments/vX/<type>/INDEX.md
-或 experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
--> attempts/ATTEMPT-xxx/manifest.yaml
+-> experiments/vX/<type>/<TYPE-xxx>/PARAMETER_MATRIX.csv
+-> 旧 experiments/module_trials/... 仅由 legacy_ref 回查
 -> .gtpj_runtime/batches/<run_id> 只核对执行状态
 ```
 

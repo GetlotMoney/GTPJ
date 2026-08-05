@@ -1,5 +1,9 @@
 # 执行卡：调参 Tune
 
+正式入口固定为 `experiments/vX/tune/INDEX.md`，人看编号为 `VX-TUNE-xxx`。必须从
+`framework/vX` 开 `exp/vX/tune/...` 分支；一个调参问题只有一张参数矩阵，每个参数组合
+是一行 `RUN-xxx`。纯调参永远留在当前框架，不生成子框架。
+
 用于参数、seed、epoch、batch、loss weight 或不改变方法语义的窄配置搜索。
 
 ## 必读
@@ -47,10 +51,7 @@ experiments/vX/tune/
 
 trial 内部 tune：
 
-```text
-experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
-experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
-```
+新调参一律放在所属框架的 `experiments/vX/tune/TUNE-xxx/`，并登记到同目录的 `INDEX.md`。旧 Trial/Attempt 只用于回查；如果调参来自旧记录，把旧编号写进 `legacy_ref`，不要再创建新的 Attempt。
 
 raw logs 和 checkpoints 留在 Warehouse。
 

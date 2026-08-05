@@ -8,11 +8,10 @@
 
 `named_owner_thread` 可以覆盖本轮 confirmation workflow；正式复现结论、best 复核和 promotion-facing 结论必须回到 `agent_summary.md`、result、quality 和 artifact evidence。跨 workflow 连续追踪时才启用 `persistent_thread`。
 
-本文件用于 version-level confirmation。重新复现用于验证已有 baseline 或版本级结果是否可信。
+本文件用于正式框架 confirmation。重新复现用于验证已有框架、配置或具体运行是否可信。
 
-如果确认对象是某个 module trial 的 `best_attempt_id`，使用 `module_trial_protocol.md` 的
-trial-internal clean `confirmation`，写入该 trial 的 `ATTEMPTS.md` 和
-`attempts/ATTEMPT-xxx/`，不写入 `experiments/vX/confirmation/`。
+如果确认对象是旧 module trial 的 `best_attempt_id`，仍在父框架的 `confirmation/` 建正式实验，
+并用 `legacy_ref` 回指旧 Attempt。
 
 ## 启用角色
 

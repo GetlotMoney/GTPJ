@@ -4,16 +4,30 @@
 
 ## 当前规则
 
-- 从 2026-08-04 起，新建实验必须遵守 [参数矩阵规范](../docs/workflow/protocols/parameter_matrix_protocol.md)。
-- 每一行是一个实际任务；每一批 Attempt 至少有一张完整参数矩阵。
+- 从 2026-08-06 起，正式入口是 `FRAMEWORK-VX / VX-TYPE-xxx / RUN-xxx`，完整规则见 [框架与实验正式规范](../docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md)。
+- 每一行是一个实际任务；旧 Attempt 只作 `legacy_ref`。无法恢复逐任务参数时明确写 `legacy_summary_only`。
 - 原始日志、模型和完整训练输出仍在 Warehouse，表中只保留引用和校验信息。
+
+## 当前正式参数表
+
+| 实验 | 行数 | 状态 | 阅读入口 |
+|---|---:|---|---|
+| `V1-INNOVATION-001` | 1 | 历史摘要 | `experiments/v1/innovation/INNOVATION-001_clip_a_self/PARAMETER_MATRIX.md` |
+| `V1-CONFIRM-001` | 1 | 历史摘要 | `experiments/v1/confirmation/CONFIRM-001_v1_seed5/PARAMETER_MATRIX.md` |
+| `V2-INNOVATION-001` | 1 | 历史摘要 | `experiments/v2/innovation/INNOVATION-001_strict_conditional_jepa/PARAMETER_MATRIX.md` |
+| `V3-TUNE-001` | 1 | 历史候选摘要 | `experiments/v3/tune/TUNE-001_local_v3_054/PARAMETER_MATRIX.md` |
+| `V3-CONFIRM-001` | 3 | 历史复跑摘要 | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/PARAMETER_MATRIX.md` |
+| `V3-INNOVATION-001` | 6 | 已知来源与复跑 | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa/PARAMETER_MATRIX.md` |
+| `V5-TUNE-001` | 8 | 从 ATTEMPT-006 恢复的真实调参任务 | `experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-001` | 2 | 从 ATTEMPT-006 恢复的真实创新探针；其余见历史批次映射 | `experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md` |
+| `V5-ABLATION-001` | 15 | planned，未运行 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` |
 
 ## 历史迁移队列
 
 | 范围 | 当前可见程度 | 处理方式 |
 |---|---|---|
 | `v3 → v4` 的纯配置调参 | 已知最终参数和 3 次确认结果；缺少完整候选搜索清单 | 从 Warehouse 的 `local-v3-054` 来源恢复；无法恢复的标为历史缺失 |
-| 动态路由 `ATTEMPT-001` 至 `ATTEMPT-018` | 有批次摘要、部分 `WORK_ITEMS.md` 和结果；早期批次缺少逐任务表 | 从每批 `plan.json`、`summary.csv` 和配置快照恢复 |
+| 动态路由 `ATTEMPT-001` 至 `ATTEMPT-018` | ATTEMPT-006 已恢复 10 个真实任务；其余多数只有批次或分组摘要 | 先看 `LEGACY_ATTEMPT_MAP.md`；以后只有找到逐任务原始配置和结果才能继续补，禁止猜测 |
 | 今后所有新实验 | 完整参数矩阵 | 开跑前生成，跑完回填 |
 
 ## 使用顺序

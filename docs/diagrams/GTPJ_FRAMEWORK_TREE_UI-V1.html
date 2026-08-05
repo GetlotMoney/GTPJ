@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ 正式框架树 · UI-FRAMEWORK-TREE-V1</title>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--ink:#182033;--muted:#647089;--line:#cbd4e4;--blue:#315ee7;--green:#16836d;--orange:#c97318;--red:#b64d5b}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 "Microsoft YaHei",system-ui,sans-serif}
+    main{max-width:1180px;margin:auto;padding:38px 24px 70px} h1{font-size:30px;margin:0 0 8px}.sub{color:var(--muted);margin-bottom:28px}
+    .legend,.summary{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.pill{background:#e9eefb;border-radius:999px;padding:6px 11px;color:#38445e}
+    .tree{display:grid;gap:24px}.node{position:relative;background:var(--card);border:1px solid #dce2ee;border-radius:18px;padding:22px;box-shadow:0 8px 26px rgba(27,40,78,.07)}
+    .node:not(:first-child){margin-left:72px}.node:not(:first-child):before{content:"";position:absolute;left:-46px;top:-25px;width:26px;height:56px;border-left:3px solid var(--line);border-bottom:3px solid var(--line);border-radius:0 0 0 12px}
+    .head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.title{font-size:22px;font-weight:750}.meta{color:var(--muted);font-family:Consolas,monospace}
+    .classes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.class{border-radius:13px;padding:14px;background:#f7f9fd;border:1px solid #e1e6f1;min-height:112px}
+    .class b{display:block;margin-bottom:7px}.class a{display:block;color:var(--blue);text-decoration:none;margin-top:5px}.class a:hover{text-decoration:underline}
+    .innovation{border-color:#bfd0ff;background:#f1f5ff}.ablation{border-color:#ffd9ac;background:#fff8ef}.confirmation{border-color:#bce7dc;background:#f0fbf7}.tune{border-color:#d8c9ff;background:#f8f5ff}
+    .status{font-weight:700}.planned{color:var(--orange)}.candidate{color:var(--red)}.historical{color:var(--orange)}
+    .legacy{margin:18px 0 4px 72px;border:1px dashed #d7a35e;background:#fff8ed;border-radius:14px;padding:14px 18px;color:#734a1d}
+    footer{margin-top:28px;color:var(--muted);font-size:13px}@media(max-width:850px){.classes{grid-template-columns:1fr 1fr}.node:not(:first-child),.legacy{margin-left:28px}}@media(max-width:560px){.classes{grid-template-columns:1fr}.head{display:block}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>GTPJ 正式框架树</h1>
+  <div class="sub">UI-FRAMEWORK-TREE-V1 · 规则：每个框架有四类同级实验；创新确认并接纳后才生成子框架。</div>
+  <div class="summary">
+    <span class="pill">当前框架：FRAMEWORK-V5</span>
+    <span class="pill">局部分支权重：0.2</span>
+    <span class="pill">更强确认参考：V3-CONFIRM-001 / H=74.47</span>
+    <span class="pill">ATTEMPT-019：planned，15/15 未运行</span>
+  </div>
+  <section class="tree">
+    <article class="node">
+      <div class="head"><div><div class="title">FRAMEWORK-V1</div><div>初始正式框架</div></div><div class="meta">framework/v1 · tag v1</div></div>
+      <div class="classes">
+        <div class="class tune"><b>调参</b>暂无可靠正式映射</div>
+        <div class="class ablation"><b>消融</b>暂无可靠正式映射</div>
+        <div class="class innovation"><b>创新</b><a href="../../experiments/v1/innovation/INNOVATION-001_clip_a_self/PARAMETER_MATRIX.md">V1-INNOVATION-001</a><span class="status historical">历史接纳为 V2，未按新规确认</span></div>
+        <div class="class confirmation"><b>确认</b><a href="../../experiments/v1/confirmation/CONFIRM-001_v1_seed5/PARAMETER_MATRIX.md">V1-CONFIRM-001</a></div>
+      </div>
+    </article>
+    <article class="node">
+      <div class="head"><div><div class="title">FRAMEWORK-V2</div><div>CLIP-A-self 文本原型适配</div></div><div class="meta">framework/v2 · tag v2</div></div>
+      <div class="classes">
+        <div class="class tune"><b>调参</b>暂无正式记录</div><div class="class ablation"><b>消融</b>暂无正式记录</div>
+        <div class="class innovation"><b>创新</b><a href="../../experiments/v2/innovation/INNOVATION-001_strict_conditional_jepa/PARAMETER_MATRIX.md">V2-INNOVATION-001</a><span class="status historical">历史接纳为 V3，未按新规确认</span></div>
+        <div class="class confirmation"><b>确认</b>尚无独立正式确认</div>
+      </div>
+    </article>
+    <article class="node">
+      <div class="head"><div><div class="title">FRAMEWORK-V3</div><div>严格 FAE-memory JEPA + 条件文本</div></div><div class="meta">framework/v3 · tag v3</div></div>
+      <div class="classes">
+        <div class="class tune"><b>调参</b><a href="../../experiments/v3/tune/TUNE-001_local_v3_054/PARAMETER_MATRIX.md">V3-TUNE-001</a></div>
+        <div class="class ablation"><b>消融</b>暂无正式记录</div>
+        <div class="class innovation"><b>创新</b><a href="../../experiments/v3/innovation/INNOVATION-001_conditional_bvsa/PARAMETER_MATRIX.md">V3-INNOVATION-001</a><span class="status historical">历史 owner 激活为 V5</span></div>
+        <div class="class confirmation"><b>确认</b><a href="../../experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/PARAMETER_MATRIX.md">V3-CONFIRM-001</a>confirmed_H=74.47</div>
+      </div>
+    </article>
+    <div class="legacy"><b>v4 历史标签：</b>它只是 V3-TUNE-001 的确认配置快照，不是框架，也没有 framework/v4。</div>
+    <article class="node">
+      <div class="head"><div><div class="title">FRAMEWORK-V5</div><div>条件 BVSA + PSE / ICSA / FGVD / SGMP</div></div><div class="meta">framework/v5 · tag v5 · active</div></div>
+      <div class="classes">
+        <div class="class tune"><b>调参</b><a href="../../experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md">V5-TUNE-001</a>已恢复 8 个真实任务</div>
+        <div class="class ablation"><b>消融</b><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md">V5-ABLATION-001</a><span class="status planned">15 行 planned</span></div>
+        <div class="class innovation"><b>创新</b><a href="../../experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md">V5-INNOVATION-001</a><span class="status candidate">2 个真实探针；其余看历史批次映射</span></div>
+        <div class="class confirmation"><b>确认</b>尚未登记独立 V5-CONFIRM 项</div>
+      </div>
+    </article>
+  </section>
+  <footer>机器事实源：experiments/vX/framework.yaml、四类 INDEX.md 和 PARAMETER_MATRIX.csv。本页只负责人类查看。</footer>
+</main>
+</body>
+</html>

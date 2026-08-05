@@ -34,7 +34,7 @@ requested_mix:
 | `debug` / `smoke` | `debug / smoke` | 只定位问题，默认不进入正式证据。 |
 | `promotion` / `升版本` | `promotion` | 不能按数量硬跑，只能由 evidence gate 触发。 |
 
-如果 owner 没指定 base version，默认当前 active baseline。若命令同时包含 version-level 实验和 trial-internal 实验，Coordinator 必须拆开记录，不得混写。
+如果 owner 没指定 base version，默认当前 active framework。不同实验类型必须分别写进该框架的四类账本，不得混成一个实验项。
 
 ## 2. Campaign 层级
 
@@ -75,8 +75,8 @@ experiments/campaigns/CAMP-YYYYMMDD-xxxx/
 ```text
 experiments/vX/tune/
 experiments/vX/ablation/
+experiments/vX/innovation/
 experiments/vX/confirmation/
-experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
 ```
 
 Campaign 目录只保存 routing index / scheduler index，不保存 authoritative result facts。
@@ -86,9 +86,8 @@ subject 下的正式 `result.yaml`、`quality_check.md`、manifest 和 Warehouse
 如果某个 work item 要进入正式待跑清单，它必须回写到自身归属表格：
 
 ```text
-version-level tune / ablation / confirmation -> experiments/vX/<type>/INDEX.md
-trial-internal attempt -> experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
-new innovation trial -> experiments/module_trials/INDEX.md + trial-local ATTEMPTS.md
+framework tune / ablation / innovation / confirmation -> experiments/vX/<type>/INDEX.md
+legacy Trial/Attempt -> compatibility evidence only, linked by legacy_ref
 ```
 
 只有归属表格中的行满足 `formal_pending`，才算正式待跑。没有归属表格行的 campaign work item
@@ -98,16 +97,16 @@ new innovation trial -> experiments/module_trials/INDEX.md + trial-local ATTEMPT
 路由回原本归属：
 
 ```text
-version-level tune / ablation / confirmation -> experiments/vX/<type>/
-trial-internal tune / probe / confirmation -> experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/
-new paper-derived innovation -> new or existing IDEA/TRIAL directory with its own framework_diagram.md
+framework tune / ablation / innovation / confirmation -> experiments/vX/<type>/
+legacy Trial/Attempt -> keep old evidence in place and link it with legacy_ref
+new paper-derived innovation -> parent framework innovation ledger; promotion may create a child framework
 campaign -> only routing index, work item mapping, monitor state, and derived summaries
 ```
 
 每个混合 campaign 必须区分 owner-facing work item id 和 runner job id：
 
 ```text
-INNOV-001 / TUNE-001 / ABL-001 / CONFIRM-001 = workflow work item id
+INNOVATION-001 / TUNE-001 / ABLATION-001 / CONFIRM-001 = framework experiment id
 DR-001 / DR-002 / ... = runner-local job id
 ```
 

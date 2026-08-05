@@ -2,6 +2,10 @@
 
 用于复现或确认一个结果。
 
+正式入口固定为 `experiments/vX/confirmation/INDEX.md`，人看编号为 `VX-CONFIRM-xxx`。
+每次 exact repeat 都是同一参数矩阵中的一行 `RUN-xxx`。确认实验本身不生成子框架；
+只有它确认的是创新且 promotion 被接纳时，才由该创新生成新的框架节点。
+
 ## 必读
 
 ```text
@@ -102,7 +106,4 @@ experiments/vX/confirmation/
 
 trial 内部 confirmation：
 
-```text
-experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
-attempts/ATTEMPT-xxx/
-```
+新确认实验一律放在所属框架的 `experiments/vX/confirmation/CONFIRM-xxx/`，并登记到同目录的 `INDEX.md`。旧 Trial/Attempt 只用于回查；旧编号写进 `legacy_ref`，不要再创建新的 Attempt。

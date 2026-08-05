@@ -1,5 +1,9 @@
 # 执行卡：消融 Ablation
 
+正式入口固定为 `experiments/vX/ablation/INDEX.md`，人看编号为 `VX-ABLATION-xxx`。
+必须从 `framework/vX` 开 `exp/vX/ablation/...` 分支；每个对照是一行 `RUN-xxx`。
+消融只回答模块贡献，不生成子框架。
+
 用于移除、替换、关闭或隔离既有组件。普通消融不新增方法模块；如果需要新增或改写
 module、forward、loss、eval、data view 或接口语义，必须改走 innovation / module trial。
 

@@ -32,10 +32,8 @@ baseline-grade 证据，也不能让 agent 靠记忆把 `best_observed_H` 写成
 运行实验前：
 
 1. 检查 Git status。
-2. 确认临时分支来源符合实验类型，并记录正确的 `base_code_tag` 和 `branch_source`。
-   当前版本实验从当前 `main` 切出；历史版本 tune、ablation、confirmation 可以从 `vX` tag
-   开只运行代码的临时分支，跑完后回当前 `main` 入账，不把该运行分支合并进 `main`。
-   module trial 和 promotion 分支仍从当前 `main` 切出，必要时只恢复代码层到目标 tag。
+2. 确认实验分支从目标 `framework/vX` 切出，并记录正确的 `base_code_tag`、`branch_source`
+   和 `code_commit`。tag 只负责冻结快照；`main` 只接收治理和总索引更新。
 3. 确认 config 改动只作用于当前实验。
 4. 确认模块改动由 off switch 控制。
 5. 如果有模块代码改动，确认满足 `docs/workflow/protocols/code_interface_contract.md`。

@@ -2,6 +2,12 @@
 
 Date: 2026-07-11
 
+## 2026-08-06 管理结构更新
+
+实验管理已切换为 `FRAMEWORK-VX / VX-TYPE-xxx / RUN-xxx`。总览见
+`experiments/FRAMEWORK_TREE.md`，正式规则见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
+这次只改管理和查看方式，没有改变模型、训练或评估结论。
+
 ## Current Active Mainline
 
 ```text

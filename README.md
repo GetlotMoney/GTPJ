@@ -1,5 +1,14 @@
 # GTPJ
 
+## 正式框架与实验入口
+
+当前采用 `FRAMEWORK-VX / 四类实验 / RUN-xxx` 规范。先看
+[正式框架树](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
+`PARAMETER_MATRIX.md`。旧 `TRIAL / ATTEMPT / DR` 仅用于历史回查。
+
+长期分支为总管理 `main` 和正式框架代码分支 `framework/v1`、`framework/v2`、
+`framework/v3`、`framework/v5`；`v4` 只保留为历史 config-only 标签。
+
 ## Current Active Version
 
 ```text

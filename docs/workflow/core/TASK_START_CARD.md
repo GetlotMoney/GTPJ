@@ -379,8 +379,8 @@ progress dashboard
 
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
-实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
-实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
+实验是为了证明一个新方法值得存在 -> idea_tree + 父框架 innovation 账本；接纳后才生成子框架。
 ```
 
 `router.coupled_update` 必须写清 GitHub、Research、Warehouse 是否需要联动：
@@ -533,35 +533,34 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 必须记录：
 
 - base version；
-- 这是 version-level tune，还是 trial-internal `param_tune`；
+- 目标正式框架和 `TUNE-xxx` 实验号；
 - 调哪个参数；
 - old value / new value；
 - 预期成本；
 - 是否已经试过；
 - 为什么不改变模型结构、forward、loss 语义或 eval 语义。
 
-如果是 trial-internal `param_tune`，写入该 trial 的 `ATTEMPTS.md` 和
-`attempts/ATTEMPT-xxx/`，并遵守 `module_trial_protocol.md`，不要写入 `experiments/vX/tune/`。
+如果来源是旧 Trial/Attempt，仍写入父框架 `experiments/vX/tune/`，并用 `legacy_ref` 回指旧证据。
 
 ### Ablation
 
 必须记录：
 
-- 这是 version-level ablation，还是 trial-internal narrow ablation；
+- 目标正式框架和 `ABLATION-xxx` 实验号；
 - disabled module / disabled factor；
 - switch key；
 - baseline-off path；
 - interface_check 是否阻塞；
 - 一次只消融的主因素。
 
-如果是 trial-internal narrow ablation，只能解释当前 trial 的局部因素；如果改变实现假设、
-forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
+如果消融来源是旧 Trial，只能解释该框架中的对应因素，并用 `legacy_ref` 回指旧证据；如果改变
+实现假设、forward 路径、新 loss 或评估语义，改走父框架的 `INNOVATION-xxx`。
 
 ### Confirmation
 
 必须记录：
 
-- 这是 version-level confirmation，还是 trial-internal clean confirmation；
+- 目标正式框架、`CONFIRM-xxx` 实验号和要确认的来源运行；
 - 要确认的 baseline tag；
 - config；
 - seed；
@@ -579,8 +578,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - 将被锁定的 `run_commit`；
 - 这次 confirmation 是从哪个 `pre-run freeze commit` 启动。
 
-如果是 trial-internal clean confirmation，目标是确认当前 `best_attempt_id`，写入该 trial 的
-`ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`。
+如果要确认旧 `best_attempt_id`，在父框架 `confirmation/` 建正式实验，用 `legacy_ref` 指向旧记录。
 
 ### Debug / Smoke
 
@@ -604,7 +602,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
 - shape invariants；
 - baseline-off switch；
 - trial branch 和 trial tag 计划；
-- attempt 级 `config.yaml` 和 `ATTEMPTS.md` 计划行是否已经冻结到 `pre-run freeze commit`；
+- 正式实验的 `PARAMETER_MATRIX.csv` 和四类 `INDEX.md` 计划行是否已经冻结到 `pre-run freeze commit`；旧 Attempt 只在兼容修复时检查；
 - 本次真实 run 将使用的 `run_commit`。
 - 是否触发 `innovation_code_review_protocol.md`；
 - `idea_intent_check.md`、`interface_precheck.md`、`review_round_1.md`、
@@ -649,7 +647,7 @@ forward 路径、新 loss 或评估语义，就新开 `TRIAL-002`。
   `report_channel` 或 `handoff_on_pause`；
 - 使用了 memory-derived fact，却没有说明 memory 来源和当前仓库 / artifact 验证方式；
 - 这是一个真实训练 / confirmation / tune / trial run，但工作区不是 clean；
-- 运行前新增了 attempt config、`ATTEMPTS.md`、启动卡或其他预跑账本，但还没有先提交成 `pre-run freeze commit`；
+- 运行前新增了实验 config、`PARAMETER_MATRIX.csv`、四类 `INDEX.md`、启动卡或其他预跑账本，但还没有先提交成 `pre-run freeze commit`；
 - 预期运行 commit 不明确，或无法把本次 run 唯一映射到一个冻结后的 `run_commit`；
 - module trial 没有正式 idea；
 - idea 来源是 `unknown` 或 `unverified` 却要开 trial；

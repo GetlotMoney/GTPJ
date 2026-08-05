@@ -36,26 +36,23 @@ GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment 
 
 ```text
 idea_tree/                 # 创意来源、评分、排序
-  -> experiments/module_trials/
-                             # 模块创意被选中后，保存实现和证据
-  -> promoted baseline vX    # 成功且有框架/代码语义变化的 trial 才能提升为新版本
-  -> experiments/vX/         # 新版本自己的 tune / ablation / confirmation 记录
+  -> experiments/vX/innovation/
+                             # 创意被选中后，在父框架内保存实现和证据
+  -> promoted FRAMEWORK-VY   # 创新确认并接纳后才生成子框架
+  -> experiments/vY/         # 子框架自己的四类实验记录
 ```
 
-注意两层实验位置：
-
-- version-level tune / ablation / confirmation 写入 `experiments/vX/`；
-- module trial 内部的 `param_tune`、narrow `ablation`、clean `confirmation` 写入该 trial 的
-  `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，用于判断这个新模块本身是否值得保留。
+正式实验只有一层：tune、ablation、innovation、confirmation 都写入目标 `experiments/vX/`。
+旧 module trial 和 Attempt 目录保留为历史证据，通过 `legacy_ref` 回指，不再承担新实验主账本职责。
 
 版本规则：
 
 ```text
-一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
+一个 FRAMEWORK-VX = 一条 framework/vX 长期代码分支 + 一个 vX 冻结 tag + 一个框架实验目录 + 一个父节点记录
 ```
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
-当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 是唯一长期分支；
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理，`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 是长期框架代码分支；
 `v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
 
 代码层和实验层不要混淆：
@@ -267,8 +264,10 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
+| `experiments/FRAMEWORK_TREE.md` | 正式框架父子树和当前实验全貌的人类入口。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
 | `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
+| `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
 
 ### `experiments/templates/`
@@ -278,24 +277,26 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板，记录代码快照、环境、数据/cache、日志、attempt、失败阶段和 tune/ablation 专属字段。 |
+| `experiments/templates/FRAMEWORK_template.yaml` | 新正式框架机器身份模板。 |
+| `experiments/templates/FRAMEWORK_INDEX_template.md` | 框架四类实验统一索引模板。 |
 | `experiments/templates/agent_summary_template.md` | agent 工作凭证模板，记录参与 agents、检查范围、发现、结论和证据引用。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板，用于记录证据完整性，并在正式升版时执行 promotion gate。 |
-| `experiments/templates/TRIAL_README_template.md` | trial README 模板，包含结果记录和 promotion gate 字段。 |
-| `experiments/templates/TRIAL_ATTEMPTS_template.md` | module trial 内部多次 attempt 总表模板。 |
+| `experiments/templates/TRIAL_README_template.md` | 旧 trial 证据兼容模板，禁止作为新实验入口。 |
+| `experiments/templates/TRIAL_ATTEMPTS_template.md` | 旧 module trial 多次 attempt 的兼容总表模板。 |
 | `experiments/templates/VERSION_template.md` | 版本说明模板。 |
 
 ### `experiments/module_trials/`
 
-模块 trial 证据目录。这里不是权威创意库；权威创意在 `idea_tree/ideas/`。
+迁移前的模块 trial 历史证据目录。这里不是新实验入口，也不是权威创意库；权威创意在 `idea_tree/ideas/`。
 
 | 路径 | 用途 |
 |---|---|
 | `experiments/module_trials/INDEX.md` | 模块 trial 索引。 |
 | `experiments/module_trials/.gitkeep` | 保留空的模块 trial 目录；来源明确且开始实现后再新增 `IDEA-xxxx_slug/`。 |
 
-真正开始 trial 后，目录会增加：
+以下是历史 Trial 已有结构；新工作不得照此再造一层实验树：
 
 ```text
 experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
@@ -333,6 +334,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/baseline/quality_check.md` | `GTPJ-v1` baseline 轻量质量检查记录。 |
 | `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
+| `experiments/v1/innovation/INDEX.md` | v1 创新实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
 
 ### `experiments/v2/`
@@ -351,6 +353,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v2/baseline/quality_check.md` | `GTPJ-v2` 质量检查和 owner 主线化决策记录，标明 owner_activated_unconfirmed。 |
 | `experiments/v2/tune/INDEX.md` | v2 调参实验索引。 |
 | `experiments/v2/ablation/INDEX.md` | v2 消融实验索引。 |
+| `experiments/v2/innovation/INDEX.md` | v2 创新实验索引。 |
 | `experiments/v2/confirmation/INDEX.md` | v2 确认实验索引。 |
 
 ### `experiments/v3/`
@@ -369,6 +372,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v3/baseline/quality_check.md` | `GTPJ-v3` 质量检查和 owner stochastic 接受决策记录。 |
 | `experiments/v3/tune/INDEX.md` | v3 调参实验索引。 |
 | `experiments/v3/ablation/INDEX.md` | v3 消融实验索引。 |
+| `experiments/v3/innovation/INDEX.md` | v3 创新实验索引。 |
 | `experiments/v3/confirmation/INDEX.md` | v3 确认实验索引。 |
 
 All formal version directories `experiments/vX/` must also include:
@@ -377,10 +381,12 @@ All formal version directories `experiments/vX/` must also include:
 |---|---|
 | `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
 | `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
+| `experiments/vX/framework.yaml` | 框架机器身份、父框架、来源创新、分支、tag 和 commit。 |
+| `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
+| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记子框架。 |
 
-这些 `experiments/vX/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
-dropout、seed，或做窄消融、clean confirmation，应写入该 trial 的 `ATTEMPTS.md` 和
-`attempts/ATTEMPT-xxx/`。
+这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
+dropout、seed、窄消融或 clean confirmation 也要登记到父框架对应类型，并用 `legacy_ref` 回查旧目录。
 
 ## 更新本文件的判断标准
 

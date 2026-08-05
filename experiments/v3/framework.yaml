@@ -1,0 +1,16 @@
+schema_version: gtpj.framework.v1
+framework_id: FRAMEWORK-V3
+framework_version: v3
+parent_version: v2
+source_experiment: V2-INNOVATION-001
+source_legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa#ATTEMPT-004
+framework_branch: framework/v3
+framework_tag: v3
+framework_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
+governance_source_commit: 6f4a511327ecd4b0e2770712a0c6a9858d4d2e45
+lineage_status: legacy_owner_accepted_unconfirmed
+change_type: add_module
+modules: ["v2 modules", "strict FAE-memory JEPA", "conditional AG-JEPA text"]
+inherits: ["FRAMEWORK-V2"]
+does_not_inherit: ["strictly confirmed baseline claim"]
+status: formal

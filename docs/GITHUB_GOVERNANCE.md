@@ -17,7 +17,8 @@ best_observed_H: 74.54
 confirmed_H: 74.44
 confirmation_status: owner_activated_provisional
 status: owner_activated_provisional
-长期分支: main
+总管理分支: main
+框架代码分支: framework/v5
 ```
 
 当前 confirmed reference：
@@ -49,7 +50,7 @@ GTPJ-v4 / tag v4
 legacy config-only reference from v3 confirmation, not a future tune-only promotion template
 ```
 
-`main` 是唯一长期分支。`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支。
+`main` 是总管理长期分支；`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 是正式框架的长期代码分支。`v1` 到 `v5` 仍是不可移动的历史标签；`v4` 不是正式框架，所以没有 `framework/v4`。
 
 早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
 后按永久 tag 管理，不再移动。`GTPJ-v5` 是 owner 选择的 active mainline，用于后续动态路由与调参；它仍是 provisional active，不代表已经超过 confirmed reference。
@@ -59,9 +60,9 @@ legacy config-only reference from v3 confirmation, not a future tune-only promot
 
 - baseline / active 版本记录：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`、legacy `GTPJ-v4`、active provisional `GTPJ-v5`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
-- 分支：只有 `main` 长期存在；临时代码实验使用 `dev/...`、`exp/...` 或 `promote/...`。
-- 模块 trial 命名：`dev/v1-idea-0001-trial-001-short-name` 必须写出来源 baseline。
-- trial 快照 tag：`trial/v1/idea-0001/trial-001` 必须写出来源 baseline。
+- 分支：`main` 管总索引和规范；`framework/vX` 管对应框架代码；临时实验使用 `exp/vX/<type>/...`，旧 `dev/...` 和 `promote/...` 只作历史兼容。
+- 正式框架树与四类实验：以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 和 `experiments/vX/framework.yaml` 为准。
+- 旧模块 trial 命名和 `trial/...` 快照 tag 只作历史追溯，不再用于新实验。
 - 配置快照：正式版本配置放在 `config/versions/`，实验副本放在具体实验目录。
 - 创意树：所有候选模块必须先进入 `idea_tree/`，有来源、评分和适用版本。
 - 证据目录：代码验证、trial 记录、调参、消融和确认实验都放在 `experiments/`。
@@ -257,21 +258,21 @@ experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 处理：
 
 ```text
-代码来源：parent_version 对应的 tag，例如 v1
+代码来源：parent_version 对应的长期框架分支，例如 framework/v1；tag v1 负责冻结快照
 账本来源：提升时的当前 main
 ```
 
-必须从当前 `main` 开临时分支，必要时只把代码层恢复到旧父节点。
+必须从父框架的 `framework/vX` 开创新实验分支；`main` 只维护治理和总账。
 禁止把旧父节点状态下的完整工作树或旧 `dev/...` 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
 `idea_tree/`、`config/versions/` 等全局账本回退到旧状态。
 
 正确提升流程：
 
 ```text
-1. 从当前 main 开 dev 分支，继承最新账本。
-2. 如果 parent_version 不是当前 main 代码，只恢复代码层到 parent tag，不恢复账本层。
-3. trial 成功后，在明确 code_commit 上打 trial/<parent-version>/idea-xxxx/trial-xxx 快照 tag。
-4. 回到当前 main，开 promote 分支。
+1. 从父框架的 `framework/vX` 开 `exp/vX/innovation/...` 分支。
+2. 在该创新实验中完成调参表、结果和确认，不复制父框架目录。
+3. 创新成功后，在明确 code_commit 上保留兼容快照 tag，并登记来源实验。
+4. 回到当前 main，开 promote 分支，只处理新子框架的正式登记。
 5. 在 promote 分支中保留当前 main 的账本层。
 6. 把成功 trial 的证据目录回流到当前账本。
 7. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
@@ -316,31 +317,31 @@ code_source: parent tag + trial tag
 
 ## 命名规范
 
-版本级普通实验分支：
+正式框架实验分支：
 
 ```text
-exp/<base-version>-<kind>-<number>-<short-name>
+exp/<base-version>/<kind>/<experiment-id>-<short-name>
 ```
 
 示例：
 
 ```text
-exp/v1-tune-001-topo008
-exp/v1-ablation-001-disable-jepa
-exp/v1-confirm-001-clean-seed5
+exp/v1/tune/tune-001-topo008
+exp/v1/ablation/ablation-001-disable-jepa
+exp/v1/confirmation/confirm-001-clean-seed5
 ```
 
-模块 trial 开发分支：
+创新实验分支：
 
 ```text
-dev/<base-version>-idea-xxxx-trial-xxx-<short-name>
+exp/<base-version>/innovation/innovation-xxx-<short-name>
 ```
 
 示例：
 
 ```text
-dev/v1-idea-0003-trial-001-token-router
-dev/v2-idea-0003-trial-002-token-router
+exp/v1/innovation/innovation-001-token-router
+exp/v2/innovation/innovation-002-token-router
 ```
 
 模块 trial 永久快照 tag：
@@ -363,16 +364,18 @@ trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。
 ## 命名怎么看
 
 ```text
-exp/v1-tune-001-topo008
+exp/v1/tune/tune-001-topo008
 ```
 
 含义：
 
 - `exp`：普通实验分支。
-- `v1`：基于 `v1` baseline tag。
-- `tune`：调参实验。也可以是 `ablation` 或 `confirm`。
+- `v1`：目标框架是 `FRAMEWORK-V1`，代码分支来源是 `framework/v1`。
+- `tune`：调参实验。也可以是 `ablation`、`innovation` 或 `confirmation`。
 - `001`：该类型第 1 次实验。
 - `topo008`：人能读懂的简短名字。
+
+下面的 `dev/...` 是旧历史编号示例，不是新入口：
 
 ```text
 dev/v1-idea-0003-trial-001-token-router
@@ -380,9 +383,8 @@ dev/v1-idea-0003-trial-001-token-router
 
 含义：
 
-- `dev`：新模块开发分支，不是稳定版本。
-- `v1`：这次 trial 的父代码来源是 `v1` baseline tag；`dev/...` 分支仍从当前 `main`
-  开出，必要时只恢复代码层。
+- `dev`：迁移前的新模块开发分支；新创新改用 `exp/vX/innovation/...`。
+- `v1`：这次旧 trial 的父代码来源是 `v1` baseline tag。
 - `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
 - `trial-001`：这个 idea 的第 1 次实现尝试。
 - `token-router`：人能读懂的简短名字。
@@ -405,13 +407,10 @@ trial/v1/idea-0003/trial-001
 
 普通实验分支：
 
-- `exp/...` 分支只承载 version-level tune、ablation、confirmation 的实验记录。
-- 当前 `main` 代码就是目标 `vX` 时，`exp/...` 从当前 `main` 开出；分支名里的 `v1` 是
-  `base_code_tag`。
-- 历史版本 version-level tune、ablation、confirmation 可以从 `vX` tag 开只运行代码的 `exp/...`
-  临时分支；该分支不合并进 `main`。
-- 历史版本跑完后，回当前 `main` 只把 README、config、日志路径、结果和结论写入
-  `experiments/vX/` 账本。
+- `exp/...` 分支承载目标框架下的 tune、ablation、innovation、confirmation 四类实验。
+- 所有新实验都从对应的 `framework/vX` 开出；分支名为
+  `exp/vX/<type>/<experiment-id>-<slug>`，`base_code_tag` 仍记录不可变快照。
+- 结果写回该框架的四类账本和总览；治理索引同步回 `main`。
 - 实验记录入账后，可以删除这个 `exp/...` 临时分支。
 
 成功的模块 trial：

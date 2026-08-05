@@ -1,5 +1,16 @@
 # 实验记录
 
+## 现在从这里看
+
+- 总框架树：`experiments/FRAMEWORK_TREE.md`
+- 正式规范：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`
+- 每个框架总览：`experiments/vX/EXPERIMENTS.md`
+- 每个实验参数：该实验目录的 `PARAMETER_MATRIX.md`
+
+`v1`、`v2`、`v3`、`v5` 是正式框架；`v4` 只保留为历史 config-only 标签。每个正式框架
+固定有 tune、ablation、innovation、confirmation 四类实验。旧 `module_trials/` 不删除，
+但只作为历史实现和证据来源，不再是人平时查看全貌的入口。
+
 实验记录是轻量证据文件，不是原始训练存储区。
 
 主要区域：

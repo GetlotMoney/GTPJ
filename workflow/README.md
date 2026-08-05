@@ -8,6 +8,7 @@
 docs/GITHUB_GOVERNANCE.md
 docs/PROJECT_STRUCTURE.md
 docs/PROJECT_STATUS.md
+docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 docs/workflow/reference/artifact_policy.md
 docs/workflow/reference/result_index_protocol.md
 docs/workflow/protocols/quality_gate.md
@@ -37,10 +38,10 @@ owner 日常可以直接说人话口令，Coordinator 负责映射到下面的�
 | `查状态` | 运行只读状态检查和必要的结构检查。 |
 | `复现` | 走当前 active baseline 的 confirmation 准备；未要求正式证据时优先最快合规路径。 |
 | `调参` | 先用 `tune-suggest` 生成最多 3 个候选，不自动训练。 |
-| `消融` | 先判断 version-level ablation 还是 trial-internal narrow ablation，再建对应计划。 |
+| `消融` | 先确定目标框架和要关闭的因素，再在该框架的 ablation 账本建计划。 |
 | `开新模块` | 从当前 active baseline 的 selected ready idea 队列自动选择一个 module trial。 |
 | `试这个：...` | 先判断是一句 local heuristic idea、idea inbox，还是可进入 trial 的候选。 |
-| `继续上一个` | 继续当前 trial/attempt 的下一步最小动作。 |
+| `继续上一个` | 找到上一个正式框架实验；旧 Trial/Attempt 只作为追溯链接。 |
 | `升版本` | 检查 promotion gate。 |
 | `切版本` | 区分 set-current-version 和 activate-version；后者必须 owner 明确授权。 |
 
@@ -62,41 +63,39 @@ python workflow/gtpj_workflow.py audit-boundary
 # tune suggestion
 python workflow/gtpj_workflow.py tune-suggest --version v5
 
-# version-level tune example
-git switch main
+# framework tune example
+git switch framework/v1
 git status --short
-git switch -c exp/v1-tune-001-topo008
+git switch -c exp/v1/tune/tune-001-topo008
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 # 填写 experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv 的真实参数、seed 和目的后：
-python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id TUNE-001-001
+python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
 python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
 # 提交上述冻结表后，才运行训练。
 python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
-python workflow/gtpj_workflow.py prepare-run-start-receipt --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id TUNE-001-001 --run-id attempt-001 --pre-run-freeze-commit <FREEZE_COMMIT> --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --receipt train_log/tune.run_start.json --log train_log/CUB/<log>.txt
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id TUNE-001-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --run-start-receipt train_log/tune.run_start.json --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python workflow/gtpj_workflow.py prepare-run-start-receipt --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001 --run-id RUN-001 --pre-run-freeze-commit <FREEZE_COMMIT> --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --receipt train_log/tune.run_start.json --log train_log/CUB/<log>.txt
+python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id RUN-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --run-start-receipt train_log/tune.run_start.json --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
 python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
 
 # idea and version view
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
 
-# module trial example
-git switch main
+# framework innovation example
+git switch framework/v1
 git status --short
-git switch -c dev/v1-idea-xxxx-trial-001-short-name
-python workflow/gtpj_workflow.py new-trial --idea-id IDEA-XXXX --trial-id TRIAL-001 --slug short_name --base-version v1
-python workflow/gtpj_workflow.py record-module-attempt --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --matrix-job-id JOB-001 --log train_log/CUB/<log>.txt --decision revise
-python workflow/gtpj_workflow.py sync-trial-summary --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001 --decision revise
-python workflow/gtpj_workflow.py closeout-check --trial-dir experiments/module_trials/IDEA-XXXX_short_name/TRIAL-001_short_name --attempt-id ATTEMPT-001
+git switch -c exp/v1/innovation/innovation-001-short-name
+python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
+# 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再创建子框架。
 ```
 
 ## Boundary Rules
 
-- `new-experiment` only runs on the exact clean `exp/...` branch and that branch must contain current local `main`.
+- `new-experiment` only runs on the exact clean `exp/vX/<type>/...` branch and that branch must contain `framework/vX`.
 - `start --phrase "..."` is read-only: it prints the owner-facing mini start card and never creates branches, files, or runs.
-- `new-trial` only runs on the exact clean `dev/...` branch and that branch must contain current local `main`.
+- `new-trial`、`record-module-attempt` 和 `sync-trial-summary` 仅用于维护迁移前的旧 Trial/Attempt 证据，不是新实验入口。
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.
-- `record-module-attempt` writes attempt-local evidence under `attempts/ATTEMPT-xxx/`; `sync-trial-summary` then promotes that attempt's lightweight evidence into the trial root README/result/quality, `experiments/module_trials/INDEX.md`, and `idea_tree/`.
+- 兼容命令 `record-module-attempt` 仍可维护旧目录，但任何新运行必须同时登记到父框架正式实验和参数表。
 - `closeout-check` is read-only: it verifies attempt evidence, trial root files, module-trial index, idea-tree evidence, and Warehouse artifacts are connected.
 - `audit-boundary` blocks raw logs, checkpoints, generated images, feature caches, and copied-log evidence from entering GitHub.
 - Historical `GTPJ-v1` baseline raw log has been migrated to `GTPJ_Warehouse`; GitHub keeps only artifact id, URI, hash, size, config, result, and quality records.

@@ -2,6 +2,16 @@
 
 这是每个 GTPJ 任务的精简入口，用来取代“每次都读完整 workflow 目录”的旧习惯。
 
+## 先认清实验放在哪里
+
+正式结构以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 为准：
+
+- 先确定 `FRAMEWORK-VX`，再进入它的 tune、ablation、innovation、confirmation 四类同级实验。
+- 人看编号是 `VX-TUNE-xxx / VX-ABLATION-xxx / VX-INNOVATION-xxx / VX-CONFIRM-xxx`。
+- 每个实验只有一张参数矩阵；一行 `RUN-xxx` 对应一个真实任务。
+- `TRIAL / ATTEMPT / DR` 只作旧记录和 Runner 内部映射。
+- 创新确认并接纳后才生成子框架；纯调参、消融和确认不会生成新框架。
+
 ## 0. Owner 简单入口
 
 owner 不需要背 `workflow_mode`、`agent_runtime.yaml` 或线程字段。下面三句就是正式入口：
@@ -224,7 +234,7 @@ paper_inbox -> source_review -> idea_candidate -> formal_IDEA -> selected_queue
 进入 `trial_preflight` 前必须由 owner 明确指定 `base_version` / `base_code_tag`，例如
 `基于 v5 从论文开始做实验`。不能默认使用当前 active version。
 
-混合实验目录只做调度索引；正式结果必须写回各自归属的 attempt / version / trial。
+混合实验目录只做调度索引；正式结果必须写回所属框架的 tune / ablation / innovation / confirmation 账本。旧 attempt / trial 只保留兼容证据。
 
 框架记录只跟“方法框架变动”绑定，不跟每个代码文件绑定：
 
@@ -274,7 +284,7 @@ Owner 问“现在有哪些待跑实验”时，只读正式 ledger，不从 `.g
 | 版本级 tune | `experiments/vX/tune/INDEX.md` | 只记录正式 baseline 的调参计划和结果。 |
 | 版本级 ablation | `experiments/vX/ablation/INDEX.md` | 只记录正式 baseline 的消融计划和结果。 |
 | 版本级 confirmation | `experiments/vX/confirmation/INDEX.md` | 只记录正式 baseline 或版本级 candidate 的确认计划和结果。 |
-| module trial 内部 attempt | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` | 记录同一 trial 内的调参、窄消融、rerun、confirmation 和 debug-fix。 |
+| 历史 module trial / attempt | `experiments/module_trials/...` | 只读兼容和证据回查；新实验不得在此登记，必须回到所属框架四类账本。 |
 | mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只做 derived index；每个 work item 仍要回指上面某个正式表格。 |
 
 待跑实验的判定规则：

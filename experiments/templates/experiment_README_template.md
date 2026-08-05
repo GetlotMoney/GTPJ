@@ -35,9 +35,9 @@ confirmation_status:
 
 ## 问题
 
-说明这次实验要回答的具体问题。`base_code_tag` 是代码来源；临时分支默认从当前
-`main` 开出以继承最新账本。历史版本 tune、ablation、confirmation 可以从目标 tag
-开只运行代码的临时分支，跑完回当前 `main` 入账。
+说明这次实验要回答的具体问题。`base_code_tag` 是不可变快照；新实验分支从对应的
+`framework/vX` 开出，命名为 `exp/vX/<type>/<experiment-id>-<slug>`。结果写回该框架的四类账本，
+再同步 `main` 总索引。
 
 ## 变量
 

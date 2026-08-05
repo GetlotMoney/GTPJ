@@ -60,15 +60,14 @@ authority: derived_index_only
 `RESULT_INDEX.md` 只能做派生索引，不能自建正式 H/U/S/ZS。
 
 Campaign 目录不能成为单独的正式结果分支。每个 work item 必须回写到所属 subject：
-version-level 写入 `experiments/vX/<type>/`，trial-internal 写入
-`experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/`，真正新创新写入对应
-IDEA/TRIAL，并由 campaign 只保存链接和调度索引。
+全部正式 work item 写入目标框架的 `experiments/vX/<type>/`。旧 Trial/Attempt 只作为
+`legacy_ref`；真正新创新写入父框架的 innovation 账本，并由 campaign 只保存链接和调度索引。
 
 `WORK_ITEMS.md` 必须把 owner-facing 编号和 runner job 编号拆开：
 
 ```text
-INNOV-001 -> runner job DR-001
-TUNE-001  -> runner job DR-003
+INNOVATION-001 -> RUN-001 -> 兼容 runner job DR-001
+TUNE-001 -> RUN-001 -> 兼容 runner job DR-003
 ```
 
 不要直接用 `DR-003` 解释成第三个 tune，也不要把 runner-local `attempt_id`

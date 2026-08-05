@@ -1,10 +1,10 @@
 # 实验协议
 
-本文件只规定 standalone / version-level 的普通实验。也就是：为了调、查、确认某个正式
-baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt。
+本文件规定 `FRAMEWORK-VX` 下面的四类正式实验：tune、ablation、innovation、confirmation。
+唯一结构总规范见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
 
-版本级 tune、ablation 和 confirmation 都属于某个正式 baseline 版本 `vX`。它们保存证据，
-不自动产生新版本。
+四类实验都是同级。tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、
+质量检查和接纳全部通过后，才产生一个子 `FRAMEWORK-VY`。
 
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该
@@ -13,35 +13,38 @@ baseline 版本 `vX`，而不是为了筛选某个 module trial 内部 attempt�
 只有存在框架/代码语义变化，且满足 `docs/workflow/protocols/promotion.md` 的自动 promotion gate，
 才会生成新的正式 `vY`。
 
-模块 trial 内部也可以、也应该做参数尝试、窄消融和 clean confirmation。那类运行写在：
+旧模块 trial 内部已有的参数尝试、窄消融和 clean confirmation 原地只读保留。整理时
+把它们映射到所属框架的正式实验项，不移动历史证据，也不再向旧目录发起新实验：
 
 ```text
 experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/ATTEMPTS.md
 experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/attempts/ATTEMPT-xxx/
 ```
 
-并遵守 `docs/workflow/protocols/module_trial_protocol.md`。不要因为 trial 内部有 `param_tune` 或
-`ablation` 字样，就把它误放到 `experiments/vX/tune/` 或 `experiments/vX/ablation/`。
+并遵守 `docs/workflow/protocols/module_trial_protocol.md`。新工作不再在 Trial 里面复制一套
+四类目录；创新本身留在父框架，接纳后的代码成为子框架。
 
 示例：
 
 ```text
 experiments/v1/tune/TUNE-001_topo008/
-experiments/v1/ablation/ABL-001_disable_jepa/
+experiments/v1/ablation/ABLATION-001_disable_jepa/
+experiments/v1/innovation/INNOVATION-001_token_router/
 experiments/v1/confirmation/CONFIRM-001_v1_seed5/
 ```
 
-每个普通实验目录必须包含：
+每个实验的人类固定入口必须包含：
 
 ```text
 README.md
-config.yaml
-manifest.yaml
-result.yaml
+PARAMETER_MATRIX.csv
+PARAMETER_MATRIX.md
 result.md
-quality_check.md
-agent_summary.md
+evidence/
 ```
+
+兼容 helper 所需的 `config.yaml`、`manifest.yaml`、`result.yaml`、`quality_check.md` 和
+`agent_summary.md` 可以继续保留，但不得替代上面的五个入口。
 
 普通实验目录不得新增 raw logs、checkpoint、feature cache 或 generated figures。
 这些资产必须写入外部 `GTPJ_Warehouse`，GitHub 只通过 `manifest.yaml` 和
@@ -74,7 +77,7 @@ experiment_id:
 kind:
 version:
 base_code_tag:
-branch_source: main | tag vX
+branch_source: framework/vX
 code_branch:
 run_commit:
 dirty_state:
@@ -170,8 +173,8 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 
 启动 Runner 前，先把本次 run 依赖的仓库内输入冻结成一次独立提交。至少包括：
 
-- 本次 run 的 `config.yaml` 或 attempt 级配置副本；
-- 运行计划所需的人类可读索引，例如 tune 表计划行、启动卡、trial 内 `ATTEMPTS.md` 计划行；
+- 本次 run 的 `config.yaml`；
+- 运行计划所需的人类可读索引，例如四类 INDEX 计划行、参数矩阵和启动卡；
 - 必要的轻量预跑元数据，例如 `base_code_tag`、目标 seed、预计命令。
 
 硬规则：
@@ -243,36 +246,21 @@ run_log_sha256   = log_sha256
 或 confirmed reference，但不得创建新的正式框架版本。若调参过程中引入了模型/训练代码语义变化，
 必须改走 innovation / module trial 规则，而不是继续记为纯 tune。
 
-### 当前版本调参
-
-当前 `main` 就是目标 `vX` 代码时：
+### 框架调参
 
 ```text
-从当前 main 开 exp/vX-tune-XXX-xxx 分支
+从 framework/vX 开 exp/vX/tune/TUNE-XXX-xxx 分支
 base_code_tag: vX
-branch_source: main
+branch_source: framework/vX
 先写 config 和计划行，提交 pre-run freeze commit
 确认 git status --short 为空，并记录 run_commit
 跑实验
-回 main 或当前实验分支写结果账本，形成 post-run result commit
+在当前实验分支写结果，再同步目标框架账本和 main 总索引
 更新 experiments/vX/tune/
 ```
 
-### 历史版本调参
-
-`vX` 已经存在，但当前 `main` 不是 `vX` 代码时：
-
-```text
-从 vX tag 开 exp/vX-tune-XXX-xxx 临时运行分支
-只用于跑 vX 代码
-保存 config、command、log_artifact_id、log_uri、log_sha256、result.yaml 和 result.md
-回到当前 main
-只把实验证据写入 experiments/vX/tune/
-确认入账后删除本地临时运行分支
-如果推过远端，也删除远端临时运行分支
-```
-
-历史版本调参的长期资产是 `main` 里的 `experiments/vX/tune/` 账本，不是运行分支。
+无论框架是否为当前使用版本，新调参都从对应 `framework/vX` 开分支。`vX` tag 只用于固定历史复现快照。
+长期资产是 `experiments/vX/tune/` 账本和参数表，不是临时实验分支。
 
 ### 调参表
 
@@ -363,18 +351,11 @@ module、forward、loss、eval、data view 或接口语义，那已经是 innova
 当前版本消融：
 
 ```text
-从当前 main 开 exp/vX-ablation-XXX-xxx
+从 framework/vX 开 exp/vX/ablation/ABLATION-XXX-xxx
 跑完后更新 experiments/vX/ablation/
 ```
 
-历史版本消融：
-
-```text
-从 vX tag 开 exp/vX-ablation-XXX-xxx 临时运行分支
-只用于跑 vX 代码和消融代码
-回当前 main 写 experiments/vX/ablation/
-确认入账后删除临时运行分支
-```
+任何正式框架的消融都遵守同一条规则，不再按“当前版/历史版”分两套分支做法。
 
 如果消融发现“去掉某模块更好”，也不能直接变成新版本。必须记录证据，然后通过
 `docs/workflow/protocols/promotion.md` 自动 promotion gate，把干净代码重新整理成正式 baseline。
@@ -411,11 +392,10 @@ confirmation 实验用于确认某个正式 baseline 的结果仍然可信。
 confirmation 分支：
 
 ```text
-exp/vX-confirm-XXX-xxx
+exp/vX/confirmation/CONFIRM-XXX-xxx
 ```
 
-历史版本 confirmation 可以从 `vX` tag 开临时运行分支；跑完后回当前 `main`
-写 `experiments/vX/confirmation/`，确认入账后删除临时运行分支。
+confirmation 从对应 `framework/vX` 开分支；跑完写入 `experiments/vX/confirmation/`，并同步 `main` 总索引。
 
 confirmation 不允许从 dirty worktree 直接启动。若需要先补 config 副本、启动卡或索引条目，也必须先提交
 `pre-run freeze commit`，再从 clean 状态发起确认运行。

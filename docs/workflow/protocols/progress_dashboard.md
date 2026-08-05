@@ -63,7 +63,7 @@ docs/
   "experiment_id": "TUNE-001",
   "base_version": "v1",
   "base_code_tag": "v1",
-  "branch": "exp/v1-tune-001-topo008",
+  "branch": "exp/v1/tune/tune-001-topo008",
   "stage": "running",
   "gpu": "locked",
   "agents": {

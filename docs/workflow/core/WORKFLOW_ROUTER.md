@@ -1,5 +1,9 @@
 # GTPJ Workflow Router
 
+正式写入前先绑定 `FRAMEWORK-VX`。调参写 `VX-TUNE-xxx`，消融写 `VX-ABLATION-xxx`，
+创新写 `VX-INNOVATION-xxx`，确认写 `VX-CONFIRM-xxx`。旧 `TRIAL / ATTEMPT` 只作为
+`legacy_ref`；创新通过确认和接纳后，才允许创建新的子 `FRAMEWORK-VY`。
+
 ## 默认 agent 路由
 
 Router 默认把真实实验类任务路由到 `real_multi_agent`，并把正式角色实例路由到 workflow-scoped
@@ -53,7 +57,7 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 | `查状态` | read-only status | 只读检查仓库、active baseline 复现状态、队列和阻塞项。 |
 | `复现` | confirmation | 默认先查当前 active baseline 是否已复现；未要求正式证据时优先 `quick_local` 或准备路径。 |
 | `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
-| `消融` | ablation | 判断 version-level 或 trial-internal，并先检查接口门。 |
+| `消融` | ablation | 确定目标框架和单一消融因素，并先检查接口门。 |
 | `读论文` / `找创新点` | paper intake / idea discovery | 只做来源复核和候选创新登记，不直接开 trial 或训练。 |
 | `基于 vX 从论文开始做实验` / `论文到实验闭环` | paper -> idea -> module trial closed loop | 缺 owner 指定 base version 时只读论文和建候选；成熟 IDEA 进 selected queue 且指定 base code tag 后才进入正式实验硬门。 |
 | `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
@@ -61,7 +65,7 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 | `试这个：...` | local heuristic idea 或 innovation / module trial | 先判断能否成为 idea / trial，不能直接跳过 source 和 interface gate。 |
 | `全自动研究 campaign` | autonomous research campaign | owner 给来源、评估标准、安全边界和实验标准；Coordinator 自行拆分 paper intake、idea、tune、ablation、confirmation、module trial、promotion 和最终交付。 |
 | `跑10创新+100调参` / 任意数量组合 | mixed experiment campaign | 解析 requested_mix，拆成 workstreams，按 `mixed_experiment_campaign_protocol.md` 调度 agents、Runner、证据和收口。 |
-| `继续上一个` | trial-internal attempt 或当前任务续跑 | 不新开 idea，继续当前 trial/attempt 的下一步最小动作。 |
+| `继续上一个` | 当前正式框架实验续跑 | 优先读取框架四类账本；旧 trial/attempt 只用于定位兼容证据。 |
 | `别问，给我三个候选` | read-only idea selection | 只读列候选，不改代码、不建 trial。 |
 | `升版本` | promotion | 检查 promotion gate，不把单次 H 提升直接当 baseline。 |
 | `切版本` | set-current-version 或 activate-version | 默认只解释差异；activate-version 必须 owner 明确授权。 |
@@ -111,8 +115,8 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
-实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
-实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
+实验是为了证明一个新方法值得存在 -> idea_tree + 父框架 innovation 账本；接纳后才生成子框架。
 ```
 
 不要因为一次实验有“想法”两个字就写入创意树。只有可复用的新机制、新模块、新方法，或者可能成为新 baseline 的设计，才进入 `idea_tree/`。
@@ -129,10 +133,10 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 调正式 baseline 的参数、seed、epoch、loss weight | tune | 否 | `experiments/vX/tune/` | Warehouse logs/runs | `experiment_protocol.md` | Coordinator、Runner、Log Analyst、Quality Checker |
 | 对正式 baseline 做关掉/旁路/替换已有模块看贡献 | ablation | 否 | `experiments/vX/ablation/` | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Implementer、Interface Checker、Runner、Quality Checker |
 | 复现 baseline 或确认某个版本级结果 | confirmation | 否 | `experiments/vX/confirmation/` | Warehouse logs/runs | `experiment_protocol.md` | Runner、Log Analyst、Quality Checker |
-| 调某个 module trial 的参数、头数、ratio、dropout、seed | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
-| 对某个 module trial 做窄消融或 clean confirmation | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 调某个旧 module trial 的参数、头数、ratio、dropout、seed | 父框架 tune | 已有 idea | `experiments/vX/tune/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `module_trial_protocol.md` 仅查旧证据 | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 对某个旧 module trial 做窄消融或 clean confirmation | 父框架 ablation / confirmation | 已有 idea | `experiments/vX/ablation/` 或 `experiments/vX/confirmation/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
 | debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，必须转为对应实验目录并标明 `evidence_level: debug_smoke`、`formal_evidence: false` | 可写临时本地输出；长期证据进 Warehouse | `docs/workflow/protocols/experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality 并重新按正式证据运行 |
-| 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | innovation / module trial | 是 | `idea_tree/` + `experiments/module_trials/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `module_trial_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；强制 `real_multi_agent` 多轮审查 |
+| 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | framework innovation | 是 | `idea_tree/` + `experiments/vX/innovation/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `experiment_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；按风险多轮审查 |
 | 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`experiments/VERSION_TREE.md` | Warehouse 证据引用 | `docs/workflow/protocols/promotion.md`, `docs/workflow/protocols/quality_gate.md`, `docs/workflow/protocols/versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
 | 只切换创意树当前视图 | set-current-version | 使用已有 idea_tree | `idea_tree/idea_tree.json`、`idea_tree/versions/vX.md` | 不写 | `idea_tree_protocol.md` | 不切 main active code |
 | 切换 main 当前运行代码到某版本 | activate-version | 否 | `config/GTPJ_*.yaml` 等 active code/config | 不写 | `versioning.md`, `git_policy.md` | 必须 owner 明确要求 |
@@ -145,11 +149,11 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 
 | 范围 | 正式表格 | 待跑行由什么决定 | runtime 的作用 |
 |---|---|---|---|
-| 版本级 tune | `experiments/vX/tune/INDEX.md` | `Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的实验行 | 只核对运行包和事件，不新增待跑事实 |
-| 版本级 ablation | `experiments/vX/ablation/INDEX.md` | 同上，且实验类型必须是 ablation | 只核对运行包和事件 |
-| 版本级 confirmation | `experiments/vX/confirmation/INDEX.md` | 同上，且目标必须是 baseline、candidate 或正式 config | 只核对运行包和事件 |
-| module trial 内部 attempt | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` | attempt 行含 `ATTEMPT-xxx`、run id 或目录，状态是 `planned/pending/pre_run/...` | 只核对 run 是否已启动、完成或失败 |
-| mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只列 work item；每个 work item 必须回指某个 version-level 或 trial-internal 正式表格行 | 只核对调度和 monitor 状态 |
+| 框架 tune | `experiments/vX/tune/INDEX.md` | `Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的实验行 | 只核对运行包和事件，不新增待跑事实 |
+| 框架 ablation | `experiments/vX/ablation/INDEX.md` | 同上，且实验类型必须是 ablation | 只核对运行包和事件 |
+| 框架 innovation | `experiments/vX/innovation/INDEX.md` | 同上，且创新仍归父框架 | 只核对运行包和事件 |
+| 框架 confirmation | `experiments/vX/confirmation/INDEX.md` | 同上，且目标必须是 baseline、candidate 或正式 config | 只核对运行包和事件 |
+| mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只列 work item；每个 work item必须回指上述四类正式表格行 | 只核对调度和 monitor 状态 |
 
 正式待跑的统一判定名为 `formal_pending`。如果 `.gtpj_runtime/batches/<run_id>` 存在，但上面任一正式表格都没有对应行，判为 `orphan_runtime_plan`。`orphan_runtime_plan` 只能作为历史参考、排障证据或重新登记新实验的输入，不能直接续跑，也不能进入 keep / best / confirmation / promotion。
 
@@ -209,15 +213,16 @@ debug/smoke 不进入正式待跑表。若必须长期保留，只能写成 `evi
 
 不进入 `idea_tree/` 的情况：
 
-- 版本级 tune 参数搜索。
-- 版本级 ablation 问题本身。
-- 版本级 confirmation 复现实验。
-- 已有 module trial 内部的 param_tune、窄 ablation、confirmation/rerun。
+- 框架 tune 参数搜索。
+- 框架 ablation 问题本身。
+- 框架 confirmation 复现实验。
+- 来源于旧 module trial 的 param_tune、窄 ablation、confirmation/rerun。
 - debug/smoke test。
 - 只为了排查环境、日志、cache 或数据路径。
 
-版本级调参或消融中如果发现了可复用新机制，先把原 version-level 实验记入 `experiments/vX/...`，再单独创建新的 idea。不要把一次普通实验硬改成 module trial。
-module trial 内部 attempt 如果超出原实现假设，形成新的 forward 路径、新 loss 机制或新接口语义，则新开 `TRIAL-002`，不要继续写入原 `TRIAL-001`。
+框架调参或消融中如果发现了可复用新机制，先把原实验记入 `experiments/vX/...`，再创建 idea 和
+`INNOVATION-xxx`。旧 module trial 的后续动作如果超出原实现假设，则在父框架新建创新实验，
+不要继续扩大旧 Trial 目录。
 
 ## 5. 来源不是论文时怎么写
 
@@ -255,9 +260,8 @@ source_ref: paper:<paper_id> + observation:<experiment_id>
 |---|---|
 | 完整论文、长笔记、长推理、完整创意树 | `GTPJ_Research` |
 | GitHub 轻量 idea id、评分、状态、linked trials | `idea_tree/` |
-| 版本级普通实验配置、manifest、result、quality_check | `experiments/vX/...` |
-| 模块 trial 根证据 | `experiments/module_trials/.../TRIAL-xxx/` |
-| 模块 trial 内部调参、窄消融、confirmation/rerun | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` |
+| 四类正式实验配置、manifest、result、quality_check | `experiments/vX/<type>/...` |
+| 旧模块 Trial/Attempt 证据 | 原目录保留，只由正式实验用 `legacy_ref` 引用 |
 | raw logs、checkpoint、generated figures、failure cases | `GTPJ_Warehouse`；模型 checkpoint 按 retention 规则最多保留 3 个 |
 | 运行中状态 | `.gtpj_runtime/`，不进 Git |
 | 本机真实路径 | `.gtpj/local_paths.yaml`，不提交 |
@@ -270,9 +274,9 @@ GitHub 和本地不是机械“每次同时写”，而是按任务类型成对�
 |---|---|---|---|
 | 读论文、提取创新点 | `GTPJ_Research/papers/`、`source_reviews/`、`ideas/` | GitHub `idea_tree/sources/`、`idea_tree/ideas/` 轻量索引 | GitHub 有 `research://` 或本地路径指针 |
 | 用户提出新机制 | `GTPJ_Research/ideas/` 长版动机/机制/风险 | GitHub `idea_tree/inbox.md` 或正式 `IDEA.md` | `source_status` 和 owner 接受理由可追溯 |
-| module trial 运行 | Warehouse raw artifacts | GitHub `manifest/result/quality/ATTEMPTS` | GitHub artifact URI/hash/size 可反查 Warehouse |
+| 创新实验运行 | Warehouse raw artifacts | GitHub 父框架 `innovation/` 的 matrix/manifest/result/quality | GitHub artifact URI/hash/size 可反查 Warehouse |
 | trial 改变 idea 结论 | Research `decision_history.md`、`experiment_plan.md` | GitHub `idea_tree.json`、`IDEA.md`、版本视图 | 人类版和机器版状态一致 |
-| version-level tune/ablation/confirmation | Warehouse + GitHub `experiments/vX/...` | 通常不写 Research | 若产生新机制，再另走 idea discovery |
+| framework tune/ablation/innovation/confirmation | Warehouse + GitHub `experiments/vX/...` | 创新需要 Research 来源，其他类型通常不写 | 若产生新机制，再另走 idea discovery |
 
 如果某个结论影响后续实验选择、promotion、版本适配分或论文叙述，不能只留在聊天里。
 Coordinator 收尾时必须说明：

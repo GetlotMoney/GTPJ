@@ -1,4 +1,6 @@
-# TRIAL（实验试验记录）
+# TRIAL（历史兼容模板，禁止用于新实验）
+
+新实验请使用 `experiment_README_template.md`，并登记到目标框架的四类账本。本模板只用于补齐旧 Trial 证据。
 
 ```text
 trial_id:
@@ -6,8 +8,8 @@ idea_id:
 idea_title:
 base_version:
 base_code_tag:
-branch_source: main
-code_branch: dev/v1-idea-xxxx-trial-001-short-name
+branch_source: legacy_preserved
+code_branch: historical_dev_branch_only
 code_tag: trial/v1/idea-xxxx/trial-001
 code_commit:
 changed_files:

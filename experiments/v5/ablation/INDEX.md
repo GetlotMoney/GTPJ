@@ -1,5 +1,5 @@
-# GTPJ-v5 Ablation Index
+# FRAMEWORK-V5 消融实验索引
 
-| Experiment | Status | Directory | Note |
-|---|---|---|---|
-| none | - | - | No v5 ablation experiments recorded yet. |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+|---|---|---|---|---|---|---|
+| `V5-ABLATION-001` | planned | 局部分支以及局部权重对结果到底有多大作用 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` | `codex/attempt019-local-ablation#ATTEMPT-019` | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | - |

@@ -1,5 +1,5 @@
-# GTPJ-v5 Confirmation Index
+# FRAMEWORK-V5 确认实验索引
 
-| Experiment | Status | Directory | Note |
-|---|---|---|---|
-| none | - | - | v5 is owner-activated provisional; future confirmation should compare repeat evidence against `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`. |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+|---|---|---|---|---|---|---|
+| - | none | v5 现有五次复跑属于版本激活证据，尚未单独登记为新的确认实验项 | - | `trial003-main100-091..095` | - | - |

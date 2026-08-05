@@ -2,7 +2,8 @@
 
 ## 永久对象
 
-- `main`：唯一长期分支，保存 owner 明确选择的 active code 和全部实验账本。
+- `main`：总管理长期分支，保存规范、框架树、全局索引和 owner 明确选择的正式状态。
+- `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`：正式框架长期代码分支。`v4` 是历史 config-only 标签，不创建框架分支。
 - `v1`、`v2`、`v3`、`v4`、`v5`：永久版本 tag，不是分支；`v4` 是历史 config-only tag。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
@@ -24,36 +25,36 @@ status: owner_activated_provisional
 
 ## 临时分支
 
-临时分支默认从当前 `main` 开出，用来继承最新账本。
+普通实验分支必须从对应的 `framework/vX` 开出；治理文档改动才从 `main` 开专用审核分支。
 
 ```text
-dev/v1-idea-0001-trial-001-short-name
-dev/v2-idea-0001-trial-001-short-name
-exp/v1-tune-001-short-name
-exp/v1-ablation-001-short-name
-exp/v1-confirm-001-short-name
+exp/v1/tune/tune-001-short-name
+exp/v1/ablation/ablation-001-short-name
+exp/v1/innovation/innovation-001-short-name
+exp/v1/confirmation/confirm-001-short-name
 promote/v1-idea-0001-to-v2
 ```
 
-分支名里的 `v1`、`v2` 表示代码来源 tag，不表示存在 `v1`、`v2` 分支。
+旧 `dev/vX-idea-...` 分支继续保留用于历史回查，但不再是新工作的主入口。
 
 ## 命名规范
 
 普通实验分支：
 
 ```text
-exp/<base-version>-<kind>-<number>-<short-name>
+exp/<framework-version>/<kind>/<typed-id>-<short-name>
 ```
 
 示例：
 
 ```text
-exp/v1-tune-001-topo008
-exp/v1-ablation-001-disable-jepa
-exp/v1-confirm-001-clean-seed5
+exp/v1/tune/tune-001-topo008
+exp/v1/ablation/ablation-001-disable-jepa
+exp/v1/innovation/innovation-001-token-router
+exp/v1/confirmation/confirm-001-clean-seed5
 ```
 
-模块 trial 开发分支：
+历史模块 trial 开发分支（只用于回查，不再新建）：
 
 ```text
 dev/<base-version>-idea-xxxx-trial-xxx-<short-name>
@@ -66,7 +67,7 @@ dev/v1-idea-0003-trial-001-token-router
 dev/v2-idea-0003-trial-002-token-router
 ```
 
-模块 trial 永久快照 tag：
+历史模块 trial 永久快照 tag：
 
 ```text
 trial/<base-version>/idea-xxxx/trial-xxx
@@ -100,16 +101,14 @@ promote/v1-idea-0003-to-v4
 
 规则：
 
-- 不创建 `v1`、`v2` 这种长期版本分支。
+- 正式框架使用 `framework/v1`、`framework/v2` 这类长期代码分支；`v1`、`v2` 仍是不可变 tag。
 - 不创建 controller branch。
 - 不直接在 `main` 上做新模块开发或普通训练实验。
-- 默认 `exp/...`、`dev/...`、`promote/...` 都从当前 `main` 切出。
-- 历史版本 tune、ablation、confirmation 是例外：当当前 `main` 代码不是目标 `vX` 时，
-  可以从 `vX` tag 开 `exp/...` 只运行代码的临时分支；该分支不合并进 `main`，跑完回当前
-  `main` 写 `experiments/vX/` 账本并删除临时分支。
+- 新 `exp/...` 必须从对应的 `framework/vX` 切出，统一命名为
+  `exp/vX/<type>/<experiment-id>-<slug>`。
+- `promote/...` 从当前 `main` 切出，只负责把已确认的创新登记为子框架并同步总账。
 - `base-version` 通过 `base_code_tag` 记录代码来源，例如 `v1`。
-- 当前 `main` 代码就是目标 base version 时，直接跑。
-- 当前 `main` 代码不是目标 base version 时，只恢复代码层到目标 tag，不能恢复账本层。
+- 运行代码始终来自目标 `framework/vX`；tag 只负责固定复现快照，不再充当新实验分支的起点。
 
 代码层包括：
 
@@ -136,14 +135,14 @@ NEXT_ACTIONS.md
 ## 命名怎么看
 
 ```text
-exp/v1-tune-001-topo008
+exp/v1/tune/tune-001-topo008
 ```
 
 含义：
 
 - `exp`：普通实验分支。
-- `v1`：代码来源是 `v1` baseline tag。
-- `tune`：调参实验，也可以是 `ablation` 或 `confirm`。
+- `v1`：目标框架是 `FRAMEWORK-V1`，分支来源是 `framework/v1`，`v1` tag 负责冻结快照。
+- `tune`：调参实验，也可以是 `ablation`、`innovation` 或 `confirmation`。
 - `001`：该版本该类型第 1 次实验。
 - `topo008`：人能读懂的短名。
 
@@ -151,7 +150,7 @@ exp/v1-tune-001-topo008
 dev/v1-idea-0003-trial-001-token-router
 ```
 
-含义：
+以下含义只解释历史 `dev/...`，不作为新分支规范：
 
 - `dev`：新模块开发分支，不是稳定版本。
 - `v1`：这次 trial 的父代码来源是 `v1` tag。

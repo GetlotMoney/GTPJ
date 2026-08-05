@@ -2,6 +2,14 @@
 
 本文件是精简后的硬规则层，应该保持短而稳定。
 
+## 0. 框架与实验对象
+
+- 唯一结构规范：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
+- `main` 管治理；`framework/vX` 管对应框架代码；新实验从对应框架分支开 `exp/vX/<type>/...`。
+- 每个正式框架固定有 tune、ablation、innovation、confirmation 四类实验。
+- `experiments/vX/EXPERIMENTS.md` 由四个 INDEX 生成，禁止手工维护第二份结果。
+- 每个实验的 `PARAMETER_MATRIX.csv` 是逐运行事实源；旧 `ATTEMPT` 只能成为 `legacy_ref`。
+
 ## 1. 权威来源
 
 - GitHub 是可复现控制面、治理账本和轻量结果索引。
@@ -99,10 +107,11 @@ Owner 简单口令优先按下列映射解释：
 正式待跑实验由正式 ledger 决定，不由运行缓存决定。任何“待跑”结论必须先读对应类型的表格：
 
 ```text
-version-level tune        -> experiments/vX/tune/INDEX.md
-version-level ablation    -> experiments/vX/ablation/INDEX.md
-version-level confirmation -> experiments/vX/confirmation/INDEX.md
-trial-internal attempt    -> experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md
+framework tune            -> experiments/vX/tune/INDEX.md
+framework ablation        -> experiments/vX/ablation/INDEX.md
+framework innovation      -> experiments/vX/innovation/INDEX.md
+framework confirmation    -> experiments/vX/confirmation/INDEX.md
+legacy Trial/Attempt      -> compatibility evidence only; map back with legacy_ref
 mixed campaign            -> experiments/campaigns/.../WORK_ITEMS.md / RESULT_INDEX.md，只作 derived index
 ```
 
@@ -135,7 +144,7 @@ confirmation / promotion。
 ```text
 repo branch / HEAD / dirty
 current_version 和 baseline_repro_status
-正式待跑 ledger：experiments/vX/*/INDEX.md、TRIAL-xxx/ATTEMPTS.md、campaign derived index
+正式待跑 ledger：只认 experiments/vX/{tune,ablation,innovation,confirmation}/INDEX.md；旧 TRIAL-xxx/ATTEMPTS.md 与 campaign 只作兼容映射
 已完成 result / quality / agent_summary
 .gtpj_runtime 只作 debug context，不作规划权威
 ```
@@ -222,7 +231,7 @@ owner_visible_reporting: true
 - 框架记录绑定“方法框架”，不是绑定每个代码文件。调参、复现、只关闭或旁路既有组件的窄消融不新增框架图；它们只记录 config、manifest、result、quality 和 agent summary。
 - 凡是新增或改写 module、forward、loss、evaluation、data view、input/output、tensor flow、接口语义或模块分支逻辑，都视为创新 / module trial 代码变动，而不是普通 tune/ablation。此时必须记录 `module_source.md`、`implementation.md`、`framework_diagram.md`，并说明每个模块来源、接入点、输入输出、baseline-off 行为和 GZSL 语义边界。
 - 上述创新代码变动所属 Trial 的 `README.md` 必须包含 `## Code Flow Diagram`，用简洁流程图说明代码实际输入、输出、关键张量流向、分支开关和最终 logits/metric 出口；完整变量/方法说明仍放在 `framework_diagram.md`。
-- 批量实验 / mixed campaign 不能单独成为正式结果分支。它只能保存 routing index、run map、work item 映射和监控状态；正式结果必须自动回写到对应归属目录：version-level 写 `experiments/vX/<type>/`，trial-internal 写 `experiments/module_trials/.../TRIAL-xxx/attempts/ATTEMPT-xxx/`，真正新创新写对应 IDEA/TRIAL。
+- 批量实验 / mixed campaign 不能单独成为正式结果分支。它只能保存 routing index、run map、work item 映射和监控状态；正式结果必须自动回写到 `experiments/vX/<type>/`。旧 Trial/Attempt 路径只能作为 `legacy_ref`，真正的新创新写父框架的 innovation 账本，确认晋级后再生成子框架。
 
 ## 5. 运行安全
 

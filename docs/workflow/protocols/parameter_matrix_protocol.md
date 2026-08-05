@@ -2,20 +2,20 @@
 
 ```text
 policy_status: active
-policy_version: LEDGER-V1.5
+policy_version: DATA-FRAMEWORK-LEDGER-V1
 effective_date: 2026-08-05
-scope: 所有新建的 tune、ablation、confirmation 和 module trial attempt
+scope: 所有框架的 tune、ablation、innovation、confirmation；旧 module trial attempt 只作兼容
 ```
 
 ## 这条规则解决什么问题
 
-一轮 50 或 100 个任务不是“一次实验”，而是一批很多个具体参数组合。以后每一个具体任务都必须有自己的一行，避免只留下批次摘要，导致后来不知道某个参数是否已经试过。
+一轮 50 或 100 个任务属于一个具体实验项，但里面有很多个实际运行。以后每一个实际运行都必须有自己的一行 `RUN-xxx`，避免只留下 `ATTEMPT` 批次摘要，导致后来不知道某个参数是否已经试过。
 
 不保存原始日志和模型到 GitHub：它们仍留在 Warehouse。本规范只保存轻量、可查、可复现的参数和结果索引。
 
 ## 固定文件
 
-每个新实验目录或每个新的 `attempts/ATTEMPT-xxx/` 目录必须有：
+每个新实验目录必须有：
 
 ```text
 PARAMETER_MATRIX.csv   # 机器校验、查重和结果回填的唯一来源
@@ -23,6 +23,9 @@ PARAMETER_MATRIX.md    # 由 CSV 生成，给人直接阅读
 ```
 
 CSV 一行对应一个真实任务，不是一行对应整个 50/100 任务批次。Markdown 只是同一数据的阅读版，禁止分别手工维护两份内容。
+
+旧 `ATTEMPT / DR` 写入 `run_id`、`work_item_id` 或 `legacy_ref`。无法可靠恢复逐任务参数时，
+只允许写 `legacy_summary_only`，并明确它是历史摘要，不得把一条摘要冒充 50 个运行。
 
 如果手工修改了 CSV，必须立刻重新生成阅读版；校验和正式入账都会检查两份内容是否一致：
 
@@ -102,11 +105,11 @@ helper 会先准备临时收据和临时日志，再把该行从 `frozen` 改成
 
 同一张参数表的所有改写动作共用同一把锁，不只是领取启动收据。冻结配置、刷新阅读版、登记普通结果、准备动态批次和回填动态结果都会在锁内重新读取并检查当前表，再一起写回 CSV 与 Markdown，避免两个进程各自拿旧表覆盖对方。训练进程已经结束时，封存步骤会等待最多 30 秒让短暂占锁的写入完成；若仍未封存，释放占锁后原样重跑 `prepare-run-start-receipt`，helper 会用一次性结束收据核对原始日志哈希、结束标记、退出码和进程身份后补齐参数表，不会重复训练，也不会接受超时窗口中被改写的日志。
 
-即使有人绕过这一步单独运行训练，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。模块内部 Attempt 同样由 `record-module-attempt` 执行这一检查。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对启动收据与结束收据、真实文件哈希、训练入口路径与冻结哈希、日志首行、进程标记、日志封口哈希和文件先后关系。正式账本中的代码提交固定写训练前的冻结提交，不会被训练后推进的当前 `HEAD` 偷换；helper 自己产生的参数表运行状态、两份收据和日志也不会被误判成训练代码变脏。版本级实验会把两份小收据复制为实验目录内的 `run_start_receipt.json` 和 `run_finish_receipt.json`，模块 Attempt 会把它们都登记为 Warehouse receipt，避免验证完就丢失。
+即使有人绕过这一步单独运行训练，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。旧模块 Attempt 仍可由 `record-module-attempt` 做历史兼容核验，但它不能创建新的正式实验。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对启动收据与结束收据、真实文件哈希、训练入口路径与冻结哈希、日志首行、进程标记、日志封口哈希和文件先后关系。正式账本中的代码提交固定写训练前的冻结提交，不会被训练后推进的当前 `HEAD` 偷换；helper 自己产生的参数表运行状态、两份收据和日志也不会被误判成训练代码变脏。
 
-`record-result` 和 `record-module-attempt` 在写任何正式账本或 Warehouse 文件前先取得整张参数表的锁；拿不到锁时不会先写一半。`record-module-attempt` 还会在复制 Warehouse 文件前确认 `ATTEMPTS.md` 和目标账本条件齐全。这样参数表与结果账本不会出现“一边完成、一边仍在运行”或“只留下半套文件”的矛盾状态。
+`record-result` 在写正式框架账本前先取得整张参数表的锁；历史兼容命令 `record-module-attempt` 在补旧证据前也会锁表并检查旧 `ATTEMPTS.md`。两者用途不同：前者是今后的正式入口，后者只修补历史证据。
 
-普通 module attempt 没有专用批次建表器时，先用最小入口建立一行草稿，再冻结：
+下面的 `init-parameter-matrix` + 旧 Attempt 路径只用于修复规范生效前已经存在的历史任务，不得用于发起新实验：
 
 ```powershell
 python workflow\gtpj_workflow.py init-parameter-matrix `
@@ -160,13 +163,14 @@ manifest 后再用新的哈希冒充同一次结果。
 Runner 也会拒绝复用，避免重跑或串线覆盖旧日志、配置、模型和 manifest。`summary.csv.attempt_id`、
 manifest 内的 `attempt_id` 与 `warehouse_attempt_id` 还必须同时等于冻结计划里的 Attempt 编号。
 
-## 版本实验与模块内部实验放在哪里
+## 正式实验放在哪里
 
 ```text
 版本级调参：experiments/vX/tune/TUNE-xxx/PARAMETER_MATRIX.*
 版本级消融：experiments/vX/ablation/ABLATION-xxx/PARAMETER_MATRIX.*
 版本级确认：experiments/vX/confirmation/CONFIRM-xxx/PARAMETER_MATRIX.*
-模块内部：experiments/module_trials/.../attempts/ATTEMPT-xxx/PARAMETER_MATRIX.*
+创新实验：experiments/vX/innovation/INNOVATION-xxx/PARAMETER_MATRIX.*
+旧模块目录：只读兼容；通过 legacy_ref 映射回上述四类正式账本
 ```
 
 版本文件只说明“版本为什么变化”；参数矩阵负责完整记录“每一个候选怎么试、结果如何、为什么留下或停止”。

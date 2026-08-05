@@ -1,4 +1,7 @@
-# 模块 Trial 协议
+# 模块 Trial 历史兼容协议
+
+本页只用于维护迁移前已经存在的 Trial/Attempt 证据。新实验必须按
+`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 写入父框架四类账本。
 
 模块 trial 放在：
 
@@ -20,7 +23,7 @@ docs/workflow/protocols/innovation_code_review_protocol.md
 docs/workflow/protocols/module_template_selection.md
 ```
 
-分支和 tag 命名必须带 base version：
+旧分支和 tag 命名带 base version：
 
 ```text
 code_branch: dev/v1-idea-0001-trial-001-short-name
@@ -30,9 +33,8 @@ code_tag: trial/v1/idea-0001/trial-001
 `code_tag` 是 trial 级代码快照，不是 attempt 级结果标签。一个 `TRIAL-xxx`
 最多使用一个 trial 级 `code_tag` 来标识这条实现线；`ATTEMPT-xxx` 不创建 git tag。
 
-其中 `v1` 表示这个 trial 的代码来源是 `v1` baseline tag。临时分支仍从当前
-`main` 开出，以继承最新账本；如果当前 `main` 代码不是 `v1`，只恢复代码层到
-`v1`，不要恢复账本层。
+其中 `v1` 表示这个旧 trial 的代码来源是 `v1` baseline tag。不得照此新建 Trial；
+新的创新从 `framework/v1` 开 `exp/v1/innovation/...`。
 如果 trial 成功，它可以被提升为新的 `v2`、`v3` 或后续版本。
 
 必需结构：
@@ -98,15 +100,14 @@ experiments/module_trials/IDEA-xxxx_short_name/
 data view、input/output、tensor flow、接口语义或模块分支逻辑，就不是普通 attempt 变体，
 必须新开或更新对应 innovation / module trial，并维护 trial/root 的框架与来源记录。
 
-## Trial-internal attempts
+## Trial/Attempt 兼容区
 
-同一个 module trial 可以包含多个 attempts，但这些 attempts 必须保持在同一个实现假设内。
+本节只服务已有历史目录。同一个旧 module trial 可以包含多个 attempts，但这些 attempts 必须保持在同一个实现假设内。
 
-使用 `ATTEMPTS.md` 作为 trial-internal 参数调优、窄范围后续消融、confirmation/rerun
-和 debug-fix rerun 的人读索引。
+`ATTEMPTS.md` 保留为历史参数调优、窄范围消融、confirmation/rerun 和 debug-fix rerun 的兼容索引。
 
-`ATTEMPTS.md` 也是 trial-internal formal_pending 的唯一 owner-facing 表格。只要某个
-trial 内部实验已经被正式计划为后续运行，表格里必须有一行能让 owner 看出：
+它不再是新实验的 owner-facing `formal_pending` 正式待跑表。新运行必须先登记到父框架四类 `INDEX.md` 和
+`PARAMETER_MATRIX.csv`，旧表只保留映射行，便于回查：
 
 ```text
 attempt_id / type / run_id 或计划目录 / formal_evidence / status / evidence_state / decision / directory
@@ -119,9 +120,9 @@ attempt_id / type / run_id 或计划目录 / formal_evidence / status / evidence
 
 ### 参数矩阵硬规则（2026-08-04 起）
 
-`ATTEMPTS.md` 只负责告诉人“这一批 Attempt 是什么”。每个 Attempt 内所有真正运行的 job 必须另有 `PARAMETER_MATRIX.csv` 和自动阅读版 `PARAMETER_MATRIX.md`。表里一行对应一套具体参数和一次训练，必须能看出：改了什么、是否是原样复跑、种子、结果和后续决定。开跑前参数表要和冻结计划逐行一致；跑完只回填结果，不能改动冻结参数。完整列定义、查重和历史迁移办法见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+历史 `ATTEMPTS.md` 只负责告诉人“旧的这一批 Attempt 是什么”。新运行的参数表放在父框架的正式实验目录，旧 Attempt 目录只保留原证据和映射。表里一行对应一套参数和一次 `RUN-xxx`；开跑前冻结参数，跑完只回填结果。完整列定义见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
 
-Trial-internal tuning and ablation are required parts of judging whether a new module is useful. They stay inside the trial because they answer:
+旧 Trial 内的调参和消融仍是判断模块是否有效的历史证据，但新记录统一映射成父框架四类实验，因为它们回答：
 
 ```text
 在同一个模块实现假设下，这个模块怎样设置才公平？
@@ -129,9 +130,8 @@ Trial-internal tuning and ablation are required parts of judging whether a new m
 当前 best attempt 是否能 clean confirmation？
 ```
 
-它们不是 version-level tune 或 ablation。除非任务明确是 module trial 之外的独立
-baseline-version 实验，否则不要记录到 `experiments/vX/tune/`、`experiments/vX/ablation/`
-或 `experiments/vX/confirmation/`。
+新的调参、消融和确认必须分别记录到 `experiments/vX/tune/`、`experiments/vX/ablation/`
+或 `experiments/vX/confirmation/`；用 `legacy_ref` 关联旧 Trial/Attempt，不再向旧目录增加第二套主账本。
 
 推荐表格：
 ```text
@@ -150,7 +150,7 @@ param_tune / ablation / confirmation / rerun / anchor_followup / debug_fix
 - `quality_check.md`
 - `result.md`
 
-任何真实 attempt run 启动前，trial-internal 账本也必须遵守同一套两阶段证据规则：
+任何来源于旧 Attempt 的新 run 启动前，也必须先在父框架正式调参表中完成两阶段证据冻结：
 
 ## Innovation code review gate
 

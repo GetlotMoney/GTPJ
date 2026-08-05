@@ -14,6 +14,22 @@ Project: GTPJ
 | `GTPJ-v4` | legacy_config_only | `v4` | `experiments/v4/config.yaml` | Historical config-only tag for `v3/CONFIRM-001 local-v3-054`; not a formal framework version. |
 | `GTPJ-v5` | owner_activated_provisional | `v5` | `experiments/v5/config.yaml` | TRIAL-003 conditional BVSA text active mainline from `trial003-main100-069`; best_observed_H=74.54, confirmed_H=74.44; strongest confirmed reference is `v3/CONFIRM-001 local-v3-054`. |
 
+## 正式框架实验
+
+| Experiment ID | Framework | Type | Status | Directory | Legacy / Child |
+|---|---|---|---|---|---|
+| `V1-INNOVATION-001` | `FRAMEWORK-V1` | innovation | legacy_owner_accepted_unconfirmed | `experiments/v1/innovation/INNOVATION-001_clip_a_self` | `IDEA-0001/TRIAL-001/ATTEMPT-019 -> FRAMEWORK-V2；历史接纳，未按新规确认` |
+| `V1-CONFIRM-001` | `FRAMEWORK-V1` | confirmation | completed | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | `attempt-001` |
+| `V2-INNOVATION-001` | `FRAMEWORK-V2` | innovation | legacy_owner_accepted_unconfirmed | `experiments/v2/innovation/INNOVATION-001_strict_conditional_jepa` | `IDEA-0002/TRIAL-002/ATTEMPT-004 -> FRAMEWORK-V3；历史接纳，未按新规确认` |
+| `V3-TUNE-001` | `FRAMEWORK-V3` | tune | completed | `experiments/v3/tune/TUNE-001_local_v3_054` | `v4 legacy config-only` |
+| `V3-CONFIRM-001` | `FRAMEWORK-V3` | confirmation | completed | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | `RUN-20260629-1722` |
+| `V3-INNOVATION-001` | `FRAMEWORK-V3` | innovation | legacy_owner_activated | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa` | `TRIAL-003 -> FRAMEWORK-V5；历史 owner 激活` |
+| `V5-ABLATION-001` | `FRAMEWORK-V5` | ablation | planned | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | `ATTEMPT-019 / DR-001..015` |
+| `V5-TUNE-001` | `FRAMEWORK-V5` | tune | completed | `experiments/v5/tune/TUNE-001_dynamic_routing_search` | `ATTEMPT-006 / DR-003..010，8 个真实任务` |
+| `V5-INNOVATION-001` | `FRAMEWORK-V5` | innovation | candidate | `experiments/v5/innovation/INNOVATION-001_dynamic_routing` | `ATTEMPT-006 / DR-001..002 已逐任务恢复；其余见 LEGACY_ATTEMPT_MAP.md` |
+
+以下 Module Trials 表仅为旧编号回查，不再是人类主入口。
+
 ## Module Trials
 
 | Trial | Idea | Status | Directory | Note |

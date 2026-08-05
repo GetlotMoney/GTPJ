@@ -74,7 +74,7 @@ D:/backup/Documents/Myself/GTPJ_Warehouse/runs/<base_version>/<kind>/<experiment
 ```text
 log:v1:tune:TUNE-001:attempt-001
 checkpoint:v1:tune:TUNE-001:attempt-001
-figure:v1:ablation:ABL-001:attempt-001
+figure:v1:ablation:ABLATION-001:run-001
 cache:v1:module_trial:TRIAL-001:attempt-001
 ```
 
@@ -207,9 +207,9 @@ Quality Checker 还要确认：
 
 ## 5. Helper 使用边界
 
-`record-result` 用于 version-level tune / ablation / confirmation。它可以从日志中解析指标，计算 sha256/size，并把轻量结果写回 GitHub 账本。它不提交、不 push、不删除分支。
+`record-result` 用于 framework tune / ablation / innovation / confirmation。它可以从日志中解析指标，计算 sha256/size，并把轻量结果写回 GitHub 账本。它不提交、不 push、不删除分支。
 
-`record-module-attempt` 用于 module trial 内部 attempt。它会从日志中解析指标，把 raw log / checkpoint / runner receipt 复制或生成到 Warehouse，并写回 attempt-local `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`ATTEMPTS.md` 和 `GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml`。
+`record-module-attempt` 只用于规范生效前已有的 module trial / attempt 历史兼容。它会从日志中解析指标，把 raw log / checkpoint / runner receipt 复制或生成到 Warehouse，并写回旧目录及 `GTPJ_Warehouse/ARTIFACT_REGISTRY.yaml`；它不会创建新的正式实验。今后正式结果统一用 `record-result` 写入所属框架四类账本。
 
 推荐先运行：
 
@@ -217,7 +217,7 @@ Quality Checker 还要确认：
 python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 ```
 
-确认指标和 Warehouse URI 后再正式执行。helper 不负责自动得出 trial-level 论文结论；如果某个 attempt 改变 root trial 决策，Coordinator 仍需 review 并同步 trial 根目录 README/result/quality_check/idea_tree。
+这条命令只在修复旧证据时使用。新实验不要先建 Trial/Attempt，应从对应 `framework/vX` 分支创建四类实验，再用 `record-result` 入账。
 
 如果 helper 和本文件冲突，优先遵守本文件的证据边界，再补 helper。
 

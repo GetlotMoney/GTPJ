@@ -68,11 +68,12 @@ flowchart TD
   V1 --> Baseline["experiments/v1/baseline"]
   Baseline --> Result["CUB seed=5 H=73.93"]
   Result --> Status["status: confirmed"]
-  V1 --> Future["version-level tune / ablation / confirmation"]
+  V1 --> Future["framework tune / ablation / innovation / confirmation"]
 ```
 
 ## 允许的实验类型
 
 - `tune/`
 - `ablation/`
+- `innovation/`
 - `confirmation/`
