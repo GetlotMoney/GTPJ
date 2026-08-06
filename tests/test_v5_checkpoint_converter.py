@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import torch
 
@@ -174,6 +175,30 @@ class V5CheckpointConverterTest(unittest.TestCase):
                 _exclusive_torch_save({"x": torch.tensor(1)}, output)
 
             self.assertEqual(output.read_bytes(), b"keep")
+
+    def test_receipt_failure_never_deletes_concurrent_replacement(self):
+        with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:
+            root = Path(temporary)
+            source = root / "old.pth"
+            schema = root / "schema.pth"
+            output = root / "converted.pth"
+            receipt_path = root / "converted.receipt.json"
+            torch.save({"logit_scale": torch.tensor(1.0)}, source)
+            torch.save({"logit_scale": torch.empty(())}, schema)
+
+            def replace_output_then_fail(*_args, **_kwargs):
+                output.unlink()
+                output.write_bytes(b"OTHER_PROCESS_FILE")
+                raise RuntimeError("simulated receipt failure")
+
+            with mock.patch(
+                "tools.convert_v5_checkpoint._exclusive_json_save",
+                side_effect=replace_output_then_fail,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "simulated receipt failure"):
+                    convert_checkpoint_file(source, schema, output, receipt_path)
+
+            self.assertEqual(output.read_bytes(), b"OTHER_PROCESS_FILE")
 
     def test_file_conversion_requires_four_distinct_paths(self):
         with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:

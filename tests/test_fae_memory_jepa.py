@@ -44,17 +44,17 @@ def make_config(**overrides):
     return SimpleNamespace(**values)
 
 
-def make_model(config=None):
+def make_model(config=None, seen=None, unseen=None):
     torch.manual_seed(7)
-    seen = torch.tensor([0, 2, 3, 5])
-    unseen = torch.tensor([1, 4])
+    seen = torch.tensor([0, 2, 3, 5]) if seen is None else torch.as_tensor(seen)
+    unseen = torch.tensor([1, 4]) if unseen is None else torch.as_tensor(unseen)
     return GTPJ(
         config or make_config(),
         seen,
         unseen,
-        torch.randn(4, 16),
-        torch.randn(2, 16),
-        seen_sentence_embeds=torch.randn(4, 3, 16),
+        torch.randn(seen.numel(), 16),
+        torch.randn(unseen.numel(), 16),
+        seen_sentence_embeds=torch.randn(seen.numel(), 3, 16),
     )
 
 
@@ -138,6 +138,14 @@ class V5CanonicalMathPathTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "seen classes"):
             model._global_to_seen_labels(torch.tensor([1]))
+
+    def test_class_split_must_be_disjoint_unique_and_complete(self):
+        with self.assertRaisesRegex(ValueError, "must not overlap"):
+            make_model(seen=[0, 2, 3, 5], unseen=[1, 5])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            make_model(seen=[0, 0, 2, 3], unseen=[1, 4])
+        with self.assertRaisesRegex(ValueError, "cover every global class"):
+            make_model(seen=[0, 2, 3], unseen=[1, 4])
 
 
 if __name__ == "__main__":

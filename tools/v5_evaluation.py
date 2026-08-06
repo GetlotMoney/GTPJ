@@ -19,9 +19,13 @@ _CACHE_FILES = {
 }
 
 
+def v5_test_cache_paths(cache_dir="./data/cache"):
+    root = Path(cache_dir).resolve()
+    return {name: root / filename for name, filename in _CACHE_FILES.items()}
+
+
 def load_v5_test_cache(cache_dir="./data/cache"):
-    root = Path(cache_dir)
-    paths = {name: root / filename for name, filename in _CACHE_FILES.items()}
+    paths = v5_test_cache_paths(cache_dir)
     missing = [str(path) for path in paths.values() if not path.is_file()]
     if missing:
         raise FileNotFoundError(
@@ -86,6 +90,20 @@ def _per_class_accuracy(labels, predictions, classes):
 def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_size=64):
     seenclasses = torch.as_tensor(seenclasses, dtype=torch.long)
     unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long)
+    if seenclasses.dim() != 1 or unseenclasses.dim() != 1:
+        raise ValueError("seenclasses 和 unseenclasses 必须是一维全局类别编号。")
+    if seenclasses.unique().numel() != seenclasses.numel():
+        raise ValueError("seenclasses 含有重复类别。")
+    if unseenclasses.unique().numel() != unseenclasses.numel():
+        raise ValueError("unseenclasses 含有重复类别。")
+    if torch.isin(seenclasses, unseenclasses).any():
+        raise ValueError("seenclasses 与 unseenclasses 不能重叠。")
+    expected_classes = getattr(model, "nclass", None)
+    if expected_classes is not None:
+        combined = torch.cat([seenclasses, unseenclasses]).sort().values
+        expected = torch.arange(int(expected_classes), dtype=torch.long)
+        if not torch.equal(combined.cpu(), expected):
+            raise ValueError("seen/unseen 类别没有完整覆盖模型的全局类别轴。")
     _validate_cache_split(
         "seen", cache["seen_cls"], cache["seen_patches"], cache["seen_labels"]
     )
@@ -128,15 +146,3 @@ def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_s
     denominator = seen_accuracy + unseen_accuracy
     harmonic = 2.0 * seen_accuracy * unseen_accuracy / denominator if denominator else 0.0
     return seen_accuracy, unseen_accuracy, harmonic, zsl_accuracy
-
-
-def eval_zs_gzsl(dataloader, clip_model, model, device):
-    del clip_model
-    cache = load_v5_test_cache()
-    return evaluate_cached_v5(
-        model,
-        device,
-        cache,
-        dataloader.seenclasses,
-        dataloader.unseenclasses,
-    )

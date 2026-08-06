@@ -181,33 +181,19 @@ def _exclusive_torch_save(value, destination):
     destination.parent.mkdir(parents=True, exist_ok=True)
     buffer = io.BytesIO()
     torch.save(value, buffer)
-    created = False
-    try:
-        with destination.open("xb") as stream:
-            created = True
-            stream.write(buffer.getvalue())
-            stream.flush()
-            os.fsync(stream.fileno())
-    except Exception:
-        if created and destination.exists():
-            destination.unlink()
-        raise
+    with destination.open("xb") as stream:
+        stream.write(buffer.getvalue())
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _exclusive_json_save(value, destination):
     destination.parent.mkdir(parents=True, exist_ok=True)
     content = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-    created = False
-    try:
-        with destination.open("xb") as stream:
-            created = True
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-    except Exception:
-        if created and destination.exists():
-            destination.unlink()
-        raise
+    with destination.open("xb") as stream:
+        stream.write(content)
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _resolve_distinct_paths(*paths):
@@ -265,7 +251,6 @@ def convert_checkpoint_file(input_path, target_schema_path, output_path, receipt
     target_bytes = target_schema.read_bytes()
     receipt = _base_receipt(source, source_bytes, target_schema, target_bytes, output)
     checkpoint_fields_dropped = []
-    created_output = False
 
     try:
         checkpoint = torch.load(io.BytesIO(source_bytes), map_location="cpu", weights_only=False)
@@ -292,7 +277,6 @@ def convert_checkpoint_file(input_path, target_schema_path, output_path, receipt
             checkpoint_format = "model_state_dict"
 
         _exclusive_torch_save(output_value, output)
-        created_output = True
         output_bytes = output.read_bytes()
         receipt.update(
             {
@@ -312,8 +296,6 @@ def convert_checkpoint_file(input_path, target_schema_path, output_path, receipt
         _exclusive_json_save(receipt, receipt_file)
         return receipt
     except Exception as error:
-        if created_output and output.exists():
-            output.unlink()
         if isinstance(error, ConversionError):
             receipt.update(
                 {

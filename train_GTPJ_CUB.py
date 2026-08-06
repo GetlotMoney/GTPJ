@@ -6,8 +6,8 @@
 
 import argparse
 from datetime import datetime
-import hashlib
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import torch
@@ -17,7 +17,19 @@ import yaml
 from model.MyModel import GTPJ
 from tools.dataset import CUBDataLoader
 from tools.reproducibility import configure_reproducibility
-from tools.v5_evaluation import eval_zs_gzsl
+from tools.v5_runtime import (
+    capture_rng_state,
+    input_fingerprints,
+    input_record,
+    restore_rng_state,
+    sha256_file,
+    validate_resume_identity,
+)
+from tools.v5_evaluation import (
+    evaluate_cached_v5,
+    load_v5_test_cache,
+    v5_test_cache_paths,
+)
 
 
 MODEL_TEMPLATE_ID = "model/v5-template-v1"
@@ -26,6 +38,8 @@ TRAIN_CLS_PATH = CACHE_DIR / "CUB_train_features.pt"
 TRAIN_PATCH_PATH = CACHE_DIR / "CUB_train_patch_features.pt"
 TRAIN_LABEL_PATH = CACHE_DIR / "CUB_train_labels.pt"
 GPT55_SENTENCE_PATH = CACHE_DIR / "CUB_gpt55_sentence_embeds.pt"
+DATA_RES101_PATH = Path("./data/xlsa17/data/CUB/res101.mat")
+DATA_SPLIT_PATH = Path("./data/xlsa17/data/CUB/att_splits.mat")
 
 V5_CONFIG_KEYS = {
     "dataset",
@@ -123,12 +137,25 @@ def _validate_lr_stages(stages):
             raise ValueError(f"lr_stages 第 {index} 段的 eta_min 不能小于 0。")
 
 
-def _sha256(path):
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
+def _current_code_commit():
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def _require_clean_code_tree():
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if result.stdout.strip():
+        raise RuntimeError("正式 V5 训练要求代码工作树无已跟踪改动。")
 
 
 def _load_training_cache(expected_dim):
@@ -196,6 +223,9 @@ def _new_scheduler(optimizer, stage):
 
 args = _parse_args()
 config, config_values, config_path = _load_config(args.config)
+config_hash = sha256_file(config_path)
+_require_clean_code_tree()
+code_commit = _current_code_commit()
 
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_dir = Path("./train_log/CUB")
@@ -224,7 +254,8 @@ print_log("=" * 60)
 print_log("V5 干净母版 | CUB GZSL 训练")
 print_log(f"母版：{MODEL_TEMPLATE_ID}")
 print_log(f"配置：{config_path}")
-print_log(f"配置 SHA-256：{_sha256(config_path)}")
+print_log(f"配置 SHA-256：{config_hash}")
+print_log(f"代码 commit：{code_commit}")
 print_log(f"随机种子：{seed}")
 print_log(f"局部分支融合：global + {config.local_weight} * local")
 print_log(f"PyTorch/CUDA：{repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
@@ -234,6 +265,43 @@ dataloader = CUBDataLoader(".", config.device, is_balance=False)
 train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
 sentence_embeds = _load_gpt55_sentences(
     int(config.num_class), int(config.dim_f_clip), config.device
+)
+test_cache = load_v5_test_cache()
+input_paths = {
+    "xlsa17_res101": DATA_RES101_PATH,
+    "xlsa17_att_splits": DATA_SPLIT_PATH,
+    "train_cls": TRAIN_CLS_PATH,
+    "train_patches": TRAIN_PATCH_PATH,
+    "train_labels": TRAIN_LABEL_PATH,
+    "gpt55_sentences": GPT55_SENTENCE_PATH,
+    **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
+}
+input_tensors = {
+    "train_cls": train_cls,
+    "train_patches": train_patches,
+    "train_labels": train_labels,
+    "gpt55_sentences": sentence_embeds,
+    **{f"test_{name}": tensor for name, tensor in test_cache.items()},
+}
+input_records = {
+    name: input_record(path, input_tensors.get(name))
+    for name, path in input_paths.items()
+}
+run_input_fingerprints = input_fingerprints(input_records)
+for name, record in input_records.items():
+    tensor_summary = ""
+    if "shape" in record:
+        tensor_summary = f" | shape={record['shape']} | dtype={record['dtype']}"
+    print_log(
+        f"输入 {name}: {record['path']} | sha256={record['sha256']} | "
+        f"size={record['size_bytes']}{tensor_summary}"
+    )
+
+# 与历史 V5 一致：数据与缓存准备完成后重置随机状态，再初始化模型。
+repro_state = configure_reproducibility(
+    seed,
+    strict_determinism=False,
+    deterministic_warn_only=True,
 )
 text_embeds = sentence_embeds.mean(dim=1)
 
@@ -265,10 +333,18 @@ if args.resume_from is not None:
     checkpoint = torch.load(resume_path, map_location=config.device, weights_only=False)
     required = {
         "template_id",
+        "code_commit",
         "epoch",
         "stage_index",
         "best_H",
         "best_metrics",
+        "config",
+        "config_sha256",
+        "input_files",
+        "input_fingerprints",
+        "rng_state",
+        "seenclasses",
+        "unseenclasses",
         "model_state_dict",
         "optimizer_state_dict",
         "scheduler_state_dict",
@@ -280,6 +356,18 @@ if args.resume_from is not None:
         raise ValueError(
             f"checkpoint 来自 {checkpoint['template_id']!r}，不是 {MODEL_TEMPLATE_ID!r}。"
         )
+    seenclasses = dataloader.seenclasses.detach().cpu().long().tolist()
+    unseenclasses = dataloader.unseenclasses.detach().cpu().long().tolist()
+    validate_resume_identity(
+        checkpoint,
+        template_id=MODEL_TEMPLATE_ID,
+        code_commit=code_commit,
+        config_values=config_values,
+        config_sha256=config_hash,
+        fingerprints=run_input_fingerprints,
+        seenclasses=seenclasses,
+        unseenclasses=unseenclasses,
+    )
     model.load_state_dict(checkpoint["model_state_dict"], strict=True)
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
@@ -294,6 +382,7 @@ if args.resume_from is not None:
     start_epoch = checkpoint_epoch + 1
     best_h = float(checkpoint["best_H"])
     best_metrics = dict(checkpoint["best_metrics"])
+    restore_rng_state(checkpoint["rng_state"])
     print_log(f"从 epoch {start_epoch} 继续；历史最佳 H={best_h * 100:.2f}%。")
 
 iters_per_epoch = len(train_labels) // int(config.batch_size)
@@ -336,8 +425,12 @@ for epoch in range(start_epoch, total_epochs + 1):
             )
 
     scheduler.step()
-    seen_acc, unseen_acc, harmonic, zsl_acc = eval_zs_gzsl(
-        dataloader, None, model, config.device
+    seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_cached_v5(
+        model,
+        config.device,
+        test_cache,
+        dataloader.seenclasses,
+        dataloader.unseenclasses,
     )
     print_log(
         f"epoch {epoch}: S={seen_acc * 100:.2f}% U={unseen_acc * 100:.2f}% "
@@ -361,12 +454,18 @@ for epoch in range(start_epoch, total_epochs + 1):
         torch.save(
             {
                 "template_id": MODEL_TEMPLATE_ID,
+                "code_commit": code_commit,
                 "epoch": epoch,
                 "stage_index": active_stage,
                 "best_H": best_h,
                 "best_metrics": best_metrics,
                 "config": config_values,
-                "config_sha256": _sha256(config_path),
+                "config_sha256": config_hash,
+                "input_files": input_records,
+                "input_fingerprints": run_input_fingerprints,
+                "rng_state": capture_rng_state(),
+                "seenclasses": dataloader.seenclasses.detach().cpu().long().tolist(),
+                "unseenclasses": dataloader.unseenclasses.detach().cpu().long().tolist(),
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "scheduler_state_dict": scheduler.state_dict(),

@@ -170,6 +170,7 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "cub_claude.pt",
         "cub_merge.pt",
         "restart_from_best",
+        "eval_zs_gzsl(",
     }
     for token in forbidden:
         assert token not in source, token
@@ -180,7 +181,8 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "CUBDataLoader",
         "seenclasses",
         "unseenclasses",
-        "eval_zs_gzsl",
+        "evaluate_cached_v5",
+        "load_v5_test_cache",
         "checkpoint",
         "best_metrics",
         '"U"',
@@ -192,8 +194,14 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "GPT55_SENTENCE_PATH",
         "--resume-from",
         "MODEL_TEMPLATE_ID",
+        "input_fingerprints",
+        "rng_state",
+        "code_commit",
     ):
         assert token in source, token
+
+    assert source.count("load_v5_test_cache(") == 1
+    assert source.count("evaluate_cached_v5(") == 1
 
 
 def _load_historical_v5_model_class():
@@ -266,6 +274,7 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor) -> None:
 class _ControlledEvaluationModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
+        self.nclass = 4
         self.register_buffer("seenclass", torch.tensor([0, 2]))
         self.register_buffer("unseenclass", torch.tensor([1, 3]))
 

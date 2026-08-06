@@ -296,11 +296,29 @@ class GTPJ(nn.Module):
         self.nclass = int(config.num_class)
         self.dim_f = int(config.dim_f_clip)
 
+        seen_ids = torch.as_tensor(seenclass, dtype=torch.long)
+        unseen_ids = torch.as_tensor(unseenclass, dtype=torch.long)
+        if seen_ids.dim() != 1 or unseen_ids.dim() != 1:
+            raise ValueError("seenclass and unseenclass must be one-dimensional global ids.")
+        if seen_ids.unique().numel() != seen_ids.numel():
+            raise ValueError("seenclass contains duplicate global ids.")
+        if unseen_ids.unique().numel() != unseen_ids.numel():
+            raise ValueError("unseenclass contains duplicate global ids.")
+        if torch.isin(seen_ids, unseen_ids).any():
+            raise ValueError("seenclass and unseenclass must not overlap.")
+        combined_ids = torch.cat([seen_ids, unseen_ids]).sort().values
+        if not torch.equal(combined_ids, torch.arange(self.nclass, dtype=torch.long)):
+            raise ValueError("seenclass and unseenclass must cover every global class exactly once.")
+        if tuple(seen_text_embeds.shape) != (seen_ids.numel(), self.dim_f):
+            raise ValueError("seen_text_embeds must have shape [C_seen, D].")
+        if tuple(unseen_text_embeds.shape) != (unseen_ids.numel(), self.dim_f):
+            raise ValueError("unseen_text_embeds must have shape [C_unseen, D].")
+
         self.register_buffer(
-            "seenclass", torch.as_tensor(seenclass, dtype=torch.long), persistent=False
+            "seenclass", seen_ids, persistent=False
         )
         self.register_buffer(
-            "unseenclass", torch.as_tensor(unseenclass, dtype=torch.long), persistent=False
+            "unseenclass", unseen_ids, persistent=False
         )
 
         self.seen_text_embeds = nn.Parameter(
@@ -334,7 +352,11 @@ class GTPJ(nn.Module):
         self.pse_outer_ratio = float(config.pse_outer_ratio)
         if seen_sentence_embeds is None:
             raise ValueError("V5 clean template requires seen_sentence_embeds.")
-        if seen_sentence_embeds.dim() != 3 or seen_sentence_embeds.size(-1) != self.dim_f:
+        if (
+            seen_sentence_embeds.dim() != 3
+            or seen_sentence_embeds.size(0) != seen_ids.numel()
+            or seen_sentence_embeds.size(-1) != self.dim_f
+        ):
             raise ValueError("seen_sentence_embeds must have shape [C_seen, M, D].")
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
