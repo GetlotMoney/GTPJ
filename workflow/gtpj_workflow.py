@@ -4684,12 +4684,17 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
 
 
 def require_ready_experiment_for_artifact(path: Path) -> None:
-    """Apply the V5 base gate only to canonical formal experiment artifacts."""
+    """Require every new V5 formal artifact to live under one canonical experiment."""
     if not immutable_template_standard_is_active():
         return
     experiment_dir = path if path.is_dir() else path.parent
-    if formal_experiment_coordinates(experiment_dir) is not None:
-        require_ready_experiment_base(experiment_dir)
+    if formal_experiment_coordinates(experiment_dir) is None:
+        raise WorkflowError(
+            "SYS-WORKFLOW-V5 formal artifacts must belong to a canonical formal "
+            "experiment directory experiments/vX/<kind>/<EXPERIMENT-ID_slug>; "
+            "legacy Trial/Attempt paths are read-only history"
+        )
+    require_ready_experiment_base(experiment_dir)
 
 
 def cmd_validate_experiment_base(args: argparse.Namespace) -> int:
@@ -8817,6 +8822,16 @@ def immutable_template_language_errors() -> list[str]:
                 errors.append(
                     f"{display_path(path)} still contains retired experiment-start instruction: {phrase}"
                 )
+        retired_formal_runner = re.search(
+            r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
+            r"run-workflow\b[^\r\n]*--formal\b[^\r\n]*$",
+            content,
+        )
+        if retired_formal_runner:
+            errors.append(
+                f"{display_path(path)} still contains retired formal dynamic runner command: "
+                f"{retired_formal_runner.group(0).strip()}"
+            )
     return errors
 
 
@@ -15697,7 +15712,6 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
     log_path = Path(args.log)
     if not log_path.is_absolute():
         log_path = REPO_ROOT / log_path
-    require_ready_experiment_for_artifact(matrix_path)
     finish_receipt_path = run_finish_receipt_path(receipt_path)
     if receipt_path.exists() and log_path.exists():
         recovered = seal_finished_parameter_matrix_run(
@@ -15721,6 +15735,9 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         return 0
     if receipt_path.exists() or log_path.exists() or finish_receipt_path.exists():
         raise WorkflowError("prepare-run-start-receipt refuses existing receipt or log files, including a finish receipt")
+    # Existing pre-V5 processes may still be sealed by the recovery path above.
+    # Any new training launch must belong to a canonical ready experiment.
+    require_ready_experiment_for_artifact(matrix_path)
     if receipt_path.resolve() == log_path.resolve():
         raise WorkflowError("prepare-run-start-receipt requires different receipt and log paths")
     # The lock is matrix-wide, not row-wide: two different jobs still rewrite
@@ -16127,6 +16144,12 @@ def cmd_init_parameter_matrix(args: argparse.Namespace) -> int:
 
 
 def cmd_prepare_dynamic_routing_matrix(args: argparse.Namespace) -> int:
+    if immutable_template_standard_is_active():
+        raise WorkflowError(
+            "legacy dynamic-routing matrix creation is retired under "
+            "SYS-WORKFLOW-V5; create RUN rows in a canonical framework "
+            "experiment PARAMETER_MATRIX.csv"
+        )
     trial_dir = Path(args.trial_dir)
     if not trial_dir.is_absolute():
         trial_dir = REPO_ROOT / trial_dir
@@ -17613,6 +17636,12 @@ def infer_attempt_id_from_path(path: Path) -> str:
 
 
 def cmd_plan_dynamic_routing_batch(args: argparse.Namespace) -> int:
+    if immutable_template_standard_is_active() and not bool(args.debug_smoke):
+        raise WorkflowError(
+            "legacy dynamic-routing formal batch planner is retired under "
+            "SYS-WORKFLOW-V5; formal starts must use a canonical framework "
+            "experiment matrix and prepare-run-start-receipt"
+        )
     trial_dir = (REPO_ROOT / args.trial_dir).resolve() if not Path(args.trial_dir).is_absolute() else Path(args.trial_dir)
     if not trial_dir.exists():
         raise WorkflowError(f"Missing trial dir: {display_path(trial_dir)}")
@@ -18205,6 +18234,12 @@ def cmd_run_workflow(args: argparse.Namespace) -> int:
         if not experiment_dir.is_absolute():
             experiment_dir = REPO_ROOT / experiment_dir
         require_ready_experiment_base(experiment_dir)
+        raise WorkflowError(
+            "run-workflow legacy dynamic-routing batch runner is retired for "
+            "SYS-WORKFLOW-V5 formal experiments; freeze the canonical experiment "
+            "PARAMETER_MATRIX.csv and launch each RUN row through "
+            "prepare-run-start-receipt"
+        )
     if args.formal and not args.agent_runtime_gate:
         raise WorkflowError("run-workflow --formal requires --agent-runtime-gate <agent_runtime.yaml>")
     workflow_mode = str(args.workflow_mode or "").strip()

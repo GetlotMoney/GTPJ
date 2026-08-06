@@ -101,13 +101,18 @@ debug_smoke：测试代码、服务器、GPU 和 helper 链路；activation_mode
 formal：正式证据实验；允许 `activation_mode=real_multi_agent`，或 `activation_mode=role_only + formal_runtime_backend=server_detached_role_only`；两者都必须先通过 agent_runtime gate。
 ```
 
-因此 `run-workflow` 这类统一入口必须二选一：
+旧 `run-workflow` 是专门给 Trial/Attempt 动态路由批次写的，不能把一个合法实验目录当通行证后继续跑另一套旧代码。
+在 `SYS-WORKFLOW-V5` 下，它只保留 `debug_smoke` 链路探针；正式实验使用本实验自己的参数表：
 
 ```bash
 python workflow/gtpj_workflow.py run-workflow ... --workflow-mode live_multi_agent_monitor --debug-smoke
-python workflow/gtpj_workflow.py run-workflow ... --experiment-dir <experiments/vX/type/ID_slug> --workflow-mode live_multi_agent_monitor --formal --agent-runtime-gate <agent_runtime.yaml>
-python workflow/gtpj_workflow.py run-workflow ... --experiment-dir <experiments/vX/type/ID_slug> --workflow-mode server_frozen_runner --formal --agent-runtime-gate <agent_runtime.yaml>
+python workflow/gtpj_workflow.py freeze-parameter-matrix --path <experiments/vX/type/ID_slug/PARAMETER_MATRIX.csv> --config <同目录配置> --job-id RUN-001
+python workflow/gtpj_workflow.py prepare-run-start-receipt --path <同一参数表> --config <同一配置> --job-id RUN-001 ...
 ```
+
+这两个正式入口都会先校验 `EXPERIMENT.yaml` 的母版绑定；旧 `module_trials/.../ATTEMPT-xxx` 只能回查，不能新冻结或新启动。
+即使给旧入口传入 `run-workflow --formal --experiment-dir ...`，V5 helper 也会明确拒绝，因为
+`--experiment-dir` 不能证明旧动态路由器实际采用的 Trial、版本和代码 Tag 与它相同。
 
 正式实验必须显式选择 `workflow_mode`，不能由 Coordinator 默认猜测：
 

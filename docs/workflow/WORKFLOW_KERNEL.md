@@ -84,8 +84,11 @@ workflow_mode:
   no_default_guess: true
 ```
 
-正式模式还必须传 `--experiment-dir experiments/vX/<type>/<ID_slug>`。helper 会先读取该目录的
-`EXPERIMENT.yaml`，确认它绑定的是冻结母版而不是历史代码或待建母版，才继续检查 Agent 和 Runner。
+`SYS-WORKFLOW-V5` 启用后，旧动态路由 `run-workflow --formal` 已停用，因为它的实际运行对象仍是
+Trial/Attempt，不能与新的四类实验目录可靠绑定。正式训练改由标准实验目录内的
+`freeze-parameter-matrix` 和 `prepare-run-start-receipt` 逐行启动；两者都会读取 `EXPERIMENT.yaml`，
+确认冻结母版绑定。`run-workflow --debug-smoke` 仍可用于不进入正式证据的链路探针。
+旧的 `run-workflow --formal --experiment-dir ...` 即使提供了合法目录也会被拒绝，不能把它当作另一套 Trial 代码的通行证。
 
 Owner 简单口令优先按下列映射解释：
 ```text

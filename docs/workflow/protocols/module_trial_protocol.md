@@ -36,6 +36,8 @@ code_tag: trial/v1/idea-0001/trial-001
 其中 `v1` 表示这个旧 trial 的代码来源是 `v1` baseline tag。不得照此新建 Trial；
 新的创新必须读取所属框架的 `TEMPLATE.yaml`，从其中登记的冻结母版准确提交独立开
 `exp/v1/innovation/...`，不能从历史 `framework/v1` 或另一个实验继续叠代码。
+`SYS-WORKFLOW-V5` 下也不得再用 `prepare-dynamic-routing-matrix` 或正式
+`plan-dynamic-routing-batch` 创建新 Trial/Attempt 批次；后者只保留 `--debug-smoke` 链路探针。
 如果 trial 成功，它可以被提升为新的 `v2`、`v3` 或后续版本。
 
 必需结构：

@@ -2096,6 +2096,73 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("not bound to a ready frozen template", stderr)
 
+    def test_formal_matrix_freeze_rejects_noncanonical_path_under_v5(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        matrix_dir = self.repo / "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001"
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/PARAMETER_MATRIX.csv",
+            "placeholder\n",
+        )
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/config.yaml",
+            "random_seed: 5\n",
+        )
+
+        with mock.patch.object(self.module, "freeze_parameter_matrix_locked", return_value=0):
+            code, _stdout, stderr = self._run_main(
+                "freeze-parameter-matrix",
+                "--path",
+                str(matrix_dir / "PARAMETER_MATRIX.csv"),
+                "--config",
+                str(matrix_dir / "config.yaml"),
+                "--job-id",
+                "RUN-001",
+            )
+
+        self.assertEqual(1, code)
+        self.assertIn("canonical formal experiment", stderr)
+
+    def test_formal_receipt_rejects_noncanonical_path_under_v5(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        matrix_dir = self.repo / "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001"
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/PARAMETER_MATRIX.csv",
+            "placeholder\n",
+        )
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/config.yaml",
+            "random_seed: 5\n",
+        )
+
+        code, _stdout, stderr = self._run_main(
+            "prepare-run-start-receipt",
+            "--path",
+            str(matrix_dir / "PARAMETER_MATRIX.csv"),
+            "--config",
+            str(matrix_dir / "config.yaml"),
+            "--job-id",
+            "RUN-001",
+            "--run-id",
+            "RUN-TEST",
+            "--pre-run-freeze-commit",
+            self._git("rev-parse", "HEAD").stdout.strip(),
+            "--command",
+            "python train_GTPJ_CUB.py --config config.yaml",
+            "--receipt",
+            str(matrix_dir / "receipt.json"),
+            "--log",
+            str(matrix_dir / "run.log"),
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("canonical formal experiment", stderr)
+
     def test_formal_run_workflow_requires_ready_experiment_directory_under_v5(self) -> None:
         self._write(
             "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
@@ -2113,6 +2180,68 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual(1, code)
         self.assertIn("--experiment-dir", stderr)
+
+    def test_formal_run_workflow_rejects_legacy_dynamic_runner_under_v5(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        with mock.patch.object(
+            self.module,
+            "require_ready_experiment_base",
+            return_value={"base_template_tag": "model/v5-template-v1"},
+        ):
+            code, _stdout, stderr = self._run_main(
+                "run-workflow",
+                "--phrase",
+                "正式实验",
+                "--experiment-dir",
+                "experiments/v5/ablation/ABLATION-001_local_branch_effect",
+                "--workflow-mode",
+                "server_frozen_runner",
+                "--formal",
+            )
+
+        self.assertEqual(1, code)
+        self.assertIn("legacy dynamic-routing batch runner is retired", stderr)
+
+    def test_active_v5_rejects_new_legacy_dynamic_matrix(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+
+        code, _stdout, stderr = self._run_main(
+            "prepare-dynamic-routing-matrix",
+            "--trial-dir",
+            "experiments/module_trials/IDEA-0001/TRIAL-001",
+            "--attempt-id",
+            "ATTEMPT-001",
+            "--jobs",
+            "50",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("legacy dynamic-routing matrix creation is retired", stderr)
+
+    def test_active_v5_rejects_formal_legacy_dynamic_batch_plan(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+
+        code, _stdout, stderr = self._run_main(
+            "plan-dynamic-routing-batch",
+            "--trial-dir",
+            "experiments/module_trials/IDEA-0001/TRIAL-001",
+            "--run-id",
+            "RUN-TEST",
+            "--jobs",
+            "50",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("legacy dynamic-routing formal batch planner is retired", stderr)
 
     def test_not_preserved_matrix_ref_rejects_broad_historical_code_directory(self) -> None:
         errors = self.module.historical_binding_evidence_errors(
@@ -2337,6 +2466,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(
             any("新的创新从 `framework/v1`" in error for error in errors),
+            errors,
+        )
+
+    def test_immutable_template_rule_sync_rejects_retired_formal_dynamic_runner(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write(
+            "docs/workflow/WORKFLOW_MANIFEST.yaml",
+            "files:\n"
+            "  - logical_id: module_trial_protocol\n"
+            "    canonical_path: docs/workflow/protocols/module_trial_protocol.md\n"
+            "    category: protocol\n"
+            "    status: active_reference\n"
+            "    daily_read: false\n",
+        )
+        self._write(
+            "docs/workflow/protocols/module_trial_protocol.md",
+            "python workflow/gtpj_workflow.py run-workflow ... --formal\n",
+        )
+
+        errors = self.module.immutable_template_language_errors()
+
+        self.assertTrue(
+            any("run-workflow ... --formal" in error for error in errors),
             errors,
         )
 
