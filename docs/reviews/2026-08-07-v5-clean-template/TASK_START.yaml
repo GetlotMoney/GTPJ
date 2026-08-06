@@ -1,0 +1,15 @@
+task_id: MODEL-V5-TEMPLATE-V1
+date: 2026-08-07
+owner_request: 将每个正式框架做成永不被实验直接修改的干净代码母版，并先完成 V5 终极瘦身
+task_type: cross_module_model_training_evaluation_change
+review_strength: three_independent_reviewers
+review_reason: 跨模型、训练、评估和 checkpoint 转换，可能改变正式实验结论
+code_worktree: D:/backup/Documents/Myself/GTPJ_worktrees/v5_clean_template
+branch: codex/v5-clean-template
+historical_reference_tag: v5
+historical_reference_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
+historical_evidence_write_allowed: false
+server_training_allowed: false
+push_allowed: false
+formal_freeze_allowed_before_reviews: false
+hard_gates: stable_python_tests, historical_parity, workflow_validation, three_effective_reviews

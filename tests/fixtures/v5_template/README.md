@@ -18,6 +18,6 @@
 - ICSA、conditional BVSA、SGMP 和固定 `local_weight=0.2` 全部开启；
 - 训练标签使用全局 seen 类别编号 `[0, 3]`。
 
-历史模型权重先经过 `tools/convert_v5_checkpoint.py` 的纯函数映射，再严格加载到干净模型。测试比较评估与训练的最终、全局、局部分数，总损失、CE、一致性、拓扑、BMDD、MPP、负语义损失，以及 PSE、BVSA、ICSA、SGMP 各一个参数的梯度。
+历史模型权重先经过 `tools/convert_v5_checkpoint.py`，并用干净模型的 `state_dict` 核对每个目标字段与形状，再严格加载到干净模型。测试比较评估与训练的最终、全局、局部分数，总损失、CE、一致性、拓扑、BMDD、MPP、负语义损失，以及 PSE、BVSA、ICSA、SGMP 各一个参数的梯度。
 
 所有浮点比较固定使用 `rtol=1e-5`、`atol=1e-6`。任何超差都算失败，不能通过放宽误差掩盖。

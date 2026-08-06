@@ -10,84 +10,97 @@ import torch
 
 from tools.convert_v5_checkpoint import (
     ConversionError,
+    _exclusive_torch_save,
     convert_checkpoint_file,
     convert_state_dict,
 )
 
 
-def _sha256(path: Path) -> str:
+def _sha256(path):
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    with Path(path).open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
 
 class V5CheckpointConverterTest(unittest.TestCase):
-    def test_convert_state_dict_renames_only_known_v5_prefixes(self) -> None:
+    def test_convert_state_dict_uses_explicit_target_schema(self):
         source = {
             "clip_a_self_adapter.proj.weight": torch.ones(2, 2),
             "cross_tf.embed_cv.weight": torch.full((2, 2), 2.0),
-            "cross_tf.fae.ffn.0.weight": torch.full((2, 2), 3.0),
-            "jepa_predictor.0.weight": torch.full((2, 2), 4.0),
-            "meta_net.0.weight": torch.full((2, 2), 5.0),
-            "logit_scale": torch.tensor(6.0),
+            "jepa_predictor.0.weight": torch.full((2, 2), 3.0),
+            "meta_net.0.weight": torch.full((2, 2), 4.0),
+            "logit_scale": torch.tensor(5.0),
+        }
+        target = {
+            "pse_module.proj.weight": torch.empty(2, 2),
+            "bvsa_module.embed_cv.weight": torch.empty(2, 2),
+            "sgmp_predictor.0.weight": torch.empty(2, 2),
+            "icsa_module.0.weight": torch.empty(2, 2),
+            "logit_scale": torch.empty(()),
         }
 
-        converted, receipt = convert_state_dict(source)
+        converted, receipt = convert_state_dict(source, target)
 
-        self.assertEqual(
-            set(converted),
-            {
-                "pse_module.proj.weight",
-                "bvsa_module.embed_cv.weight",
-                "bvsa_module.fgvd_encoder.ffn.0.weight",
-                "sgmp_predictor.0.weight",
-                "icsa_module.0.weight",
-                "logit_scale",
-            },
-        )
-        self.assertEqual(len(receipt["renamed"]), 5)
+        self.assertEqual(set(converted), set(target))
+        self.assertEqual(len(receipt["renamed"]), 4)
         self.assertEqual(receipt["dropped"], [])
-        self.assertEqual(receipt["conflicts"], [])
 
-    def test_convert_state_dict_rejects_conflicting_old_and_new_keys(self) -> None:
+    def test_known_prefix_with_unknown_suffix_is_rejected(self):
+        with self.assertRaisesRegex(ConversionError, "母版没有"):
+            convert_state_dict(
+                {"cross_tf.dynamic_router.weight": torch.ones(1)},
+                {"bvsa_module.embed_cv.weight": torch.empty(1)},
+            )
+
+    def test_wrong_shape_is_rejected(self):
+        with self.assertRaisesRegex(ConversionError, "形状不匹配"):
+            convert_state_dict(
+                {"cross_tf.embed_cv.weight": torch.ones(1)},
+                {"bvsa_module.embed_cv.weight": torch.empty(2, 2)},
+            )
+
+    def test_conflicting_old_and_new_keys_are_reported(self):
         source = {
             "cross_tf.embed_cv.weight": torch.ones(2, 2),
             "bvsa_module.embed_cv.weight": torch.zeros(2, 2),
         }
+        target = {"bvsa_module.embed_cv.weight": torch.empty(2, 2)}
 
-        with self.assertRaisesRegex(ConversionError, "冲突"):
-            convert_state_dict(source)
+        with self.assertRaisesRegex(ConversionError, "字段转换冲突") as context:
+            convert_state_dict(source, target)
 
-    def test_convert_state_dict_reports_dropped_placeholders(self) -> None:
+        self.assertEqual(context.exception.conflicts[0]["target"], "bvsa_module.embed_cv.weight")
+
+    def test_known_placeholders_are_dropped(self):
         source = {
             "gate_alpha": torch.tensor(1.0),
-            "gate_tau": torch.tensor(1.0),
-            "cross_tf.proj_visual.weight": torch.ones(2, 2),
-            "cross_tf.proj_visual.bias": torch.ones(2),
-            "cross_tf.proj_text.weight": torch.ones(2, 2),
-            "cross_tf.proj_text.bias": torch.ones(2),
+            "unseen_sentence_embeds": torch.ones(2, 3, 4),
             "logit_scale": torch.tensor(2.0),
         }
-
-        converted, receipt = convert_state_dict(source)
+        converted, receipt = convert_state_dict(
+            source, {"logit_scale": torch.empty(())}
+        )
 
         self.assertEqual(set(converted), {"logit_scale"})
-        self.assertEqual(set(receipt["dropped"]), set(source) - {"logit_scale"})
-        self.assertEqual(receipt["conflicts"], [])
+        self.assertEqual(
+            set(receipt["dropped"]), {"gate_alpha", "unseen_sentence_embeds"}
+        )
 
-    def test_convert_state_dict_rejects_unknown_experiment_prefix(self) -> None:
-        source = {"dynamic_local_gate.net.0.weight": torch.ones(2, 2)}
+    def test_conversion_rejects_missing_target_fields(self):
+        with self.assertRaisesRegex(ConversionError, "缺少干净母版字段"):
+            convert_state_dict(
+                {"logit_scale": torch.tensor(1.0)},
+                {"logit_scale": torch.empty(()), "seen_text_embeds": torch.empty(2, 3)},
+            )
 
-        with self.assertRaisesRegex(ConversionError, "未知"):
-            convert_state_dict(source)
-
-    def test_file_conversion_preserves_source_and_writes_receipt(self) -> None:
+    def test_file_conversion_preserves_source_and_writes_success_receipt(self):
         with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:
             root = Path(temporary)
-            source_path = root / "old.pth"
-            output_path = root / "converted.pth"
+            source = root / "old.pth"
+            schema = root / "schema.pth"
+            output = root / "converted.pth"
             receipt_path = root / "converted.receipt.json"
             torch.save(
                 {
@@ -99,56 +112,80 @@ class V5CheckpointConverterTest(unittest.TestCase):
                         "gate_alpha": torch.tensor(1.0),
                     },
                 },
-                source_path,
+                source,
             )
-            before_hash = _sha256(source_path)
+            torch.save(
+                {"bvsa_module.embed_cv.weight": torch.empty(2, 2)}, schema
+            )
+            before_hash = _sha256(source)
 
-            receipt = convert_checkpoint_file(source_path, output_path, receipt_path)
+            receipt = convert_checkpoint_file(source, schema, output, receipt_path)
 
-            self.assertEqual(_sha256(source_path), before_hash)
-            self.assertTrue(output_path.exists())
-            self.assertTrue(receipt_path.exists())
-            converted = torch.load(output_path, map_location="cpu", weights_only=False)
-            self.assertEqual(converted["epoch"], 3)
+            self.assertEqual(_sha256(source), before_hash)
+            self.assertEqual(receipt["status"], "success")
+            converted = torch.load(output, map_location="cpu", weights_only=False)
             self.assertEqual(
                 set(converted["model_state_dict"]), {"bvsa_module.embed_cv.weight"}
             )
             self.assertNotIn("optimizer_state_dict", converted)
             self.assertNotIn("scheduler_state_dict", converted)
-            saved_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-            self.assertEqual(saved_receipt, receipt)
-            self.assertEqual(saved_receipt["input"]["sha256"], before_hash)
-            self.assertEqual(saved_receipt["output"]["sha256"], _sha256(output_path))
-            self.assertEqual(saved_receipt["input"]["path"], str(source_path.resolve()))
-            self.assertEqual(saved_receipt["output"]["path"], str(output_path.resolve()))
+            saved = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved, receipt)
+            self.assertEqual(saved["output"]["sha256"], _sha256(output))
             self.assertEqual(
-                saved_receipt["checkpoint_fields_dropped"],
+                saved["checkpoint_fields_dropped"],
                 ["optimizer_state_dict", "scheduler_state_dict"],
             )
-            self.assertTrue(saved_receipt["tool_git_commit"])
 
-    def test_file_conversion_never_overwrites_existing_paths(self) -> None:
+    def test_file_conflict_writes_failure_receipt_without_output(self):
         with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:
             root = Path(temporary)
-            source_path = root / "old.pth"
-            output_path = root / "converted.pth"
-            receipt_path = root / "converted.receipt.json"
-            torch.save({"logit_scale": torch.tensor(1.0)}, source_path)
-            output_path.write_bytes(b"keep")
+            source = root / "old.pth"
+            schema = root / "schema.pth"
+            output = root / "converted.pth"
+            receipt_path = root / "failed.receipt.json"
+            torch.save(
+                {
+                    "cross_tf.embed_cv.weight": torch.ones(2, 2),
+                    "bvsa_module.embed_cv.weight": torch.zeros(2, 2),
+                },
+                source,
+            )
+            torch.save(
+                {"bvsa_module.embed_cv.weight": torch.empty(2, 2)}, schema
+            )
+
+            with self.assertRaisesRegex(ConversionError, "字段转换冲突"):
+                convert_checkpoint_file(source, schema, output, receipt_path)
+
+            self.assertFalse(output.exists())
+            failed = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertEqual(failed["status"], "failed")
+            self.assertEqual(
+                failed["conflicts"][0]["target"], "bvsa_module.embed_cv.weight"
+            )
+
+    def test_exclusive_writer_never_overwrites_existing_file(self):
+        with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:
+            output = Path(temporary) / "converted.pth"
+            output.write_bytes(b"keep")
 
             with self.assertRaises(FileExistsError):
-                convert_checkpoint_file(source_path, output_path, receipt_path)
-            self.assertEqual(output_path.read_bytes(), b"keep")
+                _exclusive_torch_save({"x": torch.tensor(1)}, output)
 
-    def test_file_conversion_requires_three_distinct_paths(self) -> None:
+            self.assertEqual(output.read_bytes(), b"keep")
+
+    def test_file_conversion_requires_four_distinct_paths(self):
         with tempfile.TemporaryDirectory(prefix="gtpj-v5-converter-") as temporary:
             root = Path(temporary)
-            source_path = root / "old.pth"
-            output_path = root / "converted.pth"
-            torch.save({"logit_scale": torch.tensor(1.0)}, source_path)
+            source = root / "old.pth"
+            schema = root / "schema.pth"
+            output = root / "converted.pth"
+            torch.save({"logit_scale": torch.tensor(1.0)}, source)
+            torch.save({"logit_scale": torch.empty(())}, schema)
 
-            with self.assertRaisesRegex(ValueError, "三个不同路径"):
-                convert_checkpoint_file(source_path, output_path, output_path)
+            with self.assertRaisesRegex(ValueError, "四个不同路径"):
+                convert_checkpoint_file(source, schema, output, output)
 
 
 if __name__ == "__main__":

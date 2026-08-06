@@ -12,6 +12,7 @@ import torch
 
 from model.MyModel import GTPJ
 from tools.convert_v5_checkpoint import convert_state_dict
+from tools.v5_evaluation import evaluate_cached_v5, load_v5_test_cache
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,12 +57,8 @@ CANONICAL_V5_KEYS = {
     "dim_f_clip",
     "device",
     "batch_size",
-    "epochs",
     "random_seed",
     "text_source",
-    "pse_adapter_ratio",
-    "use_pse_self_attention",
-    "pse_apply_unseen",
     "pse_heads",
     "pse_dropout",
     "pse_inner_ratio",
@@ -70,30 +67,17 @@ CANONICAL_V5_KEYS = {
     "tf_heads",
     "tf_dropout",
     "weight_s2v",
-    "text_residual",
-    "visual_residual",
     "local_weight",
-    "pool_method",
     "fgvd_select_k",
-    "fgvd_select_sigma",
-    "fgvd_select_largest",
-    "fgvd_select_formula",
     "score_mode",
-    "use_fgvd_geometry",
     "lambda_consist",
     "consist_temp",
-    "consist_dynamic",
     "consist_dynamic_gamma",
     "lambda_topo_pearson",
-    "use_icsa",
     "icsa_ratio",
-    "bvsa_text_mode",
     "icsa_hidden",
     "lambda_bmdd",
     "msdn_temp",
-    "use_sgmp",
-    "sgmp_context_mode",
-    "sgmp_text_mode",
     "sgmp_topk",
     "sgmp_hidden",
     "lambda_mpp",
@@ -139,24 +123,28 @@ def _check_v5_model_source_has_only_the_fixed_canonical_path() -> None:
         "use_dynamic_routing",
         "dynamic_routing",
         "DynamicRoutingGate",
+        "SemanticPrototypeAdapter",
+        "_prepare_patches",
+        "self.use_sgmp",
+        "self.use_icsa",
+        "self.sgmp_context_mode",
+        "self.bvsa_text_mode",
+        "self.fgvd_select_formula",
     }
     for token in forbidden:
         assert token not in source, token
 
     required = {
-        "SemanticPrototypeAdapter",
         "ProgressiveSemanticSelfAttention",
         "fgvd_select_patches",
         "BidirectionalVisualSemanticAlignment",
-        "use_icsa",
-        "use_sgmp",
         "local_weight",
     }
     for token in required:
         assert token in source, token
 
     assert re.search(
-        r"final_logits\s*=\s*global_logits\s*\+\s*self\.local_weight\s*\*\s*local_logits",
+        r"final_logits\s*=\s*global_logits\s*\+\s*0\.2\s*\*\s*local_logits",
         source,
     )
 
@@ -170,6 +158,18 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "use_ag_jepa",
         "jepa_",
         "dynamic_route_stats",
+        "getattr(config",
+        "resume_lr_schedule",
+        "use_aug_cache",
+        "HAS_CLS_CACHE",
+        "patch.mean",
+        "get_clip_spatial_features",
+        "gzsl_bias",
+        "use_amp",
+        "text_alpha",
+        "cub_claude.pt",
+        "cub_merge.pt",
+        "restart_from_best",
     }
     for token in forbidden:
         assert token not in source, token
@@ -183,10 +183,15 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "eval_zs_gzsl",
         "checkpoint",
         "best_metrics",
-        "'U'",
-        "'S'",
-        "'H'",
-        "'ZS'",
+        '"U"',
+        '"S"',
+        '"H"',
+        '"ZS"',
+        "V5_CONFIG_KEYS",
+        "TRAIN_PATCH_PATH",
+        "GPT55_SENTENCE_PATH",
+        "--resume-from",
+        "MODEL_TEMPLATE_ID",
     ):
         assert token in source, token
 
@@ -258,6 +263,50 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor) -> None:
     torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)
 
 
+class _ControlledEvaluationModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.register_buffer("seenclass", torch.tensor([0, 2]))
+        self.register_buffer("unseenclass", torch.tensor([1, 3]))
+
+    def forward(self, features, is_train=False):
+        del is_train
+        identifiers = features[:, 0, 0].long().tolist()
+        rows = {
+            0: [10.0, 0.0, 0.0, 0.0],
+            1: [0.0, 0.0, 10.0, 0.0],
+            2: [10.0, 9.0, 0.0, 0.0],
+            3: [0.0, 0.0, 0.0, 10.0],
+        }
+        logits = torch.tensor(
+            [rows[index] for index in identifiers], device=features.device
+        )
+        return {"clip_S_pp": logits}
+
+
+def _check_v5_evaluation_semantics() -> None:
+    cache = {
+        "seen_cls": torch.tensor([[0.0], [1.0]]),
+        "seen_patches": torch.zeros(2, 576, 1),
+        "seen_labels": torch.tensor([0, 2]),
+        "unseen_cls": torch.tensor([[2.0], [3.0]]),
+        "unseen_patches": torch.zeros(2, 576, 1),
+        "unseen_labels": torch.tensor([1, 3]),
+    }
+    seen, unseen, harmonic, zsl = evaluate_cached_v5(
+        _ControlledEvaluationModel(),
+        "cpu",
+        cache,
+        seenclasses=torch.tensor([0, 2]),
+        unseenclasses=torch.tensor([1, 3]),
+        batch_size=2,
+    )
+    assert seen == 1.0
+    assert unseen == 0.5
+    assert abs(harmonic - (2.0 / 3.0)) < 1e-12
+    assert zsl == 1.0
+
+
 def _check_v5_clean_path_parity_with_historical_tag() -> None:
     historical_model_class = _load_historical_v5_model_class()
     config = _parity_config()
@@ -289,7 +338,9 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
         seen_sentence_embeds=seen_sentences,
     )
 
-    converted_state, receipt = convert_state_dict(historical_model.state_dict())
+    converted_state, receipt = convert_state_dict(
+        historical_model.state_dict(), clean_model.state_dict()
+    )
     incompatible = clean_model.load_state_dict(converted_state, strict=True)
     assert incompatible.missing_keys == []
     assert incompatible.unexpected_keys == []
@@ -362,6 +413,14 @@ class V5TemplateContractTest(unittest.TestCase):
 
     def test_v5_clean_path_parity_with_historical_tag(self) -> None:
         _check_v5_clean_path_parity_with_historical_tag()
+
+    def test_v5_evaluation_semantics(self) -> None:
+        _check_v5_evaluation_semantics()
+
+    def test_v5_evaluation_rejects_missing_real_patch_cache(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gtpj-v5-eval-") as temporary:
+            with self.assertRaisesRegex(FileNotFoundError, "局部块缓存"):
+                load_v5_test_cache(temporary)
 
 
 if __name__ == "__main__":

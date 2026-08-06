@@ -16,7 +16,20 @@
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 计划中 | 从 V5 真实有效路径重新提取，去掉旧兼容代码和后续实验代码；尚未声明行为等价。 |
+| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；25 项直接测试通过，等待全工作流验证和三轮复审，尚未冻结。 |
+
+## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
+
+- 本次改的是哪个对象：V5 正式模型、训练入口、严格评估入口和历史 checkpoint 转换工具。
+- 目标问题：上一版候选仍会接受缺少 CLS 的输入，训练会按本机缓存状态切换路线，局部分支权重也能被改成非 0.2；这会让同一份配置在不同机器上得到不同含义。
+- 采用技术：模型只接受 `[B（本批图片数量）, 577（1 个 CLS + 576 个真实局部块）, D（特征维度）]`；PSE、FGVD、conditional BVSA、ICSA、SGMP 全部走唯一正式路线；最终分数硬锁为 `global + 0.2 * local`；训练和评估缺少真实缓存时直接停止；历史权重转换必须用干净母版 `state_dict` 逐字段核对名字、形状和类型。
+- 替换了什么：删除 PSE 旧适配器、无几何 FGVD、三种 SGMP 上下文、adapted/conditional 文本切换、多视角/CLS-only/在线训练、混合文本、AMP、评估偏置、自动续训、重启和微调等岔路。
+- 实际可见效果：模型由候选前约 784 行减到约 695 行，训练入口由约 927 行减到约 383 行；四份正式配置内容一致并删除 18 个不生效或只负责切路线的字段。
+- 选择原因：每个实验应从不变母版复制后只改一次，母版本身不应积累后续实验开关；缺输入时明确失败比静默退化更能保证局部分支消融可信。
+- 已知限制：当前只证明固定 CPU 小输入上的输出、损失和关键梯度等价，并用受控 logits 证明 U/S/H/ZS 计算含义；尚未获得服务器正式精度，也尚未冻结 Tag 和母版台账。
+- 素材位置：`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_evaluation.py`、`tools/convert_v5_checkpoint.py`、`docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md`。
+- 验证命令与结果：稳定 Python 3.10 运行 V5 合同、转换器和数学路径测试，25 项全部通过；工作流 251 项和复现工具 3 项通过；5 个结构/边界检查、`py_compile`、`pyflakes` 与 `git diff --check` 通过；历史 `v5` Tag 的真实模型经字段转换后，评估/训练 logits、7 项损失和 PSE/BVSA/ICSA/SGMP 关键梯度在 `rtol=1e-5、atol=1e-6` 下对齐。
+- 回退方式：回退本候选提交即可；历史 `v5` Tag、原 commit、旧实验目录和结果证据均未改动。
 
 ## 2026-08-06：UI-FRAMEWORK-REGISTRY-V3（已完成）
 

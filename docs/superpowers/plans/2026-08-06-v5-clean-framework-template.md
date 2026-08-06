@@ -304,7 +304,10 @@ Expected: FAIL，原因是转换工具尚不存在。
 - [ ] **Step 3：实现纯函数字段转换**
 
 ```python
-def convert_state_dict(source: dict[str, object]) -> tuple[dict[str, object], dict[str, object]]:
+def convert_state_dict(
+    source: dict[str, object],
+    target_state: dict[str, object],
+) -> tuple[dict[str, object], dict[str, object]]:
     """返回新 state_dict 和包含 renamed/dropped/conflicts 的收据。"""
 ```
 
@@ -313,7 +316,7 @@ def convert_state_dict(source: dict[str, object]) -> tuple[dict[str, object], di
 - [ ] **Step 4：实现不可覆盖的命令行入口**
 
 ```powershell
-python tools/convert_v5_checkpoint.py --input old.pth --output converted.pth --receipt converted.receipt.json
+python tools/convert_v5_checkpoint.py --input old.pth --target-schema clean_state.pth --output converted.pth --receipt converted.receipt.json
 ```
 
 输入、输出、收据必须是三个不同路径；输出存在时拒绝覆盖。收据记录输入/输出 sha256、大小、renamed、dropped、conflicts 和工具 Git commit。
@@ -436,7 +439,7 @@ python workflow/gtpj_workflow.py validate-framework-templates
 python workflow/gtpj_workflow.py validate-framework-ledgers
 python workflow/gtpj_workflow.py validate-workflow-consistency
 python workflow/gtpj_workflow.py audit-boundary
-python -m py_compile model/MyModel.py train_GTPJ_CUB.py tools/convert_v5_checkpoint.py
+python -m py_compile model/MyModel.py train_GTPJ_CUB.py tools/v5_evaluation.py tools/convert_v5_checkpoint.py
 git diff --check
 ```
 
