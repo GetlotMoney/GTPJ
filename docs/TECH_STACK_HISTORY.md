@@ -11,12 +11,12 @@
 
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
-| 工作流 | `SYS-WORKFLOW-V4` | 修改中 | 正式框架全部平级，候选无 Tag，确认后注册新同级框架。 |
-| 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 修改中 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
-| 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V2` | 修改中 | 本地 HTML 同级展示 V1、V2、V3、V5，并用反向箭头表示来源。 |
+| 工作流 | `SYS-WORKFLOW-V4` | 已完成 | 正式框架全部平级，候选无 Tag，确认后注册新同级框架。 |
+| 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
+| 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V2` | 已完成 | 本地 HTML 同级展示 V1、V2、V3、V5，并用反向箭头表示来源。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 
-## 2026-08-06：SYS-WORKFLOW-V4（修改中）
+## 2026-08-06：SYS-WORKFLOW-V4（已完成）
 
 - 本次改的是哪个对象：正式框架关系和晋级规则。
 - 目标问题：V3 把历史来源关系写成父子框架和逻辑嵌套，导致正式框架视觉上无限套娃。
@@ -26,10 +26,10 @@
 - 选择原因：既保留历史演变证据，又避免把来源误解成包含关系。
 - 已知限制：旧 Trial/Attempt 和旧审核材料里的历史字段不改写，只在现行规范和正式台账中停止使用。
 - 素材位置：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`、`docs/workflow/protocols/versioning.md`。
-- 验证命令与结果：待完整测试和独立审核完成后填写。
+- 验证命令与结果：全量 250 项测试通过；25 项 framework 专项测试通过；`validate`、`validate-framework-ledgers`、`validate-workflow-consistency`、`audit-boundary`、HTML 7 个内部链接和 `git diff --check` 全部通过；三路独立复核最终均为 `PASS`。
 - 回退方式：回退 V4 规范提交；模型、训练结果、Tag 和 Warehouse 证据不变。
 
-## 2026-08-06：DATA-FRAMEWORK-LEDGER-V2（修改中）
+## 2026-08-06：DATA-FRAMEWORK-LEDGER-V2（已完成）
 
 - 本次改的是哪个对象：正式框架 schema、framework.yaml、创新索引和校验器。
 - 目标问题：`parent_version`、`source_experiment`、`lineage_status` 和 `Child framework` 会把来源关系固化成上下级。
@@ -39,10 +39,10 @@
 - 选择原因：字段本身就能阻止以后自动页面重新画成嵌套树。
 - 已知限制：历史 v4 Tag 仍保留，但继续明确标为非正式框架。
 - 素材位置：`schemas/framework.schema.json`、`experiments/v1|v2|v3|v5/framework.yaml`、四类 INDEX。
-- 验证命令与结果：待完整测试和独立审核完成后填写。
+- 验证命令与结果：实际来源链 `V2→V1、V3→V2、V5→V3` 通过；缺 Tag、同名分支冒充 Tag、候选提前占号、错误 `promote_to`、第二根节点、未知来源和成环来源均被回归测试拦截；参数矩阵、成绩、运行记录和旧 Attempt/Trial 证据零改动。
 - 回退方式：回退台账 schema 和 helper；旧证据路径不动。
 
-## 2026-08-06：UI-FRAMEWORK-REGISTRY-V2（修改中）
+## 2026-08-06：UI-FRAMEWORK-REGISTRY-V2（已完成）
 
 - 本次改的是哪个对象：人看的正式框架关系图。
 - 目标问题：旧 V1 页面使用逐层缩进，容易把正式框架理解成目录套娃。
@@ -52,7 +52,7 @@
 - 选择原因：让人第一眼区分正式框架、历史来源和候选实验。
 - 已知限制：静态页面依赖正式 YAML、INDEX 和参数表更新。
 - 素材位置：`docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V2.html`。
-- 验证命令与结果：待完整测试和独立审核完成后填写。
+- 验证命令与结果：HTML 的 7 个内部链接全部存在；现行文档与本地 Skill 旧术语扫描通过；文档独立复核最终为 `PASS`。
 - 回退方式：回退 V2 页面并恢复旧入口；不影响机器台账。
 
 ## 2026-08-06：SYS-WORKFLOW-V3（已被 V4 纠正）
