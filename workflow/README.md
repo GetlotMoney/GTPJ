@@ -64,9 +64,8 @@ python workflow/gtpj_workflow.py audit-boundary
 python workflow/gtpj_workflow.py tune-suggest --version v5
 
 # framework tune example
-git switch framework/v1
-git status --short
-git switch -c exp/v1/tune/tune-001-topo008
+python workflow/gtpj_workflow.py validate-framework-templates
+git switch -c exp/v1/tune/tune-001-topo008 <TEMPLATE_TAG>
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 # 填写 experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv 的真实参数、seed 和目的后：
 python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
@@ -82,16 +81,15 @@ python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name 
 python workflow/gtpj_workflow.py set-current-version --version v1
 
 # framework innovation example
-git switch framework/v1
-git status --short
-git switch -c exp/v1/innovation/innovation-001-short-name
+python workflow/gtpj_workflow.py validate-framework-templates
+git switch -c exp/v1/innovation/innovation-001-short-name <TEMPLATE_TAG>
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
 # 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再注册新的同级正式框架和 Tag。
 ```
 
 ## Boundary Rules
 
-- `new-experiment` only runs on the exact clean `exp/vX/<type>/...` branch and that branch must contain `framework/vX`.
+- `new-experiment` 只在干净且命名准确的 `exp/vX/<type>/...` 分支运行；分支 `HEAD` 必须正好等于 `TEMPLATE.yaml` 登记的母版 commit，并生成 `EXPERIMENT.yaml`。
 - `start --phrase "..."` is read-only: it prints the owner-facing mini start card and never creates branches, files, or runs.
 - `new-trial`、`record-module-attempt` 和 `sync-trial-summary` 仅用于维护迁移前的旧 Trial/Attempt 证据，不是新实验入口。
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.

@@ -1,12 +1,12 @@
 # GTPJ 框架与实验正式规范
 
 ```yaml
-standard_id: SYS-WORKFLOW-V4
-ledger_id: DATA-FRAMEWORK-LEDGER-V2
+standard_id: SYS-WORKFLOW-V5
+ledger_id: DATA-FRAMEWORK-TEMPLATE-V1
 status: active
 effective_date: 2026-08-06
 owner_approved: true
-owner_approval_source: 当前任务明确要求正式框架平级并保留历史来源指针
+owner_approval_source: 当前任务确认每个正式框架使用只读母版，所有实验从准确母版提交独立开始
 canonical_entry: docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 ```
 
@@ -16,13 +16,16 @@ canonical_entry: docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 
 每个正式框架固定拥有调参、消融、创新、确认四类实验。创新候选暂时放在所属正式框架的创新实验下面，不拥有正式框架编号、长期框架分支或 Tag；只有确认并接纳后，候选代码才注册为一个新的同级正式框架。
 
+每个正式框架还必须登记一份可版本化的只读代码母版 `MODEL-VX-TEMPLATE-VN`。`framework.yaml` 说明“这是什么方法”，`TEMPLATE.yaml` 说明“实验复制哪一份不可变代码”，`EXPERIMENT.yaml` 说明“本实验实际从哪个准确提交开始”。四类实验都从准确母版提交独立分叉；实验代码不得并回母版，也不得从另一个实验继续叠代码。
+
 本文件是今后唯一的正式结构规范。旧文档中的 `TRIAL / ATTEMPT` 继续保留用于回查历史，但不能再作为新实验入口。
 
-## 1. 三层对象
+## 1. 四层对象
 
 | 层级 | 人话解释 | 正式例子 |
 |---|---|---|
 | 正式框架 | 已确定、已登记、拥有 Tag 的一套模型代码与方法 | `FRAMEWORK-V5`、Tag `v5` |
+| 代码母版 | 该框架可复制、不可直接修改的代码快照 | `MODEL-V5-TEMPLATE-V1`、Tag `model/v5-template-v1` |
 | 实验项 | 在某个正式框架下回答一个具体问题 | `V5-ABLATION-001` |
 | 运行 | 参数表里真正执行的一行 | `RUN-003`，旧系统任务号可为 `DR-003` |
 
@@ -67,18 +70,19 @@ FRAMEWORK-V5
 
 纯调参、纯消融、纯确认以及未确认创新都不能占用正式框架编号或创建 Tag。
 
-## 4. Git 分支
+## 4. Git 分支和只读母版
 
 | 分支 | 用途 | 是否长期保留 |
 |---|---|---|
 | `main` | 总索引、规范、当前正式状态 | 是 |
-| `framework/vX` | 某个同级正式框架的代码主线 | 是 |
+| `framework/vX` | 新规范启用前的正式框架历史代码线；V0 只读回查 | 是 |
+| `framework/vX-template-vN` | 某个正式框架第 N 份干净母版；冻结后分支头不得移动 | 是 |
 | `exp/vX/tune/...` | 某个框架的调参实验 | 临时，但不自动删除 |
 | `exp/vX/ablation/...` | 某个框架的消融实验 | 临时，但不自动删除 |
 | `exp/vX/innovation/...` | 某个框架的创新实验与候选尝试 | 临时，但不自动删除 |
 | `exp/vX/confirmation/...` | 某个框架的确认实验 | 临时，但不自动删除 |
 
-新实验必须从所属的 `framework/vX` 开分支。不会自动 push，也不会自动激活主线。
+新实验必须读取所属框架的 `TEMPLATE.yaml`，从其中登记的冻结 Tag 和准确 commit 开分支。硬规则：legacy_frozen 不能启动新实验，它只解释新规范启用前的历史结果。新实验创建时 `HEAD` 必须正好等于母版 commit；实验代码不得并回母版。不会自动 push，也不会自动激活主线。
 
 ## 5. 每个正式框架的固定目录
 
@@ -86,6 +90,7 @@ FRAMEWORK-V5
 experiments/vX/
 ├─ VERSION.md
 ├─ framework.yaml
+├─ TEMPLATE.yaml
 ├─ framework_diagram.md
 ├─ MODULES.md
 ├─ EXPERIMENTS.md
@@ -102,13 +107,14 @@ experiments/vX/
 ```text
 INNOVATION-001_example/
 ├─ README.md
+├─ EXPERIMENT.yaml
 ├─ PARAMETER_MATRIX.csv
 ├─ PARAMETER_MATRIX.md
 ├─ result.md
 └─ evidence/
 ```
 
-旧 helper 需要的 `config.yaml`、`manifest.yaml`、`result.yaml`、`quality_check.md` 和 `agent_summary.md` 可以继续存在，但人平时只需看上面五个入口。
+`EXPERIMENT.yaml` 必须写清 `base_identity_kind`、母版编号、母版 Tag、母版 commit、实验分支和旧记录引用。旧 helper 需要的 `config.yaml`、`manifest.yaml`、`result.yaml`、`quality_check.md` 和 `agent_summary.md` 可以继续存在。
 
 ## 7. 命名
 
@@ -133,6 +139,14 @@ INNOVATION-001_example/
 - `origin_status`：历史上怎样被确定；
 - `modules`、`inherits`、`does_not_inherit`：实际代码和能力差异。
 
+每个同级 `TEMPLATE.yaml` 至少记录：
+
+- `template_id`：母版编号，例如 `MODEL-V5-TEMPLATE-V1`；
+- `template_status`：`legacy_frozen`、`draft`、`confirmed`、`frozen` 或已退役状态；
+- `template_branch`、`template_tag`、`template_commit`：三者在冻结后必须指向同一提交；
+- `source_framework_tag`、`source_framework_commit`：母版从哪个正式历史快照清理而来；
+- `behavior_contract`：新旧行为对照合同；历史 V0 可写 `none`。
+
 来源创新的 `innovation/INDEX.md` 使用 `Promoted framework` 反向登记新正式框架。两边对不上、来源框架不存在、来源指针成环时，机器校验必须失败。
 
 ## 9. 旧记录迁移
@@ -141,6 +155,8 @@ INNOVATION-001_example/
 2. 在正式框架的四类索引中建立映射，例如 `V5-ABLATION-001 -> ATTEMPT-019`。
 3. 能恢复逐运行参数时补成 `RUN-001...RUN-N`；不能恢复时写 `legacy_summary_only`，绝不猜参数。
 4. 正在运行的旧实验先保持原样；仅处于 `planned` 的实验可以登记为 `planned`，不能写成已完成。
+5. 每个正式实验补 `EXPERIMENT.yaml`：已发生的旧实验使用 `historical_code_ref + historical_read_only`；尚未运行且等待干净母版的实验使用 `pending_clean_template + blocked_pending_clean_template`。
+6. 旧 `vX` Tag 先登记为 `MODEL-VX-TEMPLATE-V0 / legacy_frozen`，只负责回查；不能把旧结果倒填成从未来 V1 干净母版运行。
 
 规范启用后，`record-module-attempt` 只允许补录能由旧提交证明的历史摘要，并且不能写成 keep、best 或 promotion。任何新运行必须先在所属正式框架的四类账本创建实验，再使用 `record-result`。
 
@@ -152,6 +168,8 @@ V1、V2、V3、V5 都是同级正式框架并保留现有正式 Tag。V2 的来�
 
 动态路由仍只是 V5 下的候选创新，因为精确复跑没有还原；它没有新的正式框架编号或 Tag。
 
+V5 局部分支消融仍是 `planned`，但在 `MODEL-V5-TEMPLATE-V1` 冻结前必须保持 `blocked_pending_clean_template`。旧 `ATTEMPT-019` 只作规划来源，不能继续沿用其代码分支。
+
 ## 11. 签署行
 
-> 自 2026-08-06 起，GTPJ 正式采用“正式框架全部平级 + 历史来源指针 + 四类实验 + 候选无 Tag + 确认后注册同级框架”的唯一规范；任何父子框架、逻辑嵌套或正式框架套娃表述均停止使用。
+> 自 2026-08-06 起，GTPJ 正式采用“正式框架全部平级 + 历史来源指针 + 每框架一套可版本化只读母版 + 四类实验从准确母版提交独立分叉 + 实验不回写母版 + 创新确认后注册新同级框架”的唯一规范；旧 Trial/Attempt 原地只读保留，任何正式框架套娃或实验互相叠代码的做法停止使用。

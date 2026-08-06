@@ -49,7 +49,7 @@ Coordinator -> Reader/Planner -> 用户选择 -> Runner -> Log Analyst + Quality
 - Runner 只写 Warehouse raw artifacts，不把 raw log 写进 GitHub。
 - Log Analyst 解析 Warehouse 日志，Coordinator 只写 `manifest.yaml`、`result.yaml` 和 `result.md`。
 - Coordinator 必须写 `agent_summary.md`，记录参与 agents、禁用 agents、检查范围、发现和证据引用。
-- 新调参从目标 `framework/vX` 开 `exp/vX/tune/TUNE-...`。
+- 新调参先由 `EXPERIMENT.yaml` 绑定目标 `TEMPLATE.yaml` 的准确 commit，再开 `exp/vX/tune/TUNE-...`。
 - framework tune 长期轻量证据只写 `experiments/vX/tune/`；完整日志、checkpoint、generated figures 留在 Warehouse。
 - 实验证据写回目标框架账本，并同步当前 `main` 总索引；确认入账后可删除临时实验分支。
 - 如记录 `promotion_decision: promote` 和 `promote_to`，转交 promotion agents。

@@ -7,6 +7,7 @@
 正式结构以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 为准：
 
 - 先确定 `FRAMEWORK-VX`，再进入它的 tune、ablation、innovation、confirmation 四类同级实验。
+- `framework.yaml` 说明“这个框架是什么”；`TEMPLATE.yaml` 登记不可修改的代码母版 `MODEL-VX-TEMPLATE-VN`；`EXPERIMENT.yaml` 记录某项实验实际复制了哪份母版代码。
 - 人看编号是 `VX-TUNE-xxx / VX-ABLATION-xxx / VX-INNOVATION-xxx / VX-CONFIRM-xxx`。
 - 每个实验只有一张参数矩阵；一行 `RUN-xxx` 对应一个真实任务。
 - `TRIAL / ATTEMPT / DR` 只作旧记录和 Runner 内部映射。

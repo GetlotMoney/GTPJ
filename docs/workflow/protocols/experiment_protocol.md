@@ -6,6 +6,10 @@
 四类实验都是同级。tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、
 质量检查和接纳全部通过后，才注册一个新的同级正式框架 `FRAMEWORK-VY`。
 
+每个正式框架必须用 `TEMPLATE.yaml` 登记只读母版 `MODEL-VX-TEMPLATE-VN`；每项实验必须用
+`EXPERIMENT.yaml` 登记它实际使用的母版编号、Tag 和 commit。四类实验都从准确母版提交独立分叉；
+实验代码不得并回母版，也不得从另一个实验继续改。`legacy_frozen 不能启动新实验`，只允许回查历史证据。
+
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该
 `vX` 下面的 confirmed config / confirmed tune record。
@@ -76,8 +80,12 @@ GitHub 只记录 artifact id。具体规则见 `docs/workflow/protocols/agent_re
 experiment_id:
 kind:
 version:
-base_code_tag:
-branch_source: framework/vX
+base_template_id:
+base_template_tag:
+base_template_commit:
+template_ledger: experiments/vX/TEMPLATE.yaml
+experiment_binding: EXPERIMENT.yaml
+branch_source: exact_template_commit
 code_branch:
 run_commit:
 dirty_state:
@@ -250,9 +258,10 @@ run_log_sha256            = log_sha256
 ### 框架调参
 
 ```text
-从 framework/vX 开 exp/vX/tune/TUNE-XXX-xxx 分支
-base_code_tag: vX
-branch_source: framework/vX
+读取 experiments/vX/TEMPLATE.yaml
+创建实验目录的 EXPERIMENT.yaml
+从 base_template_commit 开 exp/vX/tune/TUNE-XXX-xxx 分支
+branch_source: exact_template_commit
 先写 config 和计划行，提交 pre-run freeze commit
 确认 git status --short 为空，并记录 run_commit
 跑实验
@@ -260,7 +269,7 @@ branch_source: framework/vX
 更新 experiments/vX/tune/
 ```
 
-无论框架是否为当前使用版本，新调参都从对应 `framework/vX` 开分支。`vX` tag 只用于固定历史复现快照。
+无论框架是否为当前使用版本，新调参都从对应的冻结母版准确 commit 开分支。历史 `vX` Tag 和旧长期分支只用于回查。
 长期资产是 `experiments/vX/tune/` 账本和参数表，不是临时实验分支。
 
 ### 调参表
@@ -352,7 +361,8 @@ module、forward、loss、eval、data view 或接口语义，那已经是 innova
 当前版本消融：
 
 ```text
-从 framework/vX 开 exp/vX/ablation/ABLATION-XXX-xxx
+从 TEMPLATE.yaml 登记的准确母版 commit 开 exp/vX/ablation/ABLATION-XXX-xxx
+用 EXPERIMENT.yaml 固定实际起点
 跑完后更新 experiments/vX/ablation/
 ```
 
@@ -396,7 +406,7 @@ confirmation 分支：
 exp/vX/confirmation/CONFIRM-XXX-xxx
 ```
 
-confirmation 从对应 `framework/vX` 开分支；跑完写入 `experiments/vX/confirmation/`，并同步 `main` 总索引。
+confirmation 从对应 `TEMPLATE.yaml` 登记的准确母版 commit 开分支，并由 `EXPERIMENT.yaml` 固定实际起点；跑完写入 `experiments/vX/confirmation/`，并同步 `main` 总索引。
 
 confirmation 不允许从 dirty worktree 直接启动。若需要先补 config 副本、启动卡或索引条目，也必须先提交
 `pre-run freeze commit`，再从 clean 状态发起确认运行。

@@ -32,8 +32,7 @@ baseline-grade 证据，也不能让 agent 靠记忆把 `best_observed_H` 写成
 运行实验前：
 
 1. 检查 Git status。
-2. 确认实验分支从目标 `framework/vX` 切出，并记录正确的 `base_code_tag`、`branch_source`
-   和 `code_commit`。tag 只负责冻结快照；`main` 只接收治理和总索引更新。
+2. 确认 `EXPERIMENT.yaml` 中的母版编号、Tag、commit 与目标 `TEMPLATE.yaml` 完全一致，并确认实验分支最初从该准确 commit 切出。`main` 只接收治理和总索引更新。
 3. 确认 config 改动只作用于当前实验。
 4. 确认模块改动由 off switch 控制。
 5. 如果有模块代码改动，确认满足 `docs/workflow/protocols/code_interface_contract.md`。

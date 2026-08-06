@@ -217,7 +217,7 @@ Quality Checker 还要确认：
 python workflow/gtpj_workflow.py record-module-attempt ... --dry-run
 ```
 
-这条命令只在修复旧证据时使用。新实验不要先建 Trial/Attempt，应从对应 `framework/vX` 分支创建四类实验，再用 `record-result` 入账。
+这条命令只在修复旧证据时使用。新实验不要先建 Trial/Attempt；应先读取 `TEMPLATE.yaml`、创建 `EXPERIMENT.yaml`，从准确母版 commit 创建四类实验，再用 `record-result` 入账。
 
 如果 helper 和本文件冲突，优先遵守本文件的证据边界，再补 helper。
 

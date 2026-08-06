@@ -3,7 +3,8 @@
 ## 永久对象
 
 - `main`：总管理长期分支，保存规范、同级正式框架注册表、全局索引和 owner 明确选择的正式状态。
-- `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`：正式框架长期代码分支。`v4` 是历史 config-only 标签，不创建框架分支。
+- `framework/vX-template-vN`：正式框架的只读母版分支；`TEMPLATE.yaml` 将它与 `MODEL-VX-TEMPLATE-VN`、Tag 和准确 commit 绑定。
+- `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`：旧长期代码分支，只用于历史来源回查；不能直接作为新实验起点。
 - `v1`、`v2`、`v3`、`v4`、`v5`：永久版本 tag，不是分支；`v4` 是历史 config-only tag。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
 
@@ -25,7 +26,7 @@ status: owner_activated_provisional
 
 ## 临时分支
 
-普通实验分支必须从对应的 `framework/vX` 开出；治理文档改动才从 `main` 开专用审核分支。
+普通实验必须先由 `EXPERIMENT.yaml` 绑定冻结母版，再从准确母版提交独立分叉；治理文档改动才从 `main` 开专用审核分支。
 
 ```text
 exp/v1/tune/tune-001-short-name
@@ -103,14 +104,14 @@ promote/from-v5-innovation-002-to-v6
 
 规则：
 
-- 正式框架使用 `framework/v1`、`framework/v2` 这类长期代码分支；`v1`、`v2` 仍是不可变 tag。
+- 每个正式框架用 `TEMPLATE.yaml` 登记母版 `MODEL-VX-TEMPLATE-VN`、只读分支、不可变 Tag 和准确 commit。
 - 不创建 controller branch。
 - 不直接在 `main` 上做新模块开发或普通训练实验。
-- 新 `exp/...` 必须从对应的 `framework/vX` 切出，统一命名为
-  `exp/vX/<type>/<experiment-id>-<slug>`。
+- 新 `exp/...` 必须先创建 `EXPERIMENT.yaml`，再从准确母版提交独立分叉，统一命名为
+  `exp/vX/<type>/<experiment-id>-<slug>`；实验代码不得并回母版，也不得从另一项实验继续切分支。
 - `promote/...` 从当前 `main` 切出，只负责把已确认的创新登记为新的同级正式框架、创建本地 Tag 并同步总账。
-- `base-version` 通过 `base_code_tag` 记录代码来源，例如 `v1`。
-- 运行代码始终来自目标 `framework/vX`；tag 只负责固定复现快照，不再充当新实验分支的起点。
+- `base_template_id`、`base_template_tag` 和 `base_template_commit` 共同记录唯一代码来源。
+- `legacy_frozen 不能启动新实验`；必须先整理出新的干净母版，完成审核后冻结为 `frozen`。
 
 代码层包括：
 
@@ -143,7 +144,7 @@ exp/v1/tune/tune-001-topo008
 含义：
 
 - `exp`：普通实验分支。
-- `v1`：目标框架是 `FRAMEWORK-V1`，分支来源是 `framework/v1`，`v1` tag 负责冻结快照。
+- `v1`：目标框架是 `FRAMEWORK-V1`；真正代码起点由该实验的 `EXPERIMENT.yaml` 指向母版 commit。
 - `tune`：调参实验，也可以是 `ablation`、`innovation` 或 `confirmation`。
 - `001`：该版本该类型第 1 次实验。
 - `topo008`：人能读懂的短名。

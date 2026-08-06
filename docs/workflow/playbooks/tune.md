@@ -1,7 +1,7 @@
 # 执行卡：调参 Tune
 
-正式入口固定为 `experiments/vX/tune/INDEX.md`，人看编号为 `VX-TUNE-xxx`。必须从
-`framework/vX` 开 `exp/vX/tune/...` 分支；一个调参问题只有一张参数矩阵，每个参数组合
+正式入口固定为 `experiments/vX/tune/INDEX.md`，人看编号为 `VX-TUNE-xxx`。必须先由
+`EXPERIMENT.yaml` 绑定 `TEMPLATE.yaml` 登记的准确母版 commit，再开 `exp/vX/tune/...` 分支；一个调参问题只有一张参数矩阵，每个参数组合
 是一行 `RUN-xxx`。纯调参永远留在当前框架，不注册正式框架，也不创建 Tag。
 
 用于参数、seed、epoch、batch、loss weight 或不改变方法语义的窄配置搜索。

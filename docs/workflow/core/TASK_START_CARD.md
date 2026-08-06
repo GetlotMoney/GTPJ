@@ -190,6 +190,11 @@ router:
 version:
   base_version:
   base_code_tag:
+  base_template_id:
+  base_template_tag:
+  base_template_commit:
+  template_ledger: experiments/vX/TEMPLATE.yaml
+  experiment_binding: experiments/vX/<type>/<experiment-id>/EXPERIMENT.yaml
   current_branch:
   suggested_branch:
 
@@ -352,7 +357,7 @@ expected_outputs:
   transitions:
   sync_check:
 
-stop_if: copy the mandatory blocker checklist from section 5; never leave this field empty.
+stop_if: copy the mandatory blocker checklist from section 5; never leave this field empty. 新实验缺少 TEMPLATE.yaml 或 EXPERIMENT.yaml，或者母版仍是 legacy_frozen 时必须阻塞。
 ```
 
 ## 3. 必填判断

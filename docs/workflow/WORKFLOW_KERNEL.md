@@ -5,7 +5,9 @@
 ## 0. 框架与实验对象
 
 - 唯一结构规范：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
-- `main` 管治理；`framework/vX` 管对应框架代码；新实验从对应框架分支开 `exp/vX/<type>/...`。
+- `main` 管治理；每个正式框架用 `TEMPLATE.yaml` 登记只读母版 `MODEL-VX-TEMPLATE-VN`，每项实验用 `EXPERIMENT.yaml` 登记准确起点。
+- 四类实验都从准确母版提交独立分叉，分支名为 `exp/vX/<type>/...`；实验代码不得并回母版，也不得从另一项实验继续叠加。
+- `legacy_frozen 不能启动新实验`：它只解释旧结果；必须先完成新的干净母版并冻结为 `frozen`。
 - 每个正式框架固定有 tune、ablation、innovation、confirmation 四类实验。
 - `experiments/vX/EXPERIMENTS.md` 由四个 INDEX 生成，禁止手工维护第二份结果。
 - 每个实验的 `PARAMETER_MATRIX.csv` 是逐运行事实源；旧 `ATTEMPT` 只能成为 `legacy_ref`。

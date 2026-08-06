@@ -18,6 +18,11 @@ owner_phrase:
 task_type:
 workflow_mode:
 base_version:
+base_template_id:
+base_template_tag:
+base_template_commit:
+template_ledger: experiments/vX/TEMPLATE.yaml
+experiment_binding: experiments/vX/<type>/<experiment-id>/EXPERIMENT.yaml
 target:
 subject_id:
 evidence_state:
@@ -47,6 +52,9 @@ owner 只说“用工作流”但没有说明哪一种时，必须先确认这�
 | `owner_phrase` | owner 的原始口令，例如 `开新模块`、`复现`、`试这个：...`。 |
 | `task_type` | Coordinator 路由后的任务类型。 |
 | `base_version` | 默认当前 active baseline；只有 owner 明确指定时才改历史版本。 |
+| `base_template_id` | 本实验复制的只读母版编号，例如 `MODEL-V5-TEMPLATE-V1`。 |
+| `template_ledger` | 母版身份来源，必须是所属框架的 `TEMPLATE.yaml`。 |
+| `experiment_binding` | 实验起点记录，必须是本实验目录的 `EXPERIMENT.yaml`。 |
 | `target` | 本次目标，例如 baseline、参数、idea、trial 或候选列表。 |
 | `subject_id` | 本次被路由或检查的对象，例如 `TRIAL-003`、`ATTEMPT-007`、`RUN-...`、`CAMP-...`。 |
 | `evidence_state` | 当前证据成熟度；正式状态必须能由 `TRANSITIONS.jsonl` 派生。 |

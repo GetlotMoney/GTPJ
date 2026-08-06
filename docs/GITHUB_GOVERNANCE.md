@@ -50,7 +50,7 @@ GTPJ-v4 / tag v4
 legacy config-only reference from v3 confirmation, not a future tune-only promotion template
 ```
 
-`main` 是总管理长期分支；`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 是正式框架的长期代码分支。`v1` 到 `v5` 仍是不可移动的历史标签；`v4` 不是正式框架，所以没有 `framework/v4`。
+`main` 是总管理长期分支；每个正式框架用 `framework/vX-template-vN` 和母版 Tag 固定一份只读代码母版。旧 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 只作历史来源回查；`v4` 不是正式框架，所以没有正式母版。
 
 早期错误指向旧结果的 `v1` tag 不再作为有效基线。`v1` 修正到 `H=73.93`
 后按永久 tag 管理，不再移动。`GTPJ-v5` 是 owner 选择的 active mainline，用于后续动态路由与调参；它仍是 provisional active，不代表已经超过 confirmed reference。
@@ -60,7 +60,7 @@ legacy config-only reference from v3 confirmation, not a future tune-only promot
 
 - baseline / active 版本记录：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`、legacy `GTPJ-v4`、active provisional `GTPJ-v5`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
-- 分支：`main` 管总索引和规范；`framework/vX` 管对应框架代码；临时实验使用 `exp/vX/<type>/...`，旧 `dev/...` 和 `promote/...` 只作历史兼容。
+- 分支：`main` 管总索引和规范；`framework/vX-template-vN` 固定只读母版；临时实验从 `TEMPLATE.yaml` 登记的准确 commit 开 `exp/vX/<type>/...`，旧 `dev/...` 只作历史兼容。
 - 同级正式框架注册表、历史来源连线与四类实验：以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 和 `experiments/vX/framework.yaml` 为准。
 - 旧模块 trial 命名和 `trial/...` 快照 tag 只作历史追溯，不再用于新实验。
 - 配置快照：正式版本配置放在 `config/versions/`，实验副本放在具体实验目录。
@@ -260,18 +260,18 @@ experiments/v2/ 继续保留在 main，既是 v2 的正式记录，也是 V3 的
 处理：
 
 ```text
-代码来源：derived_from_framework 对应的长期框架分支，例如 framework/v1；tag v1 负责冻结快照
+代码来源：derived_from_framework 对应框架的 TEMPLATE.yaml，以及其中登记的母版 Tag 和准确 commit
 账本来源：提升时的当前 main
 ```
 
-必须从来源正式框架的 `framework/vX` 开创新实验分支；`main` 只维护治理和总账。
+必须从来源正式框架的准确母版 commit 开创新实验分支；`main` 只维护治理和总账。
 禁止把来源框架状态下的完整工作树或旧 `dev/...` 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
 `idea_tree/`、`config/versions/` 等全局账本回退到旧状态。
 
 正确提升流程：
 
 ```text
-1. 从来源正式框架的 `framework/vX` 开 `exp/vX/innovation/...` 分支。
+1. 读取来源正式框架的 `TEMPLATE.yaml`，创建 `EXPERIMENT.yaml`，从准确母版 commit 开 `exp/vX/innovation/...` 分支。
 2. 在该创新实验中完成调参表、结果和确认，不复制来源框架目录；候选阶段没有正式 Tag。
 3. 创新成功后，在明确 code_commit 上创建新正式 Tag，并登记来源实验。
 4. 回到当前 main，开 promote 分支，只处理新的同级正式框架登记。
@@ -373,7 +373,7 @@ exp/v1/tune/tune-001-topo008
 含义：
 
 - `exp`：普通实验分支。
-- `v1`：目标框架是 `FRAMEWORK-V1`，代码分支来源是 `framework/v1`。
+- `v1`：目标框架是 `FRAMEWORK-V1`；代码起点以该实验 `EXPERIMENT.yaml` 绑定的母版 commit 为准。
 - `tune`：调参实验。也可以是 `ablation`、`innovation` 或 `confirmation`。
 - `001`：该类型第 1 次实验。
 - `topo008`：人能读懂的简短名字。
@@ -411,8 +411,9 @@ trial/v1/idea-0003/trial-001
 普通实验分支：
 
 - `exp/...` 分支承载目标框架下的 tune、ablation、innovation、confirmation 四类实验。
-- 所有新实验都从对应的 `framework/vX` 开出；分支名为
-  `exp/vX/<type>/<experiment-id>-<slug>`，`base_code_tag` 仍记录不可变快照。
+- 所有新实验都从 `TEMPLATE.yaml` 登记的准确母版 commit 独立开出；分支名为
+  `exp/vX/<type>/<experiment-id>-<slug>`，`EXPERIMENT.yaml` 固定母版编号、Tag 和 commit。
+- 实验分支不得并回母版，也不得作为另一个实验的代码起点。
 - 结果写回该框架的四类账本和总览；治理索引同步回 `main`。
 - 实验记录入账后，可以删除这个 `exp/...` 临时分支。
 

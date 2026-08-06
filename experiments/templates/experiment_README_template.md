@@ -3,8 +3,12 @@
 ```text
 experiment_id:
 version:
-base_code_tag:
-branch_source: main
+base_template_id: MODEL-VX-TEMPLATE-VN
+base_template_tag:
+base_template_commit:
+template_ledger: experiments/vX/TEMPLATE.yaml
+experiment_binding: EXPERIMENT.yaml
+branch_source: exact_template_commit
 run_commit:
 dirty_state:
 config:
@@ -35,9 +39,10 @@ confirmation_status:
 
 ## 问题
 
-说明这次实验要回答的具体问题。`base_code_tag` 是不可变快照；新实验分支从对应的
-`framework/vX` 开出，命名为 `exp/vX/<type>/<experiment-id>-<slug>`。结果写回该框架的四类账本，
-再同步 `main` 总索引。
+说明这次实验要回答的具体问题。先读取所属框架的 `TEMPLATE.yaml`，再由本目录的
+`EXPERIMENT.yaml` 绑定母版编号、Tag 和准确 commit。新实验分支必须从这个 commit 独立开出，命名为
+`exp/vX/<type>/<experiment-id>-<slug>`；不得从另一项实验接着改。结果写回该框架的四类账本，再同步
+`main` 总索引。
 
 ## 变量
 

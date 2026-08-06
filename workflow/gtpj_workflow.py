@@ -8401,11 +8401,49 @@ def flat_framework_language_errors() -> list[str]:
     return errors
 
 
+def immutable_template_language_errors() -> list[str]:
+    """Keep every active entry aligned with the immutable template start rule."""
+    if not immutable_template_standard_is_active():
+        return []
+    errors: list[str] = []
+    core_markers = [
+        "MODEL-VX-TEMPLATE-VN",
+        "TEMPLATE.yaml",
+        "EXPERIMENT.yaml",
+        "从准确母版提交独立分叉",
+        "实验代码不得并回母版",
+        "legacy_frozen 不能启动新实验",
+    ]
+    required_markers: dict[Path, list[str]] = {
+        REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md": core_markers,
+        REPO_ROOT / "docs" / "workflow" / "START_HERE.md": core_markers[:3],
+        REPO_ROOT / "docs" / "workflow" / "WORKFLOW_KERNEL.md": core_markers,
+        REPO_ROOT / "docs" / "workflow" / "core" / "QUICK_START.md": core_markers[:3],
+        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_MINI.md": core_markers[1:3],
+        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_CARD.md": core_markers[1:3],
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "git_policy.md": core_markers,
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "versioning.md": core_markers,
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers,
+        REPO_ROOT / "experiments" / "templates" / "experiment_README_template.md": core_markers[1:3],
+        LOCAL_GTPJ_WORKFLOW_SKILL_PATH: core_markers,
+    }
+    for path, markers in required_markers.items():
+        if not path.exists():
+            errors.append(f"missing immutable-template rule file: {display_path(path)}")
+            continue
+        content = read_text(path)
+        for marker in markers:
+            if marker not in content:
+                errors.append(f"{display_path(path)} missing immutable-template marker: {marker}")
+    return errors
+
+
 def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
     errors.extend(workflow_manifest_errors())
     errors.extend(doc_language_policy_errors())
     errors.extend(local_gtpj_workflow_skill_errors())
+    errors.extend(immutable_template_language_errors())
     required_markers = {
         "docs/workflow/START_HERE.md": [
             "formal_runner_allowed",

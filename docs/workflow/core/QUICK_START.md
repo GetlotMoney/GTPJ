@@ -1,5 +1,11 @@
 # GTPJ 工作流快速入口
 
+## 先认代码起点
+
+- `TEMPLATE.yaml` 登记框架的只读代码母版 `MODEL-VX-TEMPLATE-VN`。
+- `EXPERIMENT.yaml` 登记当前实验实际从哪份母版、哪个准确提交开始。
+- 没有这两份身份记录，不得启动新的正式实验。
+
 现在的精简入口是：
 
 ```text

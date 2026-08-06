@@ -48,11 +48,11 @@ idea_tree/                 # 创意来源、评分、排序
 版本规则：
 
 ```text
-一个 FRAMEWORK-VX = 一条 framework/vX 长期代码分支 + 一个 vX 冻结 Tag + 一个同级框架实验目录 + 一个历史来源指针
+一个 FRAMEWORK-VX = 一份 framework.yaml + 一份 TEMPLATE.yaml + 一个只读母版 Tag/commit + 四类同级实验账本 + 一个历史来源指针
 ```
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
-当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理，`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 是长期框架代码分支；
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理；旧 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 只作历史来源回查；
 `v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
 
 代码层和实验层不要混淆：
