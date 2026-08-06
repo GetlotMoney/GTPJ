@@ -2,25 +2,25 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：codex/attempt019-local-ablation 冻结的 15 个 DR-001..DR-015 计划；全部仍是 planned，未启动训练。
+来源：`MODEL-V5-TEMPLATE-V1@2f5fa5e` 重新绑定的 15 行计划；旧 `codex/attempt019-local-ablation#ATTEMPT-019` 仅供回查。
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | full baseline repeat 1 | ablation | planned | {"local_weight":0.2,"use_dynamic_routing":false} | 5 |  | DR-001 | measure local branch contribution |  |  |  |
-| RUN-002 | full baseline repeat 2 | ablation | planned | {"local_weight":0.2,"use_dynamic_routing":false} | 5 | RUN-001 | DR-002 | measure local branch contribution |  |  |  |
-| RUN-003 | full baseline repeat 3 | ablation | planned | {"local_weight":0.2,"use_dynamic_routing":false} | 5 | RUN-001 | DR-003 | measure local branch contribution |  |  |  |
-| RUN-004 | local score disabled repeat 1 | ablation | planned | {"local_weight":0.0,"use_dynamic_routing":false} | 5 |  | DR-004 | measure local branch contribution |  |  |  |
-| RUN-005 | local score disabled repeat 2 | ablation | planned | {"local_weight":0.0,"use_dynamic_routing":false} | 5 | RUN-004 | DR-005 | measure local branch contribution |  |  |  |
-| RUN-006 | local score disabled repeat 3 | ablation | planned | {"local_weight":0.0,"use_dynamic_routing":false} | 5 | RUN-004 | DR-006 | measure local branch contribution |  |  |  |
-| RUN-007 | local weight 0.1 repeat 1 | ablation | planned | {"local_weight":0.1,"use_dynamic_routing":false} | 5 |  | DR-007 | measure local branch contribution |  |  |  |
-| RUN-008 | local weight 0.1 repeat 2 | ablation | planned | {"local_weight":0.1,"use_dynamic_routing":false} | 5 | RUN-007 | DR-008 | measure local branch contribution |  |  |  |
-| RUN-009 | local weight 0.1 repeat 3 | ablation | planned | {"local_weight":0.1,"use_dynamic_routing":false} | 5 | RUN-007 | DR-009 | measure local branch contribution |  |  |  |
-| RUN-010 | local weight 0.3 repeat 1 | ablation | planned | {"local_weight":0.3,"use_dynamic_routing":false} | 5 |  | DR-010 | measure local branch contribution |  |  |  |
-| RUN-011 | local weight 0.3 repeat 2 | ablation | planned | {"local_weight":0.3,"use_dynamic_routing":false} | 5 | RUN-010 | DR-011 | measure local branch contribution |  |  |  |
-| RUN-012 | local weight 0.3 repeat 3 | ablation | planned | {"local_weight":0.3,"use_dynamic_routing":false} | 5 | RUN-010 | DR-012 | measure local branch contribution |  |  |  |
-| RUN-013 | full local subsystem disabled repeat 1 | ablation | planned | {"lambda_bmdd":0.0,"lambda_consist":0.0,"lambda_mpp":0.0,"lambda_neg":0.0,"local_weight":0.0,"use_dynamic_routing":false,"use_sgmp":false} | 5 |  | DR-013 | measure local branch contribution |  |  |  |
-| RUN-014 | full local subsystem disabled repeat 2 | ablation | planned | {"lambda_bmdd":0.0,"lambda_consist":0.0,"lambda_mpp":0.0,"lambda_neg":0.0,"local_weight":0.0,"use_dynamic_routing":false,"use_sgmp":false} | 5 | RUN-013 | DR-014 | measure local branch contribution |  |  |  |
-| RUN-015 | full local subsystem disabled repeat 3 | ablation | planned | {"lambda_bmdd":0.0,"lambda_consist":0.0,"lambda_mpp":0.0,"lambda_neg":0.0,"local_weight":0.0,"use_dynamic_routing":false,"use_sgmp":false} | 5 | RUN-013 | DR-015 | measure local branch contribution |  |  |  |
+| RUN-001 | 完整母版复跑 1 | ablation | planned | {} | 5 |  |  | 建立新母版基线；旧计划 DR-001 |  |  |  |
+| RUN-002 | 完整母版复跑 2 | ablation | planned | {} | 5 | RUN-001 |  | 建立新母版基线；旧计划 DR-002 |  |  |  |
+| RUN-003 | 完整母版复跑 3 | ablation | planned | {} | 5 | RUN-001 |  | 建立新母版基线；旧计划 DR-003 |  |  |  |
+| RUN-004 | 只关闭局部分数 1 | ablation | planned | {"local_weight":0.0} | 5 |  |  | 只测融合分数贡献；旧计划 DR-004 |  |  |  |
+| RUN-005 | 只关闭局部分数 2 | ablation | planned | {"local_weight":0.0} | 5 | RUN-004 |  | 只测融合分数贡献；旧计划 DR-005 |  |  |  |
+| RUN-006 | 只关闭局部分数 3 | ablation | planned | {"local_weight":0.0} | 5 | RUN-004 |  | 只测融合分数贡献；旧计划 DR-006 |  |  |  |
+| RUN-007 | 局部权重 0.1 复跑 1 | ablation | planned | {"local_weight":0.1} | 5 |  |  | 局部分数权重敏感性；旧计划 DR-007 |  |  |  |
+| RUN-008 | 局部权重 0.1 复跑 2 | ablation | planned | {"local_weight":0.1} | 5 | RUN-007 |  | 局部分数权重敏感性；旧计划 DR-008 |  |  |  |
+| RUN-009 | 局部权重 0.1 复跑 3 | ablation | planned | {"local_weight":0.1} | 5 | RUN-007 |  | 局部分数权重敏感性；旧计划 DR-009 |  |  |  |
+| RUN-010 | 局部权重 0.3 复跑 1 | ablation | planned | {"local_weight":0.3} | 5 |  |  | 局部分数权重敏感性；旧计划 DR-010 |  |  |  |
+| RUN-011 | 局部权重 0.3 复跑 2 | ablation | planned | {"local_weight":0.3} | 5 | RUN-010 |  | 局部分数权重敏感性；旧计划 DR-011 |  |  |  |
+| RUN-012 | 局部权重 0.3 复跑 3 | ablation | planned | {"local_weight":0.3} | 5 | RUN-010 |  | 局部分数权重敏感性；旧计划 DR-012 |  |  |  |
+| RUN-013 | 完全移除局部分支 1 | ablation | planned | {"experiment_variant":"global_only"} | 5 |  |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-013 |  |  |  |
+| RUN-014 | 完全移除局部分支 2 | ablation | planned | {"experiment_variant":"global_only"} | 5 | RUN-013 |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-014 |  |  |  |
+| RUN-015 | 完全移除局部分支 3 | ablation | planned | {"experiment_variant":"global_only"} | 5 | RUN-013 |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-015 |  |  |  |
 
 ## 查重说明
 

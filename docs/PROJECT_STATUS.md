@@ -11,7 +11,8 @@ Date: 2026-08-07
 本地验证为 36 项 V5 专项测试、251 项工作流测试和 5 个结构检查全部通过，三名独立审核员均为 `ALLOW`。
 这只证明代码路径与管理边界通过本地验证，不代表服务器 U/S/H/ZS 已经复跑确认。
 
-`V5-ABLATION-001` 仍未启动。旧参数表含有新母版已经删除的实验开关和旧代码哈希，必须从新母版重新建立实验分支、配置快照和参数指纹后才能执行。
+`V5-ABLATION-001` 已从新母版重新绑定，独立分支为
+`exp/v5/ablation/ablation-001-local-branch-effect`；15 行计划已重算母版哈希和参数指纹。所有行仍是 `planned`，实验代码和真实配置快照尚未完成，因此不会启动训练。
 
 ## 2026-08-06 管理结构更新
 
@@ -27,7 +28,7 @@ Date: 2026-08-07
 | 真实运行 | `PARAMETER_MATRIX.csv` | 每一行记录一套参数、一个 seed、一次状态和结果。 |
 
 V1、V2、V3 继续使用 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本，只解释过去，不能启动新实验。
-V5 已改用 `MODEL-V5-TEMPLATE-V1 / frozen`；局部分支消融仍等待从该准确母版重新绑定，不沿用旧 Attempt 代码。
+V5 已改用 `MODEL-V5-TEMPLATE-V1 / frozen`；局部分支消融已经从该准确母版重新绑定，旧 Attempt 只保留为规划来源。
 
 ## Current Active Mainline
 
@@ -149,6 +150,6 @@ excluded: logs, receipts, summaries, configs, manifests, registries, and data/ca
 
 ## Next Steps
 
-先把 `V5-ABLATION-001` 从 `MODEL-V5-TEMPLATE-V1` 的准确提交独立建立实验分支，重做参数快照和指纹；旧 15 行计划不能直接沿用旧代码哈希。
-随后在用户对本轮服务器成本再次明确授权后，先跑基线与“完全去掉局部分支”的最小闭环，再决定是否扩展权重和模块消融。
+先在 `V5-ABLATION-001` 独立分支实现并审核两种能力：可变局部分数权重，以及代码级 `global_only`。随后生成真实配置快照，把选中的计划行冻结。
+用户对本轮服务器成本再次明确授权后，先跑基线与“完全去掉局部分支”的最小闭环，再决定是否扩展权重和模块消融。
 效果比较仍以 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 为正式参考。

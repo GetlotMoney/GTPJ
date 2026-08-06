@@ -104,7 +104,7 @@
   <div class="section-head"><h3>V5 当前四类实验</h3><p>每项实验都必须有自己的 EXPERIMENT.yaml 和参数矩阵</p></div>
   <section class="v5-grid">
     <article class="experiment"><h4>调参 · V5-TUNE-001</h4><a href="../../experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md">动态路由搜索</a><p>历史实验，已迁入正式账本；代码来源按历史引用只读保存。</p></article>
-    <article class="experiment blocked"><h4>消融 · V5-ABLATION-001</h4><span class="badge waiting">等待重新绑定</span><p>母版已冻结，但旧参数表仍引用旧代码和已删除开关。必须从新母版建立独立实验分支并重算参数指纹后才能运行。</p><p><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml">查看当前状态</a></p></article>
+    <article class="experiment blocked"><h4>消融 · V5-ABLATION-001</h4><span class="badge waiting">已绑定，待实现</span><p>已从新母版建立独立实验分支，15 行计划也已重算指纹；实验代码和真实配置快照完成前仍不能运行。</p><p><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md">查看新参数表</a></p></article>
     <article class="experiment"><h4>创新 · V5-INNOVATION-001</h4><a href="../../experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md">动态路由历史探针</a><p>最高单次结果仍是候选证据；未稳定复现，不产生新的正式框架。</p></article>
     <article class="experiment"><h4>确认 · 暂无新项</h4><span class="badge legacy">0 项</span><p>确认实验用于证明结果能稳定复现，本身不会修改母版或产生新框架。</p></article>
   </section>
@@ -120,7 +120,7 @@
     </tbody>
   </table>
 
-  <div class="callout"><strong>现在的实际边界：</strong><code>MODEL-V5-TEMPLATE-V1</code> 已在本地冻结，旧 <code>v5</code> 历史 Tag 未移动。服务器 U/S/H/ZS 尚未复跑；“完全去掉局部分支”消融还要从新母版独立建分支并重做参数表，不能沿用旧 Attempt 代码。</div>
+  <div class="callout"><strong>现在的实际边界：</strong><code>MODEL-V5-TEMPLATE-V1</code> 已在本地冻结，旧 <code>v5</code> 历史 Tag 未移动。局部分支消融已重新绑定，但 15 行仍是计划，不是可开跑任务；服务器 U/S/H/ZS 尚未复跑。</div>
 
   <footer><span>事实来源：framework.yaml、TEMPLATE.yaml、四类 INDEX.md、EXPERIMENT.yaml、PARAMETER_MATRIX.csv</span><span><a href="../workflow/FRAMEWORK_EXPERIMENT_STANDARD.md">正式规范</a> · <a href="../PROJECT_STATUS.md">项目状态</a> · <a href="../PROJECT_STRUCTURE.md">目录说明</a></span></footer>
 </main>
