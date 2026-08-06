@@ -1812,6 +1812,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_formal_framework_requires_its_frozen_tag(self) -> None:
         expected_commit = self._git("rev-parse", "v1^{commit}").stdout.strip()
         self._git("tag", "-d", "v1")
+        self._git("branch", "v1", expected_commit)
 
         errors = self.module.framework_git_ref_errors("v1", expected_commit)
 
@@ -1865,12 +1866,23 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self._write(
             "docs/workflow/core/WORKFLOW_ROUTER.md",
-            "创新确认后创建新的子 FRAMEWORK-VY。\n",
+            "创新确认后创建新的子 FRAMEWORK-VY。\n"
+            "promote/<parent-version>-idea-to-vX\n"
+            "父代码来源\n"
+            "Use the formal framework tree.\n"
+            "promote/v1-idea-0003-to-v4\n",
         )
 
         errors = self.module.flat_framework_language_errors()
 
-        self.assertTrue(any("新的子 FRAMEWORK" in error for error in errors))
+        for phrase in [
+            "新的子 FRAMEWORK",
+            "promote/<parent-version>",
+            "父代码来源",
+            "formal framework tree",
+            "promote/v1-idea-0003-to-v4",
+        ]:
+            self.assertTrue(any(phrase in error for error in errors), phrase)
 
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(

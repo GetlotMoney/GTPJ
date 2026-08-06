@@ -2,7 +2,7 @@
 
 ## 永久对象
 
-- `main`：总管理长期分支，保存规范、框架树、全局索引和 owner 明确选择的正式状态。
+- `main`：总管理长期分支，保存规范、同级正式框架注册表、全局索引和 owner 明确选择的正式状态。
 - `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`：正式框架长期代码分支。`v4` 是历史 config-only 标签，不创建框架分支。
 - `v1`、`v2`、`v3`、`v4`、`v5`：永久版本 tag，不是分支；`v4` 是历史 config-only tag。
 - `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
@@ -88,14 +88,16 @@ commit hash 和 Warehouse artifact id；不要创建 attempt 级 git tag。
 Promote 分支：
 
 ```text
-promote/<parent-version>-idea-xxxx-to-vX
+promote/from-vX-innovation-xxx-to-vY
 ```
 
 示例：
 
 ```text
-promote/v1-idea-0003-to-v4
+promote/from-v5-innovation-002-to-v6
 ```
+
+这里的 `v6` 只是命名示例，不表示当前已经存在 `FRAMEWORK-V6`；只有确认和接纳通过后才能实际创建。
 
 ## 分支从哪里切
 
@@ -153,7 +155,7 @@ dev/v1-idea-0003-trial-001-token-router
 以下含义只解释历史 `dev/...`，不作为新分支规范：
 
 - `dev`：新模块开发分支，不是稳定版本。
-- `v1`：这次 trial 的父代码来源是 `v1` tag。
+- `v1`：这次旧 trial 的来源代码是 `v1` Tag。
 - `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
 - `trial-001`：这个 idea 的第 1 次实现尝试。
 - `token-router`：人能读懂的短名。

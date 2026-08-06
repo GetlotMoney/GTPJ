@@ -387,7 +387,7 @@ dev/v1-idea-0003-trial-001-token-router
 含义：
 
 - `dev`：迁移前的新模块开发分支；新创新改用 `exp/vX/innovation/...`。
-- `v1`：这次旧 trial 的父代码来源是 `v1` baseline tag。
+- `v1`：这次旧 trial 的来源代码是 `v1` baseline Tag。
 - `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
 - `trial-001`：这个 idea 的第 1 次实现尝试。
 - `token-router`：人能读懂的简短名字。

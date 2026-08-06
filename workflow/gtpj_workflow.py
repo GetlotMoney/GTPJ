@@ -3862,7 +3862,10 @@ def framework_git_ref_errors(version: str, expected_commit: str) -> list[str]:
     branch_commit = git(["rev-parse", "--verify", f"refs/heads/{branch}"], check=False)
     if not branch_commit:
         errors.append(f"missing long-lived framework branch: {branch}")
-    tag_commit_value = git(["rev-parse", "--verify", f"{version}^{{commit}}"], check=False)
+    tag_commit_value = git(
+        ["rev-parse", "--verify", f"refs/tags/{version}^{{commit}}"],
+        check=False,
+    )
     if not tag_commit_value:
         errors.append(f"missing frozen framework tag: {version}")
     elif expected_commit != tag_commit_value:
@@ -7964,6 +7967,10 @@ def flat_framework_language_errors() -> list[str]:
         "父版本 H",
         "父节点",
         "Version tree:",
+        "promote/<parent-version>",
+        "父代码来源",
+        "formal framework tree",
+        "promote/v1-idea-0003-to-v4",
     ]
     roots = [
         REPO_ROOT / "README.md",
