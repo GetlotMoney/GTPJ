@@ -4,9 +4,60 @@
 
 **目标：** 从历史 `v5` 的真实有效路径重新提取一份只包含 V5 正式能力、行为可对照、可被冻结为 `MODEL-V5-TEMPLATE-V1` 的干净代码母版。
 
-**架构：** 历史 `v5` Tag 永远不动，作为旧实现参照；当前治理分支上的模型和训练入口改为干净 V5 实现，动态路由等后续实验代码不进入母版。固定输入对照旧 `v5` 输出、损失和梯度；旧 checkpoint 兼容放到独立转换工具，不在模型里保留旧字段别名。
+**架构：** 历史 `v5` Tag 永远不动，作为旧实现参照。干净 V5 代码只在项目现有 `GTPJ_worktrees/` 下的独立工作树和 `codex/v5-clean-template` 分支修改，不直接改总管理分支；动态路由等后续实验代码不进入母版。固定输入对照旧 `v5` 输出、损失和梯度；旧 checkpoint 兼容放到独立转换工具，不在模型里保留旧字段别名。母版代码 commit 先产生，后续总管理提交再用 `TEMPLATE.yaml` 登记它，二者不能合成一个自指提交。
 
 **技术栈：** Python 3、PyTorch、Git、pytest、现有 GTPJ 配置加载器、JSON checkpoint 转换收据。
+
+---
+
+## 计划加固结论
+
+### 已核实事实
+
+- 历史 `v5`、`framework/v5` 和本地 `main` 当前都指向 `08e5ecb1a5db6c6d589527cda35d8d4f7f437e07`，不能移动或改写；
+- 已审核治理分支是 `codex/framework-ledger-redesign`，治理审核记录位于 `docs/reviews/2026-08-06-framework-template-governance/`；
+- 项目已经统一使用同一个 `D:/backup/Documents/Myself/GTPJ_worktrees/` 父目录，不需要在磁盘根目录或项目外另建副本；
+- `template_registry_commit` 必须属于最终本地 `main` 历史，因此治理登记没有并入 `main` 前，任何新正式实验都必须保持阻塞；
+- 本阶段没有服务器训练授权，只能完成本地代码、CPU 小输入对照、测试、审核和本地 Git 身份。
+
+### 三条路线比较
+
+| 路线 | 隔离性 | 历史安全 | 可测试性 | 维护成本 | 结论 |
+|---|---:|---:|---:|---:|---|
+| 直接在治理分支清理模型 | 低 | 容易让总管理分支混入 V5 专用代码 | 高 | 表面低、长期高 | 拒绝 |
+| 独立代码工作树 + 后续 registry 提交 | 高 | 历史 Tag、治理账本和实验代码各自独立 | 高 | 中 | 采用 |
+| 复制第二个 GTPJ 项目目录 | 中 | 容易形成两个都像正式入口的副本 | 中 | 高 | 拒绝 |
+
+### 固定数据流
+
+```text
+已审核治理 commit
+  -> 独立 codex/v5-clean-template 工作树
+  -> 行为合同 + 红灯测试
+  -> 最小代码清理 + CPU 数值对照
+  -> 三轮审核通过的母版代码 commit C
+  -> framework/v5-template-v1 + model/v5-template-v1 指向 C
+  -> 总管理分支后续提交 G 用 TEMPLATE.yaml 登记 C
+  -> G 进入本地 main 后，实验分支才允许记录 template_registry_commit=G
+```
+
+### 失败预演与回退
+
+| 阶段 | 可能失败 | 可见信号 | 收口与回退 |
+|---|---|---|---|
+| 配置清理 | 删除了仍在有效路径使用的键 | 静态测试或固定输入构建失败 | 只回退该最小提交，不动历史 `v5` |
+| 模型清理 | 输出、损失或梯度改变 | parity 超过 `rtol=1e-5, atol=1e-6` | 停止冻结，逐项恢复实际有效代码 |
+| checkpoint 转换 | 字段冲突或 shape 不符 | 转换器非零退出并写冲突 | 不覆盖旧文件，不生成可用新权重 |
+| Git 冻结 | branch、Tag、commit 不一致 | `validate-framework-templates` 失败 | Tag 创建前直接停止；若已创建错误候选 Tag，保持原样并先请求用户确认清理 |
+| registry 集成 | 治理提交尚未进入 `main` | registry ancestry 检查失败 | V5 消融继续 `blocked_pending_clean_template` |
+
+### 不变的完成边界
+
+- 不把模板代码合并回总管理分支的模型文件；
+- 不把实验代码并回模板分支；
+- 不移动历史 `v5`、旧框架分支或旧 Trial/Attempt；
+- 不把 CPU 等价测试写成服务器精度结论；
+- 没有用户当轮服务器授权时，停在服务器运行计划之前。
 
 ---
 
@@ -22,8 +73,8 @@
 | `config/versions/v5.yaml` | V5 唯一规范参数表，只保留当前名字。 |
 | `tools/convert_v5_checkpoint.py` | 把旧 V5 checkpoint 显式转换为新母版字段，不覆盖原文件。 |
 | `tests/test_v5_checkpoint_converter.py` | 验证字段映射、冲突阻断、哈希收据和原文件保护。 |
-| `experiments/v5/TEMPLATE.yaml` | 从 V0 历史快照切换到确认后的 V1 干净母版。 |
-| `experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml` | 把待跑消融绑定到 V1 母版准确 commit。 |
+| 治理工作树的 `experiments/v5/TEMPLATE.yaml` | 在母版代码 commit 完成后，从 V0 历史快照切换到 V1 登记；不写入母版代码 commit。 |
+| 独立消融实验分支的 `EXPERIMENT.yaml` | 在 registry 提交进入本地 `main` 后，把待跑消融绑定到 V1 母版与准确 registry commit。 |
 | `docs/TECH_STACK_HISTORY.md` | 记录 `MODEL-V5-TEMPLATE-V1` 从计划到完成的真实证据。 |
 
 ### Task 1：冻结 V5 行为合同和旧实现参照
@@ -33,6 +84,10 @@
 - Create: `tests/test_v5_template_contract.py`
 
 - [ ] **Step 1：记录不可变化的接口**
+
+先在 `D:/backup/Documents/Myself/GTPJ_worktrees/` 下建立唯一独立工作树，分支名为
+`codex/v5-clean-template`，起点为已经通过三轮审核的治理 commit。创建前确认目标路径不存在，
+创建后确认没有在项目父目录留下第二个临时副本。
 
 合同必须写明：
 
@@ -329,11 +384,11 @@ git commit -m "test: prove clean v5 path parity"
 - Modify: `experiments/v5/TEMPLATE.yaml`
 - Modify: `docs/TECH_STACK_HISTORY.md`
 
-- [ ] **Step 1：建立冻结前确认 commit**
+- [ ] **Step 1：在独立代码工作树建立冻结前确认 commit**
 
-先完成本计划全部本地测试和三轮审核修复，把当前干净代码提交记为准确 commit。创建本地分支 `framework/v5-template-v1` 指向该 commit；在最终冻结门通过前不创建 Tag。
+先完成本计划全部本地测试和三轮审核修复，把 `codex/v5-clean-template` 的干净代码提交记为准确 commit C。创建本地分支 `framework/v5-template-v1` 指向 C；在最终冻结门通过前不创建 Tag。总管理分支的模型文件不接收这些代码差异。
 
-- [ ] **Step 2：更新母版账本为 confirmed 候选**
+- [ ] **Step 2：回到治理工作树更新母版账本为 confirmed 候选**
 
 ```yaml
 template_id: MODEL-V5-TEMPLATE-V1
@@ -346,7 +401,7 @@ source_framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
 behavior_contract: docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md
 ```
 
-在本地 Tag 创建前，`confirmed` 只允许审核候选内容，不允许新实验启动；V5 局部分支消融继续保持 `blocked_pending_clean_template`。
+这次账本更新产生独立治理提交 G，不能写进 C。在本地 Tag 创建前，`confirmed` 只允许审核候选内容，不允许新实验启动；G 没有进入本地 `main` 前，V5 局部分支消融继续保持 `blocked_pending_clean_template`。
 
 - [ ] **Step 3：更新技术演进记录为审核中**
 
@@ -405,7 +460,7 @@ Expected: 全部退出码 0；测试通过数按实际输出登记。
 
 - [ ] **Step 6：创建本地冻结 Tag 并改为 frozen**
 
-三个审核结论和全量机器验证通过后，把最终代码提交作为 `framework/v5-template-v1` 分支头，创建本地 `model/v5-template-v1` Tag，再把 `TEMPLATE.yaml` 的 commit 更新为该准确提交并将状态改为 `frozen`。分支、Tag、账本 commit 必须三者一致；不 push。
+三个审核结论和全量机器验证通过后，把最终代码提交 C 作为 `framework/v5-template-v1` 分支头，创建本地 `model/v5-template-v1` Tag，再在治理工作树把 `TEMPLATE.yaml` 的 commit 更新为 C 并将状态改为 `frozen`。分支、Tag、账本 commit 必须三者一致；不 push。registry 治理提交进入本地 `main` 前仍不能启动实验。
 
 - [ ] **Step 7：重新绑定 V5 局部分支消融**
 
@@ -422,7 +477,7 @@ experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
 status: planned
 ```
 
-旧 Attempt 只保留为规划来源；15 行参数表的 `code_ref` 改为新母版 Tag，配置快照和指纹必须根据新母版重新冻结，不能沿用旧哈希。
+同时写入完整 `template_registry_commit: G`。只有 G 已进入本地 `main`，并且消融分支从 C 独立创建时才允许执行本步。旧 Attempt 只保留为规划来源；15 行参数表的 `code_ref` 改为新母版 Tag，配置快照和指纹必须根据新母版重新冻结，不能沿用旧哈希。
 
 - [ ] **Step 8：更新技术历史并提交冻结账本**
 
