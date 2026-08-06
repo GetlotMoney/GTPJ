@@ -336,6 +336,26 @@ FRAMEWORK_TEMPLATE_REQUIRED_KEYS = {
     "source_framework_commit",
     "behavior_contract",
 }
+EXPERIMENT_BINDING_REQUIRED_KEYS = {
+    "schema_version",
+    "experiment_id",
+    "framework_id",
+    "kind",
+    "base_identity_kind",
+    "base_template_id",
+    "base_template_tag",
+    "base_template_commit",
+    "historical_code_ref",
+    "template_binding_status",
+    "experiment_branch",
+    "legacy_ref",
+    "status",
+}
+EXPERIMENT_BINDING_RULES = {
+    "framework_template": ("ready", True, False),
+    "historical_code_ref": ("historical_read_only", False, True),
+    "pending_clean_template": ("blocked_pending_clean_template", False, False),
+}
 FRAMEWORK_INDEX_STATUSES = {
     "planned",
     "pending",
@@ -1512,7 +1532,34 @@ def framework_template_path(version: str) -> Path:
     return REPO_ROOT / "experiments" / version / "TEMPLATE.yaml"
 
 
+def experiment_binding_path(row: dict[str, str]) -> Path:
+    return REPO_ROOT / row["directory"] / "EXPERIMENT.yaml"
+
+
 def require_experiment_branch_base(version: str) -> None:
+    template_path = framework_template_path(version)
+    if template_path.exists():
+        template_data = read_shallow_yaml(template_path)
+        template_status = str(template_data.get("template_status", ""))
+        if template_status != "frozen":
+            raise WorkflowError(
+                "new-experiment requires a frozen clean framework template; "
+                f"{rel(template_path)} status is {template_status or '<missing>'}"
+            )
+        template_commit = str(template_data.get("template_commit", ""))
+        head_commit = git(["rev-parse", "HEAD"])
+        if head_commit != template_commit:
+            raise WorkflowError(
+                "new-experiment branch must start exactly at template commit; "
+                f"HEAD={head_commit}, template_commit={template_commit}"
+            )
+        template_ref_errors = framework_template_git_ref_errors(template_data)
+        if template_ref_errors:
+            raise WorkflowError(
+                "new-experiment template identity is invalid:\n"
+                + "\n".join(template_ref_errors)
+            )
+        return
     framework_branch = framework_branch_name(version)
     if not git(["rev-parse", "--verify", f"refs/heads/{framework_branch}"], check=False):
         raise WorkflowError(
@@ -3986,6 +4033,129 @@ def validate_framework_templates() -> list[str]:
     return errors
 
 
+def _none_like(value: object) -> bool:
+    return str(value).strip().lower() in {"", "-", "none"}
+
+
+def _binding_expected_branch(
+    version: str, kind_name: str, row: dict[str, str]
+) -> str:
+    directory_name = Path(row["directory"]).name
+    local_id, separator, slug = directory_name.partition("_")
+    if not separator or not slug:
+        return ""
+    return experiment_branch_name(version, KINDS[kind_name], local_id, slug)
+
+
+def experiment_binding_errors(
+    *,
+    version: str,
+    kind_name: str,
+    row: dict[str, str],
+    data: dict[str, object],
+    template_data: dict[str, object],
+) -> list[str]:
+    errors: list[str] = []
+    missing = sorted(EXPERIMENT_BINDING_REQUIRED_KEYS - set(data))
+    if missing:
+        errors.append(f"missing keys: {', '.join(missing)}")
+        return errors
+
+    scalar_checks = {
+        "schema_version": "gtpj.experiment.v1",
+        "experiment_id": row["experiment_id"],
+        "framework_id": f"FRAMEWORK-{version.upper()}",
+        "kind": kind_name,
+        "status": row["status"],
+    }
+    for key, expected in scalar_checks.items():
+        if str(data.get(key, "")) != expected:
+            errors.append(f"{key} must be {expected}")
+
+    row_legacy = row.get("legacy_ref", "-")
+    data_legacy = str(data.get("legacy_ref", ""))
+    if not (_none_like(row_legacy) and _none_like(data_legacy)) and data_legacy != row_legacy:
+        errors.append(f"legacy_ref must match INDEX: {row_legacy}")
+
+    identity_kind = str(data.get("base_identity_kind", ""))
+    rule = EXPERIMENT_BINDING_RULES.get(identity_kind)
+    if rule is None:
+        errors.append(f"unsupported base_identity_kind: {identity_kind}")
+        return errors
+    expected_binding_status, template_required, historical_required = rule
+    actual_binding_status = str(data.get("template_binding_status", ""))
+    if actual_binding_status != expected_binding_status:
+        errors.append(
+            f"{identity_kind} requires {expected_binding_status}, got {actual_binding_status}"
+        )
+
+    template_fields = (
+        str(data.get("base_template_id", "")),
+        str(data.get("base_template_tag", "")),
+        str(data.get("base_template_commit", "")),
+    )
+    if template_required:
+        if any(_none_like(value) for value in template_fields):
+            errors.append("framework_template requires the complete template id/tag/commit")
+        if str(template_data.get("template_status", "")) != "frozen":
+            errors.append("framework_template requires the current template to be frozen")
+        expected_template_fields = (
+            str(template_data.get("template_id", "")),
+            str(template_data.get("template_tag", "")),
+            str(template_data.get("template_commit", "")),
+        )
+        if template_fields != expected_template_fields:
+            errors.append("framework_template id/tag/commit must match TEMPLATE.yaml")
+        expected_branch = _binding_expected_branch(version, kind_name, row)
+        if not expected_branch or str(data.get("experiment_branch", "")) != expected_branch:
+            errors.append(f"experiment_branch must be {expected_branch or '<valid experiment branch>'}")
+    else:
+        if any(not _none_like(value) for value in template_fields):
+            errors.append(f"{identity_kind} must not claim a clean template id/tag/commit")
+        if not _none_like(data.get("experiment_branch", "")):
+            errors.append(f"{identity_kind} must use experiment_branch: none")
+
+    historical_ref = data.get("historical_code_ref", "")
+    if historical_required and _none_like(historical_ref):
+        errors.append("historical_code_ref requires a real historical_code_ref")
+    if identity_kind == "framework_template" and not _none_like(historical_ref):
+        # A clean experiment may retain an old planning reference, but it is not its code base.
+        pass
+    return errors
+
+
+def validate_experiment_binding(
+    *,
+    version: str,
+    kind_name: str,
+    row: dict[str, str],
+    template_data: dict[str, object],
+) -> list[str]:
+    path = experiment_binding_path(row)
+    if not path.exists():
+        return [f"{row['experiment_id']} missing EXPERIMENT.yaml under {rel(path.parent)}"]
+    data = read_shallow_yaml(path)
+    errors: list[str] = []
+    schema_path = REPO_ROOT / "schemas" / "experiment.schema.json"
+    try:
+        schema = json.loads(read_text(schema_path))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load {display_path(schema_path)}: {exc}"]
+    errors.extend(
+        f"schema: {item}" for item in json_schema_subset_errors(data, schema)
+    )
+    errors.extend(
+        experiment_binding_errors(
+            version=version,
+            kind_name=kind_name,
+            row=row,
+            data=data,
+            template_data=template_data,
+        )
+    )
+    return [f"{row['experiment_id']}: {item}" for item in errors]
+
+
 def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
     errors.extend(validate_framework_templates())
@@ -4010,6 +4180,8 @@ def validate_framework_ledgers() -> list[str]:
         version = framework_path.parent.name
         data = read_shallow_yaml(framework_path)
         frameworks[version] = data
+        template_path = framework_template_path(version)
+        template_data = read_shallow_yaml(template_path) if template_path.exists() else {}
         schema_instance, instance_errors = framework_schema_instance(data)
         errors.extend(f"{rel(framework_path)} schema: {item}" for item in instance_errors)
         errors.extend(
@@ -4095,6 +4267,15 @@ def validate_framework_ledgers() -> list[str]:
                         errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
                 if not (directory / "evidence").is_dir():
                     errors.append(f"{experiment_id} missing evidence/ under {rel(directory)}")
+                if immutable_template_standard_is_active():
+                    errors.extend(
+                        validate_experiment_binding(
+                            version=version,
+                            kind_name=kind_name,
+                            row=row,
+                            template_data=template_data,
+                        )
+                    )
                 if matrix_path.exists():
                     try:
                         matrix_rows = read_parameter_matrix(matrix_path)
@@ -4192,6 +4373,53 @@ def cmd_validate_framework_templates(_: argparse.Namespace) -> int:
     return 0
 
 
+def make_experiment_binding_yaml(
+    *,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    template_data: dict[str, object],
+) -> str:
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
+    branch = experiment_branch_name(version, kind, exp_id, slug)
+    return f"""schema_version: gtpj.experiment.v1
+experiment_id: {framework_experiment_id}
+framework_id: FRAMEWORK-{version.upper()}
+kind: {kind.name}
+base_identity_kind: framework_template
+base_template_id: {template_data.get('template_id', 'none')}
+base_template_tag: {template_data.get('template_tag', 'none')}
+base_template_commit: {template_data.get('template_commit', 'none')}
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: {branch}
+legacy_ref: none
+status: planned
+"""
+
+
+def cmd_validate_experiment_base(args: argparse.Namespace) -> int:
+    experiment_dir = Path(args.path)
+    if not experiment_dir.is_absolute():
+        experiment_dir = REPO_ROOT / experiment_dir
+    require_path_inside(experiment_dir, REPO_ROOT / "experiments", "experiment path")
+    binding_path = experiment_dir / "EXPERIMENT.yaml"
+    if not binding_path.exists():
+        raise WorkflowError(f"missing EXPERIMENT.yaml under {display_path(experiment_dir)}")
+    data = read_shallow_yaml(binding_path)
+    if str(data.get("base_identity_kind", "")) != "framework_template":
+        raise WorkflowError("experiment is not bound to a clean framework template")
+    template_commit = str(data.get("base_template_commit", ""))
+    require_ancestor(
+        template_commit,
+        "HEAD",
+        "experiment branch must contain its recorded template commit",
+    )
+    print(f"validate-experiment-base-ok path={display_path(experiment_dir)}")
+    return 0
+
+
 def cmd_new_experiment(args: argparse.Namespace) -> int:
     version = require_clean_id(args.version, r"v[0-9]+", "version")
     kind = KINDS[args.kind]
@@ -4226,6 +4454,20 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     require_clean_worktree("new-experiment")
     require_experiment_branch_base(version)
 
+    template_path = framework_template_path(version)
+    template_data = read_shallow_yaml(template_path) if template_path.exists() else {}
+    if template_data:
+        write_new(
+            exp_dir / "EXPERIMENT.yaml",
+            make_experiment_binding_yaml(
+                version=version,
+                kind=kind,
+                exp_id=exp_id,
+                slug=slug,
+                template_data=template_data,
+            ),
+        )
+
     write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     write_new(exp_dir / "agent_summary.md", make_agent_summary(version, kind, exp_id, slug))
@@ -4244,7 +4486,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 "name": "请填写本次具体参数组合",
                 "base_version": version,
                 "base_config_sha256": parameter_matrix_sha256(base_config_text),
-                "code_ref": version,
+                "code_ref": str(template_data.get("template_tag", version)),
                 "config_snapshot_ref": "config.yaml",
                 "seed": "",
                 "changed_parameters": "{}",
@@ -17867,6 +18109,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="校验正式框架只读母版的分支、Tag 和准确提交",
     )
     validate_templates.set_defaults(func=cmd_validate_framework_templates)
+
+    validate_experiment_base = sub.add_parser(
+        "validate-experiment-base",
+        help="校验当前实验分支包含账本登记的准确母版提交",
+    )
+    validate_experiment_base.add_argument("--path", required=True)
+    validate_experiment_base.set_defaults(func=cmd_validate_experiment_base)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)
