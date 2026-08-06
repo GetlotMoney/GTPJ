@@ -1,0 +1,13 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V3-TUNE-001
+framework_id: FRAMEWORK-V3
+kind: tune
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+historical_code_ref: v3@13529cb1d3ed8405e2f5cbb4832eff8d1c78db16 + v4 historical config-only tag
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: v4 historical config-only tag
+status: completed

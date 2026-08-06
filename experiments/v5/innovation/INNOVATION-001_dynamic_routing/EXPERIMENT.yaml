@@ -1,0 +1,13 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-001
+framework_id: FRAMEWORK-V5
+kind: innovation
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+historical_code_ref: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: IDEA-0003/TRIAL-001/ATTEMPT-001..018
+status: candidate

@@ -1,0 +1,13 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-001
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: pending_clean_template
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+historical_code_ref: codex/attempt019-local-ablation#ATTEMPT-019@954851b0d2dfd2d23f1efca10ba1bf142b3a6d68
+template_binding_status: blocked_pending_clean_template
+experiment_branch: none
+legacy_ref: codex/attempt019-local-ablation#ATTEMPT-019
+status: planned

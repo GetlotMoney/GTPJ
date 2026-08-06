@@ -1,0 +1,13 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V3-INNOVATION-001
+framework_id: FRAMEWORK-V3
+kind: innovation
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+historical_code_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text#RUN-20260630-0002
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: IDEA-0002/TRIAL-003/RUN-20260630-0002
+status: legacy_owner_activated

@@ -4267,7 +4267,7 @@ def validate_framework_ledgers() -> list[str]:
                         errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
                 if not (directory / "evidence").is_dir():
                     errors.append(f"{experiment_id} missing evidence/ under {rel(directory)}")
-                if immutable_template_standard_is_active():
+                if immutable_template_standard_is_active() or experiment_binding_path(row).exists():
                     errors.extend(
                         validate_experiment_binding(
                             version=version,

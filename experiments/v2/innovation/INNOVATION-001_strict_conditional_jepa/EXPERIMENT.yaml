@@ -1,0 +1,13 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V2-INNOVATION-001
+framework_id: FRAMEWORK-V2
+kind: innovation
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+historical_code_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa#ATTEMPT-004
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: IDEA-0002/TRIAL-002/ATTEMPT-004
+status: legacy_owner_accepted_unconfirmed
