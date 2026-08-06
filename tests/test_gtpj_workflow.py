@@ -203,6 +203,27 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         return commit
 
+    def _write_clean_template(self, version: str = "v1") -> str:
+        commit = self._git("rev-parse", "HEAD").stdout.strip()
+        template_tag = f"model/{version}-template-v1"
+        template_branch = f"framework/{version}-template-v1"
+        self._git("tag", template_tag, commit)
+        self._git("branch", template_branch, commit)
+        self._write(
+            f"experiments/{version}/TEMPLATE.yaml",
+            "schema_version: gtpj.framework_template.v1\n"
+            f"framework_id: FRAMEWORK-{version.upper()}\n"
+            f"template_id: MODEL-{version.upper()}-TEMPLATE-V1\n"
+            "template_status: frozen\n"
+            f"template_branch: {template_branch}\n"
+            f"template_tag: {template_tag}\n"
+            f"template_commit: {commit}\n"
+            f"source_framework_tag: {version}\n"
+            f"source_framework_commit: {self._git('rev-parse', f'{version}^{{commit}}').stdout.strip()}\n"
+            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n",
+        )
+        return commit
+
     def _add_confirmation_rule_markers(self) -> None:
         for relative in self.module.CONFIRMATION_RULE_REPO_SYNC_FILES:
             path = self.repo / relative
@@ -1831,6 +1852,73 @@ log:v1:module_trial:TRIAL-001:attempt-001
         errors = self.module.validate_framework_templates()
 
         self.assertTrue(any("experiments/v1/TEMPLATE.yaml" in item for item in errors))
+
+    def test_formal_experiment_binding_reports_missing_experiment_yaml(self) -> None:
+        row = {
+            "experiment_id": "V1-TUNE-001",
+            "status": "planned",
+            "legacy_ref": "-",
+            "directory": "experiments/v1/tune/TUNE-001_example",
+        }
+        template = {
+            "template_id": "MODEL-V1-TEMPLATE-V1",
+            "template_status": "frozen",
+            "template_tag": "model/v1-template-v1",
+            "template_commit": "1" * 40,
+        }
+
+        errors = self.module.validate_experiment_binding(
+            version="v1",
+            kind_name="tune",
+            row=row,
+            template_data=template,
+        )
+
+        self.assertTrue(any("missing EXPERIMENT.yaml" in item for item in errors))
+
+    def test_pending_clean_template_binding_cannot_be_historical_read_only(self) -> None:
+        errors = self.module.experiment_binding_errors(
+            version="v5",
+            kind_name="ablation",
+            row={
+                "experiment_id": "V5-ABLATION-001",
+                "status": "planned",
+                "legacy_ref": "ATTEMPT-019",
+                "directory": "experiments/v5/ablation/ABLATION-001_local_branch_effect",
+            },
+            data={
+                "schema_version": "gtpj.experiment.v1",
+                "experiment_id": "V5-ABLATION-001",
+                "framework_id": "FRAMEWORK-V5",
+                "kind": "ablation",
+                "base_identity_kind": "pending_clean_template",
+                "base_template_id": "none",
+                "base_template_tag": "none",
+                "base_template_commit": "none",
+                "historical_code_ref": "ATTEMPT-019",
+                "template_binding_status": "historical_read_only",
+                "experiment_branch": "none",
+                "legacy_ref": "ATTEMPT-019",
+                "status": "planned",
+            },
+            template_data={},
+        )
+
+        self.assertTrue(
+            any("pending_clean_template requires blocked_pending_clean_template" in item for item in errors)
+        )
+
+    def test_new_experiment_branch_must_start_exactly_at_template_commit(self) -> None:
+        template_commit = self._write_clean_template()
+        self._commit_all("record clean template metadata")
+        self._git("switch", "-c", "exp/v1/confirmation/confirm-001-v1-seed5")
+        self.assertNotEqual(template_commit, self._git("rev-parse", "HEAD").stdout.strip())
+
+        with self.assertRaisesRegex(
+            self.module.WorkflowError,
+            "must start exactly at template commit",
+        ):
+            self.module.require_experiment_branch_base("v1")
 
     def test_framework_index_names_a_promoted_peer_instead_of_a_child(self) -> None:
         self._write(
