@@ -4208,15 +4208,10 @@ def experiment_binding_errors(
                     )
                 if str(registry_template.get("template_status", "")) != "frozen":
                     errors.append("framework_template requires a frozen clean template")
-        if str(template_data.get("template_status", "")) != "frozen":
-            errors.append("framework_template requires the current template to be frozen")
-        expected_template_fields = (
-            str(template_data.get("template_id", "")),
-            str(template_data.get("template_tag", "")),
-            str(template_data.get("template_commit", "")),
-        )
-        if template_fields != expected_template_fields:
-            errors.append("framework_template id/tag/commit must match TEMPLATE.yaml")
+        # The experiment checkout starts at the template code commit, which is
+        # intentionally older than the later governance commit that registers
+        # that template.  Trust the immutable registry object above rather than
+        # the checkout's older TEMPLATE.yaml (often the historical V0 ledger).
         expected_branch = _binding_expected_branch(version, kind_name, row)
         if not expected_branch or str(data.get("experiment_branch", "")) != expected_branch:
             errors.append(f"experiment_branch must be {expected_branch or '<valid experiment branch>'}")

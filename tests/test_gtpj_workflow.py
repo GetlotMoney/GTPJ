@@ -2018,9 +2018,22 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
 
         binding = self.module.require_ready_experiment_base(experiment_dir)
+        ledger_errors = self.module.experiment_binding_errors(
+            version="v1",
+            kind_name="tune",
+            row={
+                "experiment_id": "V1-TUNE-001",
+                "status": "planned",
+                "legacy_ref": "none",
+                "directory": "experiments/v1/tune/TUNE-001_clean",
+            },
+            data=binding,
+            template_data={},
+        )
 
         self.assertEqual("MODEL-V1-TEMPLATE-V1", binding["base_template_id"])
         self.assertEqual(registry_commit, binding["template_registry_commit"])
+        self.assertEqual([], ledger_errors)
 
     def test_clean_template_names_must_match_version_and_template_number(self) -> None:
         commit = self._git("rev-parse", "HEAD").stdout.strip()
