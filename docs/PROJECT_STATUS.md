@@ -1,12 +1,22 @@
 # Project Status
 
-Date: 2026-07-11
+Date: 2026-08-06
 
 ## 2026-08-06 管理结构更新
 
-实验管理已切换为 `FRAMEWORK-VX / VX-TYPE-xxx / RUN-xxx`。总览见
-`experiments/FRAMEWORK_TREE.md`，正式规则见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
-这次只改管理和查看方式，没有改变模型、训练或评估结论。
+实验管理已切换为“同级正式框架 + 只读代码母版 + 四类独立实验 + 逐次运行表”。当前图形总览见
+`docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html`，正式规则见
+`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。本阶段只改管理、校验和查看方式，没有改变模型、训练或评估结论。
+
+| 层级 | 文件 | 现在负责什么 |
+|---|---|---|
+| 框架身份 | `experiments/vX/framework.yaml` | 说明这是哪个正式框架、历史上从哪个同级框架演变而来。 |
+| 代码母版 | `experiments/vX/TEMPLATE.yaml` | 锁定母版编号、只读分支、Tag 和准确 commit。 |
+| 实验起点 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 说明这项实验实际复制了哪份母版；实验之间不得接着叠代码。 |
+| 真实运行 | `PARAMETER_MATRIX.csv` | 每一行记录一套参数、一个 seed、一次状态和结果。 |
+
+V1、V2、V3、V5 均已补 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本；这些 V0 只解释过去，
+不能启动新实验。V5 局部分支消融 `V5-ABLATION-001` 已绑定为“等待 `MODEL-V5-TEMPLATE-V1`”，在干净母版冻结前不会启动训练。
 
 ## Current Active Mainline
 

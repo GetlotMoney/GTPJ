@@ -51,6 +51,15 @@ idea_tree/                 # 创意来源、评分、排序
 一个 FRAMEWORK-VX = 一份 framework.yaml + 一份 TEMPLATE.yaml + 一个只读母版 Tag/commit + 四类同级实验账本 + 一个历史来源指针
 ```
 
+从框架到一次运行固定分四层：
+
+| 层级 | 固定入口 | 用途 |
+|---|---|---|
+| 1. 框架 | `experiments/vX/framework.yaml` | 正式框架身份和历史来源。 |
+| 2. 母版 | `experiments/vX/TEMPLATE.yaml` | 不继续修改的代码底稿，登记母版编号、Tag 和准确 commit。 |
+| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的代码起点。 |
+| 4. 运行 | 同一实验目录的 `PARAMETER_MATRIX.csv` | 一行一套参数、一个 seed 和一次真实运行。 |
+
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
 当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理；旧 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 只作历史来源回查；
 `v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
@@ -114,6 +123,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`
@@ -382,8 +392,11 @@ All formal version directories `experiments/vX/` must also include:
 | `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
 | `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
 | `experiments/vX/framework.yaml` | 同级正式框架的机器身份、历史来源框架、来源创新、分支、Tag 和 commit。 |
+| `experiments/vX/TEMPLATE.yaml` | 该框架的代码母版身份；`legacy_frozen` 只解释旧结果，`frozen` 才允许新实验起步。 |
 | `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
 | `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
+
+每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
 
 这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
 dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框架对应类型，并用 `legacy_ref` 回查旧目录。

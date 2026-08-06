@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GTPJ 框架母版与实验总览</title>
+  <style>
+    :root{
+      --paper:#f3efe5;--paper-2:#fffdf7;--ink:#17252c;--muted:#657179;--line:#b9b3a5;
+      --navy:#173f54;--cyan:#2d8395;--orange:#d36735;--red:#a8392f;--green:#257359;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--paper)}
+    body{margin:0;color:var(--ink);font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;background:
+      linear-gradient(90deg,rgba(23,63,84,.035) 1px,transparent 1px),
+      linear-gradient(rgba(23,63,84,.035) 1px,transparent 1px),var(--paper);background-size:24px 24px}
+    main{max-width:1500px;margin:0 auto;padding:38px 34px 58px}
+    .masthead{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;border-bottom:3px solid var(--ink);padding-bottom:22px}
+    .kicker{font:700 12px/1.4 Consolas,monospace;letter-spacing:.16em;color:var(--cyan);text-transform:uppercase}
+    h1{margin:8px 0 7px;font-family:"STZhongsong","Noto Serif CJK SC",serif;font-size:clamp(30px,4vw,54px);font-weight:700;letter-spacing:.02em}
+    .subtitle{margin:0;max-width:900px;color:var(--muted);line-height:1.8}
+    .stamp{border:2px solid var(--green);color:var(--green);padding:9px 13px;font:700 12px/1.45 Consolas,monospace;transform:rotate(-2deg);background:#eef8f1}
+    .principle{display:grid;grid-template-columns:auto 1fr;gap:16px;margin:25px 0 34px;padding:16px 20px;background:var(--navy);color:#f7f1e4;box-shadow:7px 7px 0 #ccbfa5}
+    .principle b{color:#83d0da;white-space:nowrap}.principle span{line-height:1.75}
+    .lineage{display:grid;grid-template-columns:minmax(220px,1fr) 42px minmax(220px,1fr) 42px minmax(220px,1fr) 42px minmax(220px,1fr);align-items:stretch;gap:11px}
+    .framework{position:relative;min-width:0;background:var(--paper-2);border:1px solid var(--line);border-top:7px solid var(--navy);padding:19px 18px 17px;box-shadow:4px 4px 0 rgba(23,37,44,.12)}
+    .framework.current{border-top-color:var(--orange)}
+    .framework .head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .framework h2{font:700 22px/1.1 "STZhongsong","Noto Serif CJK SC",serif;margin:0;overflow-wrap:anywhere}
+    .badge{display:inline-block;padding:4px 7px;border:1px solid currentColor;font:700 10px/1 Consolas,monospace;white-space:nowrap}
+    .formal{color:var(--green)}.legacy{color:var(--red)}.waiting{color:var(--orange)}
+    .source{margin:12px 0 15px;color:var(--muted);font:12px/1.5 Consolas,monospace;min-height:36px}
+    .template{background:#f1eadc;border-left:4px solid var(--red);padding:10px 11px;margin-bottom:14px;font-size:12px;line-height:1.7}
+    .template code{font-weight:700;color:var(--navy)}
+    .counts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .count{border-top:1px solid var(--line);padding-top:7px;font-size:12px;color:var(--muted)}
+    .count strong{display:block;color:var(--ink);font:700 20px/1.1 Consolas,monospace}
+    a{color:var(--navy);text-decoration-thickness:1px;text-underline-offset:3px}
+    a:hover{color:var(--orange)}
+    .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--cyan);font:700 28px/1 Consolas,monospace}
+    .arrow small{margin-top:8px;color:var(--muted);font:10px/1.25 "Microsoft YaHei",sans-serif;writing-mode:vertical-rl;letter-spacing:.12em}
+    .section-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:43px 0 15px;border-bottom:1px solid var(--ink);padding-bottom:9px}
+    .section-head h3{margin:0;font-family:"STZhongsong","Noto Serif CJK SC",serif;font-size:24px}.section-head p{margin:0;color:var(--muted);font-size:12px}
+    .v5-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+    .experiment{background:var(--paper-2);border:1px solid var(--line);padding:16px;min-height:145px}
+    .experiment h4{margin:0 0 12px;font-size:15px}.experiment p{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.75}
+    .experiment.blocked{border:2px solid var(--orange);background:#fff8e8}
+    .four-layers{width:100%;border-collapse:collapse;background:var(--paper-2);font-size:13px}
+    .four-layers th,.four-layers td{border:1px solid var(--line);padding:12px 14px;text-align:left;vertical-align:top}
+    .four-layers th{background:var(--navy);color:white;font-weight:600}.four-layers td:first-child{font:700 13px Consolas,monospace;color:var(--navy)}
+    .callout{margin-top:24px;border:1px dashed var(--red);background:#fff7ef;padding:15px 18px;font-size:13px;line-height:1.8}
+    footer{display:flex;justify-content:space-between;gap:20px;margin-top:28px;padding-top:15px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+    @media(max-width:1120px){.lineage{grid-template-columns:1fr}.arrow{height:38px;transform:rotate(90deg)}.arrow small{display:none}.v5-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:650px){main{padding:24px 15px 42px}.masthead{grid-template-columns:1fr}.stamp{justify-self:start}.principle{grid-template-columns:1fr}.v5-grid{grid-template-columns:1fr}.four-layers{display:block;overflow-x:auto}footer{display:block}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <div>
+      <div class="kicker">UI-FRAMEWORK-REGISTRY-V3 · SYS-WORKFLOW-V5</div>
+      <h1>框架平级，母版冻结，实验各自出发</h1>
+      <p class="subtitle">四个正式框架放在同一层；箭头只说明历史上从哪里演变。每个框架有自己的只读代码母版，调参、消融、创新、确认都从同一份准确母版独立复制。</p>
+    </div>
+    <div class="stamp">治理规范：已启用<br>V5 干净母版：待建立</div>
+  </header>
+
+  <div class="principle"><b>一条硬规则</b><span>母版不是开发分支。实验只能复制母版，不能改回母版，也不能拿上一项实验继续叠代码。创新成功后，先整理成新的干净母版，再注册为新的同级框架。</span></div>
+
+  <section class="lineage" aria-label="同级正式框架及历史来源">
+    <article class="framework">
+      <div class="head"><h2>FRAMEWORK-V1</h2><span class="badge formal">正式</span></div>
+      <div class="source">derived_from: none</div>
+      <div class="template"><code>MODEL-V1-TEMPLATE-V0</code><br><span class="badge legacy">legacy_frozen</span> 只解释旧结果，不能开新实验<br><a href="../../experiments/v1/TEMPLATE.yaml">查看母版账本</a></div>
+      <div class="counts"><div class="count"><strong>0</strong>调参</div><div class="count"><strong>0</strong>消融</div><div class="count"><strong>1</strong>创新</div><div class="count"><strong>1</strong>确认</div></div>
+      <p><a href="../../experiments/v1/EXPERIMENTS.md">查看 V1 全部实验</a></p>
+    </article>
+    <div class="arrow" aria-label="V2 来源于 V1">→<small>历史来源</small></div>
+    <article class="framework">
+      <div class="head"><h2>FRAMEWORK-V2</h2><span class="badge formal">正式</span></div>
+      <div class="source">derived_from: FRAMEWORK-V1</div>
+      <div class="template"><code>MODEL-V2-TEMPLATE-V0</code><br><span class="badge legacy">legacy_frozen</span> 只解释旧结果，不能开新实验<br><a href="../../experiments/v2/TEMPLATE.yaml">查看母版账本</a></div>
+      <div class="counts"><div class="count"><strong>0</strong>调参</div><div class="count"><strong>0</strong>消融</div><div class="count"><strong>1</strong>创新</div><div class="count"><strong>0</strong>确认</div></div>
+      <p><a href="../../experiments/v2/EXPERIMENTS.md">查看 V2 全部实验</a></p>
+    </article>
+    <div class="arrow" aria-label="V3 来源于 V2">→<small>历史来源</small></div>
+    <article class="framework">
+      <div class="head"><h2>FRAMEWORK-V3</h2><span class="badge formal">正式</span></div>
+      <div class="source">derived_from: FRAMEWORK-V2</div>
+      <div class="template"><code>MODEL-V3-TEMPLATE-V0</code><br><span class="badge legacy">legacy_frozen</span> 只解释旧结果，不能开新实验<br><a href="../../experiments/v3/TEMPLATE.yaml">查看母版账本</a></div>
+      <div class="counts"><div class="count"><strong>1</strong>调参</div><div class="count"><strong>0</strong>消融</div><div class="count"><strong>1</strong>创新</div><div class="count"><strong>1</strong>确认</div></div>
+      <p><a href="../../experiments/v3/EXPERIMENTS.md">查看 V3 全部实验</a></p>
+    </article>
+    <div class="arrow" aria-label="V5 来源于 V3">→<small>历史来源</small></div>
+    <article class="framework current">
+      <div class="head"><h2>FRAMEWORK-V5</h2><span class="badge waiting">当前使用</span></div>
+      <div class="source">derived_from: FRAMEWORK-V3</div>
+      <div class="template"><code>MODEL-V5-TEMPLATE-V0</code><br><span class="badge legacy">legacy_frozen</span> V1 干净母版尚未冻结<br><a href="../../experiments/v5/TEMPLATE.yaml">查看母版账本</a></div>
+      <div class="counts"><div class="count"><strong>1</strong>调参</div><div class="count"><strong>1</strong>消融</div><div class="count"><strong>1</strong>创新</div><div class="count"><strong>0</strong>确认</div></div>
+      <p><a href="../../experiments/v5/EXPERIMENTS.md">查看 V5 全部实验</a></p>
+    </article>
+  </section>
+
+  <div class="section-head"><h3>V5 当前四类实验</h3><p>每项实验都必须有自己的 EXPERIMENT.yaml 和参数矩阵</p></div>
+  <section class="v5-grid">
+    <article class="experiment"><h4>调参 · V5-TUNE-001</h4><a href="../../experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md">动态路由搜索</a><p>历史实验，已迁入正式账本；代码来源按历史引用只读保存。</p></article>
+    <article class="experiment blocked"><h4>消融 · V5-ABLATION-001</h4><span class="badge waiting">等待干净母版</span><p>要验证局部分支到底贡献多少。现在不启动训练，先完成并冻结 <code>MODEL-V5-TEMPLATE-V1</code>。</p><p><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml">查看阻塞原因</a></p></article>
+    <article class="experiment"><h4>创新 · V5-INNOVATION-001</h4><a href="../../experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md">动态路由历史探针</a><p>最高单次结果仍是候选证据；未稳定复现，不产生新的正式框架。</p></article>
+    <article class="experiment"><h4>确认 · 暂无新项</h4><span class="badge legacy">0 项</span><p>确认实验用于证明结果能稳定复现，本身不会修改母版或产生新框架。</p></article>
+  </section>
+
+  <div class="section-head"><h3>四层文件，一眼知道看什么</h3><p>从框架身份一直落到某一次真实运行</p></div>
+  <table class="four-layers">
+    <thead><tr><th>层级</th><th>文件</th><th>用普通话解释</th><th>你主要看什么</th></tr></thead>
+    <tbody>
+      <tr><td>1 · 方法</td><td><code>framework.yaml</code></td><td>这套框架叫什么、从哪个正式框架演变而来。</td><td>来源关系、正式状态、主要模块。</td></tr>
+      <tr><td>2 · 母版</td><td><code>TEMPLATE.yaml</code></td><td>哪一份代码是永远不继续改的干净底稿。</td><td>母版编号、Tag、commit、能否启动新实验。</td></tr>
+      <tr><td>3 · 实验</td><td><code>EXPERIMENT.yaml</code></td><td>这项调参或消融到底复制了哪份底稿。</td><td>准确代码起点、实验分支、旧记录映射。</td></tr>
+      <tr><td>4 · 运行</td><td><code>PARAMETER_MATRIX.csv</code></td><td>每一行就是一次真正跑过或计划跑的参数组合。</td><td>参数、seed、状态、指标、保留或放弃。</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout"><strong>现在的实际边界：</strong>管理规范和账本已经改好；V1/V2/V3/V5 的 V0 都是历史快照，只用于解释过去。接下来要从 V5 有效路径提取并验证 <code>MODEL-V5-TEMPLATE-V1</code>，确认后才能启动“完全去掉局部分支”的正式消融。</div>
+
+  <footer><span>事实来源：framework.yaml、TEMPLATE.yaml、四类 INDEX.md、EXPERIMENT.yaml、PARAMETER_MATRIX.csv</span><span><a href="../workflow/FRAMEWORK_EXPERIMENT_STANDARD.md">正式规范</a> · <a href="../PROJECT_STATUS.md">项目状态</a> · <a href="../PROJECT_STRUCTURE.md">目录说明</a></span></footer>
+</main>
+</body>
+</html>
