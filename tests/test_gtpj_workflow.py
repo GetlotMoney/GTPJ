@@ -224,6 +224,31 @@ class WorkflowHelperTest(unittest.TestCase):
         )
         return commit
 
+    def _write_clean_template_registry(self, version: str = "v1") -> tuple[str, str]:
+        self._write("template_code_marker.txt", f"clean template for {version}\n")
+        self._commit_all("create clean template code commit")
+        template_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        template_tag = f"model/{version}-template-v1"
+        template_branch = f"framework/{version}-template-v1"
+        self._git("tag", template_tag, template_commit)
+        self._git("branch", template_branch, template_commit)
+        self._write(
+            f"experiments/{version}/TEMPLATE.yaml",
+            "schema_version: gtpj.framework_template.v1\n"
+            f"framework_id: FRAMEWORK-{version.upper()}\n"
+            f"template_id: MODEL-{version.upper()}-TEMPLATE-V1\n"
+            "template_status: frozen\n"
+            f"template_branch: {template_branch}\n"
+            f"template_tag: {template_tag}\n"
+            f"template_commit: {template_commit}\n"
+            f"source_framework_tag: {version}\n"
+            f"source_framework_commit: {self._git('rev-parse', f'{version}^{{commit}}').stdout.strip()}\n"
+            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n",
+        )
+        self._commit_all("record clean template in governance registry")
+        registry_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        return template_commit, registry_commit
+
     def _add_confirmation_rule_markers(self) -> None:
         for relative in self.module.CONFIRMATION_RULE_REPO_SYNC_FILES:
             path = self.repo / relative
@@ -1920,6 +1945,141 @@ log:v1:module_trial:TRIAL-001:attempt-001
         ):
             self.module.require_experiment_branch_base("v1")
 
+    def test_clean_template_registry_can_be_read_from_separate_governance_commit(self) -> None:
+        template_commit, registry_commit = self._write_clean_template_registry()
+        self._git("switch", "-c", "exp/v1/tune/tune-001-clean", template_commit)
+
+        template, resolved_registry = self.module.load_framework_template_from_registry(
+            "v1", registry_commit
+        )
+        self.module.require_experiment_branch_base("v1", template_data=template)
+
+        self.assertEqual(registry_commit, resolved_registry)
+        self.assertEqual(template_commit, template["template_commit"])
+        self.assertFalse((self.repo / "experiments/v1/TEMPLATE.yaml").exists())
+
+    def test_validate_experiment_base_rejects_tampered_ancestor_binding(self) -> None:
+        template_commit, registry_commit = self._write_clean_template_registry()
+        self._git("switch", "-c", "exp/v1/tune/tune-001-clean", template_commit)
+        experiment_dir = self.repo / "experiments/v1/tune/TUNE-001_clean"
+        old_commit = self._git("rev-parse", "v1^{commit}").stdout.strip()
+        self._write(
+            "experiments/v1/tune/TUNE-001_clean/EXPERIMENT.yaml",
+            "schema_version: gtpj.experiment.v1\n"
+            "experiment_id: V1-TUNE-001\n"
+            "framework_id: FRAMEWORK-V1\n"
+            "kind: tune\n"
+            "base_identity_kind: framework_template\n"
+            "base_template_id: MODEL-V1-TEMPLATE-V1\n"
+            "base_template_tag: model/v1-template-v1\n"
+            f"base_template_commit: {old_commit}\n"
+            f"template_registry_commit: {registry_commit}\n"
+            "historical_code_ref: none\n"
+            "template_binding_status: ready\n"
+            "experiment_branch: exp/v1/tune/tune-001-clean\n"
+            "legacy_ref: none\n"
+            "status: planned\n",
+        )
+
+        with self.assertRaisesRegex(
+            self.module.WorkflowError,
+            "id/tag/commit must match TEMPLATE.yaml",
+        ):
+            self.module.require_ready_experiment_base(experiment_dir)
+
+    def test_clean_template_names_must_match_version_and_template_number(self) -> None:
+        commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._git("tag", "model/v2-template-v1", commit)
+        self._git("branch", "framework/v2-template-v1", commit)
+        errors = self.module.framework_template_identity_errors(
+            "v1",
+            {
+                "framework_id": "FRAMEWORK-V1",
+                "template_id": "MODEL-V1-TEMPLATE-V1",
+                "template_status": "frozen",
+                "template_branch": "framework/v2-template-v1",
+                "template_tag": "model/v2-template-v1",
+                "template_commit": commit,
+                "source_framework_tag": "v1",
+                "source_framework_commit": self._git("rev-parse", "v1^{commit}").stdout.strip(),
+            },
+        )
+
+        self.assertTrue(any("template_branch must be framework/v1-template-v1" in item for item in errors))
+        self.assertTrue(any("template_tag must be model/v1-template-v1" in item for item in errors))
+
+    def test_formal_matrix_freeze_rejects_historical_binding_under_v5(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-001_historical"
+        self._write("experiments/v1/tune/TUNE-001_historical/PARAMETER_MATRIX.csv", "placeholder\n")
+        self._write("experiments/v1/tune/TUNE-001_historical/config.yaml", "random_seed: 5\n")
+        self._write(
+            "experiments/v1/tune/TUNE-001_historical/EXPERIMENT.yaml",
+            "schema_version: gtpj.experiment.v1\n"
+            "experiment_id: V1-TUNE-001\n"
+            "framework_id: FRAMEWORK-V1\n"
+            "kind: tune\n"
+            "base_identity_kind: historical_code_ref\n"
+            "base_template_id: none\n"
+            "base_template_tag: none\n"
+            "base_template_commit: none\n"
+            "template_registry_commit: none\n"
+            "historical_code_ref: legacy-commit\n"
+            "template_binding_status: historical_read_only\n"
+            "experiment_branch: none\n"
+            "legacy_ref: ATTEMPT-001\n"
+            "status: completed\n",
+        )
+
+        with mock.patch.object(self.module, "freeze_parameter_matrix_locked", return_value=0):
+            code, _stdout, stderr = self._run_main(
+                "freeze-parameter-matrix",
+                "--path",
+                str(matrix_dir / "PARAMETER_MATRIX.csv"),
+                "--config",
+                str(matrix_dir / "config.yaml"),
+                "--job-id",
+                "RUN-001",
+            )
+
+        self.assertEqual(1, code)
+        self.assertIn("not bound to a ready frozen template", stderr)
+
+    def test_formal_run_workflow_requires_ready_experiment_directory_under_v5(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+
+        code, _stdout, stderr = self._run_main(
+            "run-workflow",
+            "--phrase",
+            "正式实验",
+            "--workflow-mode",
+            "server_frozen_runner",
+            "--formal",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("--experiment-dir", stderr)
+
+    def test_not_preserved_matrix_ref_rejects_broad_historical_code_directory(self) -> None:
+        errors = self.module.historical_binding_evidence_errors(
+            {
+                "base_identity_kind": "historical_code_ref",
+                "historical_code_ref": "experiments/module_trials/IDEA-0003/TRIAL-001",
+            },
+            [
+                {"code_ref": "legacy_code_ref_not_preserved:ATTEMPT-006"},
+                {"code_ref": "legacy_code_ref_not_preserved:ATTEMPT-006"},
+            ],
+        )
+
+        self.assertTrue(any("must say not_preserved" in item for item in errors))
+
     def test_framework_index_names_a_promoted_peer_instead_of_a_child(self) -> None:
         self._write(
             "experiments/v1/innovation/INDEX.md",
@@ -2105,6 +2265,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "legacy_frozen 不能启动新实验",
         ]:
             self.assertTrue(any(marker in error for error in errors), marker)
+
+    def test_immutable_template_rule_sync_rejects_retired_start_instruction_in_active_doc(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write(
+            "docs/workflow/WORKFLOW_MANIFEST.yaml",
+            "files:\n"
+            "  - logical_id: module_trial_protocol\n"
+            "    canonical_path: docs/workflow/protocols/module_trial_protocol.md\n"
+            "    category: protocol\n"
+            "    status: active_reference\n"
+            "    daily_read: false\n",
+        )
+        self._write(
+            "docs/workflow/protocols/module_trial_protocol.md",
+            "新的创新从 `framework/v1` 开实验分支。\n",
+        )
+
+        errors = self.module.immutable_template_language_errors()
+
+        self.assertTrue(
+            any("新的创新从 `framework/v1`" in error for error in errors),
+            errors,
+        )
 
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(
