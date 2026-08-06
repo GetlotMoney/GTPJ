@@ -8779,6 +8779,8 @@ def immutable_template_language_errors() -> list[str]:
         REPO_ROOT / "docs" / "GITHUB_GOVERNANCE.md",
         REPO_ROOT / "docs" / "PROJECT_STATUS.md",
         REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md",
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "parameter_matrix_protocol.md",
+        REPO_ROOT / "workflow" / "README.md",
         LOCAL_GTPJ_WORKFLOW_SKILL_PATH,
     }
     manifest_path = workflow_manifest_path()
@@ -8822,10 +8824,12 @@ def immutable_template_language_errors() -> list[str]:
                 errors.append(
                     f"{display_path(path)} still contains retired experiment-start instruction: {phrase}"
                 )
+        command_content = re.sub(r"`\s*\r?\n\s*", " ", content)
+        command_content = re.sub(r"\\\s*\r?\n\s*", " ", command_content)
         retired_formal_runner = re.search(
             r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
             r"run-workflow\b[^\r\n]*--formal\b[^\r\n]*$",
-            content,
+            command_content,
         )
         if retired_formal_runner:
             errors.append(
@@ -8835,7 +8839,7 @@ def immutable_template_language_errors() -> list[str]:
         retired_matrix_command = re.search(
             r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
             r"prepare-dynamic-routing-matrix\b[^\r\n]*$",
-            content,
+            command_content,
         )
         if retired_matrix_command:
             errors.append(
@@ -8845,7 +8849,7 @@ def immutable_template_language_errors() -> list[str]:
         for plan_command in re.finditer(
             r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
             r"plan-dynamic-routing-batch\b[^\r\n]*$",
-            content,
+            command_content,
         ):
             if "--debug-smoke" not in plan_command.group(0):
                 errors.append(

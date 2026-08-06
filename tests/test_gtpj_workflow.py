@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import contextlib
 from collections import Counter
 import csv
@@ -2163,6 +2164,47 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("canonical formal experiment", stderr)
 
+    def test_v5_can_seal_existing_legacy_receipt_without_new_launch(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        matrix_dir = self.repo / "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001"
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/receipt.json",
+            "{}\n",
+        )
+        self._write(
+            "experiments/module_trials/IDEA-0001/TRIAL-001/attempts/ATTEMPT-001/run.log",
+            "finished\n",
+        )
+        args = argparse.Namespace(
+            path=str(matrix_dir / "PARAMETER_MATRIX.csv"),
+            config=str(matrix_dir / "config.yaml"),
+            receipt=str(matrix_dir / "receipt.json"),
+            log=str(matrix_dir / "run.log"),
+            job_id="RUN-001",
+            run_id="RUN-OLD",
+            pre_run_freeze_commit=self._git("rev-parse", "HEAD").stdout.strip(),
+            command="python train_GTPJ_CUB.py --config config.yaml",
+        )
+
+        with (
+            mock.patch.object(
+                self.module,
+                "seal_finished_parameter_matrix_run",
+                return_value={"returncode": 0},
+            ) as seal,
+            mock.patch.object(self.module, "require_ready_experiment_for_artifact") as gate,
+            mock.patch.object(self.module, "run_training_with_start_receipt") as launch,
+        ):
+            code = self.module.cmd_prepare_run_start_receipt(args)
+
+        self.assertEqual(0, code)
+        seal.assert_called_once()
+        gate.assert_not_called()
+        launch.assert_not_called()
+
     def test_formal_run_workflow_requires_ready_experiment_directory_under_v5(self) -> None:
         self._write(
             "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
@@ -2518,6 +2560,33 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(
             any("prepare-dynamic-routing-matrix --trial-dir old" in error for error in errors),
+            errors,
+        )
+
+    def test_immutable_template_rule_sync_allows_multiline_debug_dynamic_plan(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write(
+            "docs/workflow/WORKFLOW_MANIFEST.yaml",
+            "files:\n"
+            "  - logical_id: parameter_matrix_protocol\n"
+            "    canonical_path: docs/workflow/protocols/parameter_matrix_protocol.md\n"
+            "    category: protocol\n"
+            "    status: active\n"
+            "    daily_read: false\n",
+        )
+        self._write(
+            "docs/workflow/protocols/parameter_matrix_protocol.md",
+            "python workflow/gtpj_workflow.py plan-dynamic-routing-batch `\n"
+            "  --trial-dir old --debug-smoke\n",
+        )
+
+        errors = self.module.immutable_template_language_errors()
+
+        self.assertFalse(
+            any("retired formal dynamic planner command" in error for error in errors),
             errors,
         )
 
