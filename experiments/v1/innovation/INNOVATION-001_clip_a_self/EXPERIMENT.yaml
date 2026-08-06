@@ -6,6 +6,7 @@ base_identity_kind: historical_code_ref
 base_template_id: none
 base_template_tag: none
 base_template_commit: none
+template_registry_commit: none
 historical_code_ref: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly#ATTEMPT-019
 template_binding_status: historical_read_only
 experiment_branch: none

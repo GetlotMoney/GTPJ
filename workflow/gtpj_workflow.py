@@ -345,12 +345,14 @@ EXPERIMENT_BINDING_REQUIRED_KEYS = {
     "base_template_id",
     "base_template_tag",
     "base_template_commit",
+    "template_registry_commit",
     "historical_code_ref",
     "template_binding_status",
     "experiment_branch",
     "legacy_ref",
     "status",
 }
+DEFAULT_TEMPLATE_REGISTRY_REF = "main"
 EXPERIMENT_BINDING_RULES = {
     "framework_template": ("ready", True, False),
     "historical_code_ref": ("historical_read_only", False, True),
@@ -897,11 +899,11 @@ def yaml_unquote(value: str) -> str:
     return text
 
 
-def read_shallow_yaml(path: Path) -> dict[str, object]:
-    """Parse the helper-generated, shallow YAML ledgers without a PyYAML dependency."""
+def parse_shallow_yaml_text(text: str) -> dict[str, object]:
+    """Parse helper-generated shallow YAML from either a file or a Git object."""
     data: dict[str, object] = {}
     current_section = ""
-    for raw_line in read_text(path).splitlines():
+    for raw_line in text.splitlines():
         if not raw_line.strip() or raw_line.lstrip().startswith("#"):
             continue
         if not raw_line.startswith(" "):
@@ -922,6 +924,11 @@ def read_shallow_yaml(path: Path) -> dict[str, object]:
                 assert isinstance(section, dict)
                 section[value_match.group(1)] = yaml_unquote(value_match.group(2))
     return data
+
+
+def read_shallow_yaml(path: Path) -> dict[str, object]:
+    """Parse the helper-generated, shallow YAML ledgers without a PyYAML dependency."""
+    return parse_shallow_yaml_text(read_text(path))
 
 
 def yaml_section_value(data: dict[str, object], section: str, key: str, default: str = "") -> str:
@@ -1536,10 +1543,46 @@ def experiment_binding_path(row: dict[str, str]) -> Path:
     return REPO_ROOT / row["directory"] / "EXPERIMENT.yaml"
 
 
-def require_experiment_branch_base(version: str) -> None:
+def load_framework_template_from_registry(
+    version: str,
+    registry_ref: str = DEFAULT_TEMPLATE_REGISTRY_REF,
+) -> tuple[dict[str, object], str]:
+    """Read TEMPLATE.yaml from an immutable governance commit, not the template checkout."""
+    registry_commit = resolve_commit(registry_ref)
+    require_ancestor(
+        registry_commit,
+        "refs/heads/main",
+        "template registry commit must belong to the local main governance history",
+    )
+    template_rel = f"experiments/{version}/TEMPLATE.yaml"
+    raw = git_show(f"{registry_commit}:{template_rel}", check=False)
+    if not raw:
+        raise WorkflowError(
+            f"template registry {registry_commit} does not contain {template_rel}"
+        )
+    template_data = parse_shallow_yaml_text(raw)
+    identity_errors = [
+        f"missing key: {key}"
+        for key in sorted(FRAMEWORK_TEMPLATE_REQUIRED_KEYS - set(template_data))
+    ]
+    identity_errors.extend(framework_template_identity_errors(version, template_data))
+    ref_errors = framework_template_git_ref_errors(template_data)
+    if identity_errors or ref_errors:
+        raise WorkflowError(
+            "template registry entry is invalid:\n"
+            + "\n".join(identity_errors + ref_errors)
+        )
+    return template_data, registry_commit
+
+
+def require_experiment_branch_base(
+    version: str,
+    *,
+    template_data: dict[str, object] | None = None,
+) -> None:
     template_path = framework_template_path(version)
-    if template_path.exists():
-        template_data = read_shallow_yaml(template_path)
+    if template_data is not None or template_path.exists():
+        template_data = template_data or read_shallow_yaml(template_path)
         template_status = str(template_data.get("template_status", ""))
         if template_status != "frozen":
             raise WorkflowError(
@@ -1553,7 +1596,8 @@ def require_experiment_branch_base(version: str) -> None:
                 "new-experiment branch must start exactly at template commit; "
                 f"HEAD={head_commit}, template_commit={template_commit}"
             )
-        template_ref_errors = framework_template_git_ref_errors(template_data)
+        template_ref_errors = framework_template_identity_errors(version, template_data)
+        template_ref_errors.extend(framework_template_git_ref_errors(template_data))
         if template_ref_errors:
             raise WorkflowError(
                 "new-experiment template identity is invalid:\n"
@@ -3975,6 +4019,56 @@ def framework_template_git_ref_errors(data: dict[str, object]) -> list[str]:
     return errors
 
 
+def framework_template_identity_errors(
+    version: str,
+    data: dict[str, object],
+) -> list[str]:
+    """Validate the human-readable template identity before trusting its Git refs."""
+    errors: list[str] = []
+    expected_framework_id = f"FRAMEWORK-{version.upper()}"
+    if str(data.get("framework_id", "")) != expected_framework_id:
+        errors.append(f"framework_id must be {expected_framework_id}")
+
+    template_id = str(data.get("template_id", ""))
+    id_match = re.fullmatch(
+        rf"MODEL-{version.upper()}-TEMPLATE-V([0-9]+)", template_id
+    )
+    if not id_match:
+        errors.append(f"template_id must belong to {version.upper()}")
+        return errors
+
+    template_number = int(id_match.group(1))
+    status = str(data.get("template_status", ""))
+    if template_number == 0:
+        expected_branch = framework_branch_name(version)
+        expected_tag = version
+        if status != "legacy_frozen":
+            errors.append("V0 must use legacy_frozen status")
+    else:
+        expected_branch = f"framework/{version}-template-v{template_number}"
+        expected_tag = f"model/{version}-template-v{template_number}"
+        if status != "frozen":
+            errors.append("clean template must use frozen status")
+
+    if str(data.get("template_branch", "")) != expected_branch:
+        errors.append(f"template_branch must be {expected_branch}")
+    if str(data.get("template_tag", "")) != expected_tag:
+        errors.append(f"template_tag must be {expected_tag}")
+    if str(data.get("source_framework_tag", "")) != version:
+        errors.append(f"source_framework_tag must be {version}")
+
+    source_commit = str(data.get("source_framework_commit", ""))
+    source_tag_commit = git(
+        ["rev-parse", "--verify", f"refs/tags/{version}^{{commit}}"],
+        check=False,
+    )
+    if not source_tag_commit:
+        errors.append(f"missing source framework tag: {version}")
+    elif source_commit != source_tag_commit:
+        errors.append(f"source_framework_commit must match tag {version}")
+    return errors
+
+
 def validate_framework_templates() -> list[str]:
     errors: list[str] = []
     schema_path = REPO_ROOT / "schemas" / "framework_template.schema.json"
@@ -4006,26 +4100,10 @@ def validate_framework_templates() -> list[str]:
             f"{rel(template_path)} schema: {item}"
             for item in json_schema_subset_errors(data, template_schema)
         )
-        expected_framework_id = f"FRAMEWORK-{version.upper()}"
-        if str(data.get("framework_id", "")) != expected_framework_id:
-            errors.append(f"{rel(template_path)} framework_id must be {expected_framework_id}")
-        template_id = str(data.get("template_id", ""))
-        id_match = re.fullmatch(
-            rf"MODEL-{version.upper()}-TEMPLATE-V([0-9]+)", template_id
+        errors.extend(
+            f"{rel(template_path)}: {item}"
+            for item in framework_template_identity_errors(version, data)
         )
-        if not id_match:
-            errors.append(f"{rel(template_path)} template_id must belong to {version.upper()}")
-        else:
-            template_number = int(id_match.group(1))
-            status = str(data.get("template_status", ""))
-            tag = str(data.get("template_tag", ""))
-            if template_number == 0:
-                if status != "legacy_frozen":
-                    errors.append(f"{rel(template_path)} V0 must use legacy_frozen status")
-                if tag != version:
-                    errors.append(f"{rel(template_path)} V0 must use historical tag {version}")
-            elif tag == version:
-                errors.append(f"{rel(template_path)} clean templates cannot reuse historical tag {version}")
         errors.extend(
             f"{rel(template_path)}: {item}"
             for item in framework_template_git_ref_errors(data)
@@ -4059,7 +4137,6 @@ def experiment_binding_errors(
     missing = sorted(EXPERIMENT_BINDING_REQUIRED_KEYS - set(data))
     if missing:
         errors.append(f"missing keys: {', '.join(missing)}")
-        return errors
 
     scalar_checks = {
         "schema_version": "gtpj.experiment.v1",
@@ -4094,9 +4171,43 @@ def experiment_binding_errors(
         str(data.get("base_template_tag", "")),
         str(data.get("base_template_commit", "")),
     )
+    registry_commit = str(data.get("template_registry_commit", ""))
     if template_required:
         if any(_none_like(value) for value in template_fields):
             errors.append("framework_template requires the complete template id/tag/commit")
+        if not re.fullmatch(r"[0-9a-f]{40}", registry_commit):
+            errors.append("framework_template requires a full template_registry_commit")
+        else:
+            registry_raw = git_show(
+                f"{registry_commit}:experiments/{version}/TEMPLATE.yaml",
+                check=False,
+            )
+            if not registry_raw:
+                errors.append(
+                    "template_registry_commit does not contain the recorded TEMPLATE.yaml"
+                )
+            else:
+                registry_template = parse_shallow_yaml_text(registry_raw)
+                registry_errors = framework_template_identity_errors(
+                    version, registry_template
+                )
+                registry_errors.extend(
+                    framework_template_git_ref_errors(registry_template)
+                )
+                errors.extend(
+                    f"template registry: {item}" for item in registry_errors
+                )
+                registry_fields = (
+                    str(registry_template.get("template_id", "")),
+                    str(registry_template.get("template_tag", "")),
+                    str(registry_template.get("template_commit", "")),
+                )
+                if template_fields != registry_fields:
+                    errors.append(
+                        "framework_template id/tag/commit must match TEMPLATE.yaml"
+                    )
+                if str(registry_template.get("template_status", "")) != "frozen":
+                    errors.append("framework_template requires a frozen clean template")
         if str(template_data.get("template_status", "")) != "frozen":
             errors.append("framework_template requires the current template to be frozen")
         expected_template_fields = (
@@ -4112,6 +4223,8 @@ def experiment_binding_errors(
     else:
         if any(not _none_like(value) for value in template_fields):
             errors.append(f"{identity_kind} must not claim a clean template id/tag/commit")
+        if not _none_like(registry_commit):
+            errors.append(f"{identity_kind} must use template_registry_commit: none")
         if not _none_like(data.get("experiment_branch", "")):
             errors.append(f"{identity_kind} must use experiment_branch: none")
 
@@ -4121,6 +4234,40 @@ def experiment_binding_errors(
     if identity_kind == "framework_template" and not _none_like(historical_ref):
         # A clean experiment may retain an old planning reference, but it is not its code base.
         pass
+    return errors
+
+
+def historical_binding_evidence_errors(
+    data: dict[str, object],
+    matrix_rows: list[dict[str, str]],
+) -> list[str]:
+    """Do not turn a known-missing run code ref into a misleading broad directory claim."""
+    if str(data.get("base_identity_kind", "")) != "historical_code_ref":
+        return []
+    missing_refs = [
+        matrix_cell(row.get("code_ref", ""))
+        for row in matrix_rows
+        if matrix_cell(row.get("code_ref", "")).startswith(
+            "legacy_code_ref_not_preserved:"
+        )
+    ]
+    if not missing_refs:
+        return []
+    historical_ref = str(data.get("historical_code_ref", "")).strip()
+    if not historical_ref.lower().startswith("not_preserved"):
+        return [
+            "historical_code_ref must say not_preserved when the parameter matrix "
+            "says the exact legacy code ref was not preserved"
+        ]
+    if "evidence=" not in historical_ref:
+        return ["not_preserved historical_code_ref must name its surviving evidence"]
+    errors: list[str] = []
+    for missing_ref in sorted(set(missing_refs)):
+        legacy_id = missing_ref.split(":", 1)[1].strip()
+        if legacy_id and legacy_id not in historical_ref:
+            errors.append(
+                f"not_preserved historical_code_ref must include evidence for {legacy_id}"
+            )
     return errors
 
 
@@ -4153,6 +4300,14 @@ def validate_experiment_binding(
             template_data=template_data,
         )
     )
+    matrix_path = REPO_ROOT / row["parameter_matrix"].replace(".md", ".csv")
+    if matrix_path.exists():
+        try:
+            matrix_rows = read_parameter_matrix(matrix_path)
+        except WorkflowError as exc:
+            errors.append(f"cannot inspect historical code evidence: {exc}")
+        else:
+            errors.extend(historical_binding_evidence_errors(data, matrix_rows))
     return [f"{row['experiment_id']}: {item}" for item in errors]
 
 
@@ -4380,6 +4535,7 @@ def make_experiment_binding_yaml(
     exp_id: str,
     slug: str,
     template_data: dict[str, object],
+    template_registry_commit: str,
 ) -> str:
     framework_experiment_id = f"{version.upper()}-{exp_id}"
     branch = experiment_branch_name(version, kind, exp_id, slug)
@@ -4391,6 +4547,7 @@ base_identity_kind: framework_template
 base_template_id: {template_data.get('template_id', 'none')}
 base_template_tag: {template_data.get('template_tag', 'none')}
 base_template_commit: {template_data.get('template_commit', 'none')}
+template_registry_commit: {template_registry_commit}
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: {branch}
@@ -4399,23 +4556,152 @@ status: planned
 """
 
 
-def cmd_validate_experiment_base(args: argparse.Namespace) -> int:
-    experiment_dir = Path(args.path)
-    if not experiment_dir.is_absolute():
-        experiment_dir = REPO_ROOT / experiment_dir
+def formal_experiment_coordinates(
+    experiment_dir: Path,
+) -> tuple[str, str, str] | None:
+    """Return version, kind, and local ID for a canonical formal experiment path."""
+    try:
+        parts = experiment_dir.resolve().relative_to(
+            (REPO_ROOT / "experiments").resolve()
+        ).parts
+    except ValueError:
+        return None
+    if len(parts) != 3:
+        return None
+    version, kind_name, directory_name = parts
+    if not re.fullmatch(r"v[0-9]+", version) or kind_name not in KINDS:
+        return None
+    local_id, separator, _slug = directory_name.partition("_")
+    if not separator or not re.fullmatch(
+        rf"{KINDS[kind_name].prefix}-[0-9]{{3}}", local_id
+    ):
+        return None
+    return version, kind_name, local_id
+
+
+def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
+    """Require one formal experiment to be an independent child of a frozen template."""
     require_path_inside(experiment_dir, REPO_ROOT / "experiments", "experiment path")
+    coordinates = formal_experiment_coordinates(experiment_dir)
+    if coordinates is None:
+        raise WorkflowError(
+            "formal experiment path must be experiments/vX/<kind>/<EXPERIMENT-ID_slug>"
+        )
+    version, kind_name, local_id = coordinates
     binding_path = experiment_dir / "EXPERIMENT.yaml"
     if not binding_path.exists():
-        raise WorkflowError(f"missing EXPERIMENT.yaml under {display_path(experiment_dir)}")
+        raise WorkflowError(
+            "formal experiment is not bound to a ready frozen template: "
+            f"missing {display_path(binding_path)}"
+        )
     data = read_shallow_yaml(binding_path)
-    if str(data.get("base_identity_kind", "")) != "framework_template":
-        raise WorkflowError("experiment is not bound to a clean framework template")
+    if (
+        str(data.get("base_identity_kind", "")) != "framework_template"
+        or str(data.get("template_binding_status", "")) != "ready"
+    ):
+        raise WorkflowError(
+            "formal experiment is not bound to a ready frozen template"
+        )
+
+    registry_commit = str(data.get("template_registry_commit", ""))
+    if not re.fullmatch(r"[0-9a-f]{40}", registry_commit):
+        raise WorkflowError(
+            "formal experiment is not bound to a ready frozen template: "
+            "template_registry_commit must be a full commit"
+        )
+    template_data, resolved_registry = load_framework_template_from_registry(
+        version, registry_commit
+    )
+    if resolved_registry != registry_commit:
+        raise WorkflowError("template_registry_commit did not resolve exactly")
+
+    row = {
+        "experiment_id": f"{version.upper()}-{local_id}",
+        "directory": rel(experiment_dir),
+        "legacy_ref": str(data.get("legacy_ref", "none")),
+        "status": str(data.get("status", "")),
+        "parameter_matrix": rel(experiment_dir / PARAMETER_MATRIX_MD),
+    }
+    errors = experiment_binding_errors(
+        version=version,
+        kind_name=kind_name,
+        row=row,
+        data=data,
+        template_data=template_data,
+    )
+    schema_path = REPO_ROOT / "schemas" / "experiment.schema.json"
+    try:
+        schema = json.loads(read_text(schema_path))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"cannot load experiment schema: {exc}")
+    else:
+        errors.extend(
+            f"schema: {item}" for item in json_schema_subset_errors(data, schema)
+        )
+    if errors:
+        raise WorkflowError(
+            "formal experiment template binding is invalid:\n" + "\n".join(errors)
+        )
+
+    expected_branch = str(data.get("experiment_branch", ""))
+    require_expected_branch(expected_branch, "formal experiment")
     template_commit = str(data.get("base_template_commit", ""))
     require_ancestor(
         template_commit,
         "HEAD",
         "experiment branch must contain its recorded template commit",
     )
+    template_ledger_path = f"experiments/{version}/TEMPLATE.yaml"
+    changed_template_ledger = git(
+        ["diff", "--name-only", f"{template_commit}..HEAD", "--", template_ledger_path],
+        check=False,
+    )
+    if changed_template_ledger:
+        raise WorkflowError(
+            "experiment branch must not add or modify the framework TEMPLATE.yaml ledger"
+        )
+
+    experiment_refs = git(
+        [
+            "for-each-ref",
+            "--format=%(refname:short) %(objectname)",
+            f"refs/heads/exp/{version}/",
+        ],
+        check=False,
+    )
+    for line in experiment_refs.splitlines():
+        other_branch, separator, other_commit = line.partition(" ")
+        if not separator or other_branch == expected_branch or other_commit == template_commit:
+            continue
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", other_commit, "HEAD"],
+            cwd=REPO_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if result.returncode == 0:
+            raise WorkflowError(
+                "formal experiment branch contains another experiment branch; "
+                f"it must fork independently from {template_data.get('template_tag')}: "
+                f"{other_branch}"
+            )
+    return data
+
+
+def require_ready_experiment_for_artifact(path: Path) -> None:
+    """Apply the V5 base gate only to canonical formal experiment artifacts."""
+    if not immutable_template_standard_is_active():
+        return
+    experiment_dir = path if path.is_dir() else path.parent
+    if formal_experiment_coordinates(experiment_dir) is not None:
+        require_ready_experiment_base(experiment_dir)
+
+
+def cmd_validate_experiment_base(args: argparse.Namespace) -> int:
+    experiment_dir = Path(args.path)
+    if not experiment_dir.is_absolute():
+        experiment_dir = REPO_ROOT / experiment_dir
+    require_ready_experiment_base(experiment_dir)
     print(f"validate-experiment-base-ok path={display_path(experiment_dir)}")
     return 0
 
@@ -4430,7 +4716,27 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     base_dir = REPO_ROOT / "experiments" / version
     if not base_dir.exists():
         raise WorkflowError(f"Unknown version directory: {rel(base_dir)}")
-    if framework_standard_is_active():
+    registry_ref = str(
+        getattr(args, "template_registry_ref", DEFAULT_TEMPLATE_REGISTRY_REF)
+        or DEFAULT_TEMPLATE_REGISTRY_REF
+    )
+    registry_active = immutable_template_standard_is_active_at_ref(registry_ref)
+    template_registry_commit = "none"
+    registry_template_data: dict[str, object] = {}
+    if registry_active:
+        registry_template_data, template_registry_commit = (
+            load_framework_template_from_registry(version, registry_ref)
+        )
+        registry_framework = git_show(
+            f"{template_registry_commit}:experiments/{version}/framework.yaml",
+            check=False,
+        )
+        if not registry_framework:
+            raise WorkflowError(
+                f"{version} is not a formal framework in template registry "
+                f"{template_registry_commit}"
+            )
+    elif framework_standard_is_active():
         if not (base_dir / "framework.yaml").exists():
             raise WorkflowError(f"{version} is not a formal framework; missing {rel(base_dir / 'framework.yaml')}")
         framework_errors = validate_framework_ledgers()
@@ -4452,10 +4758,15 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
 
     require_experiment_branch(expected_branch)
     require_clean_worktree("new-experiment")
-    require_experiment_branch_base(version)
+    require_experiment_branch_base(
+        version,
+        template_data=registry_template_data or None,
+    )
 
     template_path = framework_template_path(version)
-    template_data = read_shallow_yaml(template_path) if template_path.exists() else {}
+    template_data = registry_template_data or (
+        read_shallow_yaml(template_path) if template_path.exists() else {}
+    )
     if template_data:
         write_new(
             exp_dir / "EXPERIMENT.yaml",
@@ -4465,6 +4776,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 exp_id=exp_id,
                 slug=slug,
                 template_data=template_data,
+                template_registry_commit=template_registry_commit,
             ),
         )
 
@@ -6613,6 +6925,20 @@ def immutable_template_standard_is_active() -> bool:
     return bool(version_match and int(version_match.group(1)) >= 5 and status_active)
 
 
+def immutable_template_standard_is_active_at_ref(ref: str) -> bool:
+    """Check the governance version at a separate registry ref."""
+    commit = resolve_commit(ref)
+    standard_text = git_show(
+        f"{commit}:docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+        check=False,
+    )
+    version_match = re.search(
+        r"(?m)^standard_id:\s*SYS-WORKFLOW-V([0-9]+)\s*$", standard_text
+    )
+    status_active = re.search(r"(?m)^status:\s*active\s*$", standard_text) is not None
+    return bool(version_match and int(version_match.group(1)) >= 5 and status_active)
+
+
 def require_legacy_module_attempt_backfill(args: argparse.Namespace) -> None:
     """Under the active framework standard, the old command only backfills historical evidence."""
     if not framework_standard_is_active():
@@ -8426,6 +8752,17 @@ def immutable_template_language_errors() -> list[str]:
         REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers,
         REPO_ROOT / "experiments" / "templates" / "experiment_README_template.md": core_markers[1:3],
         LOCAL_GTPJ_WORKFLOW_SKILL_PATH: core_markers,
+        REPO_ROOT / "README.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
+        REPO_ROOT / "AGENTS.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
+        REPO_ROOT / "docs" / "PROJECT_STATUS.md": [
+            "MODEL-V5-TEMPLATE-V1",
+            "不能启动新实验",
+        ],
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "promotion.md": [
+            "TEMPLATE.yaml",
+            "MODEL-VY-TEMPLATE-V1",
+            "framework/vY-template-v1",
+        ],
     }
     for path, markers in required_markers.items():
         if not path.exists():
@@ -8435,6 +8772,56 @@ def immutable_template_language_errors() -> list[str]:
         for marker in markers:
             if marker not in content:
                 errors.append(f"{display_path(path)} missing immutable-template marker: {marker}")
+
+    active_paths: set[Path] = {
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "AGENTS.md",
+        REPO_ROOT / "docs" / "GITHUB_GOVERNANCE.md",
+        REPO_ROOT / "docs" / "PROJECT_STATUS.md",
+        REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md",
+        LOCAL_GTPJ_WORKFLOW_SKILL_PATH,
+    }
+    manifest_path = workflow_manifest_path()
+    if manifest_path.exists():
+        current_path = ""
+        current_status = ""
+
+        def add_manifest_path() -> None:
+            if current_path and current_status in {"active", "active_reference"}:
+                active_paths.add(REPO_ROOT / current_path)
+
+        for raw_line in read_text(manifest_path).splitlines():
+            logical_match = re.match(r"^\s*-\s+logical_id:\s*", raw_line)
+            if logical_match:
+                add_manifest_path()
+                current_path = ""
+                current_status = ""
+                continue
+            path_match = re.match(r"^\s+canonical_path:\s*(\S.*?)\s*$", raw_line)
+            if path_match:
+                current_path = yaml_unquote(path_match.group(1))
+                continue
+            status_match = re.match(r"^\s+status:\s*(\S+)\s*$", raw_line)
+            if status_match:
+                current_status = yaml_unquote(status_match.group(1))
+        add_manifest_path()
+
+    retired_instructions = [
+        "新的创新从 `framework/v1`",
+        "所有新实验都从对应的 `framework/vX`",
+        "必须从 `framework/vX`",
+        "从目标 `framework/vX`",
+        "从对应的 `framework/vX`",
+    ]
+    for path in sorted(active_paths, key=lambda item: str(item).lower()):
+        if not path.exists():
+            continue
+        content = read_text(path)
+        for phrase in retired_instructions:
+            if phrase in content:
+                errors.append(
+                    f"{display_path(path)} still contains retired experiment-start instruction: {phrase}"
+                )
     return errors
 
 
@@ -15315,6 +15702,7 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
     log_path = Path(args.log)
     if not log_path.is_absolute():
         log_path = REPO_ROOT / log_path
+    require_ready_experiment_for_artifact(matrix_path)
     finish_receipt_path = run_finish_receipt_path(receipt_path)
     if receipt_path.exists() and log_path.exists():
         recovered = seal_finished_parameter_matrix_run(
@@ -15618,6 +16006,7 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
         config_path = REPO_ROOT / config_path
     if not config_path.exists() or not config_path.is_file():
         raise WorkflowError(f"Missing config snapshot: {display_path(config_path)}")
+    require_ready_experiment_for_artifact(matrix_path)
     with parameter_matrix_mutation_lock(
         matrix_path,
         operation="freeze-parameter-matrix",
@@ -17811,6 +18200,16 @@ def cmd_route_experiment(args: argparse.Namespace) -> int:
 def cmd_run_workflow(args: argparse.Namespace) -> int:
     if bool(args.debug_smoke) == bool(args.formal):
         raise WorkflowError("run-workflow requires exactly one of --debug-smoke or --formal")
+    if args.formal and immutable_template_standard_is_active():
+        experiment_dir_text = str(getattr(args, "experiment_dir", "") or "").strip()
+        if not experiment_dir_text:
+            raise WorkflowError(
+                "run-workflow --formal requires --experiment-dir under SYS-WORKFLOW-V5"
+            )
+        experiment_dir = Path(experiment_dir_text)
+        if not experiment_dir.is_absolute():
+            experiment_dir = REPO_ROOT / experiment_dir
+        require_ready_experiment_base(experiment_dir)
     if args.formal and not args.agent_runtime_gate:
         raise WorkflowError("run-workflow --formal requires --agent-runtime-gate <agent_runtime.yaml>")
     workflow_mode = str(args.workflow_mode or "").strip()
@@ -18160,6 +18559,11 @@ def build_parser() -> argparse.ArgumentParser:
     new_exp.add_argument("--kind", required=True, choices=sorted(KINDS))
     new_exp.add_argument("--exp-id", required=True)
     new_exp.add_argument("--slug", required=True)
+    new_exp.add_argument(
+        "--template-registry-ref",
+        default=DEFAULT_TEMPLATE_REGISTRY_REF,
+        help="记录 TEMPLATE.yaml 的管理分支或提交，默认 main",
+    )
     new_exp.set_defaults(func=cmd_new_experiment)
 
     validate_matrix = sub.add_parser("validate-parameter-matrix", help="校验一张参数矩阵是否可进入正式实验")
@@ -18451,6 +18855,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_workflow = sub.add_parser("run-workflow", help="最小统一调度入口：route -> plan -> optional launch")
     run_workflow.add_argument("--phrase", required=True)
+    run_workflow.add_argument(
+        "--experiment-dir",
+        default="",
+        help="正式运行所属的 experiments/vX/<kind>/<实验目录>",
+    )
     run_workflow.add_argument("--workflow-mode", choices=sorted(WORKFLOW_MODES), default="")
     run_workflow.add_argument("--workflow-kind", default="")
     run_workflow.add_argument("--trial-dir", default="")

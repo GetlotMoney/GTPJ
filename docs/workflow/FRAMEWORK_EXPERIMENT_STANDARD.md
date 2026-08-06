@@ -63,10 +63,11 @@ FRAMEWORK-V5
 候选没有通过确认时，只留在 `V5-INNOVATION-001` 中。确认并接纳后：
 
 1. 来源创新记录保留在 V5 下面，并把 `promoted_framework` 写成新框架编号；
-2. 从已确认代码提交创建新的 `framework/vY`；
-3. 创建冻结 Tag `vY`；
-4. 在正式框架区新增同级 `FRAMEWORK-VY`；
-5. 新框架用 `derived_from_framework: FRAMEWORK-V5` 记录来源，不成为 V5 的子目录或子节点。
+2. 用已确认代码提交登记历史来源分支 `framework/vY` 和冻结 Tag `vY`；
+3. 删除候选代码里新框架不使用的旧路径，完成一次行为对照和终极瘦身；
+4. 把通过对照的干净代码冻结为 `framework/vY-template-v1`、Tag `model/vY-template-v1` 和 `MODEL-VY-TEMPLATE-V1`；
+5. 在正式框架区新增同级 `FRAMEWORK-VY`，并写入 `TEMPLATE.yaml`；
+6. 新框架用 `derived_from_framework: FRAMEWORK-V5` 记录来源，不成为 V5 的子目录或子节点。
 
 纯调参、纯消融、纯确认以及未确认创新都不能占用正式框架编号或创建 Tag。
 
@@ -114,7 +115,7 @@ INNOVATION-001_example/
 └─ evidence/
 ```
 
-`EXPERIMENT.yaml` 必须写清 `base_identity_kind`、母版编号、母版 Tag、母版 commit、实验分支和旧记录引用。旧 helper 需要的 `config.yaml`、`manifest.yaml`、`result.yaml`、`quality_check.md` 和 `agent_summary.md` 可以继续存在。
+`EXPERIMENT.yaml` 必须写清 `base_identity_kind`、母版编号、母版 Tag、母版 commit、登记这份母版的 `template_registry_commit`、实验分支和旧记录引用。母版代码提交与登记提交必须分开记录，避免一个提交要求预先知道自己的哈希。旧 helper 需要的 `config.yaml`、`manifest.yaml`、`result.yaml`、`quality_check.md` 和 `agent_summary.md` 可以继续存在。
 
 ## 7. 命名
 

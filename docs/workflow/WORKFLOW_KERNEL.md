@@ -84,6 +84,9 @@ workflow_mode:
   no_default_guess: true
 ```
 
+正式模式还必须传 `--experiment-dir experiments/vX/<type>/<ID_slug>`。helper 会先读取该目录的
+`EXPERIMENT.yaml`，确认它绑定的是冻结母版而不是历史代码或待建母版，才继续检查 Agent 和 Runner。
+
 Owner 简单口令优先按下列映射解释：
 ```text
 本地正式，干净 -> live_multi_agent_monitor；侧边栏干净；授权创建本轮左侧命名 Codex 线程；禁止启动服务器 runner

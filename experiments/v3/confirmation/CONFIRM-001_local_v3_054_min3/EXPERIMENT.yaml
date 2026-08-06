@@ -6,6 +6,7 @@ base_identity_kind: historical_code_ref
 base_template_id: none
 base_template_tag: none
 base_template_commit: none
+template_registry_commit: none
 historical_code_ref: v3@13529cb1d3ed8405e2f5cbb4832eff8d1c78db16 + RUN-20260629-1722
 template_binding_status: historical_read_only
 experiment_branch: none

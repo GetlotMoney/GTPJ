@@ -6,8 +6,10 @@
 [同级正式框架注册表与历史来源连线](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
 `PARAMETER_MATRIX.md`。旧 `TRIAL / ATTEMPT / DR` 仅用于历史回查。
 
-长期分支为总管理 `main` 和正式框架代码分支 `framework/v1`、`framework/v2`、
-`framework/v3`、`framework/v5`；`v4` 只保留为历史 config-only 标签。
+`main` 保存总索引和规则。历史 `framework/v1`、`framework/v2`、`framework/v3`、
+`framework/v5` 与 `vX` Tag 只负责回查正式框架来源；新实验只能读取 `TEMPLATE.yaml`，
+从 `framework/vX-template-vN` 与 `model/vX-template-vN` 锁定的准确母版提交独立开始。
+`v4` 只保留为历史 config-only 标签。
 
 ## Current Active Version
 

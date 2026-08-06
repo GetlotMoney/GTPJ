@@ -138,4 +138,6 @@ excluded: logs, receipts, summaries, configs, manifests, registries, and data/ca
 
 ## Next Steps
 
-Use `GTPJ-v5` as the active base for future tune, ablation, and confirmation work. Treat `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` as the reference that the next v5-derived candidate must beat by repeat evidence.
+先完成并冻结 `MODEL-V5-TEMPLATE-V1`。当前 `MODEL-V5-TEMPLATE-V0 / legacy_frozen`
+只能回查历史，不能启动新实验；V5 后续调参、消融、创新和确认都必须从 V1 母版的准确提交独立开始。
+效果比较仍以 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 为正式参考。

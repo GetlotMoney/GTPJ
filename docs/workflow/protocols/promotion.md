@@ -1,7 +1,7 @@
 # 正式框架晋级协议
 
 晋级的意思是：一个创新候选已经通过确认和质量检查，可以登记为新的同级正式框架。
-它会得到独立的 `FRAMEWORK-VY`、长期分支 `framework/vY` 和冻结 Tag `vY`，但不会成为来源框架的子目录，也不会自动切换当前运行入口。
+它会得到独立的 `FRAMEWORK-VY`、历史来源分支 `framework/vY` 和冻结 Tag `vY`；随后还要完成一次代码瘦身，冻结为可供实验复制的 `MODEL-VY-TEMPLATE-V1`。它不会成为来源框架的子目录，也不会自动切换当前运行入口。
 
 纯调参、纯消融、纯确认以及尚未确认的创新都不能晋级。它们只能继续留在所属正式框架的四类实验账本中。
 
@@ -56,6 +56,9 @@ confirmation_status: confirmed
 - 目标配置可以冻结到 `config/versions/vY.yaml`；
 - 新编号尚未被任何正式框架、分支或 Tag 占用；
 - `promote_to`、`framework_version`、`framework_branch` 和 `framework_tag` 指向同一个 `vY`；
+- 候选代码已删除新框架不使用的旧路径，并通过新旧行为对照；
+- `framework/vY-template-v1`、`model/vY-template-v1` 与 `MODEL-VY-TEMPLATE-V1` 指向同一个干净母版提交；
+- 总管理提交中的 `TEMPLATE.yaml` 准确登记母版提交，母版代码提交与管理登记提交分开；
 - 创建 Tag 和任何经用户授权的推送之前，工作区必须干净。
 
 任一检查失败时，不得创建正式框架，必须记录：
@@ -68,8 +71,10 @@ promotion_decision: blocked
 
 1. 锁定已确认的候选代码提交，确认它确实来自所属正式框架的创新实验。
 2. 分配一个未使用的新编号 `vY`。
-3. 从已确认提交建立长期分支 `framework/vY`。
-4. 在总管理分支登记 `experiments/vY/`，至少包含 `framework.yaml`、`VERSION.md`、`EXPERIMENTS.md` 和下面四类同级账本：
+3. 从已确认提交建立历史来源分支 `framework/vY` 和正式 Tag `vY`；它们只负责说明框架从哪里来，不直接承接新实验。
+4. 删除该框架不用的旧实现、旧开关和失效配置，用同一真实最小样例完成新旧行为对照；对照没通过就停止晋级。
+5. 把通过对照的干净代码提交冻结为母版分支 `framework/vY-template-v1` 和 Tag `model/vY-template-v1`，两者必须与准确母版 commit 完全相同，冻结后不得移动。
+6. 在总管理分支登记 `experiments/vY/`，至少包含 `framework.yaml`、`TEMPLATE.yaml`、`VERSION.md`、`EXPERIMENTS.md` 和下面四类同级账本：
 
 ```text
 experiments/vY/
@@ -79,14 +84,14 @@ experiments/vY/
 └─ confirmation/INDEX.md
 ```
 
-5. 把配置冻结到 `config/versions/vY.yaml`；如需保留首次正式成绩，可在 `experiments/vY/baseline/` 保存证据，但它不能替代四类账本。
-6. 在来源框架的创新索引中，把 `promoted_framework` 回填为 `FRAMEWORK-VY`；原创新目录继续保留为来源证据。
-7. 在新框架的 `framework.yaml` 写入 `registry_level: formal_peer`、`derived_from_framework` 和 `promoted_from_experiment`。
-8. 更新 `experiments/FRAMEWORK_TREE.md`、`experiments/VERSION_TREE.md`、总实验登记表和项目状态。
-9. 运行框架台账、工作流一致性、边界和测试检查。
-10. 提交治理材料，并在已冻结的正式代码提交上创建本地 Tag `vY`。
-11. 除非用户在验证后明确要求，否则不得推送分支或 Tag。
-12. 除非用户明确要求，否则不得执行 `activate-version vY`。
+7. `TEMPLATE.yaml` 写入 `MODEL-VY-TEMPLATE-V1`、母版分支、母版 Tag、准确母版 commit、来源正式 Tag/commit 和行为合同；这个管理文件属于后续治理提交，不写回母版代码提交。
+8. 把配置冻结到 `config/versions/vY.yaml`；如需保留首次正式成绩，可在 `experiments/vY/baseline/` 保存证据，但它不能替代四类账本。
+9. 在来源框架的创新索引中，把 `promoted_framework` 回填为 `FRAMEWORK-VY`；原创新目录继续保留为来源证据。
+10. 在新框架的 `framework.yaml` 写入 `registry_level: formal_peer`、`derived_from_framework` 和 `promoted_from_experiment`。
+11. 更新 `experiments/FRAMEWORK_TREE.md`、`experiments/VERSION_TREE.md`、总实验登记表和项目状态。
+12. 运行框架母版、框架台账、工作流一致性、边界和测试检查。
+13. 除非用户在验证后明确要求，否则不得推送分支或 Tag。
+14. 除非用户明确要求，否则不得执行 `activate-version vY`。
 
 ## 6. 每个新正式框架必须记录
 

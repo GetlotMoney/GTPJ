@@ -56,8 +56,8 @@ idea_tree/                 # 创意来源、评分、排序
 | 层级 | 固定入口 | 用途 |
 |---|---|---|
 | 1. 框架 | `experiments/vX/framework.yaml` | 正式框架身份和历史来源。 |
-| 2. 母版 | `experiments/vX/TEMPLATE.yaml` | 不继续修改的代码底稿，登记母版编号、Tag 和准确 commit。 |
-| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的代码起点。 |
+| 2. 母版 | `experiments/vX/TEMPLATE.yaml` | 不继续修改的代码底稿，登记母版编号、Tag 和准确代码 commit；它由后续管理提交记录。 |
+| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的代码起点，同时记录母版代码提交与管理登记提交。 |
 | 4. 运行 | 同一实验目录的 `PARAMETER_MATRIX.csv` | 一行一套参数、一个 seed 和一次真实运行。 |
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
@@ -100,7 +100,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `config/versions/v2.yaml` | `GTPJ-v2` 的固定配置，是历史 owner-activated mainline code 的权威配置源。 |
 | `config/versions/v3.yaml` | `GTPJ-v3` 的固定配置，是当前 owner-accepted stochastic tag 的权威配置源。 |
 | `config/versions/v4.yaml` | 历史 config-only tag 的配置快照；正式引用应写 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。 |
-| `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置，后续调参从这里开始。 |
+| `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置快照；后续实验可复制这里的参数，但代码必须从 `TEMPLATE.yaml` 登记的干净母版开始。 |
 | `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v5`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |

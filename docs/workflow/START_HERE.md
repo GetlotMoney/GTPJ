@@ -105,8 +105,8 @@ formal：正式证据实验；允许 `activation_mode=real_multi_agent`，或 `a
 
 ```bash
 python workflow/gtpj_workflow.py run-workflow ... --workflow-mode live_multi_agent_monitor --debug-smoke
-python workflow/gtpj_workflow.py run-workflow ... --workflow-mode live_multi_agent_monitor --formal --agent-runtime-gate <agent_runtime.yaml>
-python workflow/gtpj_workflow.py run-workflow ... --workflow-mode server_frozen_runner --formal --agent-runtime-gate <agent_runtime.yaml>
+python workflow/gtpj_workflow.py run-workflow ... --experiment-dir <experiments/vX/type/ID_slug> --workflow-mode live_multi_agent_monitor --formal --agent-runtime-gate <agent_runtime.yaml>
+python workflow/gtpj_workflow.py run-workflow ... --experiment-dir <experiments/vX/type/ID_slug> --workflow-mode server_frozen_runner --formal --agent-runtime-gate <agent_runtime.yaml>
 ```
 
 正式实验必须显式选择 `workflow_mode`，不能由 Coordinator 默认猜测：

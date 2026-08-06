@@ -6,6 +6,7 @@ base_identity_kind: historical_code_ref
 base_template_id: none
 base_template_tag: none
 base_template_commit: none
+template_registry_commit: none
 historical_code_ref: not_preserved; evidence=IDEA-0003/TRIAL-001/ATTEMPT-006/TUNE-001..008
 template_binding_status: historical_read_only
 experiment_branch: none

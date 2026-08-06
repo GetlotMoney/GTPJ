@@ -6,6 +6,7 @@ base_identity_kind: historical_code_ref
 base_template_id: none
 base_template_tag: none
 base_template_commit: none
+template_registry_commit: none
 historical_code_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text#RUN-20260630-0002
 template_binding_status: historical_read_only
 experiment_branch: none

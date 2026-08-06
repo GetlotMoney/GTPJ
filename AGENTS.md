@@ -85,7 +85,7 @@
 
 - 开始涉及新旧仓库对照的任务前读取根目录 `REPOSITORY_INDEX.json`。允许读取索引中的新版模板与新版实例文件，但默认不得跨仓库写入、自动同步或迁移账本；跨仓库写入必须由 owner 明确授权。
 
-- `main` 是总管理长期分支；每个正式框架另有一条长期代码分支：`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`。`v4` 是历史 config-only 标签，不创建 `framework/v4`。
+- `main` 是总管理长期分支。历史 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 与 `vX` Tag 只负责回查正式框架来源；正式新实验必须读取 `TEMPLATE.yaml`，从 `framework/vX-template-vN` 和 `model/vX-template-vN` 锁定的准确母版提交独立分叉。`v4` 是历史 config-only 标签，不创建 `framework/v4`。
 - `v1`、`v2`、`v3`、`v4`、`v5` 是永久版本 tags；当前正式确定版本以 `README.md`、`docs/PROJECT_STATUS.md` 和 `experiments/VERSION_TREE.md` 为准。`v4` 是历史 config-only tag，不作为以后“只调参也能开新 vX”的模板。
 - 复现实验必须先记录 `best_hit`：只有任意 clean completed/ok exact repeat 的单次 H 达到 `restore_target_H`，才标记为还原命中，并更新 `best_observed_H` / `best_single_H`；命中后必须停止后续 pending repeat。`max_attempts: 5` 是 `max_attempts_hard_cap`：不管有没有还原成功，同一候选最多跑 5 次；5 次仍未达到 `restore_target_H` 就收口为 not restored / near miss 状态，不能继续加跑。落在 `near_miss_tolerance_H` 内但没达到 `restore_target_H`，只能写 `near_miss_not_restored`，表示实验有效果、还有希望，不能写成复现通过，不能停止后续 repeat。`stable_confirm` 是另一层：只有质量门另行要求多 run 稳定性时，才用同一 `original_seed`、同一配置的 clean repeats 计算 mean/min/max/range，并按 `docs/workflow/protocols/promotion.md` 进入 promotion 判断。多个 stable-confirmed 候选同时存在时，按 `confirmed_H` 最高者确定为正式版本；`best_observed_H` 只回答“最高跑到过多少”，不能单独决定 promotion。promotion 表示确定正式版本/tag，不等于自动执行 `activate-version` 或切换 active runtime alias。
 - 训练产生的 checkpoint 不进 GitHub。一次 campaign 收口后，只保留 H 排名前 3 的 `model_best`/best-model checkpoint；其余训练 checkpoint 可在写入 retention manifest 后删除。日志、receipt、summary、manifest、registry 和配置证据不能随 checkpoint 清理一起删除。

@@ -6,6 +6,7 @@ version:
 base_template_id: MODEL-VX-TEMPLATE-VN
 base_template_tag:
 base_template_commit:
+template_registry_commit:
 template_ledger: experiments/vX/TEMPLATE.yaml
 experiment_binding: EXPERIMENT.yaml
 branch_source: exact_template_commit
@@ -40,7 +41,8 @@ confirmation_status:
 ## 问题
 
 说明这次实验要回答的具体问题。先读取所属框架的 `TEMPLATE.yaml`，再由本目录的
-`EXPERIMENT.yaml` 绑定母版编号、Tag 和准确 commit。新实验分支必须从这个 commit 独立开出，命名为
+`EXPERIMENT.yaml` 同时绑定母版编号、Tag、准确 commit 和登记它的 `template_registry_commit`。
+母版代码提交与管理登记提交是两个对象；新实验分支必须从母版代码 commit 独立开出，命名为
 `exp/vX/<type>/<experiment-id>-<slug>`；不得从另一项实验接着改。结果写回该框架的四类账本，再同步
 `main` 总索引。
 
