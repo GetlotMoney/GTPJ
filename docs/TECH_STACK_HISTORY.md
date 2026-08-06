@@ -28,7 +28,7 @@
 - 选择原因：每个实验应从不变母版复制后只改一次，母版本身不应积累后续实验开关；缺输入时明确失败比静默退化更能保证局部分支消融可信。
 - 已知限制：当前只证明固定 CPU 小输入上的输出、损失和关键梯度等价，并用受控 logits 证明 U/S/H/ZS 计算含义；尚未获得服务器正式精度，也尚未冻结 Tag 和母版台账。
 - 素材位置：`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_evaluation.py`、`tools/v5_runtime.py`、`tools/v5_cub_data.py`、`tools/convert_v5_checkpoint.py`、`docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md`。
-- 验证命令与结果：稳定 Python 3.10 运行 V5 合同、转换器、数学路径和续训复现测试，36 项全部通过；工作流 251 项通过；5 个结构/边界检查、`py_compile`、`pyflakes` 与 `git diff --check` 通过；历史 `v5` Tag 的真实模型经字段转换后，评估/训练 logits、7 项损失和 PSE/BVSA/ICSA/SGMP 关键梯度在 `rtol=1e-5、atol=1e-6` 下对齐；CPU 小模型连续训练与中断续训 3 个 step 的 loss、全部参数和学习率逐位一致；输入加载前后双指纹可拒绝中途替换。当前 CPU 环境未执行真实 CUDA 恢复。
+- 验证命令与结果：提交 `1233ca9` 上，稳定 Python 3.10 运行 V5 合同、转换器、数学路径和续训复现测试，36 项全部通过；工作流 251 项通过；5 个结构/边界检查、`py_compile`、`pyflakes` 与 `git diff --check` 通过；历史 `v5` Tag 的真实模型经字段转换后，评估/训练 logits、7 项损失和 PSE/BVSA/ICSA/SGMP 关键梯度在 `rtol=1e-5、atol=1e-6` 下对齐；CPU 小模型连续训练与中断续训 3 个 step 的 loss、全部参数和学习率逐位一致；输入加载前后双指纹可拒绝中途替换。当前 CPU 环境未执行真实 CUDA 恢复。
 - 回退方式：回退本候选提交即可；历史 `v5` Tag、原 commit、旧实验目录和结果证据均未改动。
 
 ## 2026-08-06：UI-FRAMEWORK-REGISTRY-V3（已完成）
