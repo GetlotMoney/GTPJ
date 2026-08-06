@@ -129,7 +129,8 @@ owner 只说“用工作流”但没有指定模式时，Coordinator 必须先�
 
 如果 owner 已经明确说“多agents智能体工作流”，它不属于“只说用工作流”的模糊入口，直接解释为 `live_multi_agent_monitor`。
 
-不能把 `server_frozen_runner` 的底层 `plan-dynamic-routing-batch + scp + screen` 当成 `live_multi_agent_monitor`，也不能把 `live_multi_agent_monitor` 降级成服务器离线训练。
+历史 `server_frozen_runner` 曾使用动态路由 batch planner、文件传输和后台进程；这套 Trial/Attempt 正式入口在
+`SYS-WORKFLOW-V5` 下已停用，不能冒充新的 `live_multi_agent_monitor`，也不能把后者降级成服务器离线训练。
 
 没有 `--formal` 和通过的 `agent_runtime.yaml`，即使服务器真的跑了训练，也只能算 runner/debug 事实，不能算正式工作流证据。
 

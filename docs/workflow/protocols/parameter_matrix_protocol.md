@@ -113,34 +113,31 @@ helper 会先准备临时收据和临时日志，再把该行从 `frozen` 改成
 
 ```powershell
 python workflow\gtpj_workflow.py init-parameter-matrix `
-  --directory experiments/module_trials/.../attempts/ATTEMPT-xxx `
-  --job-id JOB-001 --job-kind ablation --base-version v5 `
-  --base-config experiments/module_trials/.../config.yaml `
-  --config experiments/module_trials/.../attempts/ATTEMPT-xxx/config.yaml --seed 5
+  --directory experiments/v5/ablation/ABLATION-001_local_branch_effect `
+  --job-id RUN-001 --job-kind ablation --base-version v5 `
+  --base-config experiments/v5/config.yaml `
+  --config experiments/v5/ablation/ABLATION-001_local_branch_effect/config.yaml --seed 5
 ```
 
-动态路由的标准入口是：
+`SYS-WORKFLOW-V5` 启用后，旧动态路由 Trial/Attempt 入口只作历史回查。不得再创建新的旧式动态路由参数表，
+也不得用旧正式 batch planner 启动训练。新动态路由想法必须先成为所属正式框架的 innovation 实验，
+再使用该实验目录自己的 `PARAMETER_MATRIX.csv`、`freeze-parameter-matrix` 和
+`prepare-run-start-receipt`。旧 planner 只允许 `--debug-smoke`，产物不能进入正式证据。
+
+标准实验的检查入口是：
 
 ```powershell
-python workflow\gtpj_workflow.py prepare-dynamic-routing-matrix `
-  --trial-dir experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing `
-  --attempt-id ATTEMPT-019 --run-id <固定RUN-ID> `
-  --profile <profile> --jobs <任务数> --base-version v5
-
-# 检查、提交 pre-run freeze commit 后：
 python workflow\gtpj_workflow.py validate-parameter-matrix `
-  --path experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-019/PARAMETER_MATRIX.csv `
+  --path experiments/v5/innovation/INNOVATION-xxx_slug/PARAMETER_MATRIX.csv `
   --expected-jobs <任务数> --require-ready
 ```
 
-若基线代码标签不是版本号，在“生成矩阵”和“规划正式批次”两步都传同一个
-`--base-code-tag <tag-or-commit>`，否则会因冻结对象不一致被拒绝。
-
-从本规范生效后，正式动态路由批次必须传入同一个 `--attempt-id` 和 `--run-id`；一张矩阵只能绑定一个 Run。正式计划会逐行核对矩阵中的 `run_id` 是否等于本次计划的 Run 编号，再核对全部冻结字段并保存不可变快照；因此为 `RUN-A` 冻结的表不能拿去规划或回填 `RUN-B`。结果回填不能覆盖既有结果。`debug_smoke` 仅用于排障，不受此硬门限制，也不能作为正式证据。
+每行 `code_ref` 必须等于 `EXPERIMENT.yaml` 绑定的母版 Tag，`run_id` 必须等于本次正式运行编号。
+为 `RUN-A` 冻结的表不能拿去回填 `RUN-B`，结果回填也不能覆盖既有结果。
 
 ## 跑完后
 
-动态路由把服务器的 `summary.csv` 取回后，用下面命令回填同一张表：
+下面的同步命令只用于收回规范启用前已经实际运行的旧动态路由结果，不得用它创建新批次：
 
 ```powershell
 python workflow\gtpj_workflow.py sync-dynamic-routing-matrix --run-dir .gtpj_runtime/batches/<RUN_ID>

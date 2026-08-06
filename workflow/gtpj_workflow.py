@@ -8832,6 +8832,26 @@ def immutable_template_language_errors() -> list[str]:
                 f"{display_path(path)} still contains retired formal dynamic runner command: "
                 f"{retired_formal_runner.group(0).strip()}"
             )
+        retired_matrix_command = re.search(
+            r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
+            r"prepare-dynamic-routing-matrix\b[^\r\n]*$",
+            content,
+        )
+        if retired_matrix_command:
+            errors.append(
+                f"{display_path(path)} still contains retired dynamic matrix command: "
+                f"{retired_matrix_command.group(0).strip()}"
+            )
+        for plan_command in re.finditer(
+            r"(?m)^\s*(?:python\s+)?workflow[\\/]gtpj_workflow\.py\s+"
+            r"plan-dynamic-routing-batch\b[^\r\n]*$",
+            content,
+        ):
+            if "--debug-smoke" not in plan_command.group(0):
+                errors.append(
+                    f"{display_path(path)} still contains retired formal dynamic planner command: "
+                    f"{plan_command.group(0).strip()}"
+                )
     return errors
 
 

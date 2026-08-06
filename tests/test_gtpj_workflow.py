@@ -2495,6 +2495,32 @@ log:v1:module_trial:TRIAL-001:attempt-001
             errors,
         )
 
+    def test_immutable_template_rule_sync_rejects_retired_dynamic_matrix_command(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write(
+            "docs/workflow/WORKFLOW_MANIFEST.yaml",
+            "files:\n"
+            "  - logical_id: parameter_matrix_protocol\n"
+            "    canonical_path: docs/workflow/protocols/parameter_matrix_protocol.md\n"
+            "    category: protocol\n"
+            "    status: active\n"
+            "    daily_read: false\n",
+        )
+        self._write(
+            "docs/workflow/protocols/parameter_matrix_protocol.md",
+            "python workflow/gtpj_workflow.py prepare-dynamic-routing-matrix --trial-dir old\n",
+        )
+
+        errors = self.module.immutable_template_language_errors()
+
+        self.assertTrue(
+            any("prepare-dynamic-routing-matrix --trial-dir old" in error for error in errors),
+            errors,
+        )
+
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(
             "experiments/v1/tune/INDEX.md",
