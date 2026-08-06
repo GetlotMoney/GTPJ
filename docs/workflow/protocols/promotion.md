@@ -1,141 +1,107 @@
-# Automatic Promotion
+# 正式框架晋级协议
 
-Promotion 表示一个干净的框架/代码语义状态被接受为新的正式 baseline 版本。
-promotion 会创建版本材料和版本 tag，但不会自动执行 `activate-version`。
+晋级的意思是：一个创新候选已经通过确认和质量检查，可以登记为新的同级正式框架。
+它会得到独立的 `FRAMEWORK-VY`、长期分支 `framework/vY` 和冻结 Tag `vY`，但不会成为来源框架的子目录，也不会自动切换当前运行入口。
 
-纯调参不是 promotion。如果一次运行只改变 config 或超参数，它可以成为现有 `vX`
-下的 confirmed config/reference，但不能创建新的正式 `vY`。
+纯调参、纯消融、纯确认以及尚未确认的创新都不能晋级。它们只能继续留在所属正式框架的四类实验账本中。
 
-## Owner Standing Rule: Exact Repeat Before Promotion
+## 1. 复现门槛
 
-从 2026-06-29 起，一个候选只有同时满足以下条件，才算可复现：
+从 2026-06-29 起，候选要用于正式晋级，必须同时满足：
 
-- 复现运行写明 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、
-  `max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H` 和
-  `near_miss_not_restored`；
-- 同一候选无论是否还原成功都最多 5 次；5 次未达到 `restore_target_H` 时必须收口为 not restored / near miss，不能继续加跑复现；
-- 每次 repeat 都是 completed/ok，并且有有效 U/S/H/ZS 指标；
-- repeat 使用相同 code/config/seed/data/cache/epoch schedule/batch size/evaluation contract；
-- 任一 clean repeat 的 H 达到 `restore_target_H`；接近但未达到只能说明有效果、还有希望，
-  不能说明还原，不能用于 confirmation/promotion；
-- class order、seen/unseen split、label mapping、logits shape 和 metric semantics
-  没有变化，或已经显式审计。
+- 复现记录包含 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H` 和 `near_miss_not_restored`；
+- 同一候选最多做 5 次精确复跑；5 次仍未达到 `restore_target_H` 时，必须收口为未还原或接近但未还原；
+- 每次复跑都有有效的 U、S、H、ZS、随机种子和最佳轮次；
+- 代码、配置、随机种子、数据、缓存、训练轮次、批大小和评估方式保持一致；
+- 至少一次干净复跑达到 `restore_target_H`；接近但没有达到不能算还原；
+- 类别顺序、已见/未见划分、标签映射、输出形状和指标计算没有改变，或已经单独审计并说明。
 
-满足这些条件后，候选可以记录为 `best_hit`。如果 promotion 或 baseline claim 还要求
-`stable_confirm`，必须额外报告同一 `original_seed`、同一配置下的 mean/min/max/range。
-`seed_sweep`、`score_search` 和 `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，
-不能冒充 exact-repeat confirmation。只有当该候选同时包含
-框架/代码语义变化时，才允许自动 promotion 到下一个正式版本。如果只是 pure tune/config-only，
-必须保留在所属正式框架下作为 confirmed config/reference，不能创建正式 Tag。
+达到上述条件后可以记录 `best_hit`。如果正式结论还要求稳定性，必须额外报告同一配置的均值、最小值、最大值和波动范围。
+`seed_sweep`、`score_search` 和 `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不能冒充精确复跑。
 
-对 exact-repeat confirmed 候选，正式结果行使用成功 repeat 中 H 最高的一次。该行记录为
-`confirmed_H` / official H，并从同一次 repeat 取 official U/S/ZS。仍然必须记录
-`H_mean`、`H_min`、`H_max` 和 repeat count 作为稳定性证据。单次高分不能在 quality gate
-要求的 `stable_confirm` 通过前成为 baseline claim。
+## 2. 晋级不会自动激活代码
 
-如果同时存在多个 stable-confirmed 候选，优先按 `confirmed_H` 选择最强 confirmed
-config/reference，并用 repeat stability（`H_mean`、`H_min`、spread）作为护栏或平局判定。
-不要把纯调参变成新的 `vX`。
-
-## GitHub Push Boundary
-
-promotion 在检查通过后可以创建本地文件、commit 和本地 tag。除非 owner 在验证后明确要求
-（explicitly asks），否则不能把分支或 tag push 到 GitHub；硬标记：must not push。
-
-即使 owner 明确批准 push，也仍然不允许：
-
-- force-push;
-- deleting remote refs;
-- rewriting history;
-- changing active code aliases;
-- running `activate-version`.
-
-## Promotion Does Not Activate Code
-
-`promotion` 只创建类似 `v4` 的正式 version/tag。
-
-`activate-version vX` 是单独动作。只有执行它之后，当前 runtime alias 或 active config
-才能切换。如果还没有执行 `activate-version`，必须记录：
+晋级只登记新的同级正式框架和本地冻结 Tag。切换当前运行配置属于另一项动作，只有用户明确要求执行 `activate-version vY` 时才能进行。
+没有切换时必须记录：
 
 ```text
 active_main_update: not_activated
 ```
 
-## Trigger Fields
+## 3. 进入晋级检查的字段
 
-result 记录以下字段后，才可以进入 automatic promotion：
+来源创新的结果必须记录：
 
 ```text
 promotion_decision: promote
-promote_to: vX
+promote_to: vY
 evidence_level: baseline_grade
 confirmation_status: confirmed
 ```
 
-对 exact-repeat promotion，当上面的规则满足后，source confirmation 可以从
-`confirmation_grade` 升级为 `baseline_grade`。对纯调参来说，这个升级只表示 confirmed
-config/reference，仍然不能授权新的正式版本。
+`promote_to` 必须和即将登记的 `framework_version` 完全一致。例如目标是 `FRAMEWORK-V6`，这里必须写 `v6`，不能写 `v7` 或留空。
 
-如果 owner 在没有 `baseline_grade` evidence 的情况下接受或激活某个候选，必须记录为
-`owner_activated_unconfirmed` 或其它明确 provisional status。promotion gates 通过前，
-不能把它转换成 confirmed formal version。
+如果用户在历史时期接纳了证据不完整的框架，只能保留为明确的历史状态，例如 `legacy_owner_accepted_unconfirmed`；一般实验激活但未确认时写 `owner_activated_unconfirmed`。两者都不能伪装成按本协议确认通过的新框架。
 
-## Hard Gates
+## 4. 必须全部通过的检查
 
-所有 gate 必须通过：
+- 来源创新明确记录 `derived_from_framework`、来源 Tag、分支、提交、配置、命令、指标和外部证据；
+- 来源创新确实改变框架或代码语义，纯调参不能晋级；
+- 结果不是只有一次偶然高点；
+- 运行来自干净提交，`dirty_state: clean` 且 `git_dirty: false`；
+- U、S、H、ZS、随机种子、最佳轮次和比较基准齐全；
+- `best_observed_H`、`confirmed_H` 和 `confirmation_status` 分开记录；
+- 外部产物的编号、路径、sha256 和大小齐全；
+- `quality_check.md` 没有阻断问题；
+- 目标配置可以冻结到 `config/versions/vY.yaml`；
+- 新编号尚未被任何正式框架、分支或 Tag 占用；
+- `promote_to`、`framework_version`、`framework_branch` 和 `framework_tag` 指向同一个 `vY`；
+- 创建 Tag 和任何经用户授权的推送之前，工作区必须干净。
 
-- source experiment/trial 记录来源正式框架、code source、branch、commit、
-  config、command、metrics 和 artifact evidence；
-- source experiment/trial 包含框架/代码语义变化；pure tune 必须留在现有版本下；
-- source evidence 不能只是单次高点；
-- 已记录或可推断 `dirty_state: clean` 和 `git_dirty: false`；
-- metrics 包含 U、S、H、ZS、seed、best epoch 和 comparison reference；
-- `best_observed_H`, `confirmed_H`, and `confirmation_status` are distinct;
-- external artifact id、URI、sha256 和 size 已记录；
-- `quality_check.md` 没有 blocking issue；
-- GitHub 不包含 raw logs、checkpoints、generated figures 或 caches；
-- target config 可以冻结到 `config/versions/vX.yaml`；
-- 打 tag 和任何 owner 授权 push 前，当前 working tree 必须 clean。
-
-任一 hard gate 失败时，不得创建正式版本。记录：
+任一检查失败时，不得创建正式框架，必须记录：
 
 ```text
 promotion_decision: blocked
 ```
 
-## Automatic Actions
+## 5. 检查通过后的本地动作
 
-所有 gate 通过后，Coordinator 应该：
+1. 锁定已确认的候选代码提交，确认它确实来自所属正式框架的创新实验。
+2. 分配一个未使用的新编号 `vY`。
+3. 从已确认提交建立长期分支 `framework/vY`。
+4. 在总管理分支登记 `experiments/vY/`，至少包含 `framework.yaml`、`VERSION.md`、`EXPERIMENTS.md` 和下面四类同级账本：
 
-1. Create a promotion branch from current `main`.
-2. Copy or create the promoted config at `config/versions/vX.yaml`.
-3. Create `experiments/vX/` and `experiments/vX/baseline/`.
-4. Update `experiments/VERSION_TREE.md`.
-5. Update `experiments/EXPERIMENT_REGISTRY.md`.
-6. Update `docs/PROJECT_STATUS.md`.
-7. 按需更新 `README.md` 和其它轻量索引。
-8. Update helper canonical baseline metadata.
-9. Run validation.
-10. Commit the promotion ledger.
-11. Create local tag `vX`.
-12. Do not push the promotion branch or tag to GitHub unless the owner explicitly
-    asks after validation.
-13. Do not change active code aliases unless `activate-version vX` is explicitly
-    requested.
+```text
+experiments/vY/
+├─ tune/INDEX.md
+├─ ablation/INDEX.md
+├─ innovation/INDEX.md
+└─ confirmation/INDEX.md
+```
 
-## Required Version Record Fields
+5. 把配置冻结到 `config/versions/vY.yaml`；如需保留首次正式成绩，可在 `experiments/vY/baseline/` 保存证据，但它不能替代四类账本。
+6. 在来源框架的创新索引中，把 `promoted_framework` 回填为 `FRAMEWORK-VY`；原创新目录继续保留为来源证据。
+7. 在新框架的 `framework.yaml` 写入 `registry_level: formal_peer`、`derived_from_framework` 和 `promoted_from_experiment`。
+8. 更新 `experiments/FRAMEWORK_TREE.md`、`experiments/VERSION_TREE.md`、总实验登记表和项目状态。
+9. 运行框架台账、工作流一致性、边界和测试检查。
+10. 提交治理材料，并在已冻结的正式代码提交上创建本地 Tag `vY`。
+11. 除非用户在验证后明确要求，否则不得推送分支或 Tag。
+12. 除非用户明确要求，否则不得执行 `activate-version vY`。
 
-Every new version must record:
+## 6. 每个新正式框架必须记录
 
 ```text
 framework_id:
+framework_version:
 registry_level: formal_peer
 derived_from_framework:
 promoted_from_experiment:
-code_tag:
-ledger_source:
-ledger_source_commit:
-source_trial:
+framework_branch:
+framework_tag:
+framework_commit:
+governance_source_commit:
+source_legacy_ref:
+origin_status:
 change_type:
 config_snapshot:
 baseline_result:
@@ -147,3 +113,7 @@ confirmed_H:
 confirmation_status:
 active_main_update: not_activated | activated_by_owner | owner_accepted_current_tag
 ```
+
+## 7. GitHub 边界
+
+本协议只允许在检查通过后创建本地文件、提交、长期分支和本地 Tag。只有用户在验证后明确要求（`explicitly asks`）才允许推送；否则硬规则是 `must not push`。即使用户批准推送，也仍然禁止强制推送、删除远端引用和改写历史。

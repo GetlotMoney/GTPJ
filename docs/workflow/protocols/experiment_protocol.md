@@ -4,7 +4,7 @@
 唯一结构总规范见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
 
 四类实验都是同级。tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、
-质量检查和接纳全部通过后，才产生一个子 `FRAMEWORK-VY`。
+质量检查和接纳全部通过后，才注册一个新的同级正式框架 `FRAMEWORK-VY`。
 
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该

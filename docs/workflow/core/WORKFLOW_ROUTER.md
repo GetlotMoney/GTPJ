@@ -2,7 +2,7 @@
 
 正式写入前先绑定 `FRAMEWORK-VX`。调参写 `VX-TUNE-xxx`，消融写 `VX-ABLATION-xxx`，
 创新写 `VX-INNOVATION-xxx`，确认写 `VX-CONFIRM-xxx`。旧 `TRIAL / ATTEMPT` 只作为
-`legacy_ref`；创新通过确认和接纳后，才允许创建新的子 `FRAMEWORK-VY`。
+`legacy_ref`；创新通过确认和接纳后，才允许注册新的同级正式框架 `FRAMEWORK-VY`。
 
 ## 默认 agent 路由
 

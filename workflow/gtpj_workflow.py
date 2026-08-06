@@ -345,6 +345,7 @@ LEGACY_ORIGIN_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
+PROMOTED_FRAMEWORK_STATUSES = {"promoted", *LEGACY_ORIGIN_STATUSES}
 
 CANONICAL_BASELINES = {
     "v1": {
@@ -1925,7 +1926,7 @@ def cmd_repro_status(args: argparse.Namespace) -> int:
     print(f"- can_claim_confirmed_baseline: {'yes' if confirmed else 'no'}")
     if "legacy_config_only" in evidence.get("status", ""):
         print("- framework_version: no")
-        print("- note: pure tuning/config-only records stay under the parent version; use v3/CONFIRM-001 local-v3-054 as the formal reference")
+        print("- note: pure tuning/config-only records stay under their owning formal framework; use v3/CONFIRM-001 local-v3-054 as the formal reference")
     if not confirmed:
         status = evidence.get("status", "")
         if "owner_accepted" in status or "owner_activated" in status:
@@ -2903,7 +2904,7 @@ confirmation_status: pending
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
-- [ ] source_version / source_tag 明确。
+- [ ] derived_from_framework / source_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
 - [ ] `evidence_level: baseline_grade` 或明确标成 owner_activated_unconfirmed / provisional。
@@ -3607,8 +3608,26 @@ def framework_index_row_errors(version: str, kind_name: str) -> list[str]:
             continue
         if not re.fullmatch(expected_pattern, first):
             errors.append(f"{rel(index_path)} line {line_number} has wrong ID for {kind_name}: {first}")
-        if cells[1] not in FRAMEWORK_INDEX_STATUSES:
-            errors.append(f"{rel(index_path)} line {line_number} has invalid status: {cells[1]}")
+        status = cells[1]
+        promoted_framework = cells[6]
+        if status not in FRAMEWORK_INDEX_STATUSES:
+            errors.append(f"{rel(index_path)} line {line_number} has invalid status: {status}")
+        if promoted_framework != "-" and not re.fullmatch(r"FRAMEWORK-V[0-9]+", promoted_framework):
+            errors.append(
+                f"{rel(index_path)} line {line_number} has invalid promoted framework: {promoted_framework}"
+            )
+        if promoted_framework != "-" and kind_name != "innovation":
+            errors.append(
+                f"{rel(index_path)} line {line_number} can name a promoted framework only in innovation"
+            )
+        if promoted_framework != "-" and status not in PROMOTED_FRAMEWORK_STATUSES:
+            errors.append(
+                f"{rel(index_path)} line {line_number} status {status} cannot name a promoted framework"
+            )
+        if promoted_framework == "-" and status in PROMOTED_FRAMEWORK_STATUSES:
+            errors.append(
+                f"{rel(index_path)} line {line_number} status {status} requires a promoted framework"
+            )
     return errors
 
 
@@ -3741,12 +3760,16 @@ def framework_origin_evidence_errors(
     quality_path = REPO_ROOT / source_row["directory"] / "quality_check.md"
     result_data = read_shallow_yaml(result_path) if result_path.exists() else {}
     promotion_decision = yaml_section_value(result_data, "decision", "promotion_decision")
+    promote_to = yaml_section_value(result_data, "decision", "promote_to")
     confirmation_status = yaml_section_value(result_data, "evidence", "confirmation_status")
     confirmed_h = yaml_section_value(result_data, "evidence", "confirmed_H")
     quality_fields = read_key_value_block(quality_path) if quality_path.exists() else {}
     quality_decision = quality_fields.get("decision", "").strip().lower()
     if promotion_decision != "promote":
         errors.append(f"{source_experiment} is promoted without promotion_decision: promote")
+    expected_version = str(framework_data.get("framework_version", ""))
+    if promote_to != expected_version:
+        errors.append(f"{source_experiment} promote_to must be {expected_version}")
     if confirmation_status != "confirmed":
         errors.append(f"{source_experiment} is promoted without confirmation_status: confirmed")
     try:
@@ -3770,6 +3793,20 @@ def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> lis
     }
     reported_cycles: set[tuple[str, ...]] = set()
     for framework_id in sorted(by_id):
+        root_data = by_id[framework_id]
+        source_framework = str(root_data.get("derived_from_framework", ""))
+        promoted_from = str(root_data.get("promoted_from_experiment", ""))
+        origin_status = str(root_data.get("origin_status", ""))
+        if source_framework == "none" and framework_id != "FRAMEWORK-V1":
+            errors.append(f"only FRAMEWORK-V1 may be the initial root; found {framework_id}")
+        if framework_id == "FRAMEWORK-V1":
+            if (source_framework, promoted_from, origin_status) != ("none", "initial", "initial"):
+                errors.append(
+                    "FRAMEWORK-V1 must use derived_from_framework=none, "
+                    "promoted_from_experiment=initial, and origin_status=initial"
+                )
+        elif promoted_from == "initial" or origin_status == "initial":
+            errors.append(f"{framework_id} cannot use initial origin fields")
         path: list[str] = []
         cursor = framework_id
         while cursor != "none":
@@ -3789,6 +3826,56 @@ def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> lis
             if not cursor:
                 errors.append(f"{framework_id} is missing derived_from_framework")
                 break
+    return errors
+
+
+def framework_promotion_link_errors(frameworks: dict[str, dict[str, object]]) -> list[str]:
+    """Require every promotion pointer to name one real peer framework and appear only once."""
+    errors: list[str] = []
+    registered_ids = {
+        str(data.get("framework_id", ""))
+        for data in frameworks.values()
+        if str(data.get("framework_id", ""))
+    }
+    links: dict[str, list[str]] = {}
+    for version in sorted(frameworks):
+        for row in framework_index_rows(version, "innovation"):
+            target = row.get("promoted_framework", "-")
+            if target == "-":
+                continue
+            source = f"{row.get('experiment_id', 'unknown experiment')} under FRAMEWORK-{version.upper()}"
+            links.setdefault(target, []).append(source)
+            if target not in registered_ids:
+                errors.append(f"{source} points to unknown formal framework {target}")
+            if target == "FRAMEWORK-V1":
+                errors.append(f"{source} cannot promote the initial framework FRAMEWORK-V1")
+    for target, sources in sorted(links.items()):
+        if len(sources) != 1:
+            errors.append(f"{target} must have exactly one promotion link; found {len(sources)}")
+    return errors
+
+
+def framework_git_ref_errors(version: str, expected_commit: str) -> list[str]:
+    """Require both the long-lived branch and frozen Tag for a formal peer framework."""
+    errors: list[str] = []
+    branch = framework_branch_name(version)
+    branch_commit = git(["rev-parse", "--verify", f"refs/heads/{branch}"], check=False)
+    if not branch_commit:
+        errors.append(f"missing long-lived framework branch: {branch}")
+    tag_commit_value = git(["rev-parse", "--verify", f"{version}^{{commit}}"], check=False)
+    if not tag_commit_value:
+        errors.append(f"missing frozen framework tag: {version}")
+    elif expected_commit != tag_commit_value:
+        errors.append(f"framework_commit does not match tag {version}")
+    if branch_commit and expected_commit:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", expected_commit, branch],
+            cwd=REPO_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if result.returncode != 0:
+            errors.append(f"{branch} does not contain framework_commit {expected_commit}")
     return errors
 
 
@@ -3857,23 +3944,8 @@ def validate_framework_ledgers() -> list[str]:
             if not (raw.startswith("[") and raw.endswith("]")):
                 errors.append(f"{rel(framework_path)} {key} must use an inline list")
 
-        branch = framework_branch_name(version)
-        branch_commit = git(["rev-parse", "--verify", f"refs/heads/{branch}"], check=False)
-        if not branch_commit:
-            errors.append(f"missing long-lived framework branch: {branch}")
         expected_commit = str(data.get("framework_commit", ""))
-        tag_commit_value = git(["rev-parse", f"{version}^{{commit}}"], check=False)
-        if tag_commit_value and expected_commit != tag_commit_value:
-            errors.append(f"{rel(framework_path)} framework_commit does not match tag {version}")
-        if branch_commit and expected_commit:
-            result = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", expected_commit, branch],
-                cwd=REPO_ROOT,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            if result.returncode != 0:
-                errors.append(f"{branch} does not contain framework_commit {expected_commit}")
+        errors.extend(framework_git_ref_errors(version, expected_commit))
 
         all_ids: set[str] = set()
         for kind_name in FRAMEWORK_KIND_ORDER:
@@ -3966,6 +4038,7 @@ def validate_framework_ledgers() -> list[str]:
     if (REPO_ROOT / "experiments" / "v4" / "framework.yaml").exists():
         errors.append("v4 is a legacy config-only tag and must not have framework.yaml")
     errors.extend(framework_derivation_errors(frameworks))
+    errors.extend(framework_promotion_link_errors(frameworks))
     for version, data in frameworks.items():
         source_framework = str(data.get("derived_from_framework", ""))
         if source_framework == "none":
@@ -7874,6 +7947,88 @@ def local_gtpj_workflow_skill_errors() -> list[str]:
     return errors
 
 
+def flat_framework_language_errors() -> list[str]:
+    """Keep active governance pages from drifting back to parent/child framework language."""
+    if not framework_standard_is_active():
+        return []
+    errors: list[str] = []
+    banned_phrases = [
+        "新的子 `FRAMEWORK",
+        "新的子 FRAMEWORK",
+        "产生一个子 `FRAMEWORK",
+        "parent version / parent tag",
+        "under the parent version",
+        "source_version / source_tag",
+        "正式框架树",
+        "版本树账本",
+        "父版本 H",
+        "父节点",
+        "Version tree:",
+    ]
+    roots = [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "AGENTS.md",
+        REPO_ROOT / "workflow" / "README.md",
+        REPO_ROOT / "docs" / "GITHUB_GOVERNANCE.md",
+        REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md",
+        REPO_ROOT / "docs" / "workflow",
+        REPO_ROOT / "experiments" / "templates",
+        LOCAL_GTPJ_WORKFLOW_SKILL_PATH,
+        LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / "references",
+    ]
+    candidates: set[Path] = set()
+    for root in roots:
+        if root.is_file():
+            candidates.add(root)
+        elif root.exists():
+            candidates.update(path for path in root.rglob("*.md") if path.is_file())
+    exempt_paths = {
+        (REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md").resolve(),
+        (REPO_ROOT / "experiments" / "templates" / "TRIAL_README_template.md").resolve(),
+    }
+    for path in sorted(candidates, key=lambda item: str(item).lower()):
+        resolved = path.resolve()
+        normalized = str(resolved).replace("\\", "/").lower()
+        if resolved in exempt_paths or any(
+            segment in normalized
+            for segment in ("/archive/", "/reviews/", "/agent_reviews/")
+        ):
+            continue
+        content = read_text(path)
+        for phrase in banned_phrases:
+            if phrase in content:
+                errors.append(f"{display_path(path)} contains retired flat-framework phrase: {phrase}")
+
+    required_markers = {
+        REPO_ROOT / "README.md": ["v1  ←  v2  ←  v3  ←  v5"],
+        REPO_ROOT / "docs" / "GITHUB_GOVERNANCE.md": [
+            "FRAMEWORK-V3  derived_from: FRAMEWORK-V2",
+            "FRAMEWORK-V5  derived_from: FRAMEWORK-V3",
+        ],
+        REPO_ROOT / "docs" / "workflow" / "core" / "WORKFLOW_ROUTER.md": [
+            "新的同级正式框架"
+        ],
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": [
+            "新的同级正式框架"
+        ],
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "promotion.md": [
+            "registry_level: formal_peer",
+            "tune/INDEX.md",
+            "ablation/INDEX.md",
+            "innovation/INDEX.md",
+            "confirmation/INDEX.md",
+        ],
+    }
+    for path, markers in required_markers.items():
+        if not path.exists():
+            continue
+        content = read_text(path)
+        for marker in markers:
+            if marker not in content:
+                errors.append(f"{display_path(path)} missing flat-framework marker: {marker}")
+    return errors
+
+
 def workflow_consistency_errors() -> list[str]:
     errors: list[str] = []
     errors.extend(workflow_manifest_errors())
@@ -8099,6 +8254,7 @@ def workflow_consistency_errors() -> list[str]:
             for marker in ["START_HERE.md", "WORKFLOW_KERNEL.md"]:
                 if marker not in text:
                     errors.append(f"{rel(playbook)} missing required entrypoint ref: {marker}")
+    errors.extend(flat_framework_language_errors())
     return errors
 
 

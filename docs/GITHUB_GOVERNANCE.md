@@ -61,7 +61,7 @@ legacy config-only reference from v3 confirmation, not a future tune-only promot
 - baseline / active 版本记录：`GTPJ-v1`、`GTPJ-v2`、`GTPJ-v3`、legacy `GTPJ-v4`、active provisional `GTPJ-v5`。
 - Git tag：每个正式 baseline 对应一个永久 tag，例如 `v1`。
 - 分支：`main` 管总索引和规范；`framework/vX` 管对应框架代码；临时实验使用 `exp/vX/<type>/...`，旧 `dev/...` 和 `promote/...` 只作历史兼容。
-- 正式框架树与四类实验：以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 和 `experiments/vX/framework.yaml` 为准。
+- 同级正式框架注册表、历史来源连线与四类实验：以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 和 `experiments/vX/framework.yaml` 为准。
 - 旧模块 trial 命名和 `trial/...` 快照 tag 只作历史追溯，不再用于新实验。
 - 配置快照：正式版本配置放在 `config/versions/`，实验副本放在具体实验目录。
 - 创意树：所有候选模块必须先进入 `idea_tree/`，有来源、评分和适用版本。
@@ -191,23 +191,24 @@ GTPJ 使用同级正式框架注册表。框架之间保留历史来源指针，
 ```text
 FRAMEWORK-V1  derived_from: none
 FRAMEWORK-V2  derived_from: FRAMEWORK-V1
-FRAMEWORK-V3  derived_from: FRAMEWORK-V1
+FRAMEWORK-V3  derived_from: FRAMEWORK-V2
+FRAMEWORK-V5  derived_from: FRAMEWORK-V3
 ```
 
-这表示 V1、V2、V3 都是同级正式框架；V2 和 V3 的来源指针可以同时指向 V1。
+这表示 V1、V2、V3、V5 都是同级正式框架；来源指针依次为 V2→V1、V3→V2、V5→V3。
 
 每个正式框架都必须记录历史来源：
 
 ```text
 framework_id: FRAMEWORK-V3
 registry_level: formal_peer
-derived_from_framework: FRAMEWORK-V1
-promoted_from_experiment: V1-INNOVATION-002
+derived_from_framework: FRAMEWORK-V2
+promoted_from_experiment: V2-INNOVATION-001
 code_tag: v3
 change_type: add_module / replace_module / remove_module / combo
-based_on_trial: trial/v1/idea-0003/trial-001
-inherits_code_from: v1
-does_not_inherit: v2
+source_legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa#ATTEMPT-004
+inherits_code_from: FRAMEWORK-V2
+does_not_inherit: unconfirmed promotion claim
 ```
 
 代码继承和实验记录保存是两件事：
@@ -245,12 +246,12 @@ config/versions/v3.yaml
 
 这些旧目录是历史账本，不表示 `v3` 继承了 `v2` 的代码。
 
-如果 `FRAMEWORK-V3.derived_from_framework = FRAMEWORK-V1`，那么：
+如果 `FRAMEWORK-V3.derived_from_framework = FRAMEWORK-V2`，那么：
 
 ```text
-V3 的代码和方法来源于 V1
-V3 与 V1、V2 在正式框架注册表中仍然同级
-experiments/v2/ 仍然保留在 main，作为 v2 历史记录
+V3 的代码和方法来源于 V2
+V3 与 V1、V2、V5 在正式框架注册表中仍然同级
+experiments/v2/ 继续保留在 main，既是 v2 的正式记录，也是 V3 的来源证据
 ```
 
 ## 从已有来源框架确定新正式框架

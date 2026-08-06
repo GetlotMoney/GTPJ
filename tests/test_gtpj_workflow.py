@@ -1773,6 +1773,50 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("`experiments/v1/innovation/INNOVATION-002_no_tag_candidate` | - |", index_text)
         self.assertNotIn("pending |", index_text)
 
+    def test_candidate_innovation_cannot_preallocate_a_formal_framework(self) -> None:
+        self._write(
+            "experiments/v1/innovation/INDEX.md",
+            "# innovation\n\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| `V1-INNOVATION-001` | candidate | test | `matrix` | - | `directory` | `FRAMEWORK-V6` |\n",
+        )
+
+        errors = self.module.framework_index_row_errors("v1", "innovation")
+
+        self.assertTrue(any("cannot name a promoted framework" in error for error in errors))
+
+    def test_promoted_framework_link_must_point_to_one_registered_framework(self) -> None:
+        frameworks = {
+            "v1": {
+                "framework_id": "FRAMEWORK-V1",
+                "derived_from_framework": "none",
+                "promoted_from_experiment": "initial",
+                "origin_status": "initial",
+            }
+        }
+        row = {
+            "experiment_id": "V1-INNOVATION-001",
+            "status": "promoted",
+            "promoted_framework": "FRAMEWORK-V99",
+        }
+        with mock.patch.object(
+            self.module,
+            "framework_index_rows",
+            side_effect=lambda version, kind: [row] if (version, kind) == ("v1", "innovation") else [],
+        ):
+            errors = self.module.framework_promotion_link_errors(frameworks)
+
+        self.assertTrue(any("unknown formal framework FRAMEWORK-V99" in error for error in errors))
+
+    def test_formal_framework_requires_its_frozen_tag(self) -> None:
+        expected_commit = self._git("rev-parse", "v1^{commit}").stdout.strip()
+        self._git("tag", "-d", "v1")
+
+        errors = self.module.framework_git_ref_errors("v1", expected_commit)
+
+        self.assertTrue(any("missing frozen framework tag: v1" in error for error in errors))
+
     def test_framework_derivation_rejects_a_source_cycle(self) -> None:
         validator = getattr(self.module, "framework_derivation_errors", lambda _frameworks: [])
         errors = validator(
@@ -1790,9 +1834,43 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(any("derivation cycle" in error for error in errors))
 
+    def test_only_v1_can_be_the_initial_framework_root(self) -> None:
+        errors = self.module.framework_derivation_errors(
+            {
+                "v1": {
+                    "framework_id": "FRAMEWORK-V1",
+                    "derived_from_framework": "none",
+                    "promoted_from_experiment": "initial",
+                    "origin_status": "initial",
+                },
+                "v6": {
+                    "framework_id": "FRAMEWORK-V6",
+                    "derived_from_framework": "none",
+                    "promoted_from_experiment": "initial",
+                    "origin_status": "initial",
+                },
+            }
+        )
+
+        self.assertTrue(any("only FRAMEWORK-V1 may be the initial root" in error for error in errors))
+
     def test_framework_origin_gate_uses_flat_registry_language(self) -> None:
         self.assertTrue(callable(getattr(self.module, "framework_origin_evidence_errors", None)))
         self.assertFalse(hasattr(self.module, "framework_child_lineage_errors"))
+
+    def test_flat_framework_language_check_rejects_parent_child_terms(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V4\nstatus: active\n",
+        )
+        self._write(
+            "docs/workflow/core/WORKFLOW_ROUTER.md",
+            "创新确认后创建新的子 FRAMEWORK-VY。\n",
+        )
+
+        errors = self.module.flat_framework_language_errors()
+
+        self.assertTrue(any("新的子 FRAMEWORK" in error for error in errors))
 
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(
@@ -1918,6 +1996,34 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any("confirmation_status: confirmed" in error for error in errors))
         self.assertTrue(any("finite confirmed_H" in error for error in errors))
         self.assertTrue(any("passing quality check" in error for error in errors))
+
+    def test_peer_framework_rejects_a_mismatched_promote_to_target(self) -> None:
+        directory = "experiments/v1/innovation/INNOVATION-001_x"
+        self._write(
+            f"{directory}/result.yaml",
+            "decision:\n  promotion_decision: promote\n  promote_to: v99\n"
+            "evidence:\n  confirmation_status: confirmed\n  confirmed_H: 74.50\n",
+        )
+        self._write(
+            f"{directory}/quality_check.md",
+            "# Quality\n\n```text\ndecision: pass\n```\n",
+        )
+
+        errors = self.module.framework_origin_evidence_errors(
+            {
+                "framework_id": "FRAMEWORK-V2",
+                "framework_version": "v2",
+                "promoted_from_experiment": "V1-INNOVATION-001",
+                "origin_status": "confirmed_promoted",
+            },
+            {
+                "experiment_id": "V1-INNOVATION-001",
+                "status": "promoted",
+                "directory": directory,
+            },
+        )
+
+        self.assertTrue(any("promote_to must be v2" in error for error in errors))
 
     def test_record_module_attempt_is_legacy_backfill_only_under_framework_standard(self) -> None:
         self._write(

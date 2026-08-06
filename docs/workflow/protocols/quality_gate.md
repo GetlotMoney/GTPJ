@@ -66,11 +66,11 @@ promote_to: vX
 
 随后自动执行 `docs/workflow/protocols/promotion.md` 的硬门。必须满足：
 
-- [ ] 来源版本明确：`source_version`、`source_tag`、`base_code_tag` 已记录；普通实验可按
+- [ ] 来源框架明确：`derived_from_framework`、`source_tag`、`base_code_tag` 已记录；普通实验可按
   `docs/workflow/protocols/experiment_protocol.md` 的 promotion 字段映射读取。
 - [ ] 来源 commit/tag 明确：module trial 的 trial tag 指向 README 中记录的 `code_commit`；
   普通实验或 tuned configuration 必须记录 `run_commit`，并可映射为 `code_commit`。
-- [ ] 指标明确：父版本 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。
+- [ ] 指标明确：来源框架 H、实验或 trial H、delta H、U/S/ZS、best epoch 已记录。
 - [ ] 证据等级明确：`evidence_level` 至少是 `confirmation_grade`；正式 baseline 必须是
   `baseline_grade`，或显式标成 owner provisional activation。
 - [ ] 干净确认明确：结果来自 clean pre-run freeze commit，`dirty_state: clean` 且

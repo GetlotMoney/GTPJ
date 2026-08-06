@@ -324,7 +324,7 @@ not_applicable / promote / blocked / rejected
 
 Promotion 必填证据：
 
-- parent version / parent tag；
+- 来源正式框架 / 来源 Tag；
 - trial code tag；
 - trial tag 指向 README 中记录的 code_commit；
 - baseline H、trial H、delta H；

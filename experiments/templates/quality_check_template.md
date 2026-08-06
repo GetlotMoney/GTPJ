@@ -53,7 +53,7 @@ transition_id:
 
 ## Promotion Gate（升版门槛，仅正式提升 vX 时填写）
 
-- [ ] source_version / source_tag 明确。
+- [ ] derived_from_framework / source_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
 - [ ] `evidence_level: baseline_grade`；如果只是 owner 激活，已标为 provisional /

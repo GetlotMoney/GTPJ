@@ -40,5 +40,27 @@
     "does_not_inherit": {"type": "array", "items": {"type": "string"}},
     "status": {"enum": ["formal", "retired"]}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"framework_id": {"const": "FRAMEWORK-V1"}},
+        "required": ["framework_id"]
+      },
+      "then": {
+        "properties": {
+          "derived_from_framework": {"const": "none"},
+          "promoted_from_experiment": {"const": "initial"},
+          "origin_status": {"const": "initial"}
+        }
+      },
+      "else": {
+        "properties": {
+          "derived_from_framework": {"pattern": "^FRAMEWORK-V[0-9]+$"},
+          "promoted_from_experiment": {"pattern": "^V[0-9]+-INNOVATION-[0-9]{3}$"},
+          "origin_status": {"enum": ["confirmed_promoted", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]}
+        }
+      }
+    }
+  ],
   "additionalProperties": true
 }

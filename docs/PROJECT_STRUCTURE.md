@@ -113,7 +113,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理版本树、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`
@@ -133,7 +133,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
 | `docs/workflow/archive/diagrams/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
 | `docs/workflow/protocols/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
-| `docs/workflow/protocols/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
+| `docs/workflow/protocols/versioning.md` | 正式框架命名、Tag、四类实验目录、历史来源和晋级规则。 |
 | `docs/workflow/protocols/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
 | `docs/workflow/protocols/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
 | `docs/workflow/protocols/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
@@ -266,7 +266,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/README.md` | 实验记录目录说明。 |
 | `experiments/FRAMEWORK_TREE.md` | 正式框架同级表、历史来源连线和当前实验全貌的人类入口；文件名为兼容保留，不表示上下级树。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
-| `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
+| `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
 
@@ -343,7 +343,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 
 | 路径 | 用途 |
 |---|---|
-| `experiments/v2/VERSION.md` | v2 版本说明，记录父版本、来源 trial、启用模块、正式结果和已知风险。 |
+| `experiments/v2/VERSION.md` | v2 版本说明，记录来源框架、来源 trial、启用模块、正式结果和已知风险。 |
 | `experiments/v2/config.yaml` | v2 配置归档副本，应与 `config/versions/v2.yaml` 保持一致。 |
 | `experiments/v2/result.md` | v2 结果记录，保存 owner-activated mainline 指标、best_observed_H 和外部日志 artifact 证据。 |
 | `experiments/v2/baseline/README.md` | `GTPJ-v2` baseline 证据说明。 |
@@ -362,7 +362,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 
 | 路径 | 用途 |
 |---|---|
-| `experiments/v3/VERSION.md` | v3 版本说明，记录父版本、来源 trial、owner stochastic 接受决策和已知确认风险。 |
+| `experiments/v3/VERSION.md` | v3 版本说明，记录来源框架、来源 trial、owner stochastic 接受决策和已知确认风险。 |
 | `experiments/v3/config.yaml` | v3 配置归档副本，应与 `config/versions/v3.yaml` 保持一致。 |
 | `experiments/v3/result.md` | v3 结果记录，保存 owner-accepted 指标、best_observed_H 和外部日志 artifact 证据。 |
 | `experiments/v3/baseline/README.md` | `GTPJ-v3` baseline 证据说明。 |

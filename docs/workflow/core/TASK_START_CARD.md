@@ -614,7 +614,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 
 必须记录：
 
-- parent version / parent tag；
+- 来源正式框架 / 来源 Tag；
 - trial code tag；
 - baseline H、trial H、delta H；
 - U/S/ZS、seed、best epoch；

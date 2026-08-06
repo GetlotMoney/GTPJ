@@ -3,7 +3,7 @@
 ## 正式框架与实验入口
 
 当前采用 `FRAMEWORK-VX / 四类实验 / RUN-xxx` 规范。先看
-[正式框架树](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
+[同级正式框架注册表与历史来源连线](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
 `PARAMETER_MATRIX.md`。旧 `TRIAL / ATTEMPT / DR` 仅用于历史回查。
 
 长期分支为总管理 `main` 和正式框架代码分支 `framework/v1`、`framework/v2`、
@@ -54,14 +54,14 @@ promotion_decision: blocked
 | `GTPJ-v4` | `v4` | legacy config-only tag | CUB GZSL | Historical misclassification of `v3/CONFIRM-001 local-v3-054`; not a formal framework version. |
 | `GTPJ-v5` | `v5` | owner activated provisional active mainline | CUB GZSL | TRIAL-003 conditional BVSA text, best_observed_H=74.54, repeat mean H=74.44. |
 
-Version tree:
+正式框架注册表与历史来源：
 
 ```text
-v1
-`-- v2 = parent v1 + IDEA-0001/TRIAL-001 CLIP-A-self / PSE
-    `-- v3 = parent v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA
-        |-- CONFIRM-001 = local-v3-054 min3-confirmed tuned config (not a v-version)
-        `-- v5 = parent v3 + TRIAL-003 conditional BVSA text active mainline
+v1  ←  v2  ←  v3  ←  v5
+       来源    来源    来源
+
+四个节点都是同级正式框架；向左箭头只表示右侧框架从左侧框架演变而来。
+v3/CONFIRM-001 = local-v3-054 min3-confirmed tuned config，不是新的框架版本。
 ```
 
 `main` stores the current active code plus all historical governance ledgers. `v1`, `v2`, `v3`, and `v5` are formal framework tags. `v4` exists as a historical config-only tag and should not be used as a precedent for opening new versions from pure tuning.
