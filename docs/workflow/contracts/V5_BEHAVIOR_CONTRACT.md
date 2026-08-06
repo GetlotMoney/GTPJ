@@ -23,7 +23,8 @@ V5 的正式训练和评估输入是 `clip_features`：
 - 正式训练数据流固定使用 `float32`；
 - 干净母版只接受 `[B（本批图片数量）, 577（1 个 CLS + 576 个真实局部块）, D（特征维度）]`。`[B, 576, D]`、`[B, 1, D]` 和 `[B, D]` 都会明确报错，不再把局部块平均值当 CLS，也不再复制 CLS 冒充 576 个局部块；
 - 训练和评估都必须同时存在 CLS、局部块和标签缓存。缺少任一文件时停止并列出缺失路径，不切换到增强缓存、CLS-only 或在线提取路线。
-- 正式训练启动时只加载一次测试缓存，并记录训练、文本、测试、`res101.mat` 和 `att_splits.mat` 的路径、SHA-256、大小、张量形状与类型；整个 run 复用同一份内存张量。
+- 正式训练启动时只加载一次测试缓存。训练、文本、测试、`res101.mat` 和 `att_splits.mat` 在加载前、加载后各计算一次路径、SHA-256 和大小；两次完全一致才继续，张量文件还记录实际读入内存的形状与类型，整个 run 复用这一份内存张量。
+- 类别划分只读取 xlsa17 的 `res101.mat` 与 `att_splits.mat`，并逐项核对训练、seen 测试和 unseen 测试缓存的标签顺序；不再读取历史 `CUBDataLoader` 所需但正式 V5 没有使用的 `clip_att/CUB_attribute.pkl`。
 
 `seenclass` 和 `unseenclass` 保存数据集里的全局类别编号。二者的编号、顺序和训练标签映射都遵循 `standard_v1`：训练输出按 `seenclass` 顺序取列，评估输出保持全部 200 个 CUB 类别的全局列顺序。
 
@@ -40,7 +41,7 @@ V5 的正式训练和评估输入是 `clip_features`：
 
 动态路由、可学习融合门、旧 AG-JEPA/LastViT/FAE 名称镜像，以及只为旧 checkpoint 占位的无效参数，都不属于 V5 母版。旧 checkpoint 如需继续使用，必须同时提供干净母版的 `state_dict` 作为字段与形状清单，再由独立转换工具生成新文件和转换收据；不能猜测字段，也不能把兼容分支重新塞回模型。
 
-正式断点续训只接受同一母版、同一准确代码 commit、同一完整配置、同一输入指纹和同一 seen/unseen 顺序产生的完整 checkpoint。checkpoint 必须保存并恢复 Python、NumPy、Torch CPU 和全部 CUDA RNG 状态；任一身份不一致时拒绝续训，不自动改成微调或重新开始。
+正式断点续训只接受同一母版、同一准确代码 commit、同一完整配置、同一输入指纹和同一 seen/unseen 顺序产生的完整 checkpoint。checkpoint 必须保存并恢复 Python、NumPy、Torch CPU 和全部 CUDA RNG 状态；从 CUDA 设备载入 checkpoint 时，Torch CPU RNG 与各 CUDA RNG 状态都先转回 CPU 字节张量再交给对应恢复接口。任一身份不一致时拒绝续训，不自动改成微调或重新开始。
 
 ## 4. 分数和输出
 

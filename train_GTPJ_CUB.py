@@ -15,8 +15,8 @@ import torch.optim as optim
 import yaml
 
 from model.MyModel import GTPJ
-from tools.dataset import CUBDataLoader
 from tools.reproducibility import configure_reproducibility
+from tools.v5_cub_data import load_v5_cub_split
 from tools.v5_runtime import (
     capture_rng_state,
     input_fingerprints,
@@ -24,6 +24,7 @@ from tools.v5_runtime import (
     restore_rng_state,
     sha256_file,
     validate_resume_identity,
+    validate_stable_input_records,
 )
 from tools.v5_evaluation import (
     evaluate_cached_v5,
@@ -261,12 +262,6 @@ print_log(f"局部分支融合：global + {config.local_weight} * local")
 print_log(f"PyTorch/CUDA：{repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
 print_log("=" * 60)
 
-dataloader = CUBDataLoader(".", config.device, is_balance=False)
-train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
-sentence_embeds = _load_gpt55_sentences(
-    int(config.num_class), int(config.dim_f_clip), config.device
-)
-test_cache = load_v5_test_cache()
 input_paths = {
     "xlsa17_res101": DATA_RES101_PATH,
     "xlsa17_att_splits": DATA_SPLIT_PATH,
@@ -276,6 +271,20 @@ input_paths = {
     "gpt55_sentences": GPT55_SENTENCE_PATH,
     **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
 }
+before_load_records = {name: input_record(path) for name, path in input_paths.items()}
+train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
+sentence_embeds = _load_gpt55_sentences(
+    int(config.num_class), int(config.dim_f_clip), config.device
+)
+test_cache = load_v5_test_cache()
+seenclasses, unseenclasses = load_v5_cub_split(
+    DATA_RES101_PATH,
+    DATA_SPLIT_PATH,
+    train_labels,
+    test_cache["seen_labels"],
+    test_cache["unseen_labels"],
+    config.device,
+)
 input_tensors = {
     "train_cls": train_cls,
     "train_patches": train_patches,
@@ -287,6 +296,7 @@ input_records = {
     name: input_record(path, input_tensors.get(name))
     for name, path in input_paths.items()
 }
+validate_stable_input_records(before_load_records, input_records)
 run_input_fingerprints = input_fingerprints(input_records)
 for name, record in input_records.items():
     tensor_summary = ""
@@ -307,11 +317,11 @@ text_embeds = sentence_embeds.mean(dim=1)
 
 model = GTPJ(
     config,
-    dataloader.seenclasses,
-    dataloader.unseenclasses,
-    seen_text_embeds=text_embeds[dataloader.seenclasses],
-    unseen_text_embeds=text_embeds[dataloader.unseenclasses],
-    seen_sentence_embeds=sentence_embeds[dataloader.seenclasses],
+    seenclasses,
+    unseenclasses,
+    seen_text_embeds=text_embeds[seenclasses],
+    unseen_text_embeds=text_embeds[unseenclasses],
+    seen_sentence_embeds=sentence_embeds[seenclasses],
 ).to(config.device)
 
 stages = config.lr_stages
@@ -356,8 +366,8 @@ if args.resume_from is not None:
         raise ValueError(
             f"checkpoint 来自 {checkpoint['template_id']!r}，不是 {MODEL_TEMPLATE_ID!r}。"
         )
-    seenclasses = dataloader.seenclasses.detach().cpu().long().tolist()
-    unseenclasses = dataloader.unseenclasses.detach().cpu().long().tolist()
+    seenclass_ids = seenclasses.detach().cpu().long().tolist()
+    unseenclass_ids = unseenclasses.detach().cpu().long().tolist()
     validate_resume_identity(
         checkpoint,
         template_id=MODEL_TEMPLATE_ID,
@@ -365,8 +375,8 @@ if args.resume_from is not None:
         config_values=config_values,
         config_sha256=config_hash,
         fingerprints=run_input_fingerprints,
-        seenclasses=seenclasses,
-        unseenclasses=unseenclasses,
+        seenclasses=seenclass_ids,
+        unseenclasses=unseenclass_ids,
     )
     model.load_state_dict(checkpoint["model_state_dict"], strict=True)
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -429,8 +439,8 @@ for epoch in range(start_epoch, total_epochs + 1):
         model,
         config.device,
         test_cache,
-        dataloader.seenclasses,
-        dataloader.unseenclasses,
+        seenclasses,
+        unseenclasses,
     )
     print_log(
         f"epoch {epoch}: S={seen_acc * 100:.2f}% U={unseen_acc * 100:.2f}% "
@@ -464,8 +474,8 @@ for epoch in range(start_epoch, total_epochs + 1):
                 "input_files": input_records,
                 "input_fingerprints": run_input_fingerprints,
                 "rng_state": capture_rng_state(),
-                "seenclasses": dataloader.seenclasses.detach().cpu().long().tolist(),
-                "unseenclasses": dataloader.unseenclasses.detach().cpu().long().tolist(),
+                "seenclasses": seenclasses.detach().cpu().long().tolist(),
+                "unseenclasses": unseenclasses.detach().cpu().long().tolist(),
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "scheduler_state_dict": scheduler.state_dict(),

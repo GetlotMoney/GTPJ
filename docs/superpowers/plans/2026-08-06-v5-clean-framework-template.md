@@ -439,7 +439,7 @@ python workflow/gtpj_workflow.py validate-framework-templates
 python workflow/gtpj_workflow.py validate-framework-ledgers
 python workflow/gtpj_workflow.py validate-workflow-consistency
 python workflow/gtpj_workflow.py audit-boundary
-python -m py_compile model/MyModel.py train_GTPJ_CUB.py tools/v5_evaluation.py tools/v5_runtime.py tools/convert_v5_checkpoint.py
+python -m py_compile model/MyModel.py train_GTPJ_CUB.py tools/v5_evaluation.py tools/v5_runtime.py tools/v5_cub_data.py tools/convert_v5_checkpoint.py
 git diff --check
 ```
 

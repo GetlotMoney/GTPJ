@@ -22,6 +22,7 @@ BASELINE_CONFIG = ROOT / "experiments" / "v5" / "baseline" / "config.yaml"
 RUNTIME_CONFIG = ROOT / "config" / "GTPJ_cub_gzsl.yaml"
 MODEL_SOURCE = ROOT / "model" / "MyModel.py"
 TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
+RUNTIME_SOURCE = ROOT / "tools" / "v5_runtime.py"
 
 
 LEGACY_V5_KEYS = {
@@ -171,6 +172,7 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "cub_merge.pt",
         "restart_from_best",
         "eval_zs_gzsl(",
+        "CUBDataLoader",
     }
     for token in forbidden:
         assert token not in source, token
@@ -178,7 +180,7 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
     for token in (
         "config",
         "random_seed",
-        "CUBDataLoader",
+        "load_v5_cub_split",
         "seenclasses",
         "unseenclasses",
         "evaluate_cached_v5",
@@ -197,11 +199,18 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         "input_fingerprints",
         "rng_state",
         "code_commit",
+        "validate_stable_input_records",
     ):
         assert token in source, token
 
     assert source.count("load_v5_test_cache(") == 1
     assert source.count("evaluate_cached_v5(") == 1
+
+
+def _check_v5_rng_restore_keeps_rng_state_on_cpu() -> None:
+    source = RUNTIME_SOURCE.read_text(encoding="utf-8")
+    assert 'torch.set_rng_state(state["torch_cpu"].cpu())' in source
+    assert "torch.cuda.set_rng_state_all([item.cpu() for item in cuda_states])" in source
 
 
 def _load_historical_v5_model_class():
@@ -419,6 +428,9 @@ class V5TemplateContractTest(unittest.TestCase):
 
     def test_v5_training_entry_uses_only_canonical_names(self) -> None:
         _check_v5_training_entry_uses_only_canonical_names()
+
+    def test_v5_rng_restore_keeps_rng_state_on_cpu(self) -> None:
+        _check_v5_rng_restore_keeps_rng_state_on_cpu()
 
     def test_v5_clean_path_parity_with_historical_tag(self) -> None:
         _check_v5_clean_path_parity_with_historical_tag()

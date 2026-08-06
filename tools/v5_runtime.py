@@ -36,6 +36,17 @@ def input_fingerprints(records):
     }
 
 
+def validate_stable_input_records(before, after):
+    if set(before) != set(after):
+        raise ValueError("输入清单在加载前后不一致。")
+    for name in before:
+        for field in ("path", "sha256", "size_bytes"):
+            if before[name][field] != after[name][field]:
+                raise RuntimeError(
+                    f"输入 {name} 在加载期间发生变化，拒绝继续正式训练。"
+                )
+
+
 def capture_rng_state():
     return {
         "python": random.getstate(),
@@ -51,12 +62,12 @@ def restore_rng_state(state):
         raise ValueError("checkpoint 的 rng_state 不完整。")
     random.setstate(state["python"])
     np.random.set_state(state["numpy"])
-    torch.set_rng_state(state["torch_cpu"])
+    torch.set_rng_state(state["torch_cpu"].cpu())
     cuda_states = state["torch_cuda"]
     if torch.cuda.is_available():
         if len(cuda_states) != torch.cuda.device_count():
             raise ValueError("checkpoint 的 CUDA RNG 设备数量与当前机器不一致。")
-        torch.cuda.set_rng_state_all(cuda_states)
+        torch.cuda.set_rng_state_all([item.cpu() for item in cuda_states])
     elif cuda_states:
         raise ValueError("checkpoint 包含 CUDA RNG，但当前环境没有 CUDA。")
 
