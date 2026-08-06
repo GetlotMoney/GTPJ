@@ -579,12 +579,17 @@ if resume_from:
 
             if resume_lr_schedule == 'continue':
                 # 继续 LR 进度: 恢复 optimizer + scheduler, epoch 接着数
-                if 'optimizer_state_dict' in ckpt:
-                    optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-                    print_log(f"  ✓ Loaded optimizer state")
-                if 'scheduler_state_dict' in ckpt:
-                    scheduler.load_state_dict(ckpt['scheduler_state_dict'])
-                    print_log(f"  ✓ Loaded scheduler state")
+                required_states = {'optimizer_state_dict', 'scheduler_state_dict'}
+                missing_states = sorted(required_states - set(ckpt))
+                if missing_states:
+                    raise ValueError(
+                        "resume_lr_schedule='continue' 需要同一干净母版产生的完整 checkpoint；"
+                        f"当前缺少 {missing_states}。历史转换权重请使用 restart 或 finetune。"
+                    )
+                optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+                print_log(f"  ✓ Loaded optimizer state")
+                scheduler.load_state_dict(ckpt['scheduler_state_dict'])
+                print_log(f"  ✓ Loaded scheduler state")
                 start_epoch = ckpt_epoch + 1
                 print_log(f"  ✓ Resuming from epoch {start_epoch}, best_H so far = {best_H*100:.2f}%")
             elif resume_lr_schedule == 'restart':
