@@ -2072,6 +2072,40 @@ log:v1:module_trial:TRIAL-001:attempt-001
         ]:
             self.assertTrue(any(phrase in error for error in errors), phrase)
 
+    def test_immutable_template_rule_sync_rejects_missing_active_markers(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        for path in [
+            "docs/workflow/START_HERE.md",
+            "docs/workflow/WORKFLOW_KERNEL.md",
+            "docs/workflow/core/QUICK_START.md",
+            "docs/workflow/core/TASK_START_MINI.md",
+            "docs/workflow/core/TASK_START_CARD.md",
+            "docs/workflow/protocols/git_policy.md",
+            "docs/workflow/protocols/versioning.md",
+            "docs/workflow/protocols/experiment_protocol.md",
+            "experiments/templates/experiment_README_template.md",
+        ]:
+            self._write(path, "母版规则尚未同步。\n")
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
+            "GitHub documentation is canonical\n",
+            encoding="utf-8",
+        )
+
+        errors = self.module.immutable_template_language_errors()
+
+        for marker in [
+            "MODEL-VX-TEMPLATE-VN",
+            "TEMPLATE.yaml",
+            "EXPERIMENT.yaml",
+            "从准确母版提交独立分叉",
+            "实验代码不得并回母版",
+            "legacy_frozen 不能启动新实验",
+        ]:
+            self.assertTrue(any(marker in error for error in errors), marker)
+
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(
             "experiments/v1/tune/INDEX.md",
