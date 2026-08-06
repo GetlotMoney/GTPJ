@@ -324,6 +324,18 @@ FRAMEWORK_REQUIRED_KEYS = {
     "does_not_inherit",
     "status",
 }
+FRAMEWORK_TEMPLATE_REQUIRED_KEYS = {
+    "schema_version",
+    "framework_id",
+    "template_id",
+    "template_status",
+    "template_branch",
+    "template_tag",
+    "template_commit",
+    "source_framework_tag",
+    "source_framework_commit",
+    "behavior_contract",
+}
 FRAMEWORK_INDEX_STATUSES = {
     "planned",
     "pending",
@@ -1494,6 +1506,10 @@ def experiment_branch_name(version: str, kind: ExperimentKind, exp_id: str, slug
 
 def framework_branch_name(version: str) -> str:
     return f"framework/{version}"
+
+
+def framework_template_path(version: str) -> Path:
+    return REPO_ROOT / "experiments" / version / "TEMPLATE.yaml"
 
 
 def require_experiment_branch_base(version: str) -> None:
@@ -3882,8 +3898,97 @@ def framework_git_ref_errors(version: str, expected_commit: str) -> list[str]:
     return errors
 
 
+def framework_template_git_ref_errors(data: dict[str, object]) -> list[str]:
+    """Require a frozen template's branch, Tag, and recorded commit to be identical."""
+    errors: list[str] = []
+    template_tag = str(data.get("template_tag", ""))
+    template_branch = str(data.get("template_branch", ""))
+    template_commit = str(data.get("template_commit", ""))
+    tag_commit_value = git(
+        ["rev-parse", "--verify", f"refs/tags/{template_tag}^{{commit}}"],
+        check=False,
+    )
+    branch_commit_value = git(
+        ["rev-parse", "--verify", f"refs/heads/{template_branch}"],
+        check=False,
+    )
+    if not tag_commit_value:
+        errors.append(f"missing template tag: {template_tag}")
+    elif tag_commit_value != template_commit:
+        errors.append(f"template_commit does not match tag {template_tag}")
+    if not branch_commit_value:
+        errors.append(f"missing template branch: {template_branch}")
+    elif (
+        str(data.get("template_status", "")) in {"frozen", "legacy_frozen"}
+        and branch_commit_value != template_commit
+    ):
+        errors.append(
+            f"frozen template branch must equal template_commit: {template_branch}"
+        )
+    return errors
+
+
+def validate_framework_templates() -> list[str]:
+    errors: list[str] = []
+    schema_path = REPO_ROOT / "schemas" / "framework_template.schema.json"
+    try:
+        template_schema = json.loads(read_text(schema_path))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load {display_path(schema_path)}: {exc}"]
+
+    active = immutable_template_standard_is_active()
+    framework_paths = sorted((REPO_ROOT / "experiments").glob("v[0-9]*/framework.yaml"))
+    version_dirs = {path.parent for path in framework_paths}
+    version_dirs.update(
+        path.parent for path in (REPO_ROOT / "experiments").glob("v[0-9]*/TEMPLATE.yaml")
+    )
+    for version_dir in sorted(version_dirs):
+        version = version_dir.name
+        template_path = framework_template_path(version)
+        if not template_path.exists():
+            if active:
+                errors.append(
+                    f"{rel(template_path)} is required under the active immutable template standard"
+                )
+            continue
+        data = read_shallow_yaml(template_path)
+        missing = sorted(FRAMEWORK_TEMPLATE_REQUIRED_KEYS - set(data))
+        if missing:
+            errors.append(f"{rel(template_path)} missing keys: {', '.join(missing)}")
+        errors.extend(
+            f"{rel(template_path)} schema: {item}"
+            for item in json_schema_subset_errors(data, template_schema)
+        )
+        expected_framework_id = f"FRAMEWORK-{version.upper()}"
+        if str(data.get("framework_id", "")) != expected_framework_id:
+            errors.append(f"{rel(template_path)} framework_id must be {expected_framework_id}")
+        template_id = str(data.get("template_id", ""))
+        id_match = re.fullmatch(
+            rf"MODEL-{version.upper()}-TEMPLATE-V([0-9]+)", template_id
+        )
+        if not id_match:
+            errors.append(f"{rel(template_path)} template_id must belong to {version.upper()}")
+        else:
+            template_number = int(id_match.group(1))
+            status = str(data.get("template_status", ""))
+            tag = str(data.get("template_tag", ""))
+            if template_number == 0:
+                if status != "legacy_frozen":
+                    errors.append(f"{rel(template_path)} V0 must use legacy_frozen status")
+                if tag != version:
+                    errors.append(f"{rel(template_path)} V0 must use historical tag {version}")
+            elif tag == version:
+                errors.append(f"{rel(template_path)} clean templates cannot reuse historical tag {version}")
+        errors.extend(
+            f"{rel(template_path)}: {item}"
+            for item in framework_template_git_ref_errors(data)
+        )
+    return errors
+
+
 def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
+    errors.extend(validate_framework_templates())
     frameworks: dict[str, dict[str, object]] = {}
     schema_path = REPO_ROOT / "schemas" / "framework.schema.json"
     try:
@@ -4076,6 +4181,14 @@ def cmd_validate_framework_ledgers(_: argparse.Namespace) -> int:
     if errors:
         raise WorkflowError("Framework ledger validation failed:\n" + "\n".join(errors))
     print("validate-framework-ledgers-ok")
+    return 0
+
+
+def cmd_validate_framework_templates(_: argparse.Namespace) -> int:
+    errors = validate_framework_templates()
+    if errors:
+        raise WorkflowError("Framework template validation failed:\n" + "\n".join(errors))
+    print("validate-framework-templates-ok")
     return 0
 
 
@@ -6246,6 +6359,16 @@ def framework_standard_is_active() -> bool:
     version_match = re.search(r"(?m)^standard_id:\s*SYS-WORKFLOW-V([0-9]+)\s*$", standard_text)
     status_active = re.search(r"(?m)^status:\s*active\s*$", standard_text) is not None
     return bool(version_match and int(version_match.group(1)) >= 3 and status_active)
+
+
+def immutable_template_standard_is_active() -> bool:
+    standard_path = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    if not standard_path.exists():
+        return False
+    standard_text = read_text(standard_path)
+    version_match = re.search(r"(?m)^standard_id:\s*SYS-WORKFLOW-V([0-9]+)\s*$", standard_text)
+    status_active = re.search(r"(?m)^status:\s*active\s*$", standard_text) is not None
+    return bool(version_match and int(version_match.group(1)) >= 5 and status_active)
 
 
 def require_legacy_module_attempt_backfill(args: argparse.Namespace) -> None:
@@ -17738,6 +17861,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="校验同级正式框架身份、四类实验、参数表和历史来源指针",
     )
     validate_framework.set_defaults(func=cmd_validate_framework_ledgers)
+
+    validate_templates = sub.add_parser(
+        "validate-framework-templates",
+        help="校验正式框架只读母版的分支、Tag 和准确提交",
+    )
+    validate_templates.set_defaults(func=cmd_validate_framework_templates)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
     new_exp.add_argument("--version", required=True)

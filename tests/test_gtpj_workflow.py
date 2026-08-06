@@ -147,6 +147,46 @@ class WorkflowHelperTest(unittest.TestCase):
         path.write_text(content, encoding="utf-8")
 
     def _write_legacy_template(self, version: str = "v1") -> str:
+        self._write(
+            "schemas/framework_template.schema.json",
+            json.dumps(
+                {
+                    "type": "object",
+                    "required": [
+                        "schema_version",
+                        "framework_id",
+                        "template_id",
+                        "template_status",
+                        "template_branch",
+                        "template_tag",
+                        "template_commit",
+                        "source_framework_tag",
+                        "source_framework_commit",
+                        "behavior_contract",
+                    ],
+                    "properties": {
+                        "schema_version": {"const": "gtpj.framework_template.v1"},
+                        "framework_id": {"pattern": r"^FRAMEWORK-V[0-9]+$"},
+                        "template_id": {"pattern": r"^MODEL-V[0-9]+-TEMPLATE-V[0-9]+$"},
+                        "template_status": {
+                            "enum": ["draft", "confirmed", "frozen", "retired", "legacy_frozen"]
+                        },
+                        "template_branch": {
+                            "pattern": r"^framework/v[0-9]+(?:-template-v[0-9]+)?$"
+                        },
+                        "template_tag": {
+                            "pattern": r"^(v[0-9]+|model/v[0-9]+-template-v[0-9]+)$"
+                        },
+                        "template_commit": {"pattern": r"^[0-9a-f]{40}$"},
+                        "source_framework_tag": {"pattern": r"^v[0-9]+$"},
+                        "source_framework_commit": {"pattern": r"^[0-9a-f]{40}$"},
+                        "behavior_contract": {"type": "string"},
+                    },
+                },
+                indent=2,
+            )
+            + "\n",
+        )
         commit = self._git("rev-parse", f"{version}^{{commit}}").stdout.strip()
         self._write(
             f"experiments/{version}/TEMPLATE.yaml",
@@ -1778,6 +1818,10 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
 
     def test_active_standard_requires_template_yaml_for_every_framework(self) -> None:
+        self._write(
+            "schemas/framework_template.schema.json",
+            json.dumps({"type": "object", "required": [], "properties": {}}, indent=2) + "\n",
+        )
         self._write(
             "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
             "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",

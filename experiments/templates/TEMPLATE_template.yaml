@@ -1,0 +1,10 @@
+schema_version: gtpj.framework_template.v1
+framework_id: FRAMEWORK-VX
+template_id: MODEL-VX-TEMPLATE-V1
+template_status: draft
+template_branch: framework/vx-template-v1
+template_tag: model/vx-template-v1
+template_commit: 0000000000000000000000000000000000000000
+source_framework_tag: vx
+source_framework_commit: 0000000000000000000000000000000000000000
+behavior_contract: docs/workflow/contracts/VX_BEHAVIOR_CONTRACT.md

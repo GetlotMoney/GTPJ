@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.gtpj/schemas/framework_template.schema.json",
+  "title": "GTPJ immutable framework template",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "framework_id",
+    "template_id",
+    "template_status",
+    "template_branch",
+    "template_tag",
+    "template_commit",
+    "source_framework_tag",
+    "source_framework_commit",
+    "behavior_contract"
+  ],
+  "properties": {
+    "schema_version": {"const": "gtpj.framework_template.v1"},
+    "framework_id": {"pattern": "^FRAMEWORK-V[0-9]+$"},
+    "template_id": {"pattern": "^MODEL-V[0-9]+-TEMPLATE-V[0-9]+$"},
+    "template_status": {"enum": ["draft", "confirmed", "frozen", "retired", "legacy_frozen"]},
+    "template_branch": {"pattern": "^framework/v[0-9]+(?:-template-v[0-9]+)?$"},
+    "template_tag": {"pattern": "^(v[0-9]+|model/v[0-9]+-template-v[0-9]+)$"},
+    "template_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "source_framework_tag": {"pattern": "^v[0-9]+$"},
+    "source_framework_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "behavior_contract": {"type": "string"}
+  },
+  "additionalProperties": true
+}
