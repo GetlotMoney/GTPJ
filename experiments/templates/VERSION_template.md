@@ -5,8 +5,10 @@ version:
 baseline_name:
 status:
 code_tag:
-parent_version:
-parent_tag:
+registry_level: formal_peer
+derived_from_framework:
+source_tag:
+promoted_from_experiment:
 change_type:
 based_on_trial:
 inherits_code_from:
@@ -27,11 +29,11 @@ module_glossary: experiments/vX/MODULES.md
 
 -
 
-## 版本树位置
+## 同级框架注册位置
 
 ```text
-parent_version:
-children:
+registry_level: formal_peer
+derived_from_framework:
 notes:
 ```
 
@@ -53,7 +55,7 @@ config switch（配置开关）和 baseline-off behavior（关闭后回到基线
 
 ```mermaid
 flowchart TD
-  Parent["parent_version / parent_tag"] --> Trial["based_on_trial or baseline source"]
+  Source["derived_from_framework / source_tag"] --> Trial["based_on_trial or innovation source"]
   Trial --> Evidence["manifest / result / quality_check"]
   Evidence --> Version["code_tag"]
   Version --> Status["evidence_level / confirmation_status"]

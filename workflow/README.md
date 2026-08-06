@@ -86,7 +86,7 @@ git switch framework/v1
 git status --short
 git switch -c exp/v1/innovation/innovation-001-short-name
 python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
-# 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再创建子框架。
+# 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再注册新的同级正式框架和 Tag。
 ```
 
 ## Boundary Rules
@@ -95,7 +95,7 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation -
 - `start --phrase "..."` is read-only: it prints the owner-facing mini start card and never creates branches, files, or runs.
 - `new-trial`、`record-module-attempt` 和 `sync-trial-summary` 仅用于维护迁移前的旧 Trial/Attempt 证据，不是新实验入口。
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.
-- 兼容命令 `record-module-attempt` 仍可维护旧目录，但任何新运行必须同时登记到父框架正式实验和参数表。
+- 兼容命令 `record-module-attempt` 仍可维护旧目录，但任何新运行必须登记到所属正式框架的正式实验和参数表。
 - `closeout-check` is read-only: it verifies attempt evidence, trial root files, module-trial index, idea-tree evidence, and Warehouse artifacts are connected.
 - `audit-boundary` blocks raw logs, checkpoints, generated images, feature caches, and copied-log evidence from entering GitHub.
 - Historical `GTPJ-v1` baseline raw log has been migrated to `GTPJ_Warehouse`; GitHub keeps only artifact id, URI, hash, size, config, result, and quality records.

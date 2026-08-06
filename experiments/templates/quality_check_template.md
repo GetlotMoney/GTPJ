@@ -53,7 +53,7 @@ transition_id:
 
 ## Promotion Gate（升版门槛，仅正式提升 vX 时填写）
 
-- [ ] parent_version / parent_tag 明确。
+- [ ] source_version / source_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
 - [ ] `evidence_level: baseline_grade`；如果只是 owner 激活，已标为 provisional /
@@ -73,7 +73,7 @@ transition_id:
 - [ ] 外部日志 artifact id、URI、sha256、size 和保留位置明确。
 - [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] input/output shape、loss、eval、checkpoint 变化已声明。
-- [ ] switch off 能回到 parent_version 行为。
+- [ ] switch off 能回到来源正式框架行为。
 - [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
 - [ ] 新 baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上。

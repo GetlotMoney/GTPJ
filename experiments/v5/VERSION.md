@@ -5,11 +5,13 @@ version: v5
 baseline_name: GTPJ-v5
 status: owner_activated_provisional
 code_tag: v5
-parent_version: v3
-parent_tag: v3
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
+source_tag: v3
+promoted_from_experiment: V3-INNOVATION-001
 change_type: combo
 based_on_trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text
-source_experiment: RUN-20260630-0002-trial003-main100-2gpu
+source_run: RUN-20260630-0002-trial003-main100-2gpu
 source_candidate: trial003-main100-069
 source_run_commit: 4b259379d99c1a791442ea9e2fac0bb22b2411a9
 implementation_source: dev/v3-idea-0002-trial-003-conditional-bvsa-text@4b259379d99c1a791442ea9e2fac0bb22b2411a9
@@ -76,12 +78,12 @@ confirmation_status: owner_activated_provisional
 - Therefore `GTPJ-v5` is the active owner-selected mainline for future tuning, not a stronger confirmed baseline claim over the confirmed v3 config.
 - Raw logs, receipts, checkpoints, and full runtime outputs remain in Warehouse.
 
-## Version Tree Position
+## 同级框架注册位置
 
 ```text
-parent_version: v3
-children: none yet
-notes: v5 = v3 code parent + TRIAL-003 conditional BVSA text code + trial003-main100-069 tuned config; confirmed reference is v3/CONFIRM-001 local-v3-054.
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
+notes: V5 与 V3 同级；历史来源为 V3 + TRIAL-003 conditional BVSA text code + trial003-main100-069 tuned config，confirmed reference is v3/CONFIRM-001 local-v3-054.
 ```
 
 ## Framework Diagram

@@ -26,7 +26,7 @@ promotion 会创建版本材料和版本 tag，但不会自动执行 `activate-v
 `seed_sweep`、`score_search` 和 `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，
 不能冒充 exact-repeat confirmation。只有当该候选同时包含
 框架/代码语义变化时，才允许自动 promotion 到下一个正式版本。如果只是 pure tune/config-only，
-必须保留在父版本下作为 confirmed config/reference。
+必须保留在所属正式框架下作为 confirmed config/reference，不能创建正式 Tag。
 
 对 exact-repeat confirmed 候选，正式结果行使用成功 repeat 中 H 最高的一次。该行记录为
 `confirmed_H` / official H，并从同一次 repeat 取 official U/S/ZS。仍然必须记录
@@ -84,7 +84,7 @@ config/reference，仍然不能授权新的正式版本。
 
 所有 gate 必须通过：
 
-- source experiment/trial 记录 parent version、code source、branch、commit、
+- source experiment/trial 记录来源正式框架、code source、branch、commit、
   config、command、metrics 和 artifact evidence；
 - source experiment/trial 包含框架/代码语义变化；pure tune 必须留在现有版本下；
 - source evidence 不能只是单次高点；
@@ -128,13 +128,13 @@ promotion_decision: blocked
 Every new version must record:
 
 ```text
-version:
-parent_version:
-parent_tag:
+framework_id:
+registry_level: formal_peer
+derived_from_framework:
+promoted_from_experiment:
 code_tag:
 ledger_source:
 ledger_source_commit:
-source_experiment:
 source_trial:
 change_type:
 config_snapshot:

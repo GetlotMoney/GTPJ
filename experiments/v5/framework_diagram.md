@@ -2,9 +2,10 @@
 
 ```text
 version: v5
-parent_version: v3
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
 based_on_trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text
-source_experiment: RUN-20260630-0002-trial003-main100-2gpu
+source_run: RUN-20260630-0002-trial003-main100-2gpu
 source_candidate: trial003-main100-069
 config: experiments/v5/config.yaml
 module_glossary: MODULES.md

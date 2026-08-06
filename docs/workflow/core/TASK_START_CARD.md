@@ -380,7 +380,7 @@ progress dashboard
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
 实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
-实验是为了证明一个新方法值得存在 -> idea_tree + 父框架 innovation 账本；接纳后才生成子框架。
+实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，接纳后才注册新的同级正式框架。
 ```
 
 `router.coupled_update` 必须写清 GitHub、Research、Warehouse 是否需要联动：
@@ -540,7 +540,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 - 是否已经试过；
 - 为什么不改变模型结构、forward、loss 语义或 eval 语义。
 
-如果来源是旧 Trial/Attempt，仍写入父框架 `experiments/vX/tune/`，并用 `legacy_ref` 回指旧证据。
+如果来源是旧 Trial/Attempt，仍写入所属正式框架 `experiments/vX/tune/`，并用 `legacy_ref` 回指旧证据。
 
 ### Ablation
 
@@ -554,7 +554,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 - 一次只消融的主因素。
 
 如果消融来源是旧 Trial，只能解释该框架中的对应因素，并用 `legacy_ref` 回指旧证据；如果改变
-实现假设、forward 路径、新 loss 或评估语义，改走父框架的 `INNOVATION-xxx`。
+实现假设、forward 路径、新 loss 或评估语义，改走所属正式框架的 `INNOVATION-xxx`。
 
 ### Confirmation
 
@@ -578,7 +578,7 @@ Runner 永远串行并锁 GPU。Implementer 是同一代码路径的唯一 write
 - 将被锁定的 `run_commit`；
 - 这次 confirmation 是从哪个 `pre-run freeze commit` 启动。
 
-如果要确认旧 `best_attempt_id`，在父框架 `confirmation/` 建正式实验，用 `legacy_ref` 指向旧记录。
+如果要确认旧 `best_attempt_id`，在所属正式框架 `confirmation/` 建正式实验，用 `legacy_ref` 指向旧记录。
 
 ### Debug / Smoke
 

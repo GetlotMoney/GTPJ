@@ -10,7 +10,7 @@
 - 人看编号是 `VX-TUNE-xxx / VX-ABLATION-xxx / VX-INNOVATION-xxx / VX-CONFIRM-xxx`。
 - 每个实验只有一张参数矩阵；一行 `RUN-xxx` 对应一个真实任务。
 - `TRIAL / ATTEMPT / DR` 只作旧记录和 Runner 内部映射。
-- 创新确认并接纳后才生成子框架；纯调参、消融和确认不会生成新框架。
+- 创新确认并接纳后才注册新的同级正式框架并获得 Tag；纯调参、消融、确认和未晋级候选不会生成正式框架。
 
 ## 0. Owner 简单入口
 

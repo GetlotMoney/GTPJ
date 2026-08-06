@@ -22,7 +22,7 @@ experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/attempts/ATTEMPT-xxx/
 ```
 
 并遵守 `docs/workflow/protocols/module_trial_protocol.md`。新工作不再在 Trial 里面复制一套
-四类目录；创新本身留在父框架，接纳后的代码成为子框架。
+四类目录；创新候选留在所属正式框架且没有 Tag，接纳后的代码注册为新的同级正式框架。
 
 示例：
 
@@ -208,15 +208,16 @@ baseline_grade       confirmation_grade 通过，或按质量门要求完成多 
 普通实验使用上面的轻量字段记录证据。进入 `docs/workflow/protocols/promotion.md` 时，Coordinator 按下面规则读取：
 
 ```text
-base_version     = version
-parent_version   = version
-parent_tag       = base_code_tag
-code_commit      = run_commit
-run_config       = config
-run_command      = command
-run_log_artifact = log_artifact_id
-run_log_uri      = log_uri
-run_log_sha256   = log_sha256
+base_version             = version
+derived_from_framework   = FRAMEWORK-<version>
+source_tag               = base_code_tag
+promoted_from_experiment = current innovation id
+code_commit              = run_commit
+run_config               = config
+run_command              = command
+run_log_artifact         = log_artifact_id
+run_log_uri              = log_uri
+run_log_sha256            = log_sha256
 ```
 
 如果普通实验显式写了 `base_version`，它必须和 `version` 一致。GitHub 不保存 raw log；

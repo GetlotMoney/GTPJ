@@ -309,14 +309,15 @@ FRAMEWORK_REQUIRED_KEYS = {
     "schema_version",
     "framework_id",
     "framework_version",
-    "parent_version",
-    "source_experiment",
+    "registry_level",
+    "derived_from_framework",
+    "promoted_from_experiment",
     "source_legacy_ref",
     "framework_branch",
     "framework_tag",
     "framework_commit",
     "governance_source_commit",
-    "lineage_status",
+    "origin_status",
     "change_type",
     "modules",
     "inherits",
@@ -340,7 +341,7 @@ FRAMEWORK_INDEX_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
-LEGACY_LINEAGE_STATUSES = {
+LEGACY_ORIGIN_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
@@ -2902,7 +2903,7 @@ confirmation_status: pending
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
-- [ ] parent_version / parent_tag 明确。
+- [ ] source_version / source_tag 明确。
 - [ ] trial tag 指向 README 中记录的 code_commit。
 - [ ] baseline H、trial H、delta H 明确。
 - [ ] `evidence_level: baseline_grade` 或明确标成 owner_activated_unconfirmed / provisional。
@@ -2913,7 +2914,7 @@ confirmation_status: pending
 - [ ] 外部日志 artifact URI、sha256、size、保留位置明确。
 - [ ] class order、seen/unseen split、logits shape、metric calculation 未改变。
 - [ ] input/output shape、loss、eval、checkpoint 变化已声明。
-- [ ] switch off 能回到 parent_version 行为。
+- [ ] switch off 能回到来源正式框架行为。
 - [ ] VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] idea_tree current_version 和必要的 version_scores.vX 已更新。
 - [ ] 新 baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上。
@@ -3527,16 +3528,15 @@ def append_kind_index(
     content = read_text(index)
     if framework_experiment_id in content:
         return
-    if "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |" in content:
+    if "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |" in content:
         lines = [
             line
             for line in content.splitlines()
             if not re.match(r"^\|\s*-\s*\|\s*none\s*\|", line)
         ]
-        child = "pending" if kind.name == "innovation" else "-"
         lines.append(
             f"| `{framework_experiment_id}` | planned | 待填写本实验要回答的问题 | "
-            f"`{rel(folder / PARAMETER_MATRIX_MD)}` | - | `{rel(folder)}` | {child} |"
+            f"`{rel(folder / PARAMETER_MATRIX_MD)}` | - | `{rel(folder)}` | - |"
         )
         index.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         refresh_framework_experiments_view(version)
@@ -3578,7 +3578,7 @@ def framework_index_rows(version: str, kind_name: str) -> list[dict[str, str]]:
                 "parameter_matrix": cells[3],
                 "legacy_ref": cells[4],
                 "directory": cells[5],
-                "child_framework": cells[6],
+                "promoted_framework": cells[6],
             }
         )
     return rows
@@ -3638,7 +3638,7 @@ def render_framework_experiments_view(version: str) -> str:
                 "",
                 f"## {labels[kind]}实验",
                 "",
-                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |",
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |",
                 "|---|---|---|---|---|---|---|",
             ]
         )
@@ -3650,7 +3650,7 @@ def render_framework_experiments_view(version: str) -> str:
             lines.append(
                 f"| `{row['experiment_id']}` | {row['status']} | {row['question']} | "
                 f"`{row['parameter_matrix']}` | `{row['legacy_ref']}` | "
-                f"`{row['directory']}` | {row['child_framework']} |"
+                f"`{row['directory']}` | {row['promoted_framework']} |"
             )
     return "\n".join(lines).rstrip() + "\n"
 
@@ -3661,7 +3661,8 @@ def refresh_framework_experiments_view(version: str) -> Path:
     if not framework_path.exists():
         raise WorkflowError(f"{version} is not a formal framework; missing {rel(framework_path)}")
     output = framework_path.with_name("EXPERIMENTS.md")
-    output.write_text(render_framework_experiments_view(version), encoding="utf-8")
+    with output.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(render_framework_experiments_view(version))
     return output
 
 
@@ -3717,27 +3718,27 @@ def json_schema_subset_errors(
     return errors
 
 
-def framework_child_lineage_errors(
-    child_data: dict[str, object], parent_row: dict[str, str]
+def framework_origin_evidence_errors(
+    framework_data: dict[str, object], source_row: dict[str, str]
 ) -> list[str]:
-    """Enforce the promotion gate while preserving explicitly labelled pre-standard history."""
+    """Check how a peer framework entered the formal registry without modelling containment."""
     errors: list[str] = []
-    framework_id = str(child_data.get("framework_id", "child framework"))
-    source_experiment = str(child_data.get("source_experiment", "source innovation"))
-    lineage_status = str(child_data.get("lineage_status", ""))
-    parent_status = parent_row["status"]
-    if lineage_status in LEGACY_LINEAGE_STATUSES:
-        if parent_status != lineage_status:
+    framework_id = str(framework_data.get("framework_id", "formal framework"))
+    source_experiment = str(framework_data.get("promoted_from_experiment", "source innovation"))
+    origin_status = str(framework_data.get("origin_status", ""))
+    source_status = source_row["status"]
+    if origin_status in LEGACY_ORIGIN_STATUSES:
+        if source_status != origin_status:
             errors.append(
-                f"{framework_id} legacy lineage status must match parent row {lineage_status}"
+                f"{framework_id} legacy origin status must match source row {origin_status}"
             )
         return errors
-    if lineage_status != "confirmed_promoted" or parent_status != "promoted":
+    if origin_status != "confirmed_promoted" or source_status != "promoted":
         return [
-            f"{framework_id} child creation requires promoted parent innovation or an explicit legacy lineage status"
+            f"{framework_id} formal registration requires a promoted source innovation or an explicit legacy origin status"
         ]
-    result_path = REPO_ROOT / parent_row["directory"] / "result.yaml"
-    quality_path = REPO_ROOT / parent_row["directory"] / "quality_check.md"
+    result_path = REPO_ROOT / source_row["directory"] / "result.yaml"
+    quality_path = REPO_ROOT / source_row["directory"] / "quality_check.md"
     result_data = read_shallow_yaml(result_path) if result_path.exists() else {}
     promotion_decision = yaml_section_value(result_data, "decision", "promotion_decision")
     confirmation_status = yaml_section_value(result_data, "evidence", "confirmation_status")
@@ -3759,6 +3760,38 @@ def framework_child_lineage_errors(
     return errors
 
 
+def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> list[str]:
+    """Reject broken or cyclic history pointers while keeping every formal framework at one level."""
+    errors: list[str] = []
+    by_id = {
+        str(data.get("framework_id", "")): data
+        for data in frameworks.values()
+        if str(data.get("framework_id", ""))
+    }
+    reported_cycles: set[tuple[str, ...]] = set()
+    for framework_id in sorted(by_id):
+        path: list[str] = []
+        cursor = framework_id
+        while cursor != "none":
+            if cursor in path:
+                cycle = tuple(path[path.index(cursor):] + [cursor])
+                normalized = tuple(sorted(set(cycle)))
+                if normalized not in reported_cycles:
+                    reported_cycles.add(normalized)
+                    errors.append("framework derivation cycle detected: " + " -> ".join(cycle))
+                break
+            path.append(cursor)
+            current = by_id.get(cursor)
+            if current is None:
+                errors.append(f"{framework_id} points to unknown source framework {cursor}")
+                break
+            cursor = str(current.get("derived_from_framework", ""))
+            if not cursor:
+                errors.append(f"{framework_id} is missing derived_from_framework")
+                break
+    return errors
+
+
 def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
     frameworks: dict[str, dict[str, object]] = {}
@@ -3767,12 +3800,10 @@ def validate_framework_ledgers() -> list[str]:
         framework_schema = json.loads(read_text(schema_path))
     except (OSError, json.JSONDecodeError) as exc:
         return [f"cannot load {rel(schema_path)}: {exc}"]
-    canonical_standard = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
-    canonical_tree = REPO_ROOT / "experiments" / "FRAMEWORK_TREE.md"
+    canonical_registry = REPO_ROOT / "experiments" / "FRAMEWORK_TREE.md"
     canonical_active = (
-        canonical_standard.exists()
-        and "SYS-WORKFLOW-V3" in read_text(canonical_standard)
-        and canonical_tree.exists()
+        framework_standard_is_active()
+        and canonical_registry.exists()
     )
     if canonical_active:
         for version_dir in sorted((REPO_ROOT / "experiments").glob("v[0-9]*")):
@@ -3796,9 +3827,10 @@ def validate_framework_ledgers() -> list[str]:
             continue
         expected_id = f"FRAMEWORK-{version.upper()}"
         scalar_checks = {
-            "schema_version": "gtpj.framework.v1",
+            "schema_version": "gtpj.framework.v2",
             "framework_id": expected_id,
             "framework_version": version,
+            "registry_level": "formal_peer",
             "framework_branch": framework_branch_name(version),
             "framework_tag": version,
         }
@@ -3933,25 +3965,27 @@ def validate_framework_ledgers() -> list[str]:
 
     if (REPO_ROOT / "experiments" / "v4" / "framework.yaml").exists():
         errors.append("v4 is a legacy config-only tag and must not have framework.yaml")
+    errors.extend(framework_derivation_errors(frameworks))
     for version, data in frameworks.items():
-        parent = str(data.get("parent_version", ""))
-        if parent == "none":
+        source_framework = str(data.get("derived_from_framework", ""))
+        if source_framework == "none":
             continue
-        source_experiment = str(data.get("source_experiment", ""))
-        parent_rows = framework_index_rows(parent, "innovation")
+        source_version = source_framework.removeprefix("FRAMEWORK-").lower()
+        source_experiment = str(data.get("promoted_from_experiment", ""))
+        source_rows = framework_index_rows(source_version, "innovation")
         matches = [
             row
-            for row in parent_rows
+            for row in source_rows
             if row["experiment_id"] == source_experiment
-            and row["child_framework"] == str(data.get("framework_id", ""))
+            and row["promoted_framework"] == str(data.get("framework_id", ""))
         ]
         if len(matches) != 1:
             errors.append(
-                f"{data.get('framework_id')} must have one parent innovation backlink "
-                f"{source_experiment} under FRAMEWORK-{parent.upper()}"
+                f"{data.get('framework_id')} must have one source innovation link "
+                f"{source_experiment} under {source_framework}"
             )
             continue
-        errors.extend(framework_child_lineage_errors(data, matches[0]))
+        errors.extend(framework_origin_evidence_errors(data, matches[0]))
     return errors
 
 
@@ -3979,8 +4013,7 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     base_dir = REPO_ROOT / "experiments" / version
     if not base_dir.exists():
         raise WorkflowError(f"Unknown version directory: {rel(base_dir)}")
-    canonical_standard = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
-    if canonical_standard.exists() and "SYS-WORKFLOW-V3" in read_text(canonical_standard):
+    if framework_standard_is_active():
         if not (base_dir / "framework.yaml").exists():
             raise WorkflowError(f"{version} is not a formal framework; missing {rel(base_dir / 'framework.yaml')}")
         framework_errors = validate_framework_ledgers()
@@ -6131,21 +6164,26 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
 
 def framework_standard_is_active() -> bool:
     standard_path = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
-    return standard_path.exists() and "SYS-WORKFLOW-V3" in read_text(standard_path)
+    if not standard_path.exists():
+        return False
+    standard_text = read_text(standard_path)
+    version_match = re.search(r"(?m)^standard_id:\s*SYS-WORKFLOW-V([0-9]+)\s*$", standard_text)
+    status_active = re.search(r"(?m)^status:\s*active\s*$", standard_text) is not None
+    return bool(version_match and int(version_match.group(1)) >= 3 and status_active)
 
 
 def require_legacy_module_attempt_backfill(args: argparse.Namespace) -> None:
-    """After SYS-WORKFLOW-V3, the old command may only backfill provably historical evidence."""
+    """Under the active framework standard, the old command only backfills historical evidence."""
     if not framework_standard_is_active():
         return
     if not bool(getattr(args, "legacy_summary_only", False)):
         raise WorkflowError(
-            "SYS-WORKFLOW-V3 forbids new formal runs under Trial/Attempt. "
+            "The active framework standard forbids new formal runs under Trial/Attempt. "
             "Create a framework experiment and use record-result; record-module-attempt is legacy backfill only."
         )
     if not str(getattr(args, "legacy_source_commit", "") or "").strip():
         raise WorkflowError(
-            "Legacy Attempt backfill requires --legacy-source-commit proving that the Attempt predates SYS-WORKFLOW-V3."
+            "Legacy Attempt backfill requires --legacy-source-commit proving that the Attempt predates the active framework standard."
         )
 
 
@@ -10540,8 +10578,8 @@ def choose_trial_base_version(args: argparse.Namespace, data: dict, idea: dict) 
 def cmd_new_trial(args: argparse.Namespace) -> int:
     if framework_standard_is_active():
         raise WorkflowError(
-            "SYS-WORKFLOW-V3 retired new Trial creation. Use new-experiment --kind innovation "
-            "under the parent framework; old Trial/Attempt paths are compatibility evidence only."
+            "The active framework standard retired new Trial creation. Use new-experiment --kind innovation "
+            "under the owning formal framework; old Trial/Attempt paths are compatibility evidence only."
         )
     idea_id = require_clean_id(args.idea_id, r"IDEA-[0-9]{4}", "idea id")
     trial_id = require_clean_id(args.trial_id, r"TRIAL-[0-9]{3}", "trial id")
@@ -17534,7 +17572,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_framework = sub.add_parser(
         "validate-framework-ledgers",
-        help="校验框架身份、四类实验、参数表和父子关系",
+        help="校验同级正式框架身份、四类实验、参数表和历史来源指针",
     )
     validate_framework.set_defaults(func=cmd_validate_framework_ledgers)
 
@@ -17774,7 +17812,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_current.add_argument("--version", required=True)
     set_current.set_defaults(func=cmd_set_current_version)
 
-    new_trial = sub.add_parser("new-trial", help="历史兼容命令；SYS-WORKFLOW-V3 启用后拒绝创建新 Trial")
+    new_trial = sub.add_parser("new-trial", help="历史兼容命令；正式框架规范启用后拒绝创建新 Trial")
     new_trial.add_argument("--idea-id", required=True)
     new_trial.add_argument("--trial-id", required=True)
     new_trial.add_argument("--slug", required=True)

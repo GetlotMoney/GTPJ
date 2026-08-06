@@ -4,7 +4,7 @@
 framework: FRAMEWORK-V3
 status: legacy_owner_activated
 legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text#RUN-20260630-0002
-child_framework: FRAMEWORK-V5
+promoted_framework: FRAMEWORK-V5
 parameter_matrix: PARAMETER_MATRIX.md
 ```
 

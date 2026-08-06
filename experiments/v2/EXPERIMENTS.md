@@ -11,24 +11,24 @@
 
 ## 调参实验
 
-| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
 | - | none | 暂无 | - | - | - | - |
 
 ## 消融实验
 
-| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
 | - | none | 暂无 | - | - | - | - |
 
 ## 创新实验
 
-| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
 | `V2-INNOVATION-001` | legacy_owner_accepted_unconfirmed | 严格 FAE-memory JEPA 与条件文本能否形成新框架 | `experiments/v2/innovation/INNOVATION-001_strict_conditional_jepa/PARAMETER_MATRIX.md` | `IDEA-0002/TRIAL-002/ATTEMPT-004` | `experiments/v2/innovation/INNOVATION-001_strict_conditional_jepa` | FRAMEWORK-V3 |
 
 ## 确认实验
 
-| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
 | - | none | 暂无 | - | - | - | - |

@@ -2,7 +2,8 @@
 
 ```text
 version: v3
-parent_version: v2
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V2
 based_on_trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa
 config: experiments/v3/config.yaml
 module_glossary: MODULES.md

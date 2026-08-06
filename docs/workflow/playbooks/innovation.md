@@ -2,9 +2,9 @@
 
 当 owner 要求开新模块、测试新机制或把 idea 落成代码时使用。
 
-正式的人类入口是父框架的 `innovation/INDEX.md`，编号为 `VX-INNOVATION-xxx`。旧
+正式的人类入口是所属正式框架的 `innovation/INDEX.md`，编号为 `VX-INNOVATION-xxx`。旧
 `IDEA / TRIAL / ATTEMPT` 可以继续承载历史实现和证据，但必须映射回这个创新实验项。
-创新确认并接纳后，才创建子 `FRAMEWORK-VY`；子框架拥有自己的四类实验，不在创新目录里
+创新确认并接纳后，才注册同级 `FRAMEWORK-VY` 并创建 Tag；新正式框架拥有自己的四类实验，不在创新目录里
 再套一整套四类实验。
 
 ## 必读

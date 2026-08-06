@@ -100,17 +100,17 @@
 
 ## 实验规则
 
-- 框架与实验唯一正式结构见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`：每个 `FRAMEWORK-VX` 固定拥有 tune、ablation、innovation、confirmation 四类同级实验；创新通过确认和接纳后才生成子框架。
+- 框架与实验唯一正式结构见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`：所有正式框架平级；每个 `FRAMEWORK-VX` 固定拥有 tune、ablation、innovation、confirmation 四类实验；创新通过确认和接纳后才注册为新的同级正式框架并获得 Tag。
 - 人看的实验编号使用 `VX-TUNE-xxx`、`VX-ABLATION-xxx`、`VX-INNOVATION-xxx`、`VX-CONFIRM-xxx`；`TRIAL / ATTEMPT / DR` 只作历史或 Runner 内部追踪号。
 - 每个实验项必须拥有一张 `PARAMETER_MATRIX.csv/.md`，每个真实训练任务对应一行 `RUN-xxx`；旧记录不能可靠恢复逐任务参数时写 `legacy_summary_only`，不得猜值。
 - GTPJ 实验默认使用本机 conda 环境 `dvsr_gpu`；运行训练、特征抽取、验证脚本前先激活该环境，或使用 `conda run -n dvsr_gpu ...`。
 - OpenClaw 是优先 runtime；Codex 兼容，但必须遵循同一套文件。
-- 每个新创新实验必须从 `idea_tree` 节点开始，并登记到父框架的 `innovation/INDEX.md`。
+- 每个新创新实验必须从 `idea_tree` 节点开始，并登记到所属正式框架的 `innovation/INDEX.md`。
 - 没有 `idea_id`，就不创建正式 `INNOVATION-xxx`。
 - 每个创新实验至少记录 implementation、config、quality_check、result 和代码来源。
 - tune、ablation、innovation、confirmation 四类实验都写入目标正式框架目录，例如 `experiments/v5/`。
-- 旧 `TRIAL / ATTEMPT` 目录只继续保存和追溯历史证据；新的调参、窄消融和确认必须写进父框架对应类型的正式调参表，并用 `legacy_ref` 回指旧目录。
-- 创新通过确认和接纳后创建子框架；未通过时留在父框架创新实验内，不在 Trial 目录继续嵌套另一套四类结构。
+- 旧 `TRIAL / ATTEMPT` 目录只继续保存和追溯历史证据；新的调参、窄消融和确认必须写进所属正式框架对应类型的参数表，并用 `legacy_ref` 回指旧目录。
+- 创新通过确认和接纳后注册新的同级正式框架并创建 Tag；未通过时留在所属正式框架的创新实验内，不能提前占用框架编号、长期框架分支或 Tag。
 - 真实训练或会产出正式证据的运行，必须从 `git status --short` 为空的 clean worktree 启动；dirty tree 只能用于临时 debug/smoke，且结果不能记为 `keep`、`best`、`promote` 或 confirmation evidence。
 - 如果一次 run 需要先在仓库里新增 `config.yaml`、`ATTEMPTS.md` 计划行、启动卡或其他预跑账本，必须先把这些“运行前文件”冻结成一次 `pre-run freeze commit`，再确认工作树 clean 后才能启动 Runner。
 - `pre-run freeze commit` 只允许包含本次 run 的配置、副本、计划和轻量预跑元数据，不允许提前写入本次 run 的 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、指标结论或 artifact 注册。

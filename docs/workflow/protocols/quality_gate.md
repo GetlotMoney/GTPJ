@@ -66,7 +66,7 @@ promote_to: vX
 
 随后自动执行 `docs/workflow/protocols/promotion.md` 的硬门。必须满足：
 
-- [ ] 父版本明确：`parent_version`、`parent_tag`、`base_code_tag` 已记录；普通实验可按
+- [ ] 来源版本明确：`source_version`、`source_tag`、`base_code_tag` 已记录；普通实验可按
   `docs/workflow/protocols/experiment_protocol.md` 的 promotion 字段映射读取。
 - [ ] 来源 commit/tag 明确：module trial 的 trial tag 指向 README 中记录的 `code_commit`；
   普通实验或 tuned configuration 必须记录 `run_commit`，并可映射为 `code_commit`。
@@ -84,7 +84,7 @@ promote_to: vX
 - [ ] 接口不乱：input/output shape、loss、eval、checkpoint 变化已声明。
 - [ ] 标注不乱：label mapping、seen/unseen split 和 class order 与 baseline 可比。
 - [ ] GitHub 边界通过：没有新增 raw logs、checkpoint、generated figures 或 cache。
-- [ ] 关闭等价：switch off 能回到 `parent_version` 行为。
+- [ ] 关闭等价：switch off 能回到来源正式框架行为。
 - [ ] 账本完整：VERSION、VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 已更新。
 - [ ] 创意树同步：`idea_tree/idea_tree.json.current_version` 和必要的 `version_scores.vX` 已更新。
 - [ ] baseline tag 准备打在包含正式版本代码和版本材料的明确 commit 上；该 commit 不必是当前

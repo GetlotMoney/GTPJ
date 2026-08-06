@@ -116,7 +116,7 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
 实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
-实验是为了证明一个新方法值得存在 -> idea_tree + 父框架 innovation 账本；接纳后才生成子框架。
+实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，接纳后才注册新的同级正式框架。
 ```
 
 不要因为一次实验有“想法”两个字就写入创意树。只有可复用的新机制、新模块、新方法，或者可能成为新 baseline 的设计，才进入 `idea_tree/`。
@@ -133,8 +133,8 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 调正式 baseline 的参数、seed、epoch、loss weight | tune | 否 | `experiments/vX/tune/` | Warehouse logs/runs | `experiment_protocol.md` | Coordinator、Runner、Log Analyst、Quality Checker |
 | 对正式 baseline 做关掉/旁路/替换已有模块看贡献 | ablation | 否 | `experiments/vX/ablation/` | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Implementer、Interface Checker、Runner、Quality Checker |
 | 复现 baseline 或确认某个版本级结果 | confirmation | 否 | `experiments/vX/confirmation/` | Warehouse logs/runs | `experiment_protocol.md` | Runner、Log Analyst、Quality Checker |
-| 调某个旧 module trial 的参数、头数、ratio、dropout、seed | 父框架 tune | 已有 idea | `experiments/vX/tune/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `module_trial_protocol.md` 仅查旧证据 | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
-| 对某个旧 module trial 做窄消融或 clean confirmation | 父框架 ablation / confirmation | 已有 idea | `experiments/vX/ablation/` 或 `experiments/vX/confirmation/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 调某个旧 module trial 的参数、头数、ratio、dropout、seed | 所属正式框架 tune | 已有 idea | `experiments/vX/tune/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `module_trial_protocol.md` 仅查旧证据 | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 对某个旧 module trial 做窄消融或 clean confirmation | 所属正式框架 ablation / confirmation | 已有 idea | `experiments/vX/ablation/` 或 `experiments/vX/confirmation/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
 | debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，必须转为对应实验目录并标明 `evidence_level: debug_smoke`、`formal_evidence: false` | 可写临时本地输出；长期证据进 Warehouse | `docs/workflow/protocols/experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality 并重新按正式证据运行 |
 | 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | framework innovation | 是 | `idea_tree/` + `experiments/vX/innovation/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `experiment_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；按风险多轮审查 |
 | 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`experiments/VERSION_TREE.md` | Warehouse 证据引用 | `docs/workflow/protocols/promotion.md`, `docs/workflow/protocols/quality_gate.md`, `docs/workflow/protocols/versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
@@ -151,7 +151,7 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 |---|---|---|---|
 | 框架 tune | `experiments/vX/tune/INDEX.md` | `Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的实验行 | 只核对运行包和事件，不新增待跑事实 |
 | 框架 ablation | `experiments/vX/ablation/INDEX.md` | 同上，且实验类型必须是 ablation | 只核对运行包和事件 |
-| 框架 innovation | `experiments/vX/innovation/INDEX.md` | 同上，且创新仍归父框架 | 只核对运行包和事件 |
+| 框架 innovation | `experiments/vX/innovation/INDEX.md` | 同上，候选仍归所属正式框架且没有 Tag | 只核对运行包和事件 |
 | 框架 confirmation | `experiments/vX/confirmation/INDEX.md` | 同上，且目标必须是 baseline、candidate 或正式 config | 只核对运行包和事件 |
 | mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只列 work item；每个 work item必须回指上述四类正式表格行 | 只核对调度和 monitor 状态 |
 
@@ -221,7 +221,7 @@ debug/smoke 不进入正式待跑表。若必须长期保留，只能写成 `evi
 - 只为了排查环境、日志、cache 或数据路径。
 
 框架调参或消融中如果发现了可复用新机制，先把原实验记入 `experiments/vX/...`，再创建 idea 和
-`INNOVATION-xxx`。旧 module trial 的后续动作如果超出原实现假设，则在父框架新建创新实验，
+`INNOVATION-xxx`。旧 module trial 的后续动作如果超出原实现假设，则在所属正式框架新建创新实验，
 不要继续扩大旧 Trial 目录。
 
 ## 5. 来源不是论文时怎么写
@@ -274,7 +274,7 @@ GitHub 和本地不是机械“每次同时写”，而是按任务类型成对�
 |---|---|---|---|
 | 读论文、提取创新点 | `GTPJ_Research/papers/`、`source_reviews/`、`ideas/` | GitHub `idea_tree/sources/`、`idea_tree/ideas/` 轻量索引 | GitHub 有 `research://` 或本地路径指针 |
 | 用户提出新机制 | `GTPJ_Research/ideas/` 长版动机/机制/风险 | GitHub `idea_tree/inbox.md` 或正式 `IDEA.md` | `source_status` 和 owner 接受理由可追溯 |
-| 创新实验运行 | Warehouse raw artifacts | GitHub 父框架 `innovation/` 的 matrix/manifest/result/quality | GitHub artifact URI/hash/size 可反查 Warehouse |
+| 创新实验运行 | Warehouse raw artifacts | GitHub 所属正式框架 `innovation/` 的 matrix/manifest/result/quality | GitHub artifact URI/hash/size 可反查 Warehouse |
 | trial 改变 idea 结论 | Research `decision_history.md`、`experiment_plan.md` | GitHub `idea_tree.json`、`IDEA.md`、版本视图 | 人类版和机器版状态一致 |
 | framework tune/ablation/innovation/confirmation | Warehouse + GitHub `experiments/vX/...` | 创新需要 Research 来源，其他类型通常不写 | 若产生新机制，再另走 idea discovery |
 

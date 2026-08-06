@@ -231,7 +231,7 @@ owner_visible_reporting: true
 - 框架记录绑定“方法框架”，不是绑定每个代码文件。调参、复现、只关闭或旁路既有组件的窄消融不新增框架图；它们只记录 config、manifest、result、quality 和 agent summary。
 - 凡是新增或改写 module、forward、loss、evaluation、data view、input/output、tensor flow、接口语义或模块分支逻辑，都视为创新 / module trial 代码变动，而不是普通 tune/ablation。此时必须记录 `module_source.md`、`implementation.md`、`framework_diagram.md`，并说明每个模块来源、接入点、输入输出、baseline-off 行为和 GZSL 语义边界。
 - 上述创新代码变动所属 Trial 的 `README.md` 必须包含 `## Code Flow Diagram`，用简洁流程图说明代码实际输入、输出、关键张量流向、分支开关和最终 logits/metric 出口；完整变量/方法说明仍放在 `framework_diagram.md`。
-- 批量实验 / mixed campaign 不能单独成为正式结果分支。它只能保存 routing index、run map、work item 映射和监控状态；正式结果必须自动回写到 `experiments/vX/<type>/`。旧 Trial/Attempt 路径只能作为 `legacy_ref`，真正的新创新写父框架的 innovation 账本，确认晋级后再生成子框架。
+- 批量实验 / mixed campaign 不能单独成为正式结果分支。它只能保存 routing index、run map、work item 映射和监控状态；正式结果必须自动回写到 `experiments/vX/<type>/`。旧 Trial/Attempt 路径只能作为 `legacy_ref`，真正的新创新写所属正式框架的 innovation 账本；候选无 Tag，确认晋级后才注册为新的同级正式框架。
 
 ## 5. 运行安全
 

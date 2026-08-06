@@ -3,7 +3,7 @@
 用于复现或确认一个结果。
 
 正式入口固定为 `experiments/vX/confirmation/INDEX.md`，人看编号为 `VX-CONFIRM-xxx`。
-每次 exact repeat 都是同一参数矩阵中的一行 `RUN-xxx`。确认实验本身不生成子框架；
+每次 exact repeat 都是同一参数矩阵中的一行 `RUN-xxx`。确认实验本身不注册正式框架；
 只有它确认的是创新且 promotion 被接纳时，才由该创新生成新的框架节点。
 
 ## 必读

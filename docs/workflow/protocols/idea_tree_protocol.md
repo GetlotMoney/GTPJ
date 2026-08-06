@@ -12,7 +12,7 @@
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
 实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
-实验是为了证明一个新方法值得存在 -> idea_tree + 父框架 innovation 账本；接纳后才生成子框架。
+实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，接纳后才注册新的同级正式框架。
 ```
 
 因此，tune、ablation、confirmation、debug 不会因为有“想法”就自动进入
@@ -63,7 +63,7 @@ evidence artifact id / research URI
   `idea_tree/inbox.md` 或 `idea_tree/ideas/IDEA-xxxx/` 的轻量索引补上。
 - `local heuristic idea`：先在 `GTPJ_Research/ideas/` 写长版动机、机制、风险和 owner 接受理由；
   只有可复核后才写 GitHub 轻量 idea。
-- `innovation`：正式运行证据写所属父框架的 `experiments/vX/innovation/...`，旧 trial 只作 `legacy_ref`，
+- `innovation`：正式运行证据写所属正式框架的 `experiments/vX/innovation/...`，旧 trial 只作 `legacy_ref`，
   raw artifacts 写 Warehouse；如果创新结论改变 idea 状态、风险或版本适配分，必须同步更新
   GitHub `idea_tree/` 和 Research 的 `decision_history.md` / `experiment_plan.md`。
 - `tune`、`ablation`、`confirmation`：默认不改 Research；只有产生新的可复用机制、来源判断或
@@ -225,7 +225,7 @@ v1 score 高不代表 v2 score 自动高。
 2. 优先看该版本选择清单，不要优先看 `global_score` 或总清单。
 3. 打开被选中的 idea 文件，检查来源、blockers 和 transfer notes。
 4. 一个 trial 只能选择一个明确的 base version。
-5. 把创新实验记录到父框架 `experiments/vX/innovation/INNOVATION-xxx_slug/`；旧 module trial 只保留历史映射。
+5. 把创新实验记录到所属正式框架 `experiments/vX/innovation/INNOVATION-xxx_slug/`；旧 module trial 只保留历史映射。
 
 创建新的框架版本时：
 

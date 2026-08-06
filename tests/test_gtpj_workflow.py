@@ -1705,7 +1705,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self._write(
                 f"experiments/v1/{kind}/INDEX.md",
                 f"# {kind}\n\n"
-                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
                 "|---|---|---|---|---|---|---|\n"
                 f"| `{experiment_id}` | planned | test | `matrix` | - | `directory` | - |\n",
             )
@@ -1723,11 +1723,82 @@ log:v1:module_trial:TRIAL-001:attempt-001
         ]:
             self.assertIn(experiment_id, rendered)
 
+    def test_framework_contract_models_formal_frameworks_as_flat_peers(self) -> None:
+        self.assertIn("registry_level", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertIn("derived_from_framework", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertIn("promoted_from_experiment", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertIn("origin_status", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertNotIn("parent_version", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertNotIn("source_experiment", self.module.FRAMEWORK_REQUIRED_KEYS)
+        self.assertNotIn("lineage_status", self.module.FRAMEWORK_REQUIRED_KEYS)
+
+    def test_framework_index_names_a_promoted_peer_instead_of_a_child(self) -> None:
+        self._write(
+            "experiments/v1/innovation/INDEX.md",
+            "# innovation\n\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| `V1-INNOVATION-001` | promoted | test | `matrix` | - | `directory` | `FRAMEWORK-V2` |\n",
+        )
+
+        rows = self.module.framework_index_rows("v1", "innovation")
+        rendered = self.module.render_framework_experiments_view("v1")
+
+        self.assertEqual("FRAMEWORK-V2", rows[0].get("promoted_framework"))
+        self.assertNotIn("child_framework", rows[0])
+        self.assertIn("Promoted framework", rendered)
+        self.assertNotIn("Child framework", rendered)
+
+    def test_new_innovation_index_entry_has_no_framework_before_promotion(self) -> None:
+        self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
+        self._write(
+            "experiments/v1/innovation/INDEX.md",
+            "# innovation\n\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| - | none | 暂无 | - | - | - | - |\n",
+        )
+        folder = self.repo / "experiments/v1/innovation/INNOVATION-002_no_tag_candidate"
+
+        self.module.append_kind_index(
+            "v1",
+            self.module.KINDS["innovation"],
+            "INNOVATION-002",
+            "no_tag_candidate",
+            folder,
+        )
+
+        index_text = (self.repo / "experiments/v1/innovation/INDEX.md").read_text(encoding="utf-8")
+        self.assertIn("| `V1-INNOVATION-002` | planned |", index_text)
+        self.assertIn("`experiments/v1/innovation/INNOVATION-002_no_tag_candidate` | - |", index_text)
+        self.assertNotIn("pending |", index_text)
+
+    def test_framework_derivation_rejects_a_source_cycle(self) -> None:
+        validator = getattr(self.module, "framework_derivation_errors", lambda _frameworks: [])
+        errors = validator(
+            {
+                "v1": {
+                    "framework_id": "FRAMEWORK-V1",
+                    "derived_from_framework": "FRAMEWORK-V2",
+                },
+                "v2": {
+                    "framework_id": "FRAMEWORK-V2",
+                    "derived_from_framework": "FRAMEWORK-V1",
+                },
+            }
+        )
+
+        self.assertTrue(any("derivation cycle" in error for error in errors))
+
+    def test_framework_origin_gate_uses_flat_registry_language(self) -> None:
+        self.assertTrue(callable(getattr(self.module, "framework_origin_evidence_errors", None)))
+        self.assertFalse(hasattr(self.module, "framework_child_lineage_errors"))
+
     def test_framework_index_row_errors_reject_malformed_rows(self) -> None:
         self._write(
             "experiments/v1/tune/INDEX.md",
             "# tune\n\n"
-            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
             "|---|---|---|---|---|---|---|\n"
             "| `V1-ATTEMPT-001` | mystery | broken | matrix | - | directory |\n",
         )
@@ -1741,7 +1812,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self._write(
             "experiments/v1/tune/INDEX.md",
             "# tune\n\n"
-            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+            "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
             "|---|---|---|---|---|---|---|\n"
             "| `V1-TUNE-001` | completed | text mentions planned but is done | matrix | - | directory | - |\n"
             "| `V1-TUNE-002` | planned | real pending row | matrix | - | directory2 | - |\n",
@@ -1763,7 +1834,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self._write(
                 f"experiments/v1/{kind}/INDEX.md",
                 f"# {kind}\n\n"
-                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Child framework |\n"
+                "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |\n"
                 "|---|---|---|---|---|---|---|\n"
                 + (row or "| - | none | 暂无 | - | - | - | - |\n"),
             )
@@ -1778,6 +1849,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(changed)
         self.assertIn("| `V1-TUNE-001` | completed |", self._tune_index_text())
         self.assertIn("| `V1-TUNE-001` | completed |", (self.repo / "experiments/v1/EXPERIMENTS.md").read_text(encoding="utf-8"))
+        self.assertNotIn(b"\r\n", (self.repo / "experiments/v1/EXPERIMENTS.md").read_bytes())
         self.assertEqual([], self.module.collect_formal_pending_rows())
 
     def test_parameter_matrix_view_calls_out_legacy_summary_rows(self) -> None:
@@ -1802,12 +1874,12 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("历史摘要，不代表一次实际 RUN", rendered)
         self.assertNotIn("一行对应一个实际训练任务", rendered)
 
-    def test_child_framework_rejects_candidate_parent_without_promotion_evidence(self) -> None:
-        errors = self.module.framework_child_lineage_errors(
+    def test_peer_framework_rejects_candidate_source_without_promotion_evidence(self) -> None:
+        errors = self.module.framework_origin_evidence_errors(
             {
                 "framework_id": "FRAMEWORK-V2",
-                "source_experiment": "V1-INNOVATION-001",
-                "lineage_status": "confirmed_promoted",
+                "promoted_from_experiment": "V1-INNOVATION-001",
+                "origin_status": "confirmed_promoted",
             },
             {
                 "experiment_id": "V1-INNOVATION-001",
@@ -1816,9 +1888,9 @@ log:v1:module_trial:TRIAL-001:attempt-001
             },
         )
 
-        self.assertTrue(any("requires promoted parent innovation" in error for error in errors))
+        self.assertTrue(any("requires a promoted source innovation" in error for error in errors))
 
-    def test_child_framework_rejects_promoted_but_unconfirmed_result(self) -> None:
+    def test_peer_framework_rejects_promoted_but_unconfirmed_result(self) -> None:
         directory = "experiments/v1/innovation/INNOVATION-001_x"
         self._write(
             f"{directory}/result.yaml",
@@ -1830,11 +1902,11 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "# Quality\n\n```text\ndecision: 未通过\n```\n",
         )
 
-        errors = self.module.framework_child_lineage_errors(
+        errors = self.module.framework_origin_evidence_errors(
             {
                 "framework_id": "FRAMEWORK-V2",
-                "source_experiment": "V1-INNOVATION-001",
-                "lineage_status": "confirmed_promoted",
+                "promoted_from_experiment": "V1-INNOVATION-001",
+                "origin_status": "confirmed_promoted",
             },
             {
                 "experiment_id": "V1-INNOVATION-001",
@@ -1873,7 +1945,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         with self.assertRaisesRegex(self.module.WorkflowError, "retired new Trial creation"):
             self.module.cmd_new_trial(self.module.argparse.Namespace())
 
-    def test_start_new_module_routes_to_parent_framework_innovation(self) -> None:
+    def test_start_new_module_routes_to_owning_framework_innovation(self) -> None:
         self._write(
             "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
             "standard_id: SYS-WORKFLOW-V3\nstatus: active\n",

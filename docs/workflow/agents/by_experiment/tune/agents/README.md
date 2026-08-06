@@ -11,7 +11,7 @@
 本文件用于正式框架 tune。调参只改变 `FRAMEWORK-VX` 的参数，不改变模型结构。
 训练串行，一次只跑一个 Runner。
 
-如果参数来源于旧 module trial，例如 heads、ratio、dropout、seed，也使用本编排并写入父框架的
+如果参数来源于旧 module trial，例如 heads、ratio、dropout、seed，也使用本编排并写入所属正式框架的
 `tune/` 账本；旧 Trial/Attempt 只通过 `legacy_ref` 追溯。
 
 ## 启用角色

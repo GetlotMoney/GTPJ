@@ -75,8 +75,8 @@ Coordinator 必须为每个子任务选择正确协议，不允许把所有事�
 - 从论文或代码来源产生新机制时，先走 `paper_intake.md` 和 `idea_tree_protocol.md`。
 - 只调正式 baseline 参数时，写入 `experiments/vX/tune/`。
 - 只确认正式 baseline 或候选结果时，写入 `experiments/vX/confirmation/`。
-- 调某个旧 module trial 的内部参数时，写入父框架的 tune 账本并用 `legacy_ref` 回指。
-- 改模型、forward、loss、eval 或数据流时，进入父框架的 innovation 账本并按风险执行审核。
+- 调某个旧 module trial 的内部参数时，写入所属正式框架的 tune 账本并用 `legacy_ref` 回指。
+- 改模型、forward、loss、eval 或数据流时，进入所属正式框架的 innovation 账本并按风险执行审核。
 - 只有证据达到 promotion 标准时，才进入 `promotion.md`。
 
 ## 3. Campaign 层级

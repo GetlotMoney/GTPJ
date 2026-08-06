@@ -5,8 +5,10 @@ version: v3
 baseline_name: GTPJ-v3
 status: owner_accepted_stochastic_unconfirmed
 code_tag: v3
-parent_version: v2
-parent_tag: v2
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V2
+source_tag: v2
+promoted_from_experiment: V2-INNOVATION-001
 change_type: add_module
 based_on_trial: trial/v2/idea-0002/trial-002
 source_trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa
@@ -75,12 +77,12 @@ Clean seed-42 reruns after the config/diagram freeze reached `H=74.14` and `H=74
 - `promotion_decision` remains blocked for baseline-grade claims until a future confirmation/multi-seed protocol upgrades the evidence.
 - The version is safe to reference as an owner-accepted `v3` code snapshot, but manuscript-grade confirmed claims must still cite the confirmation gap.
 
-## Version Tree Position
+## 同级框架注册位置
 
 ```text
-parent_version: v2
-children: none yet
-notes: v3 = v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA; owner accepted stochastic variance.
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V2
+notes: V3 与 V2 同级；历史来源为 V2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA，owner accepted stochastic variance.
 ```
 
 ## Framework Diagram

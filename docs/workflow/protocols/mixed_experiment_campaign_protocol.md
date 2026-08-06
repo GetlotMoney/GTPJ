@@ -99,7 +99,7 @@ legacy Trial/Attempt -> compatibility evidence only, linked by legacy_ref
 ```text
 framework tune / ablation / innovation / confirmation -> experiments/vX/<type>/
 legacy Trial/Attempt -> keep old evidence in place and link it with legacy_ref
-new paper-derived innovation -> parent framework innovation ledger; promotion may create a child framework
+new paper-derived innovation -> owning formal framework innovation ledger; promotion may register a new peer formal framework and Tag
 campaign -> only routing index, work item mapping, monitor state, and derived summaries
 ```
 

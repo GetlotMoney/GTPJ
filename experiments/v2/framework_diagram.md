@@ -2,7 +2,8 @@
 
 ```text
 version: v2
-parent_version: v1
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
 based_on_trial: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly
 config: experiments/v2/config.yaml
 module_glossary: MODULES.md

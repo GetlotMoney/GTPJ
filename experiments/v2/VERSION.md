@@ -5,8 +5,10 @@ version: v2
 baseline_name: GTPJ-v2
 status: owner_activated_unconfirmed
 code_tag: v2
-parent_version: v1
-parent_tag: v1
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+source_tag: v1
+promoted_from_experiment: V1-INNOVATION-001
 change_type: add_module
 based_on_trial: trial/v1/idea-0001/trial-001
 source_trial: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly
@@ -86,12 +88,12 @@ confirmation_status: needs_confirmation
 - `S - U = 6.20`，结果偏 seen-heavy；
 - 后续论文级结论仍建议补做 v2 confirmation、seen/unseen gap analysis 和关键 ablation。
 
-## 版本树位置
+## 同级框架注册位置
 
 ```text
-parent_version: v1
-children: none yet
-notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline；证据状态为 owner_activated_unconfirmed。
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+notes: V2 与 V1 同级；历史来源为 V1 + IDEA-0001/TRIAL-001，证据状态为 owner_activated_unconfirmed。
 ```
 
 ## Framework Diagram

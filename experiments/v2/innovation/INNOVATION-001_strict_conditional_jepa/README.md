@@ -4,7 +4,7 @@
 framework: FRAMEWORK-V2
 status: legacy_owner_accepted_unconfirmed
 legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa#ATTEMPT-004
-child_framework: FRAMEWORK-V3
+promoted_framework: FRAMEWORK-V3
 parameter_matrix: PARAMETER_MATRIX.md
 ```
 

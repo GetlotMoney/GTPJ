@@ -184,24 +184,25 @@ GitHub 使用 `warehouse://`、`research://` URI 和 sha256/size 引用它们。
 5. 稳定入口、目录类型或文件职责变化时，必须同步更新 `docs/PROJECT_STRUCTURE.md`；
    新增普通实验、idea、trial 的具体实例只更新对应账本或索引，除非结构模式也变化。
 
-## 版本树和全局账本
+## 同级正式框架和全局账本
 
-GTPJ 使用版本树，不使用默认串行版本链。
+GTPJ 使用同级正式框架注册表。框架之间保留历史来源指针，但不建立包含关系。
 
 ```text
-v1
-|-- v2 = parent v1 + 模块A
-`-- v3 = parent v1 + 模块B
+FRAMEWORK-V1  derived_from: none
+FRAMEWORK-V2  derived_from: FRAMEWORK-V1
+FRAMEWORK-V3  derived_from: FRAMEWORK-V1
 ```
 
-这表示 `v2` 和 `v3` 可以是兄弟版本，不要求 `v3` 继承 `v2`。
+这表示 V1、V2、V3 都是同级正式框架；V2 和 V3 的来源指针可以同时指向 V1。
 
-每个正式版本都必须记录父节点：
+每个正式框架都必须记录历史来源：
 
 ```text
-version: v3
-parent_version: v1
-parent_tag: v1
+framework_id: FRAMEWORK-V3
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+promoted_from_experiment: V1-INNOVATION-002
 code_tag: v3
 change_type: add_module / replace_module / remove_module / combo
 based_on_trial: trial/v1/idea-0003/trial-001
@@ -225,7 +226,7 @@ main = owner 明确选择的 active code + 全部历史版本的全局账本
 promotion 只表示新 baseline 被正式保存，不表示 `main` 当前代码自动切到该版本。
 `main` 当前代码是否切到 `vX`，必须由 owner 在实验完成后明确执行 `activate-version vX`。
 
-全局版本树账本放在：
+全局同级框架与来源账本放在：
 
 ```text
 experiments/VERSION_TREE.md
@@ -244,38 +245,38 @@ config/versions/v3.yaml
 
 这些旧目录是历史账本，不表示 `v3` 继承了 `v2` 的代码。
 
-如果 `v3.parent_version = v1`，那么：
+如果 `FRAMEWORK-V3.derived_from_framework = FRAMEWORK-V1`，那么：
 
 ```text
-v3 代码继承 v1
-v3 不继承 v2 代码
+V3 的代码和方法来源于 V1
+V3 与 V1、V2 在正式框架注册表中仍然同级
 experiments/v2/ 仍然保留在 main，作为 v2 历史记录
 ```
 
-## 从旧父节点提升新正式版本
+## 从已有来源框架确定新正式框架
 
-当当前 `main` 已经包含较新的账本，但新版本代码要从旧父节点产生时，必须按“两条来源”
+当当前 `main` 已经包含较新的账本，但新框架代码要从已有正式框架产生时，必须按“两条来源”
 处理：
 
 ```text
-代码来源：parent_version 对应的长期框架分支，例如 framework/v1；tag v1 负责冻结快照
+代码来源：derived_from_framework 对应的长期框架分支，例如 framework/v1；tag v1 负责冻结快照
 账本来源：提升时的当前 main
 ```
 
-必须从父框架的 `framework/vX` 开创新实验分支；`main` 只维护治理和总账。
-禁止把旧父节点状态下的完整工作树或旧 `dev/...` 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
+必须从来源正式框架的 `framework/vX` 开创新实验分支；`main` 只维护治理和总账。
+禁止把来源框架状态下的完整工作树或旧 `dev/...` 分支整体变成 `main`，因为那会把 `docs/`、`experiments/`、
 `idea_tree/`、`config/versions/` 等全局账本回退到旧状态。
 
 正确提升流程：
 
 ```text
-1. 从父框架的 `framework/vX` 开 `exp/vX/innovation/...` 分支。
-2. 在该创新实验中完成调参表、结果和确认，不复制父框架目录。
-3. 创新成功后，在明确 code_commit 上保留兼容快照 tag，并登记来源实验。
-4. 回到当前 main，开 promote 分支，只处理新子框架的正式登记。
+1. 从来源正式框架的 `framework/vX` 开 `exp/vX/innovation/...` 分支。
+2. 在该创新实验中完成调参表、结果和确认，不复制来源框架目录；候选阶段没有正式 Tag。
+3. 创新成功后，在明确 code_commit 上创建新正式 Tag，并登记来源实验。
+4. 回到当前 main，开 promote 分支，只处理新的同级正式框架登记。
 5. 在 promote 分支中保留当前 main 的账本层。
 6. 把成功 trial 的证据目录回流到当前账本。
-7. 只把代码层切换或移植为 parent tag + 成功 trial 的代码。
+7. 只把代码层切换或移植为来源 Tag + 成功 trial 的代码。
 8. 新增 experiments/vX/ 和 config/versions/vX.yaml。
 9. 更新 VERSION_TREE、EXPERIMENT_REGISTRY、PROJECT_STATUS、PROJECT_STRUCTURE、README 和 idea_tree current_version。
 10. 验证通过后，在 promote 分支的版本代码 commit 上打 vX tag。
@@ -308,11 +309,12 @@ README.md
 每个新版本必须记录：
 
 ```text
-parent_version: v1
-parent_tag: v1
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+promoted_from_experiment: V1-INNOVATION-xxx
 ledger_source: current main
 ledger_source_commit: <提升开始时的 main commit>
-code_source: parent tag + trial tag
+code_source: source framework tag + confirmed innovation commit
 ```
 
 ## 命名规范
@@ -416,8 +418,8 @@ trial/v1/idea-0003/trial-001
 成功的模块 trial：
 
 - 成功标准不是只看一次 `H` 上涨，而是指标有效、代码干净、实验口径一致。
-- 成功 trial 可以提升为新的 `vX`，但必须先写清 `parent_version`。
-- 如果新 `vX` 的父节点不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
+- 成功 trial 可以确定为新的同级正式 `FRAMEWORK-VX`，但必须先写清 `derived_from_framework` 和 `promoted_from_experiment`。
+- 如果新 `vX` 的来源框架不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
   只切换代码层，不能删除或回退全局账本层。
 - `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
 - 成功 trial 的轻量证据目录、artifact 指针、quality_check、result 和 code.diff 必须回流到当前 `main` 账本；raw logs、checkpoint 和 generated figures 留在 Warehouse。
@@ -428,7 +430,7 @@ trial/v1/idea-0003/trial-001
 
 Promotion 硬门：
 
-- `H` 相比父版本有明确提升，且记录 baseline H、trial H 和 delta H。
+- `H` 相比来源框架有明确提升，且记录 baseline H、trial H 和 delta H。
 - 不能只凭一次偶然结果；必须区分 `best_observed_H` 和 `confirmed_H`，并达到
   `evidence_level: baseline_grade`。
 - 运行必须来自 clean pre-run freeze commit；`dirty_state: dirty` 或 `git_dirty: true`
@@ -436,7 +438,7 @@ Promotion 硬门：
 - `U`、`S`、`ZS` 没有出现不可接受退化；如果有退化，必须解释为什么仍然接受。
 - 训练命令、seed、配置副本、日志路径、best epoch 和结果表完整。
 - evaluation 口径没有改变，包括 class order、seen/unseen split、logits shape 和 metric calculation。
-- 模块开关关闭时可以回到 `parent_version` 行为。
+- 模块开关关闭时可以回到 `derived_from_framework` 对应的来源行为。
 - `quality_check.md` 的 `promotion_decision` 必须是 `promote`，并通过
   `docs/workflow/protocols/promotion.md` 的自动 promotion gate。
 - `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`EXPERIMENT_REGISTRY.md`
@@ -482,7 +484,7 @@ GitHub 远端应设置保护规则：
 | GitHub 总规范 | `docs/GITHUB_GOVERNANCE.md` | 改版本、分支、tag、证据边界、创意树总原则时更新。 |
 | 项目结构总账本 | `docs/PROJECT_STRUCTURE.md` | 改稳定入口、目录类型、关键文件或职责时更新；动态实例只更新对应索引。 |
 | 当前项目状态 | `docs/PROJECT_STATUS.md` | 当前正式 baseline、正式结果、下一步发生变化时更新。 |
-| 版本树账本 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变父节点关系或主版本时更新。 |
+| 同级框架注册表 | `experiments/VERSION_TREE.md` | 新增正式 `vX`、改变历史来源指针或主版本时更新。 |
 | 创意树细则 | `docs/workflow/protocols/idea_tree_protocol.md` | 改创意来源、评分、跨版本复用、排序和 trial 准入规则时更新。 |
 | 论文 intake / idea discovery | `docs/workflow/protocols/paper_intake.md` | 改论文投递、阅读状态、来源复核、候选 idea 提取或 GitHub 轻量创意同步流程时更新。 |
 | 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |

@@ -61,7 +61,7 @@ authority: derived_index_only
 
 Campaign 目录不能成为单独的正式结果分支。每个 work item 必须回写到所属 subject：
 全部正式 work item 写入目标框架的 `experiments/vX/<type>/`。旧 Trial/Attempt 只作为
-`legacy_ref`；真正新创新写入父框架的 innovation 账本，并由 campaign 只保存链接和调度索引。
+`legacy_ref`；真正新创新写入所属正式框架的 innovation 账本，并由 campaign 只保存链接和调度索引。
 
 `WORK_ITEMS.md` 必须把 owner-facing 编号和 runner job 编号拆开：
 

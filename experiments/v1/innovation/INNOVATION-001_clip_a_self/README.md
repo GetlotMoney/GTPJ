@@ -4,7 +4,7 @@
 framework: FRAMEWORK-V1
 status: legacy_owner_accepted_unconfirmed
 legacy_ref: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly#ATTEMPT-019
-child_framework: FRAMEWORK-V2
+promoted_framework: FRAMEWORK-V2
 parameter_matrix: PARAMETER_MATRIX.md
 ```
 

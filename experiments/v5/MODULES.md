@@ -2,7 +2,8 @@
 
 ```text
 version: v5
-parent_version: v3
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
 framework_diagram: framework_diagram.md
 config: experiments/v5/config.yaml
 trial_framework_source: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text/framework_diagram.md

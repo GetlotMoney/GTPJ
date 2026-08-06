@@ -1,7 +1,7 @@
 # 模块 Trial 历史兼容协议
 
 本页只用于维护迁移前已经存在的 Trial/Attempt 证据。新实验必须按
-`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 写入父框架四类账本。
+`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 写入所属正式框架四类账本。
 
 模块 trial 放在：
 
@@ -106,7 +106,7 @@ data view、input/output、tensor flow、接口语义或模块分支逻辑，就
 
 `ATTEMPTS.md` 保留为历史参数调优、窄范围消融、confirmation/rerun 和 debug-fix rerun 的兼容索引。
 
-它不再是新实验的 owner-facing `formal_pending` 正式待跑表。新运行必须先登记到父框架四类 `INDEX.md` 和
+它不再是新实验的 owner-facing `formal_pending` 正式待跑表。新运行必须先登记到所属正式框架四类 `INDEX.md` 和
 `PARAMETER_MATRIX.csv`，旧表只保留映射行，便于回查：
 
 ```text
@@ -120,9 +120,9 @@ attempt_id / type / run_id 或计划目录 / formal_evidence / status / evidence
 
 ### 参数矩阵硬规则（2026-08-04 起）
 
-历史 `ATTEMPTS.md` 只负责告诉人“旧的这一批 Attempt 是什么”。新运行的参数表放在父框架的正式实验目录，旧 Attempt 目录只保留原证据和映射。表里一行对应一套参数和一次 `RUN-xxx`；开跑前冻结参数，跑完只回填结果。完整列定义见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+历史 `ATTEMPTS.md` 只负责告诉人“旧的这一批 Attempt 是什么”。新运行的参数表放在所属正式框架的实验目录，旧 Attempt 目录只保留原证据和映射。表里一行对应一套参数和一次 `RUN-xxx`；开跑前冻结参数，跑完只回填结果。完整列定义见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
 
-旧 Trial 内的调参和消融仍是判断模块是否有效的历史证据，但新记录统一映射成父框架四类实验，因为它们回答：
+旧 Trial 内的调参和消融仍是判断模块是否有效的历史证据，但新记录统一映射成所属正式框架四类实验，因为它们回答：
 
 ```text
 在同一个模块实现假设下，这个模块怎样设置才公平？
@@ -150,7 +150,7 @@ param_tune / ablation / confirmation / rerun / anchor_followup / debug_fix
 - `quality_check.md`
 - `result.md`
 
-任何来源于旧 Attempt 的新 run 启动前，也必须先在父框架正式调参表中完成两阶段证据冻结：
+任何来源于旧 Attempt 的新 run 启动前，也必须先在所属正式框架的正式调参表中完成两阶段证据冻结：
 
 ## Innovation code review gate
 

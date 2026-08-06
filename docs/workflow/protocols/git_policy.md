@@ -106,7 +106,7 @@ promote/v1-idea-0003-to-v4
 - 不直接在 `main` 上做新模块开发或普通训练实验。
 - 新 `exp/...` 必须从对应的 `framework/vX` 切出，统一命名为
   `exp/vX/<type>/<experiment-id>-<slug>`。
-- `promote/...` 从当前 `main` 切出，只负责把已确认的创新登记为子框架并同步总账。
+- `promote/...` 从当前 `main` 切出，只负责把已确认的创新登记为新的同级正式框架、创建本地 Tag 并同步总账。
 - `base-version` 通过 `base_code_tag` 记录代码来源，例如 `v1`。
 - 运行代码始终来自目标 `framework/vX`；tag 只负责固定复现快照，不再充当新实验分支的起点。
 

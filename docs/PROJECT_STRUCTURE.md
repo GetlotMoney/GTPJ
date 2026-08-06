@@ -37,9 +37,9 @@ GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment 
 ```text
 idea_tree/                 # 创意来源、评分、排序
   -> experiments/vX/innovation/
-                             # 创意被选中后，在父框架内保存实现和证据
-  -> promoted FRAMEWORK-VY   # 创新确认并接纳后才生成子框架
-  -> experiments/vY/         # 子框架自己的四类实验记录
+                             # 创意被选中后，在所属正式框架内保存实现和证据，候选无 Tag
+  -> promoted FRAMEWORK-VY   # 创新确认并接纳后，注册新的同级正式框架并创建 Tag
+  -> experiments/vY/         # 新同级正式框架自己的四类实验记录
 ```
 
 正式实验只有一层：tune、ablation、innovation、confirmation 都写入目标 `experiments/vX/`。
@@ -48,7 +48,7 @@ idea_tree/                 # 创意来源、评分、排序
 版本规则：
 
 ```text
-一个 FRAMEWORK-VX = 一条 framework/vX 长期代码分支 + 一个 vX 冻结 tag + 一个框架实验目录 + 一个父节点记录
+一个 FRAMEWORK-VX = 一条 framework/vX 长期代码分支 + 一个 vX 冻结 Tag + 一个同级框架实验目录 + 一个历史来源指针
 ```
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
@@ -264,7 +264,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
-| `experiments/FRAMEWORK_TREE.md` | 正式框架父子树和当前实验全貌的人类入口。 |
+| `experiments/FRAMEWORK_TREE.md` | 正式框架同级表、历史来源连线和当前实验全貌的人类入口；文件名为兼容保留，不表示上下级树。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
 | `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
@@ -381,12 +381,12 @@ All formal version directories `experiments/vX/` must also include:
 |---|---|
 | `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
 | `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
-| `experiments/vX/framework.yaml` | 框架机器身份、父框架、来源创新、分支、tag 和 commit。 |
+| `experiments/vX/framework.yaml` | 同级正式框架的机器身份、历史来源框架、来源创新、分支、Tag 和 commit。 |
 | `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
-| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记子框架。 |
+| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
 
 这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
-dropout、seed、窄消融或 clean confirmation 也要登记到父框架对应类型，并用 `legacy_ref` 回查旧目录。
+dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框架对应类型，并用 `legacy_ref` 回查旧目录。
 
 ## 更新本文件的判断标准
 

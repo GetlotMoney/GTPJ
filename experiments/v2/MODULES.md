@@ -2,7 +2,8 @@
 
 ```text
 version: v2
-parent_version: v1
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
 framework_diagram: framework_diagram.md
 config: experiments/v2/config.yaml
 ```
