@@ -17,6 +17,8 @@ from tools.convert_v5_checkpoint import convert_state_dict
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_CONFIG = ROOT / "config" / "versions" / "v5.yaml"
 EXPERIMENT_CONFIG = ROOT / "experiments" / "v5" / "config.yaml"
+BASELINE_CONFIG = ROOT / "experiments" / "v5" / "baseline" / "config.yaml"
+RUNTIME_CONFIG = ROOT / "config" / "GTPJ_cub_gzsl.yaml"
 MODEL_SOURCE = ROOT / "model" / "MyModel.py"
 TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
 
@@ -108,6 +110,8 @@ def _top_level_keys(text: str) -> set[str]:
 def _check_v5_config_contains_only_canonical_keys() -> None:
     version_text = VERSION_CONFIG.read_text(encoding="utf-8")
     experiment_text = EXPERIMENT_CONFIG.read_text(encoding="utf-8")
+    baseline_text = BASELINE_CONFIG.read_text(encoding="utf-8")
+    runtime_text = RUNTIME_CONFIG.read_text(encoding="utf-8")
 
     for key in LEGACY_V5_KEYS:
         assert not re.search(rf"^{re.escape(key)}:\s*$", version_text, re.MULTILINE), key
@@ -115,6 +119,8 @@ def _check_v5_config_contains_only_canonical_keys() -> None:
 
     assert _top_level_keys(version_text) == CANONICAL_V5_KEYS
     assert experiment_text == version_text
+    assert baseline_text == version_text
+    assert runtime_text == version_text
     assert re.search(r"^local_weight:\s*\n\s+value:\s*0\.2\s*$", version_text, re.MULTILINE)
     assert re.search(r"^score_mode:\s*\n\s+value:\s*add\s*$", version_text, re.MULTILINE)
 

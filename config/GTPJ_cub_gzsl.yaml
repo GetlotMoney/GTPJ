@@ -28,21 +28,6 @@ pse_inner_ratio:
   value: 0.35
 pse_outer_ratio:
   value: 0.65
-# Legacy PSE aliases retained for old configs and checkpoints.
-adapter_ratio:
-  value: 0.2
-use_clip_a_self:
-  value: true
-clip_a_self_apply_unseen:
-  value: false
-clip_a_self_heads:
-  value: 4
-clip_a_self_dropout:
-  value: 0.5
-clip_a_self_inner_ratio:
-  value: 0.35
-clip_a_self_outer_ratio:
-  value: 0.65
 tf_common_dim:
   value: 512
 tf_heads:
@@ -67,21 +52,9 @@ fgvd_select_largest:
   value: true
 fgvd_select_formula:
   value: v2_abs_mean
-# Legacy FGVD aliases retained for old configs.
-lastvit_select_k:
-  value: 32
-lastvit_select_sigma:
-  value: 0.0
-lastvit_select_largest:
-  value: true
-lastvit_select_formula:
-  value: v2_abs_mean
 score_mode:
   value: add
 use_fgvd_geometry:
-  value: true
-# Legacy FGVD geometry alias retained for old configs.
-use_fae:
   value: true
 lambda_consist:
   value: 0.05
@@ -97,22 +70,11 @@ use_icsa:
   value: true
 icsa_ratio:
   value: 0.008
-# Legacy ICSA aliases retained for old configs.
-use_conditional_text:
-  value: true
-conditional_text_ratio:
-  value: 0.008
 bvsa_text_mode:
   value: conditional
 icsa_hidden:
   value: 48
-# Legacy ICSA hidden-size alias retained for old configs.
-meta_net_hidden:
-  value: 48
 lambda_bmdd:
-  value: 0.05
-# Legacy BMDD alias retained for old configs.
-lambda_msdn:
   value: 0.05
 msdn_temp:
   value: 2.0
@@ -131,23 +93,6 @@ lambda_mpp:
 lambda_neg:
   value: 0.01
 sgmp_neg_margin:
-  value: 0.2
-# Legacy SGMP aliases retained for old configs.
-use_ag_jepa:
-  value: true
-jepa_context_mode:
-  value: fae_main_memory
-jepa_text_mode:
-  value: conditional
-jepa_topk:
-  value: 8
-jepa_hidden:
-  value: 512
-lambda_jepa:
-  value: 0.05
-lambda_jepa_neg:
-  value: 0.01
-jepa_neg_margin:
   value: 0.2
 lr_stages:
   value:
