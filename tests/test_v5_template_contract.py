@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 from types import SimpleNamespace
+import unittest
 
 import torch
 
@@ -104,7 +105,7 @@ def _top_level_keys(text: str) -> set[str]:
     return set(re.findall(r"^([a-zA-Z][a-zA-Z0-9_]*):\s*$", text, flags=re.MULTILINE))
 
 
-def test_v5_config_contains_only_canonical_keys() -> None:
+def _check_v5_config_contains_only_canonical_keys() -> None:
     version_text = VERSION_CONFIG.read_text(encoding="utf-8")
     experiment_text = EXPERIMENT_CONFIG.read_text(encoding="utf-8")
 
@@ -118,7 +119,7 @@ def test_v5_config_contains_only_canonical_keys() -> None:
     assert re.search(r"^score_mode:\s*\n\s+value:\s*add\s*$", version_text, re.MULTILINE)
 
 
-def test_v5_model_source_has_only_the_fixed_canonical_path() -> None:
+def _check_v5_model_source_has_only_the_fixed_canonical_path() -> None:
     source = MODEL_SOURCE.read_text(encoding="utf-8")
     forbidden = {
         "_config_get",
@@ -154,7 +155,7 @@ def test_v5_model_source_has_only_the_fixed_canonical_path() -> None:
     )
 
 
-def test_v5_training_entry_uses_only_canonical_names() -> None:
+def _check_v5_training_entry_uses_only_canonical_names() -> None:
     source = TRAINING_SOURCE.read_text(encoding="utf-8")
     forbidden = {
         "legacy_key",
@@ -251,7 +252,7 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor) -> None:
     torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)
 
 
-def test_v5_clean_path_parity_with_historical_tag() -> None:
+def _check_v5_clean_path_parity_with_historical_tag() -> None:
     historical_model_class = _load_historical_v5_model_class()
     config = _parity_config()
     torch.manual_seed(20260806)
@@ -341,3 +342,21 @@ def test_v5_clean_path_parity_with_historical_tag() -> None:
         assert clean_gradient is not None, clean_key
         assert historical_gradient is not None, historical_key
         _assert_close(clean_gradient, historical_gradient)
+
+
+class V5TemplateContractTest(unittest.TestCase):
+    def test_v5_config_contains_only_canonical_keys(self) -> None:
+        _check_v5_config_contains_only_canonical_keys()
+
+    def test_v5_model_source_has_only_the_fixed_canonical_path(self) -> None:
+        _check_v5_model_source_has_only_the_fixed_canonical_path()
+
+    def test_v5_training_entry_uses_only_canonical_names(self) -> None:
+        _check_v5_training_entry_uses_only_canonical_names()
+
+    def test_v5_clean_path_parity_with_historical_tag(self) -> None:
+        _check_v5_clean_path_parity_with_historical_tag()
+
+
+if __name__ == "__main__":
+    unittest.main()
