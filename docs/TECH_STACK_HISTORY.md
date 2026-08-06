@@ -11,11 +11,11 @@
 
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
-| 工作流 | `SYS-WORKFLOW-V5` | 已实现，待独立审核 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉。 |
+| 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
-| 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已实现，待独立审核 | 已新增母版与实验起点身份，机器检查 Tag、commit 和实验分支起点。 |
+| 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 计划中 | 从 V5 真实有效路径重新提取，去掉旧兼容代码和后续实验代码；尚未声明行为等价。 |
 
 ## 2026-08-06：UI-FRAMEWORK-REGISTRY-V3（已完成）
@@ -31,30 +31,30 @@
 - 验证命令与结果：14 个本地相对链接全部存在；使用 Edge 以 1440×1800 静态渲染并完成截图复核，框架卡、状态和四层表均完整可读。
 - 回退方式：恢复 V2 为当前入口；不会改变任何机器账本和实验结果。
 
-## 2026-08-06：SYS-WORKFLOW-V5（已实现，待独立审核）
+## 2026-08-06：SYS-WORKFLOW-V5（已完成）
 
 - 本次改的是哪个对象：正式框架代码母版和四类实验的开工规则。
 - 目标问题：长期框架分支、正式母版和实验开发线没有彻底分开，后续实验可能互相叠代码并污染框架模板。
-- 采用技术：每个正式框架登记可版本化的只读母版；每项实验从准确 Tag 和 commit 独立开分支；实验代码不并回母版；创新确认后建立新的同级框架。
+- 采用技术：每个正式框架登记可版本化的只读母版；每项实验从准确 Tag 和 commit 独立开分支；实验代码不并回母版；创新确认后建立新的同级框架。正式参数行只允许在标准四类实验目录冻结和启动，旧动态路由正式 runner 退役但保留不进入证据的调试探针。
 - 替换了什么：已经替换“新实验只要从可继续变化的 `framework/vX` 开分支”这一条不够严格的规则。
 - 实际可见效果：同一框架下的实验拥有相同、可证明的代码起点，人可以直接判断每个实验只改了什么。
 - 选择原因：避免 V5 及后续框架不断增加旧开关、兼容分支和实验专用代码。
 - 已知限制：治理代码已实现，但 V5 干净模型母版仍未建立；旧 V0 不能启动新实验。
 - 素材位置：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`、`workflow/gtpj_workflow.py`、`docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html`。
-- 验证命令与结果：`python -m pytest tests/test_gtpj_workflow.py -q` 为 234 项通过；母版、实验账本和工作流一致性检查均通过；独立审核尚待收口。
+- 验证命令与结果：最终 `python -m pytest tests/test_gtpj_workflow.py -q` 为 251 项通过；`validate`、母版、实验账本、工作流一致性、边界、语法和差异检查全部通过；三轮独立审核均为 allow。审核记录位于 `docs/reviews/2026-08-06-framework-template-governance/`。
 - 回退方式：回退 V5 规范和 helper 提交；现有正式 Tag、旧证据和运行结果不动。
 
-## 2026-08-06：DATA-FRAMEWORK-TEMPLATE-V1（已实现，待独立审核）
+## 2026-08-06：DATA-FRAMEWORK-TEMPLATE-V1（已完成）
 
 - 本次改的是哪个对象：框架母版身份、实验基点身份和相关 schema。
 - 目标问题：现有 `framework.yaml` 记录正式框架身份，但没有单独说明实验使用哪一版干净母版。
-- 采用技术：每框架新增 `TEMPLATE.yaml`、每实验新增 `EXPERIMENT.yaml`，记录母版编号、Tag、commit、状态和旧记录映射。
+- 采用技术：每框架新增 `TEMPLATE.yaml`、每实验新增 `EXPERIMENT.yaml`，记录母版编号、Tag、代码 commit、`template_registry_commit`、状态和旧记录映射；registry 必须属于本地 `main` 历史。
 - 替换了什么：已替换只凭框架分支名判断实验起点的做法。
 - 实际可见效果：每个实验都能一眼看到准确代码起点，机器会阻止错基点启动。
 - 选择原因：分支名可能继续变化，准确 commit 才能保证实验可复现。
 - 已知限制：历史实验只能记录当时真实基点；不能倒填成未来创建的干净母版。
 - 素材位置：`docs/superpowers/specs/2026-08-06-immutable-framework-template-design.md`。
-- 验证命令与结果：四个 V0 的 Tag/commit/branch 校验通过；九个当前正式实验的历史基点或等待母版状态通过；错误 Tag、移动母版分支和错起点均有回归测试。
+- 验证命令与结果：四个 V0 的 Tag/commit/branch 校验通过；九个当前正式实验的历史基点或等待母版状态通过；错误 Tag、移动母版分支、任意祖先伪装、非标准目录启动和旧正式 runner 绕过均有回归测试；三轮独立审核通过。
 - 回退方式：新增台账可按提交撤回，不移动旧目录、不修改历史证据。
 
 ## 2026-08-06：MODEL-V5-TEMPLATE-V1（计划中）
