@@ -1,6 +1,17 @@
 # Project Status
 
-Date: 2026-08-06
+Date: 2026-08-07
+
+## 2026-08-07 V5 干净母版更新
+
+`MODEL-V5-TEMPLATE-V1` 已在本地冻结：分支 `framework/v5-template-v1`、Tag
+`model/v5-template-v1` 和代码提交 `2f5fa5e631ef82658d4bac587cdfd17f3534cb35`
+完全一致。历史 `v5` Tag 仍指向 `08e5ecb1a5db6c6d589527cda35d8d4f7f437e07`，没有移动。
+
+本地验证为 36 项 V5 专项测试、251 项工作流测试和 5 个结构检查全部通过，三名独立审核员均为 `ALLOW`。
+这只证明代码路径与管理边界通过本地验证，不代表服务器 U/S/H/ZS 已经复跑确认。
+
+`V5-ABLATION-001` 仍未启动。旧参数表含有新母版已经删除的实验开关和旧代码哈希，必须从新母版重新建立实验分支、配置快照和参数指纹后才能执行。
 
 ## 2026-08-06 管理结构更新
 
@@ -15,8 +26,8 @@ Date: 2026-08-06
 | 实验起点 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 说明这项实验实际复制了哪份母版；实验之间不得接着叠代码。 |
 | 真实运行 | `PARAMETER_MATRIX.csv` | 每一行记录一套参数、一个 seed、一次状态和结果。 |
 
-V1、V2、V3、V5 均已补 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本；这些 V0 只解释过去，
-不能启动新实验。V5 局部分支消融 `V5-ABLATION-001` 已绑定为“等待 `MODEL-V5-TEMPLATE-V1`”，在干净母版冻结前不会启动训练。
+V1、V2、V3 继续使用 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本，只解释过去，不能启动新实验。
+V5 已改用 `MODEL-V5-TEMPLATE-V1 / frozen`；局部分支消融仍等待从该准确母版重新绑定，不沿用旧 Attempt 代码。
 
 ## Current Active Mainline
 
@@ -138,6 +149,6 @@ excluded: logs, receipts, summaries, configs, manifests, registries, and data/ca
 
 ## Next Steps
 
-先完成并冻结 `MODEL-V5-TEMPLATE-V1`。当前 `MODEL-V5-TEMPLATE-V0 / legacy_frozen`
-只能回查历史，不能启动新实验；V5 后续调参、消融、创新和确认都必须从 V1 母版的准确提交独立开始。
+先把 `V5-ABLATION-001` 从 `MODEL-V5-TEMPLATE-V1` 的准确提交独立建立实验分支，重做参数快照和指纹；旧 15 行计划不能直接沿用旧代码哈希。
+随后在用户对本轮服务器成本再次明确授权后，先跑基线与“完全去掉局部分支”的最小闭环，再决定是否扩展权重和模块消融。
 效果比较仍以 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 为正式参考。

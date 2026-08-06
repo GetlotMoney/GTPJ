@@ -62,7 +62,7 @@
       <h1>框架平级，母版冻结，实验各自出发</h1>
       <p class="subtitle">四个正式框架放在同一层；箭头只说明历史上从哪里演变。每个框架有自己的只读代码母版，调参、消融、创新、确认都从同一份准确母版独立复制。</p>
     </div>
-    <div class="stamp">治理规范：已启用<br>V5 干净母版：待建立</div>
+    <div class="stamp">治理规范：已启用<br>V5 干净母版：本地已冻结</div>
   </header>
 
   <div class="principle"><b>一条硬规则</b><span>母版不是开发分支。实验只能复制母版，不能改回母版，也不能拿上一项实验继续叠代码。创新成功后，先整理成新的干净母版，再注册为新的同级框架。</span></div>
@@ -95,7 +95,7 @@
     <article class="framework current">
       <div class="head"><h2>FRAMEWORK-V5</h2><span class="badge waiting">当前使用</span></div>
       <div class="source">derived_from: FRAMEWORK-V3</div>
-      <div class="template"><code>MODEL-V5-TEMPLATE-V0</code><br><span class="badge legacy">legacy_frozen</span> V1 干净母版尚未冻结<br><a href="../../experiments/v5/TEMPLATE.yaml">查看母版账本</a></div>
+      <div class="template"><code>MODEL-V5-TEMPLATE-V1</code><br><span class="badge formal">frozen</span> 分支、Tag、commit 已锁定；服务器精度待确认<br><a href="../../experiments/v5/TEMPLATE.yaml">查看母版账本</a></div>
       <div class="counts"><div class="count"><strong>1</strong>调参</div><div class="count"><strong>1</strong>消融</div><div class="count"><strong>1</strong>创新</div><div class="count"><strong>0</strong>确认</div></div>
       <p><a href="../../experiments/v5/EXPERIMENTS.md">查看 V5 全部实验</a></p>
     </article>
@@ -104,7 +104,7 @@
   <div class="section-head"><h3>V5 当前四类实验</h3><p>每项实验都必须有自己的 EXPERIMENT.yaml 和参数矩阵</p></div>
   <section class="v5-grid">
     <article class="experiment"><h4>调参 · V5-TUNE-001</h4><a href="../../experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md">动态路由搜索</a><p>历史实验，已迁入正式账本；代码来源按历史引用只读保存。</p></article>
-    <article class="experiment blocked"><h4>消融 · V5-ABLATION-001</h4><span class="badge waiting">等待干净母版</span><p>要验证局部分支到底贡献多少。现在不启动训练，先完成并冻结 <code>MODEL-V5-TEMPLATE-V1</code>。</p><p><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml">查看阻塞原因</a></p></article>
+    <article class="experiment blocked"><h4>消融 · V5-ABLATION-001</h4><span class="badge waiting">等待重新绑定</span><p>母版已冻结，但旧参数表仍引用旧代码和已删除开关。必须从新母版建立独立实验分支并重算参数指纹后才能运行。</p><p><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml">查看当前状态</a></p></article>
     <article class="experiment"><h4>创新 · V5-INNOVATION-001</h4><a href="../../experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md">动态路由历史探针</a><p>最高单次结果仍是候选证据；未稳定复现，不产生新的正式框架。</p></article>
     <article class="experiment"><h4>确认 · 暂无新项</h4><span class="badge legacy">0 项</span><p>确认实验用于证明结果能稳定复现，本身不会修改母版或产生新框架。</p></article>
   </section>
@@ -120,7 +120,7 @@
     </tbody>
   </table>
 
-  <div class="callout"><strong>现在的实际边界：</strong>管理规范和账本已经改好；V1/V2/V3/V5 的 V0 都是历史快照，只用于解释过去。接下来要从 V5 有效路径提取并验证 <code>MODEL-V5-TEMPLATE-V1</code>，确认后才能启动“完全去掉局部分支”的正式消融。</div>
+  <div class="callout"><strong>现在的实际边界：</strong><code>MODEL-V5-TEMPLATE-V1</code> 已在本地冻结，旧 <code>v5</code> 历史 Tag 未移动。服务器 U/S/H/ZS 尚未复跑；“完全去掉局部分支”消融还要从新母版独立建分支并重做参数表，不能沿用旧 Attempt 代码。</div>
 
   <footer><span>事实来源：framework.yaml、TEMPLATE.yaml、四类 INDEX.md、EXPERIMENT.yaml、PARAMETER_MATRIX.csv</span><span><a href="../workflow/FRAMEWORK_EXPERIMENT_STANDARD.md">正式规范</a> · <a href="../PROJECT_STATUS.md">项目状态</a> · <a href="../PROJECT_STRUCTURE.md">目录说明</a></span></footer>
 </main>
