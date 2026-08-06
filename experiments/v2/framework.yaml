@@ -8,7 +8,7 @@ source_legacy_ref: experiments/module_trials/IDEA-0001_clip_a_self_text_prototyp
 framework_branch: framework/v2
 framework_tag: v2
 framework_commit: ccc4a10ddd67308e28c40d6000216917a71bf472
-governance_source_commit: 2b92fc68961c22d4037381ed183343ae233a4361
+governance_source_commit: 709df05f5d4711891ba90f2276290f51ff0cf480
 origin_status: legacy_owner_accepted_unconfirmed
 change_type: add_module
 modules: ["v1 modules", "CLIP-A-self text prototype adapter"]
