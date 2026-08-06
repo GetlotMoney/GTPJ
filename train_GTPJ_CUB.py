@@ -107,14 +107,6 @@ planned_total_epochs = _planned_total_epochs(config)
 epoch_schedule = "lr_stages" if (getattr(config, 'lr_stages', None) or []) else "epochs + extra_epochs"
 
 
-def cfg_value(key, legacy_key=None, default=None):
-    if hasattr(config, key):
-        return getattr(config, key)
-    if legacy_key is not None and hasattr(config, legacy_key):
-        return getattr(config, legacy_key)
-    return default
-
-
 print_log("=" * 60)
 print_log("  CLIP + PSE + FGVD + BVSA + SGMP  |  CUB GZSL Training")
 print_log("=" * 60)
@@ -133,46 +125,41 @@ print_log("=" * 60)
 # ★ 模块配置摘要 (每次训练记录, 便于回看)
 print_log("")
 print_log("┌─ Module Configuration ───────────────────────────────────┐")
-print_log(f"│  model_mode    : {getattr(config, 'model_mode', 'gtpj')}")
-print_log(f"│  text_source   : {getattr(config, 'text_source', 'gpt4')}")
+print_log(f"│  text_source   : {config.text_source}")
 print_log(f"│  use_aug_cache : {getattr(config, 'use_aug_cache', False)}")
 print_log("├─ Architecture ──────────────────────────────────────────┤")
-print_log(f"│  use_fgvd_geometry: {cfg_value('use_fgvd_geometry', 'use_fae', True)}")
-print_log(f"│  pse_adapter_ratio: {cfg_value('pse_adapter_ratio', 'adapter_ratio', 0.2)}")
-use_pse_self_attention = cfg_value('use_pse_self_attention', 'use_clip_a_self', False)
+print_log(f"│  use_fgvd_geometry: {config.use_fgvd_geometry}")
+print_log(f"│  pse_adapter_ratio: {config.pse_adapter_ratio}")
+use_pse_self_attention = config.use_pse_self_attention
 print_log(f"│  use_pse_self_attention: {use_pse_self_attention}")
 if use_pse_self_attention:
-    print_log(f"│  pse_apply_unseen: {cfg_value('pse_apply_unseen', 'clip_a_self_apply_unseen', False)}")
-    print_log(f"│  pse_heads       : {cfg_value('pse_heads', 'clip_a_self_heads', 1)}")
-    print_log(f"│  pse_dropout     : {cfg_value('pse_dropout', 'clip_a_self_dropout', 0.5)}")
-    print_log(f"│  pse_outer_ratio : {cfg_value('pse_outer_ratio', 'clip_a_self_outer_ratio', cfg_value('pse_adapter_ratio', 'adapter_ratio', 0.2))}")
-    print_log(f"│  pse_inner_ratio : {cfg_value('pse_inner_ratio', 'clip_a_self_inner_ratio', 0.5)}")
-print_log(f"│  tf_common_dim : {getattr(config, 'tf_common_dim', 512)}")
-print_log(f"│  tf_heads      : {getattr(config, 'tf_heads', 4)}")
-print_log(f"│  tf_dropout    : {getattr(config, 'tf_dropout', 0.1)}")
+    print_log(f"│  pse_apply_unseen: {config.pse_apply_unseen}")
+    print_log(f"│  pse_heads       : {config.pse_heads}")
+    print_log(f"│  pse_dropout     : {config.pse_dropout}")
+    print_log(f"│  pse_outer_ratio : {config.pse_outer_ratio}")
+    print_log(f"│  pse_inner_ratio : {config.pse_inner_ratio}")
+print_log(f"│  tf_common_dim : {config.tf_common_dim}")
+print_log(f"│  tf_heads      : {config.tf_heads}")
+print_log(f"│  tf_dropout    : {config.tf_dropout}")
 print_log("├─ Pooling (s2v) ─────────────────────────────────────────┤")
-print_log(f"│  pool_method   : {getattr(config, 'pool_method', 'mean')}")
-if getattr(config, 'pool_method', 'mean') == 'lastvit':
-    print_log(f"│  lastvit_k     : {getattr(config, 'lastvit_k', 8)}")
-    print_log(f"│  lastvit_sigma : {getattr(config, 'lastvit_sigma', 10.0)}")
-print_log("├─ Scoring & Gating ──────────────────────────────────────┤")
-print_log(f"│  score_mode    : {getattr(config, 'score_mode', 'add')}")
-print_log(f"│  gating        : {getattr(config, 'gating', 'fixed')}")
-print_log(f"│  local_weight  : {getattr(config, 'local_weight', 0.3)}")
-print_log(f"│  weight_s2v    : {getattr(config, 'weight_s2v', 0.5)}")
-print_log(f"│  text_residual : {getattr(config, 'text_residual', 0.5)}")
-print_log(f"│  visual_residual: {getattr(config, 'visual_residual', 0.5)}")
-print_log(f"│  use_icsa      : {cfg_value('use_icsa', 'use_conditional_text', False)}")
-print_log(f"│  icsa_ratio    : {cfg_value('icsa_ratio', 'conditional_text_ratio', 0.05)}")
+print_log(f"│  pool_method   : {config.pool_method}")
+print_log("├─ Fixed Scoring ─────────────────────────────────────────┤")
+print_log(f"│  score_mode    : {config.score_mode}")
+print_log(f"│  local_weight  : {config.local_weight}")
+print_log(f"│  weight_s2v    : {config.weight_s2v}")
+print_log(f"│  text_residual : {config.text_residual}")
+print_log(f"│  visual_residual: {config.visual_residual}")
+print_log(f"│  use_icsa      : {config.use_icsa}")
+print_log(f"│  icsa_ratio    : {config.icsa_ratio}")
 print_log("├─ Loss Weights ──────────────────────────────────────────┤")
-print_log(f"│  lambda_consist: {getattr(config, 'lambda_consist', 0.0)}")
-print_log(f"│  lambda_topo   : {getattr(config, 'lambda_topo_pearson', 0.0)}")
-print_log(f"│  lambda_bmdd   : {cfg_value('lambda_bmdd', 'lambda_msdn', 0.0)}")
-print_log(f"│  lambda_mpp    : {cfg_value('lambda_mpp', 'lambda_jepa', 0.0)}")
-print_log(f"│  lambda_neg    : {cfg_value('lambda_neg', 'lambda_jepa_neg', 0.0)}")
-print_log(f"│  sgmp_context  : {cfg_value('sgmp_context_mode', 'jepa_context_mode', 'embed')}")
-print_log(f"│  sgmp_text     : {cfg_value('sgmp_text_mode', 'jepa_text_mode', 'adapted')}")
-print_log(f"│  bvsa_text     : {getattr(config, 'bvsa_text_mode', 'adapted')}")
+print_log(f"│  lambda_consist: {config.lambda_consist}")
+print_log(f"│  lambda_topo   : {config.lambda_topo_pearson}")
+print_log(f"│  lambda_bmdd   : {config.lambda_bmdd}")
+print_log(f"│  lambda_mpp    : {config.lambda_mpp}")
+print_log(f"│  lambda_neg    : {config.lambda_neg}")
+print_log(f"│  sgmp_context  : {config.sgmp_context_mode}")
+print_log(f"│  sgmp_text     : {config.sgmp_text_mode}")
+print_log(f"│  bvsa_text     : {config.bvsa_text_mode}")
 print_log("├─ Resume ────────────────────────────────────────────────┤")
 print_log(f"│  resume_from        : {getattr(config, 'resume_from', '')!r}")
 print_log(f"│  resume_lr_schedule : {getattr(config, 'resume_lr_schedule', 'continue')}")
@@ -391,7 +378,7 @@ def _encode_description_sentences(file_path, dataloader, clip_model, device, cla
 
 
 if text_source == 'weighted':
-    if bool(cfg_value('use_pse_self_attention', 'use_clip_a_self', False)):
+    if bool(config.use_pse_self_attention):
         raise ValueError("use_pse_self_attention=True does not support text_source='weighted'.")
     text_alpha = getattr(config, 'text_alpha', 1.0)
     gpt_path    = os.path.join('.', 'data', 'gpt4_data', 'cub.pt')
@@ -438,7 +425,7 @@ else:
     # 启动省 ~10 秒 (CLIP ViT-L/14 文本编码慢, 7 次 encode_text)
     embed_cache = _gpt_embed_cache_path(text_source)
     sentence_cache = _gpt_sentence_cache_path(text_source)
-    use_pse_sentence_text = bool(cfg_value('use_pse_self_attention', 'use_clip_a_self', False))
+    use_pse_sentence_text = bool(config.use_pse_self_attention)
     if use_pse_sentence_text and os.path.exists(sentence_cache):
         gpt_sentence_embeds = torch.load(sentence_cache, map_location=config.device,
                                         weights_only=True)
@@ -529,7 +516,7 @@ scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
 #   4. 微调: resume_from='auto' + resume_lr_schedule='finetune' (LR=1e-4)
 #
 # checkpoint 内容 (full_ckpt): model + optimizer + scheduler + epoch + best_H
-# 旧的 best_model_*.pth 仅含 model.state_dict, 也兼容加载
+# best_model_*.pth 仅含规范字段的 model.state_dict；历史权重必须先运行显式转换工具。
 import glob
 
 
@@ -537,7 +524,7 @@ def find_latest_checkpoint(ckpt_dir, full_only=False):
     """
     在 ckpt_dir 下找最新的 checkpoint
     full_only=True: 只找含完整状态的 ckpt_full_*.pth
-    full_only=False: 也接受老的 best_model_*.pth (仅权重)
+    full_only=False: 也接受规范字段的 best_model_*.pth（仅权重）
     """
     if full_only:
         candidates = glob.glob(os.path.join(ckpt_dir, 'ckpt_full_*.pth'))
@@ -553,15 +540,6 @@ def find_latest_checkpoint(ckpt_dir, full_only=False):
 resume_from        = getattr(config, 'resume_from', '')
 resume_lr_schedule = getattr(config, 'resume_lr_schedule', 'continue')
 extra_epochs       = int(getattr(config, 'extra_epochs', 0))
-
-# ★ Bug 修复 (2026-05-25): clip_only / adapter_only 消融时强制跳过 resume
-# 否则 checkpoint 里的 logit_scale / Adapter / proj_text 等参数会污染消融结果,
-# clip_only 数值不再是干净 CLIP 基线
-_model_mode_for_resume = getattr(config, 'model_mode', 'gtpj')
-if _model_mode_for_resume in ('clip_only', 'adapter_only') and resume_from:
-    print_log(f"\n[Resume] model_mode='{_model_mode_for_resume}' detected, "
-              f"forcing resume_from='' (skip checkpoint to keep ablation clean)")
-    resume_from = ''
 
 start_epoch = 1     # 默认从 epoch 1 开始
 best_H = 0.0
@@ -584,11 +562,11 @@ if resume_from:
         ckpt = torch.load(ckpt_path, map_location=config.device,
                           weights_only=False)
 
-        # 兼容两种 ckpt 格式:
+        # 支持两种规范 ckpt 格式:
         # 1) 完整 ckpt: dict with 'model_state_dict' / 'optimizer_state_dict' / ...
-        # 2) 旧 ckpt: 直接是 model.state_dict()
+        # 2) 仅权重 ckpt: 直接是规范字段的 model.state_dict()
         if isinstance(ckpt, dict) and 'model_state_dict' in ckpt:
-            # 新格式: 完整 checkpoint
+            # 完整 checkpoint
             model.load_state_dict(ckpt['model_state_dict'])
             print_log(f"  ✓ Loaded model weights")
 
@@ -629,9 +607,9 @@ if resume_from:
                 print_log(f"  ✓ Finetune mode: LR={finetune_lr:g}, cosine over {config.epochs} epochs")
                 print_log(f"  ⚠ epoch counter resets to 1 (treating as new finetune run)")
         else:
-            # 旧格式: 仅模型权重
+            # 仅模型权重；load_state_dict 默认严格检查，历史字段不能静默混入。
             model.load_state_dict(ckpt)
-            print_log(f"  ✓ Loaded legacy weights only "
+            print_log(f"  ✓ Loaded canonical model weights only "
                       f"(no optimizer/scheduler/epoch state)")
             print_log(f"  ⚠ resume_lr_schedule='{resume_lr_schedule}' "
                       f"applies to LR, but no optimizer state to restore")
@@ -711,7 +689,7 @@ print_log("=" * 60)
 # ==========================================
 #   ★ 加速优化 (方案 D): Mixed Precision (autocast + GradScaler)
 # ==========================================
-# autocast: forward 自动用 fp16 张量核 (FAE 矩阵乘加速 ~30%)
+# autocast: forward 自动用 fp16 张量核（FGVD 矩阵乘加速约 30%）
 # GradScaler: backward 自动放大 loss 防 fp16 underflow
 # GTPJ-v1 keeps AMP disabled by default for reproducibility.
 USE_AMP = bool(getattr(config, 'use_amp', False))
@@ -722,32 +700,6 @@ if USE_AMP:
     print_log(f"  ★ AMP enabled (BF16 autocast, no GradScaler needed)")
 else:
     print_log(f"  ⚠ AMP disabled (use_amp=False), running fp32")
-
-# ==========================================
-#   消融模式: clip_only 跳过训练直接评估
-# ==========================================
-model_mode = getattr(config, 'model_mode', 'gtpj')
-print_log(f"\n  ★ Model mode: {model_mode}")
-
-if model_mode == 'clip_only':
-    print_log("\n[CLIP-Only Baseline] Skipping training, evaluating zero-shot CLIP...")
-    print_log("  (PSE / FGVD / BVSA all bypassed)")
-    gzsl_bias = getattr(config, 'gzsl_bias', 0.0)
-    acc_seen, acc_novel, H, acc_zs = eval_zs_gzsl(
-        dataloader, clip_model, model, config.device,
-        bias_unseen=gzsl_bias)
-
-    print_log("\n" + "=" * 60)
-    print_log("  Zero-Shot CLIP Baseline Results (no training)")
-    print_log("=" * 60)
-    print_log(f"  ┌─────────────────────────────────────")
-    print_log(f"  │  GZSL-U : {acc_novel*100:.2f}%")
-    print_log(f"  │  GZSL-S : {acc_seen*100:.2f}%")
-    print_log(f"  │  GZSL-H : {H*100:.2f}%")
-    print_log(f"  │  ZSL    : {acc_zs*100:.2f}%")
-    print_log(f"  └─────────────────────────────────────")
-    print_log(f"\n  Log saved to: {LOG_FILE}")
-    raise SystemExit(0)
 
 for epoch in range(start_epoch, total_epochs + 1):
 
@@ -803,7 +755,7 @@ for epoch in range(start_epoch, total_epochs + 1):
             clip_features = get_clip_spatial_features(clip_model, batch_images).float()
 
         # Forward (训练模式：只用 150 seen 类 logits)
-        # ★ 加速优化 (方案 D): autocast 让 FAE 注意力走 BF16 张量核
+        # ★ 加速优化 (方案 D): autocast 让 FGVD 注意力走 BF16 张量核
         # BF16 比 FP16 数值范围大, 5070 Ti 原生支持, GradScaler 也可省略
         if USE_AMP:
             with autocast('cuda', dtype=torch.bfloat16):
@@ -819,7 +771,7 @@ for epoch in range(start_epoch, total_epochs + 1):
             out_package = model(clip_features, is_train=True)
             in_package = out_package.copy()
             in_package['batch_label'] = batch_label
-            loss_pack = model.compute_loss(in_package)  # logits_200 已在 out_package 里
+            loss_pack = model.compute_loss(in_package)
             loss = loss_pack['loss']
 
             # Backward
@@ -832,12 +784,12 @@ for epoch in range(start_epoch, total_epochs + 1):
         # 每 20 步打印一次进度
         if (step + 1) % 20 == 0 or (step + 1) == iters_per_epoch:
             avg_loss = epoch_loss / epoch_iters
-            ce_v   = loss_pack.get('loss_CE',      torch.tensor(0.)).item()
+            ce_v   = loss_pack.get('loss_ce',      torch.tensor(0.)).item()
             cons_v = loss_pack.get('loss_consist', torch.tensor(0.)).item()
             topo_v = loss_pack.get('loss_topo',    torch.tensor(0.)).item()
-            bmdd_v = loss_pack.get('loss_bmdd', loss_pack.get('loss_msdn', torch.tensor(0.))).item()
-            mpp_v  = loss_pack.get('loss_mpp', loss_pack.get('loss_jepa', torch.tensor(0.))).item()
-            neg_v  = loss_pack.get('loss_neg', loss_pack.get('loss_jepa_neg', torch.tensor(0.))).item()
+            bmdd_v = loss_pack.get('loss_bmdd',    torch.tensor(0.)).item()
+            mpp_v  = loss_pack.get('loss_mpp',     torch.tensor(0.)).item()
+            neg_v  = loss_pack.get('loss_neg',     torch.tensor(0.)).item()
             print_log(f"  Step [{step+1:3d}/{iters_per_epoch}] | "
                       f"Loss: {loss.item():.4f} | Avg: {avg_loss:.4f} | "
                       f"CE: {ce_v:.3f}  Cons: {cons_v:.3f}  "
@@ -852,16 +804,6 @@ for epoch in range(start_epoch, total_epochs + 1):
     print_log(f"\n  >> Epoch [{epoch}/{total_epochs}] Train Summary")
     print_log(f"     Avg Loss : {avg_epoch_loss:.4f}")
     print_log(f"     LR       : {current_lr:.6f}")
-    route_stats = in_package.get('dynamic_route_stats') if isinstance(in_package, dict) else None
-    if route_stats:
-        for gate_name, stats in sorted(route_stats.items()):
-            print_log(
-                f"     DynamicRoute {gate_name}: "
-                f"mean={stats.get('mean', 0.0):.6f} "
-                f"std={stats.get('std', 0.0):.6f} "
-                f"min={stats.get('min', 0.0):.6f} "
-                f"max={stats.get('max', 0.0):.6f}"
-            )
 
     # ★ 2026-05-25: 多段训练 - 段边界自动切到下一段
     # 当前 epoch 等于某段终点 → 切换到下一段 lr + 重置 cosine T_max
@@ -898,43 +840,6 @@ for epoch in range(start_epoch, total_epochs + 1):
             print_log(f"\n  ★★★ Stage {next_idx + 1} starts at epoch {epoch + 1} "
                       f"★★★\n     lr → {new_lr:g}, cosine T_max={new_T}, eta_min={_emin:g}")
 
-    # ---------- 动态 residual / blend 系数 (仅 cosine_only + learnable 模式打印) ----------
-    # 注: add 模式下这些 Parameter 虽然存在但不参与 forward, 打印没意义, 跳过
-    is_cosine_only = getattr(model, 'score_mode', 'add') == 'cosine_only'
-    if is_cosine_only and hasattr(model, 'residual_mode') and model.residual_mode != 'fixed':
-        with torch.no_grad():
-            vr = torch.sigmoid(model.visual_residual_logit).item()
-            if model.residual_mode == 'learnable_split':
-                tr_s = torch.sigmoid(model.text_residual_seen_logit).item()
-                tr_u = torch.sigmoid(model.text_residual_unseen_logit).item()
-                print_log(f"     Residual : vr={vr:.4f}  tr_seen={tr_s:.4f}  tr_unseen={tr_u:.4f}")
-            else:  # learnable_global
-                tr = torch.sigmoid(model.text_residual_logit).item()
-                print_log(f"     Residual : vr={vr:.4f}  tr={tr:.4f}")
-    if is_cosine_only and hasattr(model, 'cosine_base_blend_mode') and model.cosine_base_blend_mode == 'learnable':
-        with torch.no_grad():
-            cb = torch.sigmoid(model.cosine_base_blend_logit).item()
-        print_log(f"     CB Blend : cb={cb:.4f}  (sigmoid of logit={model.cosine_base_blend_logit.item():.4f})")
-
-    # ---------- F4/F5 add 模式动态门控 (诊断用, 打印 alpha_net/w_net 末层 bias 对应的"零输入"基线值) ----------
-    if not is_cosine_only:
-        if hasattr(model, 'alpha_net') and getattr(model, 'gating_dynamic', 'fixed') == 'mlp':
-            with torch.no_grad():
-                # alpha_net[-1] 是最后一层 Linear. weight=0 init 下, 输出 ≈ bias (与图无关)
-                # 训练后 weight 不为 0, 这里只打 bias 对应的"基础" α 作为稳定参考
-                bias_a = model.alpha_net[-1].bias.item()
-                a_base = float(torch.sigmoid(torch.tensor(bias_a)).item())
-            print_log(f"     Gating α (mlp): bias-baseline={a_base:.4f}  (last bias={bias_a:.4f})")
-        if hasattr(model, 'w_net') and getattr(model, 'weight_s2v_mode', 'fixed') == 'mlp':
-            with torch.no_grad():
-                bias_w = model.w_net[-1].bias.item()
-                w_base = float(torch.sigmoid(torch.tensor(bias_w)).item())
-            print_log(f"     Weight w (mlp): bias-baseline={w_base:.4f}  (last bias={bias_w:.4f})")
-        if hasattr(model, 'pool_net') and getattr(model, 'pool_dynamic', 'fixed') == 'mlp':
-            with torch.no_grad():
-                bias_p = model.pool_net[-1].bias.item()
-                p_base = float(torch.sigmoid(torch.tensor(bias_p)).item())
-            print_log(f"     Pool λ (mlp): bias-baseline={p_base:.4f}  (last bias={bias_p:.4f})")
     # ---------- 测试阶段 ----------
     print_log(f"\n  >> Epoch [{epoch}/{total_epochs}] Evaluating GZSL...")
     gzsl_bias = getattr(config, 'gzsl_bias', 0.0)

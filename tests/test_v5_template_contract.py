@@ -161,7 +161,7 @@ def test_v5_training_entry_uses_only_canonical_names() -> None:
     for token in (
         "config",
         "random_seed",
-        "DATA_LOADER",
+        "CUBDataLoader",
         "seenclasses",
         "unseenclasses",
         "eval_zs_gzsl",
