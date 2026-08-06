@@ -146,6 +146,23 @@ class WorkflowHelperTest(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
+    def _write_legacy_template(self, version: str = "v1") -> str:
+        commit = self._git("rev-parse", f"{version}^{{commit}}").stdout.strip()
+        self._write(
+            f"experiments/{version}/TEMPLATE.yaml",
+            "schema_version: gtpj.framework_template.v1\n"
+            f"framework_id: FRAMEWORK-{version.upper()}\n"
+            f"template_id: MODEL-{version.upper()}-TEMPLATE-V0\n"
+            "template_status: legacy_frozen\n"
+            f"template_branch: framework/{version}\n"
+            f"template_tag: {version}\n"
+            f"template_commit: {commit}\n"
+            f"source_framework_tag: {version}\n"
+            f"source_framework_commit: {commit}\n"
+            "behavior_contract: none\n",
+        )
+        return commit
+
     def _add_confirmation_rule_markers(self) -> None:
         for relative in self.module.CONFIRMATION_RULE_REPO_SYNC_FILES:
             path = self.repo / relative
@@ -1731,6 +1748,45 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertNotIn("parent_version", self.module.FRAMEWORK_REQUIRED_KEYS)
         self.assertNotIn("source_experiment", self.module.FRAMEWORK_REQUIRED_KEYS)
         self.assertNotIn("lineage_status", self.module.FRAMEWORK_REQUIRED_KEYS)
+
+    def test_framework_template_rejects_tag_commit_mismatch(self) -> None:
+        self._write_legacy_template()
+        template_path = self.repo / "experiments/v1/TEMPLATE.yaml"
+        template_text = template_path.read_text(encoding="utf-8")
+        template_path.write_text(
+            template_text.replace(
+                f"template_commit: {self._git('rev-parse', 'v1^{commit}').stdout.strip()}",
+                f"template_commit: {'0' * 40}",
+            ),
+            encoding="utf-8",
+        )
+
+        errors = self.module.validate_framework_templates()
+
+        self.assertTrue(any("template_commit does not match tag" in item for item in errors))
+
+    def test_frozen_template_branch_must_not_move_past_tag(self) -> None:
+        self._write_legacy_template()
+        self._write("marker.txt", "changed\n")
+        self._commit_all("move template branch")
+        self._git("branch", "-f", "framework/v1", "HEAD")
+
+        errors = self.module.validate_framework_templates()
+
+        self.assertTrue(
+            any("frozen template branch must equal template_commit" in item for item in errors)
+        )
+
+    def test_active_standard_requires_template_yaml_for_every_framework(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
+
+        errors = self.module.validate_framework_templates()
+
+        self.assertTrue(any("experiments/v1/TEMPLATE.yaml" in item for item in errors))
 
     def test_framework_index_names_a_promoted_peer_instead_of_a_child(self) -> None:
         self._write(

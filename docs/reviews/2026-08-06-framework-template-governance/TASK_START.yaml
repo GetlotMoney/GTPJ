@@ -1,0 +1,38 @@
+task_id: SYS-WORKFLOW-V5-MIGRATION
+date: 2026-08-06
+owner_request: 确认只读母版设计并开始整体修改规范、工作流和现有实验
+task_type: workflow_and_template_governance
+workflow_mode: live_multi_agent_monitor
+base_version: governance_branch
+base_code_tag: none
+current_branch: codex/framework-ledger-redesign
+start_commit: a663595
+suggested_branch: codex/framework-ledger-redesign
+enters_idea_tree: false
+github_writes: schemas + workflow helper + active docs + formal framework ledgers
+research_writes: none
+warehouse_writes: none
+coupled_update_required: false
+coupled_update_skip_reason: 本阶段不产生论文材料、训练日志、checkpoint 或正式结果
+subject_id: SYS-WORKFLOW-V5-MIGRATION
+subject_type: governance_change
+evidence_state: implementation_in_progress
+activation_mode: real_multi_agent
+agent_instance_mode: workflow_scoped_review_agents
+activation_reason: 核心工作流和后续模型语义会改变，实施保持单写者，关键阶段使用三路独立只读审核
+required_roles: Coordinator, Implementer, Interface Checker, Quality Checker, Reviewer
+writer_roles: Coordinator and Implementer are the same single current writer
+reviewer_roles: three independent read-only reviewers
+formal_runner_allowed: false
+formal_evidence_allowed: false
+runner_scope: none
+gpu_lock_required: false
+owner_monitor_mode: true
+report_channel: current Codex task
+agent_activity_stream: docs/reviews/2026-08-06-framework-template-governance/REVIEW_LOG.md
+memory_used: conversation_summary_for_orientation_only
+verified_against_current_repo: true
+hard_gates: tests_first, history_preserved, exact_git_refs, three_effective_reviews, full_machine_validation
+blocked_reason: none_for_local_governance_implementation
+stop_if: dirty_changes_not_owned_by_this_task, historical_evidence_would_be_rewritten, tests_fail_for_unrelated_reason, server_or_push_action_required
+next_action: write failing framework-template tests and verify the expected red state
