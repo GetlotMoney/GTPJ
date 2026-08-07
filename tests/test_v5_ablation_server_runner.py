@@ -176,6 +176,10 @@ if len(sys.argv) > 1 and sys.argv[1] == "validate-experiment-base":
         raise SystemExit(10)
     for required_ref in (
         "refs/heads/main",
+        "refs/heads/framework/v1",
+        "refs/heads/framework/v2",
+        "refs/heads/framework/v3",
+        "refs/heads/framework/v5",
         "refs/heads/framework/v5-template-v1",
     ):
         subprocess.run(
@@ -215,7 +219,14 @@ raise SystemExit(0)
         text=True,
     ).stdout.strip()
     if include_validation_refs:
-        for branch_name in ("main", "framework/v5-template-v1"):
+        for branch_name in (
+            "main",
+            "framework/v1",
+            "framework/v2",
+            "framework/v3",
+            "framework/v5",
+            "framework/v5-template-v1",
+        ):
             subprocess.run(
                 ["git", "branch", branch_name, template_commit],
                 cwd=repo,
@@ -223,7 +234,7 @@ raise SystemExit(0)
                 capture_output=True,
                 text=True,
             )
-        for tag_name in ("v5", "model/v5-template-v1"):
+        for tag_name in ("v1", "v2", "v3", "v4", "v5", "model/v5-template-v1"):
             subprocess.run(
                 ["git", "tag", tag_name, template_commit],
                 cwd=repo,

@@ -82,9 +82,17 @@ LAUNCH_IDENTITY_VALUES = {
 }
 VALIDATION_LOCAL_BRANCH_REFS = {
     "main": "refs/heads/main",
+    "framework/v1": "refs/heads/framework/v1",
+    "framework/v2": "refs/heads/framework/v2",
+    "framework/v3": "refs/heads/framework/v3",
+    "framework/v5": "refs/heads/framework/v5",
     "framework/v5-template-v1": "refs/heads/framework/v5-template-v1",
 }
 VALIDATION_REQUIRED_TAG_REFS = (
+    "refs/tags/v1",
+    "refs/tags/v2",
+    "refs/tags/v3",
+    "refs/tags/v4",
     "refs/tags/v5",
     "refs/tags/model/v5-template-v1",
 )
