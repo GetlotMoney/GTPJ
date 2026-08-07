@@ -1,0 +1,1006 @@
+diff --git a/docs/TECH_STACK_HISTORY.md b/docs/TECH_STACK_HISTORY.md
+index 9a9604d..a881470 100644
+--- a/docs/TECH_STACK_HISTORY.md
++++ b/docs/TECH_STACK_HISTORY.md
+@@ -12,13 +12,26 @@
+ | 对象 | 当前版本 | 状态 | 实际内容 |
+ |---|---|---|---|
+ | 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
+-| V5 正式实验执行器 | `SYS-RUNNER-V1.2` | 已完成，R4 可启动 | 类别编号先在 CPU 完成构造核对，再随模型进入 GPU；R3 失败历史与 R4 新运行同表保留，被审核控制器和两步冻结门均已通过机器验证及三路审核。 |
++| V5 正式实验执行器 | `SYS-RUNNER-V1.3` | 计划中 | 兼容当前 V5 中文最佳成绩结尾；保留 R4 两项成功训练，只用 R5 新身份补跑四项未启动任务。 |
+ | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
+ | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
+ | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
+ | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
+ | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
+
++## 2026-08-08：SYS-RUNNER-V1.3（计划中）
++
++- 本次改的是哪个对象：`V5-ABLATION-001` 的训练日志成绩读取、失败恢复账本和剩余任务队列；不改模型、训练公式、数据或评估。
++- 目标问题：R4 的 FULL 与 GLOBAL_ONLY seed 5 都以返回码 0 完成训练，但工作流只认识旧英文 `Best Results` 结尾，不认识当前入口输出的“最佳 epoch=…，U=…”，因此在训练后记账阶段报错。
++- 采用技术：成绩读取同时支持旧英文格式和当前 V5 中文完整汇总行；用真实 R4 结尾增加回归测试；参数表保留两项成功证据和四项未启动记录，R5 只新建 `RUN-013…016` 补跑 seed 17、29。两项成功记录各补一张恢复证据清单，把启动/结束收据、封口日志、训练内部日志、最佳模型、指标和逐文件 SHA-256 绑在一起；控制器在领取新身份前读取服务器真实文件复核。
++- 替换了什么：替换“所有六项从头重跑”的恢复方式；已成功的两个 seed 5 不重复消耗 GPU，也不复用已经领取的 R4 身份。
++- 实际可见效果：R4 seed 5 已恢复为 FULL H=74.17、GLOBAL_ONLY H=73.92，配对差值为 +0.25；该单种子结果不作为最终消融结论。完成记录若缺少证据清单或任一被列入的服务器文件发生变化，R5 会在占用 GPU 前拒绝启动。
++- 选择原因：不可变结束收据、训练返回码和日志哈希都证明两项训练完整成功，保留它们比手改日志或重新训练更节省且更可追溯。
++- 已知限制：R5 尚未完成审核和服务器训练；只有 seed 17、29 完成后才能判断局部分支的平均贡献与稳定性。
++- 素材位置：`workflow/gtpj_workflow.py`、`tools/run_v5_ablation_001_server_controller.py`、`tests/test_gtpj_workflow.py`、`tests/test_v5_ablation_server_runner.py`、`experiments/v5/ablation/ABLATION-001_local_branch_effect/`。
++- 验证命令与结果：计划运行日志读取专项测试、控制器测试、参数表校验、全仓回归、服务器 Linux 测试和三路独立审核。
++- 回退方式：回退 V1.3 代码候选；R4 原始 Warehouse、结束收据、训练日志和已领取身份保持不动，不能删除或复用。
++
+ ## 2026-08-08：SYS-RUNNER-V1.2（已完成，R4 可启动）
+
+ - 本次改的是哪个对象：`V5-ABLATION-001` 的 FULL 与 GLOBAL_ONLY 两个训练入口中的类别编号加载设备；不修改冻结 V5 母版模型、消融模型公式、配置或评估口径。
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml
+index 3f29ce6..8b91b62 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml
+@@ -28,4 +28,4 @@ preserved_subsystem:
+ formal_evidence: true
+ workflow_mode: server_frozen_runner
+ review_tier: strict-3
+-implementation_status: reviewed_candidate_ready_for_final_bundle
++implementation_status: parser_fix_and_r5_queue_pending_review
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv b/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
+index 66180fb..6a2a7b1 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
+@@ -5,9 +5,13 @@ RUN-003,V5-ABLATION-001,ablation,cancelled,FULL,完整 V5 seed 29,v5,def1d44cdee
+ RUN-004,V5-ABLATION-001,ablation,failed,GLOBAL_ONLY,干净无局部 seed 5,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-004.yaml,5,{},87d42788056c5c126677a126d650f2c61de826452e48368fc50a77f0d71b708e,,唯一配置,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260807-V5ABL001-R3-GLOBAL-S5,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a/RUN-004/run_start_receipt.json,eefee151f0d19a2fc987f1b1ee84e7e7039e6f4c7d0b6e6d38cbc3cd6cbe2c45,510c7c7629993b21883899d6ecc578c7cc54c6a6ea07ab46844d61eb56df0804,aeb3f58d3432cd7900063c19ccfbbeee8373025db44a100f0c2f9148f81f3623,1,,,,,,process_failed_cuda_class_identity_device_mismatch,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a/RUN-004,
+ RUN-005,V5-ABLATION-001,ablation,cancelled,GLOBAL_ONLY,干净无局部 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-005.yaml,17,{},bd9d8a9c1bfbfba42bf7f85bb5f0294b46951469dc6d074bf90ba8629a304bbc,,唯一配置,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260807-V5ABL001-R3-GLOBAL-S17,,,,,,,,,,,not_started_after_stop_or_failure,,
+ RUN-006,V5-ABLATION-001,ablation,cancelled,GLOBAL_ONLY,干净无局部 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-006.yaml,29,{},66883c2a9a502decfeea5bb09cfc1633cea75daff07eefa3b8ecd0de8b994b11,,唯一配置,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260807-V5ABL001-R3-GLOBAL-S29,,,,,,,,,,,not_started_after_stop_or_failure,,
+-RUN-007,V5-ABLATION-001,ablation,frozen,FULL,完整 V5 seed 5,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-007.yaml,5,{},def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,RUN-001,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S5,,,,,,,,,,,,,
+-RUN-008,V5-ABLATION-001,ablation,frozen,FULL,完整 V5 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-008.yaml,17,{},a4e8e9ab656a5de30ed6ce8e86317fbc5f873fca8b466793425ca7f678585b21,RUN-002,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S17,,,,,,,,,,,,,
+-RUN-009,V5-ABLATION-001,ablation,frozen,FULL,完整 V5 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-009.yaml,29,{},c77ada02882ebfab0dd6a550426af323f72a73bad12d1a57649f0d5b9281927a,RUN-003,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S29,,,,,,,,,,,,,
+-RUN-010,V5-ABLATION-001,ablation,frozen,GLOBAL_ONLY,干净无局部 seed 5,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-010.yaml,5,{},87d42788056c5c126677a126d650f2c61de826452e48368fc50a77f0d71b708e,RUN-004,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S5,,,,,,,,,,,,,
+-RUN-011,V5-ABLATION-001,ablation,frozen,GLOBAL_ONLY,干净无局部 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-011.yaml,17,{},bd9d8a9c1bfbfba42bf7f85bb5f0294b46951469dc6d074bf90ba8629a304bbc,RUN-005,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S17,,,,,,,,,,,,,
+-RUN-012,V5-ABLATION-001,ablation,frozen,GLOBAL_ONLY,干净无局部 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-012.yaml,29,{},66883c2a9a502decfeea5bb09cfc1633cea75daff07eefa3b8ecd0de8b994b11,RUN-006,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S29,,,,,,,,,,,,,
++RUN-007,V5-ABLATION-001,ablation,completed,FULL,完整 V5 seed 5,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-007.yaml,5,{},def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,RUN-001,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S5,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe/RUN-007/run_start_receipt.json,999cb05065aae3f342f1f8016bd526198ec995bbcba69c145bd654ce2cbe3cd8,1b5529ea8821a6c3c6afc6b5314cc01bee5aa3137aacaef5e2c182564421f7c5,6e70729a177d081144a6556de53f84e3e1e5feb6a7f08603df747db38d2bfd95,0,72.36,76.07,74.17,81.28,31,completed_recovered_after_v5_log_parser_fix,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe/RUN-007,3eb27b0e18327ebcef8d89131040322851302deedbdd6a594b8bf58973c4146b
++RUN-008,V5-ABLATION-001,ablation,cancelled,FULL,完整 V5 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-008.yaml,17,{},a4e8e9ab656a5de30ed6ce8e86317fbc5f873fca8b466793425ca7f678585b21,RUN-002,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S17,,,,,,,,,,,not_started_after_r4_bookkeeping_failure,,
++RUN-009,V5-ABLATION-001,ablation,cancelled,FULL,完整 V5 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-009.yaml,29,{},c77ada02882ebfab0dd6a550426af323f72a73bad12d1a57649f0d5b9281927a,RUN-003,R3 初始化失败后从头重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R4-FULL-S29,,,,,,,,,,,not_started_after_r4_bookkeeping_failure,,
++RUN-010,V5-ABLATION-001,ablation,completed,GLOBAL_ONLY,干净无局部 seed 5,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-010.yaml,5,{},87d42788056c5c126677a126d650f2c61de826452e48368fc50a77f0d71b708e,RUN-004,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S5,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe/RUN-010/run_start_receipt.json,568e0e4980a59f0baf464a1dafe459e8ff61b44d2f47324b301aec51e1238f0b,64d1d1df720eb6b8e023b00a11b2f3233dfad951d6775257d0780e95a61c202e,c850f53ce1e491f59ed679d7959a00f7231434f93cd9e44ab136c38db129477e,0,71.52,76.50,73.92,81.27,48,completed_recovered_after_v5_log_parser_fix,/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe/RUN-010,f7d6228fda5bd9ce99c191911022206697d88ece5d89dc0d558a300deecdf4ef
++RUN-011,V5-ABLATION-001,ablation,cancelled,GLOBAL_ONLY,干净无局部 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-011.yaml,17,{},bd9d8a9c1bfbfba42bf7f85bb5f0294b46951469dc6d074bf90ba8629a304bbc,RUN-005,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S17,,,,,,,,,,,not_started_after_r4_bookkeeping_failure,,
++RUN-012,V5-ABLATION-001,ablation,cancelled,GLOBAL_ONLY,干净无局部 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-012.yaml,29,{},66883c2a9a502decfeea5bb09cfc1633cea75daff07eefa3b8ecd0de8b994b11,RUN-006,R3 初始化失败后从头重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R4-GLOBAL-S29,,,,,,,,,,,not_started_after_r4_bookkeeping_failure,,
++RUN-013,V5-ABLATION-001,ablation,frozen,FULL,完整 V5 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-013.yaml,17,{},a4e8e9ab656a5de30ed6ce8e86317fbc5f873fca8b466793425ca7f678585b21,RUN-008,R4 已领取但未启动，使用新身份重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R5-FULL-S17,,,,,,,,,,,,,
++RUN-014,V5-ABLATION-001,ablation,frozen,FULL,完整 V5 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,model/v5-template-v1,configs/RUN-014.yaml,29,{},c77ada02882ebfab0dd6a550426af323f72a73bad12d1a57649f0d5b9281927a,RUN-009,R4 已领取但未启动，使用新身份重跑,与无局部组做同种子配对比较,RUN-20260808-V5ABL001-R5-FULL-S29,,,,,,,,,,,,,
++RUN-015,V5-ABLATION-001,ablation,frozen,GLOBAL_ONLY,干净无局部 seed 17,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-015.yaml,17,{},bd9d8a9c1bfbfba42bf7f85bb5f0294b46951469dc6d074bf90ba8629a304bbc,RUN-011,R4 已领取但未启动，使用新身份重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R5-GLOBAL-S17,,,,,,,,,,,,,
++RUN-016,V5-ABLATION-001,ablation,frozen,GLOBAL_ONLY,干净无局部 seed 29,v5,def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e,exp/v5/ablation/ablation-001-local-branch-effect,configs/RUN-016.yaml,29,{},66883c2a9a502decfeea5bb09cfc1633cea75daff07eefa3b8ecd0de8b994b11,RUN-012,R4 已领取但未启动，使用新身份重跑,删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology,RUN-20260808-V5ABL001-R5-GLOBAL-S29,,,,,,,,,,,,,
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md
+index 63ca182..b3f49f9 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md
+@@ -2,7 +2,7 @@
+
+ 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
+
+-来源：R3 失败证据与 R4 从头重跑同表记录
++来源：R3/R4 历史证据保留；R4 两个 seed=5 训练成功后从不可变日志恢复，剩余四项使用 R5 新身份继续。
+
+ | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
+ |---|---|---|---|---|---:|---|---|---|---:|---|---|
+@@ -12,12 +12,16 @@
+ | RUN-004 | 干净无局部 seed 5 | ablation | failed | {} | 5 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | process_failed_cuda_class_identity_device_mismatch |  |
+ | RUN-005 | 干净无局部 seed 17 | ablation | cancelled | {} | 17 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_stop_or_failure |  |
+ | RUN-006 | 干净无局部 seed 29 | ablation | cancelled | {} | 29 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_stop_or_failure |  |
+-| RUN-007 | 完整 V5 seed 5 | ablation | frozen | {} | 5 | RUN-001 | RUN-20260808-V5ABL001-R4-FULL-S5 | 与无局部组做同种子配对比较 |  |  |  |
+-| RUN-008 | 完整 V5 seed 17 | ablation | frozen | {} | 17 | RUN-002 | RUN-20260808-V5ABL001-R4-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |
+-| RUN-009 | 完整 V5 seed 29 | ablation | frozen | {} | 29 | RUN-003 | RUN-20260808-V5ABL001-R4-FULL-S29 | 与无局部组做同种子配对比较 |  |  |  |
+-| RUN-010 | 干净无局部 seed 5 | ablation | frozen | {} | 5 | RUN-004 | RUN-20260808-V5ABL001-R4-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+-| RUN-011 | 干净无局部 seed 17 | ablation | frozen | {} | 17 | RUN-005 | RUN-20260808-V5ABL001-R4-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+-| RUN-012 | 干净无局部 seed 29 | ablation | frozen | {} | 29 | RUN-006 | RUN-20260808-V5ABL001-R4-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
++| RUN-007 | 完整 V5 seed 5 | ablation | completed | {} | 5 | RUN-001 | RUN-20260808-V5ABL001-R4-FULL-S5 | 与无局部组做同种子配对比较 | 74.17 | completed_recovered_after_v5_log_parser_fix | 3eb27b0e18327ebcef8d89131040322851302deedbdd6a594b8bf58973c4146b |
++| RUN-008 | 完整 V5 seed 17 | ablation | cancelled | {} | 17 | RUN-002 | RUN-20260808-V5ABL001-R4-FULL-S17 | 与无局部组做同种子配对比较 |  | not_started_after_r4_bookkeeping_failure |  |
++| RUN-009 | 完整 V5 seed 29 | ablation | cancelled | {} | 29 | RUN-003 | RUN-20260808-V5ABL001-R4-FULL-S29 | 与无局部组做同种子配对比较 |  | not_started_after_r4_bookkeeping_failure |  |
++| RUN-010 | 干净无局部 seed 5 | ablation | completed | {} | 5 | RUN-004 | RUN-20260808-V5ABL001-R4-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology | 73.92 | completed_recovered_after_v5_log_parser_fix | f7d6228fda5bd9ce99c191911022206697d88ece5d89dc0d558a300deecdf4ef |
++| RUN-011 | 干净无局部 seed 17 | ablation | cancelled | {} | 17 | RUN-005 | RUN-20260808-V5ABL001-R4-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_r4_bookkeeping_failure |  |
++| RUN-012 | 干净无局部 seed 29 | ablation | cancelled | {} | 29 | RUN-006 | RUN-20260808-V5ABL001-R4-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_r4_bookkeeping_failure |  |
++| RUN-013 | 完整 V5 seed 17 | ablation | frozen | {} | 17 | RUN-008 | RUN-20260808-V5ABL001-R5-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |
++| RUN-014 | 完整 V5 seed 29 | ablation | frozen | {} | 29 | RUN-009 | RUN-20260808-V5ABL001-R5-FULL-S29 | 与无局部组做同种子配对比较 |  |  |  |
++| RUN-015 | 干净无局部 seed 17 | ablation | frozen | {} | 17 | RUN-011 | RUN-20260808-V5ABL001-R5-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
++| RUN-016 | 干净无局部 seed 29 | ablation | frozen | {} | 29 | RUN-012 | RUN-20260808-V5ABL001-R5-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+
+ ## 查重说明
+
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
+index ea9db11..a0380d8 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
+@@ -32,7 +32,7 @@ review_tier: strict-3
+ ## 当前完成情况
+
+ - [x] 绑定冻结母版与独立实验分支；
+-- [x] 参数表同表保留 R3 六行历史，并新增 R4 六行、六份对应配置和逐行 `repeat_of`；
++- [x] 参数表同表保留 R3、R4 历史；R4 的两项 seed 5 成功结果已从不可变日志恢复，其余四项标记为未启动；
+ - [x] 完成无局部代码瘦身；
+ - [x] 证明局部块改变不会影响输出，局部块梯度为 0；
+ - [x] 保留数据、评估、类别顺序和输出维度；
+@@ -43,17 +43,18 @@ review_tier: strict-3
+ - [x] R3 真实双卡启动进入两个模型入口，并在初始化时暴露类别编号的 CPU/CUDA 设备冲突；
+ - [x] R3 两个进程返回码为 1，收据与清理完整，其余四项未启动；
+ - [x] CUDA 类别编号修复后的 `strict-3` 审核通过；
+-- [x] 创建带全新 R4 身份的运行前冻结提交；
+-- [ ] 服务器双卡正式启动；
+-- [ ] 6 次运行全部收口并做配对统计。
++- [x] 创建 R5 的 `RUN-013…016` 四个新身份，只补跑 R4 未启动的 seed 17、29；
++- [x] R4 双卡训练成功完成 seed 5；记账程序的中文日志兼容问题已定位并修复；
++- [ ] R5 通过新一轮审核和冻结后在服务器双卡启动；
++- [ ] 剩余 4 次运行收口，并与已恢复的 seed 5 一起做三种子配对统计。
+
+ ## 运行分配
+
+ | GPU | 队列 | 代码 |
+ |---:|---|---|
+-| 0 | 完整 V5：seed 5 → 17 → 29 | `model/v5-template-v1` |
+-| 1 | 干净无局部：seed 5 → 17 → 29 | 本实验运行前冻结提交 |
++| 0 | 完整 V5：只补 seed 17 → 29 | `model/v5-template-v1` |
++| 1 | 干净无局部：只补 seed 17 → 29 | 本实验运行前冻结提交 |
+
+ 原始日志、checkpoint 和运行状态进入服务器 Warehouse；Git 只保存配置、凭证、哈希和轻量结果。
+
+-正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和六个 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
++正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和本批 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
+index b89a01f..536e404 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
+@@ -174,3 +174,12 @@ cat <runtime-root>/recovery_handoff.json
+ - 清理结果：`RUN-001` 与 `RUN-004` 的结束收据均已核对，两个进程树都已停止，`cleanup_complete: true`；GPU 随后恢复空闲；
+ - 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-cca4e0e6419a`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a`，其中保留 claim、状态、收据、错误日志和 `recovery_handoff.json`；
+ - 恢复规则：R3 execution 和六个 R3 `run_id` 永不复用。正式参数表同表保留 R3 的 `RUN-001…006`：两项真实失败回填收据、命令/日志哈希和退出码，四项标记为领取后未启动；R4 新建 `RUN-007…012`，逐行通过 `repeat_of` 指回 R3，并使用六个全新 `run_id`。最小代码修复是在两个训练入口加载划分时让类别编号先留在 CPU，完成模型内部的类别顺序核对后，再随模型整体迁移到 GPU；模型公式、数据划分和评估口径不变。修复和新账本必须先通过真实 CUDA 测试与三路审核，再由新冻结提交启动。
++
++## 2026-08-08 第四次正式执行的训练后记账失败
++
++- 执行号：`V5-ABLATION-001-6f0c382edfbe`。
++- 训练事实：`RUN-007` 与 `RUN-010` 的训练进程返回码都是 0，结束收据和日志哈希一致；FULL seed 5 为 U=72.36、S=76.07、H=74.17、ZS=81.28、best epoch=31，GLOBAL_ONLY seed 5 为 U=71.52、S=76.50、H=73.92、ZS=81.27、best epoch=48。
++- 失败位置：训练结束后，`workflow/gtpj_workflow.py` 只按旧英文 `Best Results` 格式读取成绩，无法读取当前两个 V5 入口输出的中文最佳成绩行，helper 因此返回 1；控制器把 helper 的记账返回码与训练结束收据中的返回码 0 比较后，将两项误标为失败。
++- 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-6f0c382edfbe`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe`；`RUN-007` 日志 SHA-256 为 `6e70729a177d081144a6556de53f84e3e1e5feb6a7f08603df747db38d2bfd95`，`RUN-010` 为 `c850f53ce1e491f59ed679d7959a00f7231434f93cd9e44ab136c38db129477e`。
++- 恢复证据清单：`RUN-007/artifact_manifest.json` 的 SHA-256 为 `3eb27b0e18327ebcef8d89131040322851302deedbdd6a594b8bf58973c4146b`，`RUN-010/artifact_manifest.json` 为 `f7d6228fda5bd9ce99c191911022206697d88ece5d89dc0d558a300deecdf4ef`。每张清单同时固定 job/run 身份、启动与结束收据、封口日志、训练内部日志、最佳模型、指标和各文件哈希；R5 启动前会重新读取真实 Warehouse 文件逐项核对。
++- 恢复规则：两项成功训练不重跑；`RUN-008/009/011/012` 已随 R4 execution 被领取但没有启动，保留为取消记录。R5 使用 `RUN-013…016` 和四个全新 `run_id`，逐项 `repeat_of` 指回对应的 R4 未启动行，只补跑 seed 17、29。
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml
+index c9162a7..5731535 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml
+@@ -10,8 +10,8 @@ attempt_id: ""
+ subject_id: V5-ABLATION-001
+ subject_type: campaign_task
+ runner_scope: formal_runner
+-formal_runner_allowed: true
+-formal_evidence_allowed: true
++formal_runner_allowed: false
++formal_evidence_allowed: false
+ github_write: experiment_branch_only
+ research_write: none
+ warehouse_write: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001
+@@ -57,7 +57,7 @@ owner_monitor:
+ evidence_routing:
+   subject_id: V5-ABLATION-001
+   subject_type: campaign_task
+-  current_state: ready_to_run
++  current_state: repairing_after_r4_bookkeeping_failure
+   authority_refs:
+     - EXPERIMENT.yaml
+     - PARAMETER_MATRIX.csv
+@@ -65,10 +65,10 @@ evidence_routing:
+     - agent_runtime.yaml
+     - quality_check.md
+ hard_gates:
+-  code_review: strict-3 pass
++  code_review: pending
+   agent_runtime: pass
+   artifact_boundary: pass
+-  pre_run_freeze_commit: pass
++  pre_run_freeze_commit: pending
+ expected_outputs:
+   github:
+     - PARAMETER_MATRIX.csv
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-013.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-013.yaml
+new file mode 100644
+index 0000000..b7f8772
+--- /dev/null
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-013.yaml
+@@ -0,0 +1,73 @@
++dataset:
++  value: CUB
++num_class:
++  value: 200
++dim_f_clip:
++  value: 768
++device:
++  value: cuda:0
++batch_size:
++  value: 64
++random_seed:
++  value: 17
++text_source:
++  value: gpt55
++pse_heads:
++  value: 4
++pse_dropout:
++  value: 0.5
++pse_inner_ratio:
++  value: 0.35
++pse_outer_ratio:
++  value: 0.65
++tf_common_dim:
++  value: 512
++tf_heads:
++  value: 4
++tf_dropout:
++  value: 0.1
++weight_s2v:
++  value: 0.5
++local_weight:
++  value: 0.2
++fgvd_select_k:
++  value: 32
++score_mode:
++  value: add
++lambda_consist:
++  value: 0.05
++consist_temp:
++  value: 2.0
++consist_dynamic_gamma:
++  value: 0.1
++lambda_topo_pearson:
++  value: 0.1
++icsa_ratio:
++  value: 0.008
++icsa_hidden:
++  value: 48
++lambda_bmdd:
++  value: 0.05
++msdn_temp:
++  value: 2.0
++sgmp_topk:
++  value: 8
++sgmp_hidden:
++  value: 512
++lambda_mpp:
++  value: 0.05
++lambda_neg:
++  value: 0.01
++sgmp_neg_margin:
++  value: 0.2
++lr_stages:
++  value:
++  - lr: 0.001
++    epochs: 20
++    eta_min: 1e-5
++  - lr: 0.0001
++    epochs: 20
++    eta_min: 1e-6
++  - lr: 1.0e-05
++    epochs: 10
++    eta_min: 1e-7
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-014.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-014.yaml
+new file mode 100644
+index 0000000..fc39c83
+--- /dev/null
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-014.yaml
+@@ -0,0 +1,73 @@
++dataset:
++  value: CUB
++num_class:
++  value: 200
++dim_f_clip:
++  value: 768
++device:
++  value: cuda:0
++batch_size:
++  value: 64
++random_seed:
++  value: 29
++text_source:
++  value: gpt55
++pse_heads:
++  value: 4
++pse_dropout:
++  value: 0.5
++pse_inner_ratio:
++  value: 0.35
++pse_outer_ratio:
++  value: 0.65
++tf_common_dim:
++  value: 512
++tf_heads:
++  value: 4
++tf_dropout:
++  value: 0.1
++weight_s2v:
++  value: 0.5
++local_weight:
++  value: 0.2
++fgvd_select_k:
++  value: 32
++score_mode:
++  value: add
++lambda_consist:
++  value: 0.05
++consist_temp:
++  value: 2.0
++consist_dynamic_gamma:
++  value: 0.1
++lambda_topo_pearson:
++  value: 0.1
++icsa_ratio:
++  value: 0.008
++icsa_hidden:
++  value: 48
++lambda_bmdd:
++  value: 0.05
++msdn_temp:
++  value: 2.0
++sgmp_topk:
++  value: 8
++sgmp_hidden:
++  value: 512
++lambda_mpp:
++  value: 0.05
++lambda_neg:
++  value: 0.01
++sgmp_neg_margin:
++  value: 0.2
++lr_stages:
++  value:
++  - lr: 0.001
++    epochs: 20
++    eta_min: 1e-5
++  - lr: 0.0001
++    epochs: 20
++    eta_min: 1e-6
++  - lr: 1.0e-05
++    epochs: 10
++    eta_min: 1e-7
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-015.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-015.yaml
+new file mode 100644
+index 0000000..d52aec0
+--- /dev/null
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-015.yaml
+@@ -0,0 +1,39 @@
++dataset:
++  value: CUB
++num_class:
++  value: 200
++dim_f_clip:
++  value: 768
++device:
++  value: cuda:0
++batch_size:
++  value: 64
++random_seed:
++  value: 17
++text_source:
++  value: gpt55
++pse_heads:
++  value: 4
++pse_dropout:
++  value: 0.5
++pse_inner_ratio:
++  value: 0.35
++pse_outer_ratio:
++  value: 0.65
++lambda_topo_pearson:
++  value: 0.1
++icsa_ratio:
++  value: 0.008
++icsa_hidden:
++  value: 48
++lr_stages:
++  value:
++  - lr: 0.001
++    epochs: 20
++    eta_min: 1e-5
++  - lr: 0.0001
++    epochs: 20
++    eta_min: 1e-6
++  - lr: 1.0e-05
++    epochs: 10
++    eta_min: 1e-7
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-016.yaml b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-016.yaml
+new file mode 100644
+index 0000000..1f055ed
+--- /dev/null
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/configs/RUN-016.yaml
+@@ -0,0 +1,39 @@
++dataset:
++  value: CUB
++num_class:
++  value: 200
++dim_f_clip:
++  value: 768
++device:
++  value: cuda:0
++batch_size:
++  value: 64
++random_seed:
++  value: 29
++text_source:
++  value: gpt55
++pse_heads:
++  value: 4
++pse_dropout:
++  value: 0.5
++pse_inner_ratio:
++  value: 0.35
++pse_outer_ratio:
++  value: 0.65
++lambda_topo_pearson:
++  value: 0.1
++icsa_ratio:
++  value: 0.008
++icsa_hidden:
++  value: 48
++lr_stages:
++  value:
++  - lr: 0.001
++    epochs: 20
++    eta_min: 1e-5
++  - lr: 0.0001
++    epochs: 20
++    eta_min: 1e-6
++  - lr: 1.0e-05
++    epochs: 10
++    eta_min: 1e-7
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
+index 780b665..e401a2a 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
+@@ -32,21 +32,21 @@
+
+ ## 服务器运行安全补强
+
+-- `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；V4 清单绑定最终冻结提交、被审核的代码候选、实验分支、母版提交、六个 `run_id`、六份受信文件和固定 Python 的 SHA-256；
++- `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；V4 清单绑定最终冻结提交、被审核的代码候选、实验分支、母版提交、本批 `run_id`、六份受信文件和固定 Python 的 SHA-256；
+ - 审核结论必须用 `reviewed_candidate_commit` 精确绑定代码候选。由于包含审核文字的提交不可能在自身内容中预先写入自己的提交号，正式流程采用“代码候选 → 只补审核记录和开跑门的最终冻结提交”两步；控制器核对祖先关系，并拒绝两步之间出现训练代码、配置、参数矩阵或工作流改动；
+ - 正式控制器本身只允许从 `reviewed_candidate_commit` 的独立干净 checkout 执行；启动时同时核对 checkout HEAD、控制器 Git blob、文件 SHA-256 和全工作树状态，再绑定 Python、校验最终 bundle 或领取身份。最终证据提交里的控制器不能自我放行，因此即使有人在审核后提交中删除边界检查也不会成为受信启动入口；
+ - 控制器先从 Git bundle 克隆出带 `.git` 的临时隔离仓，并准确切到正式实验分支，再运行 strict-3、agent runtime、参数表、实验绑定和仓库边界校验；通过前不创建正式运行副本和训练进程；
+ - 代码包里的 `workflow/gtpj_workflow.py` 只允许冻结母版 Git 对象或控制器硬编码的已审核“绑定 Python”版本；其他自校验器会在执行前被拒绝；
+ - 正式 Python 固定为 `/data/lby/.conda/envs/dvsr_gpu/bin/python`；控制器核对清单哈希后打开文件描述符，helper、收据流程、训练包装器和最终训练入口都执行这个已打开文件，路径在检查后被替换也不会换掉实际解释器；
+ - `DATA_MANIFEST.json` 冻结 12 个 CUB/xlsa17 正式输入的路径、大小和 SHA-256，并同时固定 split、label、class order 与 metric 口径；控制器预检源目录后，把 12 个文件复制到本次 execution 私有快照，复制时再次核对完整哈希并改成只读；每个 RUN 只复核和读取这份快照，不再从可变源目录训练；
+-- runtime 与 Warehouse 使用 `V5-ABLATION-001-<冻结提交前12位>` 命名；服务器持久化领取 `execution_id` 和六个 `run_id`，停止后也不能重复使用；
++- runtime 与 Warehouse 使用 `V5-ABLATION-001-<冻结提交前12位>` 命名；服务器持久化领取 `execution_id` 和本批 `run_id`，停止后也不能重复使用；
+ - runtime、Warehouse 和身份领取目录都固定在服务器约定父目录，不能靠更换 `--warehouse-root` 父目录重新领取；
+ - STOP 或系统信号由普通控制流程处理；signal handler 只设置停止事件，不获取状态锁；
+ - 任意异常都进入统一 `finally`：先用 `/proc` 核对 PID、进程组、会话和启动时钟，再打开 Linux pidfd 绑定具体进程对象；正常停止信号只发给 pidfd，不按可能复用的裸 PID 发信号；即使 helper 先退出，也会继续清理仍存活的训练子进程；
+ - helper 创建后若连身份都没来得及固定，控制器会在该直接子进程被 `wait` 回收前强制停止它的独立进程组，并写 `launch_failure.json`；
+ - `run_start_receipt.finish.json` 会再次核对 job、run、启动收据哈希、退出码、PID 和日志哈希；只存在文件但内容不一致仍然阻断正式证据；
+ - 冻结证据校验调用 `validate-experiment-base` 时传入完整实验目录；测试中的最小工作流会检查该路径确实包含 `EXPERIMENT.yaml`，防止参数写错却被假校验放过；
+-- 正式 bundle 必须携带 `main`、现行 `framework/v1/v2/v3/v5` 与来源 Tag，以及 `framework/v5-template-v1` 和 `model/v5-template-v1`；Git clone 把非当前分支保存为远端引用后，控制器会在总校验副本、FULL/GLOBAL_ONLY 代码副本和六个 RUN 独立账本中，统一用 bundle 列表中已经验证的提交恢复本地管理分支，再执行全仓框架账本、母版起点或启动收据校验；
++- 正式 bundle 必须携带 `main`、现行 `framework/v1/v2/v3/v5` 与来源 Tag，以及 `framework/v5-template-v1` 和 `model/v5-template-v1`；Git clone 把非当前分支保存为远端引用后，控制器会在总校验副本、FULL/GLOBAL_ONLY 代码副本和本批 RUN 独立账本中，统一用 bundle 列表中已经验证的提交恢复本地管理分支，再执行全仓框架账本、母版起点或启动收据校验；
+ - 目录、环境变量和 helper 日志先准备完，再在共享锁内执行最后一次 STOP/失败检查；检查通过后的第一项动作就是 `Popen`，任一 RUN 失败登记完成后，两个队列都不能再启动后续 RUN；
+ - `Popen` 与首次 `running` 状态写入也在同一把锁内；如果状态无法落盘，会先清理刚创建的 helper 并锁住另一队列；
+ - 训练代码副本不再创建 `data` 或 `train_log` 软链接，Git 状态必须完全为空；FULL 与 GLOBAL_ONLY 都从本次冻结实验提交建立代码副本，FULL 的模型、配置、数据划分与保留模块仍逐项对照冻结母版；
+@@ -69,5 +69,7 @@
+ - 当前修复让两个训练入口都以 CPU 类别编号构造模型，并新增“两个真实模型使用 CPU 类别编号和 CUDA 文本特征均可完成初始化”的服务器测试；服务器真实 CUDA 验证与三路独立只读审核均已通过；
+ - V5 相关模型、母版和旧数学路径测试：41 项通过；
+ - 当前仓库完整回归共 351 项：345 项通过，另有 5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过；新增两项失败测试证明从最终提交或脏工作树执行控制器会在绑定 Python 前拒绝；
+-- 参数表现在共 12 行：R3 的 `RUN-001/004` 回填失败收据、命令哈希、日志哈希和退出码 1，`RUN-002/003/005/006` 标记为领取后未启动；R4 使用新的 `RUN-007…012`，逐行通过 `repeat_of` 指回 R3；
+-- 控制器的正式队列只选择六个冻结 R4 行，同时要求同表其余历史行全部处于终态，并拒绝任何历史 `run_id` 复用；`validate-experiment-base`、选定行参数表、总工作流、规则一致性、框架账本和仓库边界检查已经在精确候选上重跑通过。
++- R4 的 `RUN-007/010` 已完整训练，原始结束收据分别证明返回码 0；工作流读取成绩时只认识旧英文结尾，未识别当前 V5 中文最佳成绩行，导致训练后记账失败。修复只增加完整中文汇总行解析，并保留旧格式兼容；
++- R4 两项完成记录各有一张恢复证据清单，固定启动/结束收据、封口日志、训练内部日志、最佳模型、指标和逐文件哈希；控制器会在领取 R5 身份前读取服务器真实文件复核，任何缺失、换文件或身份不一致都会阻断；
++- 参数表现在共 16 行：R3 六行保留失败历史；R4 的 `RUN-007/010` 记录成功结果，`RUN-008/009/011/012` 保留为领取后未启动；R5 使用 `RUN-013…016` 四个全新身份补跑 seed 17、29；
++- 控制器的正式队列只选择四个冻结 R5 行，同时要求同表其余历史行全部处于终态，已完成历史行必须带真实证据清单，并拒绝任何历史 `run_id` 复用。R5 尚待本轮机器验证、三路审核和最终启动包核对。
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
+index 3399bfb..2bae3f9 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
+@@ -1,12 +1,12 @@
+ # 质量检查
+
+-当前阶段：`ready_to_run`。
++当前阶段：`repairing_after_r4_bookkeeping_failure`。
+
+ - [x] 精确绑定冻结母版提交；
+ - [x] 实验分支与母版工作区分离；
+ - [x] 一次只消融局部子系统；
+ - [x] PSE、ICSA、数据、类别顺序和评估口径保留；
+-- [x] 参数矩阵共 12 行：R3 六行已进入 `failed/cancelled` 终态并保留真实身份，R4 六行全部冻结、指向新配置且逐行引用 R3；
++- [x] 参数矩阵共 16 行：R3 六行保留失败历史；R4 两行恢复成功结果、四行记录未启动；R5 四行使用新 job/run 身份补跑 seed 17、29；
+ - [x] 局部块不影响输出和梯度；
+ - [x] 母版与实验分支机器测试通过；
+ - [x] bundle 管理引用修复后的 `strict-3` 代码审核通过；
+@@ -78,5 +78,6 @@
+ - [x] R3 execution 和六个 `run_id` 已停用；参数表改用全新 R4 身份。
+ - [x] 第一轮设备修复审核发现 R3 行曾被 R4 覆盖，已阻断；现已恢复 R3 两行失败收据与四行未启动状态，R4 改用 `RUN-007…012`，控制器只选择六个冻结 R4 行且要求其他历史行全部终结。
+ - [x] CUDA 类别编号修复完成服务器真实测试、`strict-3` 复核与新的运行前冻结。
++- [x] R4 的两项成功记录已经补齐不可替换的恢复证据清单；控制器新增负向测试，缺清单、清单哈希错误或清单内证据文件被替换时均拒绝 R5 启动。
+
+-当前决定：`allow_formal_runner_after_final_bundle_and_manifest_verify`。
++当前决定：`block_until_r5_parser_fix_review_and_final_bundle_verify`。
+diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md
+index 953cfbe..c662843 100644
+--- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md
++++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md
+@@ -1,5 +1,11 @@
+ # V5-ABLATION-001 结果
+
+-状态：`ready_to_run`（R3 初始化失败证据已完整保留；R4 的类别编号修复、服务器验证和三路审核均已通过，等待最终 bundle 核对与双卡正式启动）。
++状态：`partial_result_recovered`（R4 的两项 seed 5 训练成功；旧日志读取程序不认识当前中文结尾，导致控制器把记账失败误报成训练失败。不可变日志和结束收据已经核对，剩余四项改用 R5 新身份继续）。
+
+-当前只有代码和运行前证据，还没有正式精度结果，不能提前判断局部分支是否有效。正式结果将按 seed 5、17、29 逐一报告完整组与无局部组的 U、S、H、ZS、best epoch 和同种子差值。
++| seed | 组别 | U | S | H | ZS | best epoch |
++|---:|---|---:|---:|---:|---:|---:|
++| 5 | 完整 V5 | 72.36 | 76.07 | 74.17 | 81.28 | 31 |
++| 5 | 干净无局部 | 71.52 | 76.50 | 73.92 | 81.27 | 48 |
++| 5 | 完整减无局部 | +0.84 | -0.43 | +0.25 | +0.01 | — |
++
++这只是一个随机种子的中间结果，不能据此决定局部分支是否保留。seed 17、29 的四项运行完成后，再报告三种子的均值、波动和同种子配对差值。
+diff --git a/tests/test_gtpj_workflow.py b/tests/test_gtpj_workflow.py
+index 32937c8..b388b3a 100644
+--- a/tests/test_gtpj_workflow.py
++++ b/tests/test_gtpj_workflow.py
+@@ -4898,6 +4898,23 @@ log:v1:module_trial:TRIAL-001:attempt-001
+         )
+         self.assertEqual("73.0", self.module.parse_training_log_text(captured, "no-newline test")["ZS"])
+
++    def test_parse_training_log_accepts_current_v5_chinese_best_summary(self) -> None:
++        metrics = self.module.parse_training_log_text(
++            "训练完成。\n最佳 epoch=31，U=72.36%，S=76.07%，H=74.17%，ZS=81.28%。\n",
++            "V5 中文训练结尾",
++        )
++
++        self.assertEqual(
++            {
++                "best_epoch": "31",
++                "U": "72.36",
++                "S": "76.07",
++                "H": "74.17",
++                "ZS": "81.28",
++            },
++            metrics,
++        )
++
+     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
+         self._git("switch", "-c", "exp/v1/tune/tune-901-legacy-summary")
+         code, _stdout, stderr = self._run_main(
+diff --git a/tests/test_v5_ablation_server_runner.py b/tests/test_v5_ablation_server_runner.py
+index cc7bf3b..f80eb77 100644
+--- a/tests/test_v5_ablation_server_runner.py
++++ b/tests/test_v5_ablation_server_runner.py
+@@ -25,14 +25,24 @@ def _sha256(path):
+
+
+ def _run_ids():
++    class ActiveRunIds(dict):
++        def __missing__(self, key):
++            if key == "RUN-007":
++                return _legacy_run_id(key)
++            raise KeyError(key)
++
++    return ActiveRunIds({
++        "RUN-013": "RUN-20260808-V5ABL001-R5-FULL-S17",
++        "RUN-014": "RUN-20260808-V5ABL001-R5-FULL-S29",
++        "RUN-015": "RUN-20260808-V5ABL001-R5-GLOBAL-S17",
++        "RUN-016": "RUN-20260808-V5ABL001-R5-GLOBAL-S29",
++    })
++
++
++def _legacy_run_id(job_id):
+     return {
+         "RUN-007": "RUN-20260808-V5ABL001-R4-FULL-S5",
+-        "RUN-008": "RUN-20260808-V5ABL001-R4-FULL-S17",
+-        "RUN-009": "RUN-20260808-V5ABL001-R4-FULL-S29",
+-        "RUN-010": "RUN-20260808-V5ABL001-R4-GLOBAL-S5",
+-        "RUN-011": "RUN-20260808-V5ABL001-R4-GLOBAL-S17",
+-        "RUN-012": "RUN-20260808-V5ABL001-R4-GLOBAL-S29",
+-    }
++    }[job_id]
+
+
+ def _launch_manifest_payload(commit, hashes=None):
+@@ -56,11 +66,8 @@ def _launch_manifest_payload(commit, hashes=None):
+             "agent_runtime.yaml"
+         ),
+         "agent_runtime_sha256": hashes.get("agent_runtime", "2" * 64),
+-        "review_pack_ref": "docs/agent_reviews/2026-08-07-v5-local-ablation",
+-        "review_decision_ref": (
+-            "docs/agent_reviews/2026-08-07-v5-local-ablation/"
+-            "10_final_decision.md"
+-        ),
++        "review_pack_ref": controller.REVIEW_PACK.as_posix(),
++        "review_decision_ref": (controller.REVIEW_PACK / "10_final_decision.md").as_posix(),
+         "review_decision_sha256": hashes.get("review_decision", "3" * 64),
+         "parameter_matrix_ref": (
+             "experiments/v5/ablation/ABLATION-001_local_branch_effect/"
+@@ -97,7 +104,7 @@ def _create_evidence_bundle(
+     )
+     exp = repo / "experiments/v5/ablation/ABLATION-001_local_branch_effect"
+     exp.mkdir(parents=True)
+-    review = repo / "docs/agent_reviews/2026-08-07-v5-local-ablation"
++    review = repo / controller.REVIEW_PACK
+     review.mkdir(parents=True)
+     workflow = repo / "workflow"
+     workflow.mkdir()
+@@ -513,16 +520,16 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+             training_spec("GLOBAL_ONLY"),
+         )
+
+-    def test_each_group_has_the_expected_three_job_queue(self):
++    def test_each_group_has_only_the_two_unstarted_r5_jobs(self):
+         self.assertEqual(
+-            ("RUN-007", "RUN-008", "RUN-009"), controller.GROUP_JOBS["FULL"]
++            ("RUN-013", "RUN-014"), controller.GROUP_JOBS["FULL"]
+         )
+         self.assertEqual(
+-            ("RUN-010", "RUN-011", "RUN-012"),
++            ("RUN-015", "RUN-016"),
+             controller.GROUP_JOBS["GLOBAL_ONLY"],
+         )
+
+-    def test_frozen_run_reader_keeps_terminal_history_and_selects_only_r4(self):
++    def test_frozen_run_reader_keeps_terminal_history_and_selects_only_r5(self):
+         with tempfile.TemporaryDirectory() as directory:
+             matrix = Path(directory) / "PARAMETER_MATRIX.csv"
+             historical = [
+@@ -552,6 +559,137 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+             with self.assertRaisesRegex(ValueError, "历史行.*终态"):
+                 controller._read_frozen_run_ids(matrix)
+
++    def test_frozen_run_reader_rejects_completed_history_without_bound_manifest(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            execution_root = root / "warehouse" / "execution"
++            artifact_root = execution_root / "RUN-007"
++            artifact_root.mkdir(parents=True)
++            command = "python train.py"
++            command_sha = hashlib.sha256(command.encode("utf-8")).hexdigest()
++            training_log = artifact_root / "training.log"
++            training_log.write_text("trusted training evidence\n", encoding="utf-8")
++            training_log_sha = _sha256(training_log)
++            start_receipt = artifact_root / "run_start_receipt.json"
++            start_receipt.write_text(
++                json.dumps(
++                    {
++                        "schema_version": "gtpj-run-start-receipt/v1",
++                        "job_id": "RUN-007",
++                        "run_id": _legacy_run_id("RUN-007"),
++                        "command": command,
++                        "command_sha256": command_sha,
++                    }
++                )
++                + "\n",
++                encoding="utf-8",
++            )
++            start_receipt_sha = _sha256(start_receipt)
++            finish_receipt = artifact_root / "run_start_receipt.finish.json"
++            finish_receipt.write_text(
++                json.dumps(
++                    {
++                        "schema_version": "gtpj-run-finish-receipt/v1",
++                        "job_id": "RUN-007",
++                        "run_id": _legacy_run_id("RUN-007"),
++                        "run_start_receipt_sha256": start_receipt_sha,
++                        "command_sha256": command_sha,
++                        "log_sha256": training_log_sha,
++                        "returncode": 0,
++                    }
++                )
++                + "\n",
++                encoding="utf-8",
++            )
++            internal_log = execution_root / "FULL" / "train_log" / "training.txt"
++            internal_log.parent.mkdir(parents=True)
++            internal_log.write_text("internal training evidence\n", encoding="utf-8")
++            best_model = internal_log.with_name("best_model.pth")
++            best_model.write_bytes(b"trusted model")
++            evidence_specs = (
++                ("run_start_receipt", start_receipt),
++                ("run_finish_receipt", finish_receipt),
++                ("sealed_training_log", training_log),
++                ("training_internal_log", internal_log),
++                ("best_model", best_model),
++            )
++            manifest_path = artifact_root / "artifact_manifest.json"
++            manifest_payload = {
++                "schema_version": controller.RECOVERED_ARTIFACT_MANIFEST_SCHEMA,
++                "job_id": "RUN-007",
++                "run_id": _legacy_run_id("RUN-007"),
++                "run_start_receipt_sha256": start_receipt_sha,
++                "run_finish_receipt_sha256": _sha256(finish_receipt),
++                "run_command_sha256": command_sha,
++                "run_log_sha256": training_log_sha,
++                "run_exit_code": 0,
++                "metrics": {
++                    "U": "72.36",
++                    "S": "76.07",
++                    "H": "74.17",
++                    "ZS": "81.28",
++                    "best_epoch": "31",
++                },
++                "evidence_files": [
++                    {
++                        "role": role,
++                        "path": path.relative_to(execution_root).as_posix(),
++                        "sha256": _sha256(path),
++                    }
++                    for role, path in evidence_specs
++                ],
++            }
++            manifest_path.write_text(
++                json.dumps(manifest_payload, ensure_ascii=False, sort_keys=True) + "\n",
++                encoding="utf-8",
++            )
++            manifest_sha = _sha256(manifest_path)
++
++            historical = [
++                ("RUN-001", "RUN-R3-FULL-S5", "failed", "", ""),
++                (
++                    "RUN-007",
++                    _legacy_run_id("RUN-007"),
++                    "completed",
++                    str(artifact_root),
++                    manifest_sha,
++                ),
++            ]
++            matrix = root / "PARAMETER_MATRIX.csv"
++
++            def write_matrix(*, manifest_digest=manifest_sha):
++                rows = [
++                    "job_id,run_id,status,artifact_ref,artifact_manifest_sha256,"
++                    "run_start_receipt_ref,run_start_receipt_sha256,run_command_sha256,run_log_sha256,"
++                    "run_exit_code,U,S,H,ZS,best_epoch\n"
++                ]
++                for job_id, run_id, status, artifact_ref, digest in historical:
++                    if job_id == "RUN-007":
++                        digest = manifest_digest
++                        rows.append(
++                            f"{job_id},{run_id},{status},{artifact_ref},{digest},{start_receipt},"
++                            f"{start_receipt_sha},{command_sha},{training_log_sha},0,"
++                            "72.36,76.07,74.17,81.28,31\n"
++                        )
++                    else:
++                        rows.append(f"{job_id},{run_id},{status},{artifact_ref},{digest},,,,,,,,,,,\n")
++                rows.extend(
++                    f"{job_id},{run_id},frozen,,,,,,,,,,,,\n"
++                    for job_id, run_id in _run_ids().items()
++                )
++                matrix.write_text("".join(rows), encoding="utf-8")
++
++            write_matrix(manifest_digest="")
++            with self.assertRaisesRegex(ValueError, "completed.*证据清单"):
++                controller._read_frozen_run_ids(matrix)
++
++            write_matrix()
++            self.assertEqual(_run_ids(), controller._read_frozen_run_ids(matrix))
++
++            best_model.write_bytes(b"tampered")
++            with self.assertRaisesRegex(ValueError, "证据文件哈希"):
++                controller._read_frozen_run_ids(matrix)
++
+     def test_layout_uses_candidate_for_both_clean_code_roots(self):
+         with tempfile.TemporaryDirectory() as directory:
+             root = Path(directory)
+diff --git a/tools/run_v5_ablation_001_server_controller.py b/tools/run_v5_ablation_001_server_controller.py
+index d771aa1..ea016f4 100644
+--- a/tools/run_v5_ablation_001_server_controller.py
++++ b/tools/run_v5_ablation_001_server_controller.py
+@@ -25,17 +25,20 @@ EXPERIMENT_DIR = Path(
+     "experiments/v5/ablation/ABLATION-001_local_branch_effect"
+ )
+ GROUP_JOBS = {
+-    "FULL": ("RUN-007", "RUN-008", "RUN-009"),
+-    "GLOBAL_ONLY": ("RUN-010", "RUN-011", "RUN-012"),
++    "FULL": ("RUN-013", "RUN-014"),
++    "GLOBAL_ONLY": ("RUN-015", "RUN-016"),
+ }
+ WRAPPER = "tools/run_v5_ablation_001_training.py"
+ TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
+-BOUND_RUNTIME_WORKFLOW_BLOB = "5e2f0ff39170bde4f9a3bfba4d6d69ffe2ce3387"
++BOUND_RUNTIME_WORKFLOW_BLOB = "722bb1eb1ff291ec5ce44efe8d4608317227946b"
+ LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v4"
+ KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
+ SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
+ SERVER_DATA_SOURCE = Path("/data/lby/projects/cv_project/GTPJ/data")
+ DATA_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.data_manifest.v1"
++RECOVERED_ARTIFACT_MANIFEST_SCHEMA = (
++    "gtpj.v5_ablation_001.recovered_artifact_manifest.v1"
++)
+ BOUND_PYTHON_EXEC_ENV = "GTPJ_BOUND_PYTHON_EXEC"
+ BOUND_PYTHON_ARGV0_ENV = "GTPJ_BOUND_PYTHON_ARGV0"
+ V5_REQUIRED_DATA_FILES = {
+@@ -64,7 +67,7 @@ SERVER_WAREHOUSE_BASE = Path(
+     "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation"
+ )
+ SERVER_CLAIM_ROOT = SERVER_WAREHOUSE_BASE / ".gtpj_execution_claims"
+-REVIEW_PACK = Path("docs/agent_reviews/2026-08-07-v5-local-ablation")
++REVIEW_PACK = Path("docs/agent_reviews/2026-08-08-v5-local-ablation-r5-recovery")
+ POST_REVIEW_ALLOWED_PATHS = {
+     "docs/TECH_STACK_HISTORY.md",
+     "experiments/EXPERIMENT_REGISTRY.md",
+@@ -216,7 +219,7 @@ def validate_launch_manifest(path, expected_commit):
+     run_ids = payload.get("run_ids")
+     expected_jobs = set(sum((list(items) for items in GROUP_JOBS.values()), []))
+     if not isinstance(run_ids, dict) or set(run_ids) != expected_jobs:
+-        raise ValueError("启动许可清单 run_ids 必须与六个冻结 job_id 完全一致。")
++        raise ValueError("启动许可清单 run_ids 必须与本批冻结 job_id 完全一致。")
+     values = list(run_ids.values())
+     if len(set(values)) != len(values) or any(
+         not isinstance(item, str)
+@@ -1153,7 +1156,7 @@ def _read_frozen_run_ids(matrix_path):
+     by_job = {row.get("job_id"): row for row in rows}
+     missing = sorted(expected_jobs - set(by_job))
+     if missing:
+-        raise ValueError(f"冻结参数矩阵缺少本批六个 job_id：{missing}")
++        raise ValueError(f"冻结参数矩阵缺少本批 job_id：{missing}")
+     terminal_statuses = {"completed", "failed", "skipped", "cancelled"}
+     non_terminal_history = sorted(
+         row.get("job_id", "")
+@@ -1163,6 +1166,12 @@ def _read_frozen_run_ids(matrix_path):
+     )
+     if non_terminal_history:
+         raise ValueError(f"参数矩阵历史行必须先进入终态：{non_terminal_history}")
++    for row in rows:
++        if (
++            row.get("job_id") not in expected_jobs
++            and row.get("status") == "completed"
++        ):
++            _verify_completed_history_artifact_manifest(row)
+     run_ids = {}
+     for job_id in sorted(expected_jobs):
+         row = by_job[job_id]
+@@ -1178,6 +1187,144 @@ def _read_frozen_run_ids(matrix_path):
+     return run_ids
+
+
++def _verify_completed_history_artifact_manifest(row):
++    """把历史完成记录重新绑定到服务器上的真实证据文件。"""
++
++    job_id = str(row.get("job_id", ""))
++    run_id = str(row.get("run_id", ""))
++    artifact_ref = str(row.get("artifact_ref", "")).strip()
++    expected_manifest_sha = str(row.get("artifact_manifest_sha256", "")).strip()
++    if not artifact_ref or not re.fullmatch(r"[0-9a-f]{64}", expected_manifest_sha):
++        raise ValueError(f"completed 历史行 {job_id} 缺少有效证据清单哈希。")
++    artifact_root = Path(artifact_ref)
++    manifest_path = artifact_root / "artifact_manifest.json"
++    if not manifest_path.is_file():
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单不存在。")
++    manifest_bytes = manifest_path.read_bytes()
++    if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha:
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单哈希不匹配。")
++    try:
++        payload = json.loads(manifest_bytes.decode("utf-8"))
++    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单不是有效 UTF-8 JSON。") from exc
++    if not isinstance(payload, dict):
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单顶层必须是对象。")
++    try:
++        row_exit_code = int(str(row.get("run_exit_code", "")))
++    except ValueError as exc:
++        raise ValueError(f"completed 历史行 {job_id} 的退出码无效。") from exc
++    if row_exit_code != 0:
++        raise ValueError(f"completed 历史行 {job_id} 的退出码不是 0。")
++    expected_fields = {
++        "schema_version": RECOVERED_ARTIFACT_MANIFEST_SCHEMA,
++        "job_id": job_id,
++        "run_id": run_id,
++        "run_start_receipt_sha256": str(row.get("run_start_receipt_sha256", "")),
++        "run_command_sha256": str(row.get("run_command_sha256", "")),
++        "run_log_sha256": str(row.get("run_log_sha256", "")),
++        "run_exit_code": row_exit_code,
++    }
++    for field, expected in expected_fields.items():
++        if payload.get(field) != expected:
++            raise ValueError(f"completed 历史行 {job_id} 的证据清单 {field} 不匹配。")
++    expected_metrics = {
++        field: str(row.get(field, ""))
++        for field in ("U", "S", "H", "ZS", "best_epoch")
++    }
++    if payload.get("metrics") != expected_metrics:
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单指标不匹配。")
++    evidence_files = payload.get("evidence_files")
++    if not isinstance(evidence_files, list) or not evidence_files:
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单没有证据文件。")
++    execution_root = artifact_root.parent.resolve()
++    evidence_by_role = {}
++    seen_paths = set()
++    for item in evidence_files:
++        if not isinstance(item, dict):
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件条目无效。")
++        role = str(item.get("role", ""))
++        relative_path = Path(str(item.get("path", "")))
++        expected_sha = str(item.get("sha256", ""))
++        if (
++            not role
++            or relative_path.is_absolute()
++            or not re.fullmatch(r"[0-9a-f]{64}", expected_sha)
++        ):
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件条目不完整。")
++        if role in evidence_by_role:
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件角色重复：{role}")
++        evidence_path = (execution_root / relative_path).resolve()
++        try:
++            evidence_path.relative_to(execution_root)
++        except ValueError as exc:
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件越过运行目录。") from exc
++        if not evidence_path.is_file():
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件不存在：{relative_path}")
++        if _sha256_file(evidence_path) != expected_sha:
++            raise ValueError(f"completed 历史行 {job_id} 的证据文件哈希不匹配：{relative_path}")
++        if evidence_path in seen_paths:
++            raise ValueError(f"completed 历史行 {job_id} 的不同证据角色不能复用同一文件。")
++        seen_paths.add(evidence_path)
++        evidence_by_role[role] = {
++            "path": evidence_path,
++            "sha256": expected_sha,
++        }
++    required_roles = {
++        "run_start_receipt",
++        "run_finish_receipt",
++        "sealed_training_log",
++        "training_internal_log",
++        "best_model",
++    }
++    missing_roles = sorted(required_roles - set(evidence_by_role))
++    if missing_roles:
++        raise ValueError(f"completed 历史行 {job_id} 的证据清单缺少角色：{missing_roles}")
++    start_evidence = evidence_by_role["run_start_receipt"]
++    finish_evidence = evidence_by_role["run_finish_receipt"]
++    log_evidence = evidence_by_role["sealed_training_log"]
++    if start_evidence["sha256"] != expected_fields["run_start_receipt_sha256"]:
++        raise ValueError(f"completed 历史行 {job_id} 的启动收据证据哈希不匹配。")
++    if log_evidence["sha256"] != expected_fields["run_log_sha256"]:
++        raise ValueError(f"completed 历史行 {job_id} 的封口日志证据哈希不匹配。")
++    receipt_ref = Path(str(row.get("run_start_receipt_ref", "")))
++    if not receipt_ref.is_absolute() or receipt_ref.resolve() != start_evidence["path"]:
++        raise ValueError(f"completed 历史行 {job_id} 的启动收据路径不匹配。")
++    try:
++        start_payload = json.loads(start_evidence["path"].read_text(encoding="utf-8"))
++        finish_payload = json.loads(finish_evidence["path"].read_text(encoding="utf-8"))
++    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
++        raise ValueError(f"completed 历史行 {job_id} 的启动或结束收据不是有效 JSON。") from exc
++    if not isinstance(start_payload, dict) or not isinstance(finish_payload, dict):
++        raise ValueError(f"completed 历史行 {job_id} 的启动或结束收据顶层必须是对象。")
++    start_expected = {
++        "schema_version": "gtpj-run-start-receipt/v1",
++        "job_id": job_id,
++        "run_id": run_id,
++        "command_sha256": expected_fields["run_command_sha256"],
++    }
++    for field, expected in start_expected.items():
++        if start_payload.get(field) != expected:
++            raise ValueError(f"completed 历史行 {job_id} 的启动收据 {field} 不匹配。")
++    command = str(start_payload.get("command", ""))
++    if hashlib.sha256(command.encode("utf-8")).hexdigest() != expected_fields["run_command_sha256"]:
++        raise ValueError(f"completed 历史行 {job_id} 的启动命令哈希不匹配。")
++    finish_expected = {
++        "schema_version": "gtpj-run-finish-receipt/v1",
++        "job_id": job_id,
++        "run_id": run_id,
++        "run_start_receipt_sha256": expected_fields["run_start_receipt_sha256"],
++        "command_sha256": expected_fields["run_command_sha256"],
++        "log_sha256": expected_fields["run_log_sha256"],
++        "returncode": row_exit_code,
++    }
++    for field, expected in finish_expected.items():
++        if finish_payload.get(field) != expected:
++            raise ValueError(f"completed 历史行 {job_id} 的结束收据 {field} 不匹配。")
++    finish_sha = str(payload.get("run_finish_receipt_sha256", ""))
++    if not re.fullmatch(r"[0-9a-f]{64}", finish_sha) or finish_evidence["sha256"] != finish_sha:
++        raise ValueError(f"completed 历史行 {job_id} 的结束收据证据哈希不匹配。")
++
++
+ def verify_post_review_commit_boundary(checkout, reviewed_commit, expected_commit):
+     """只允许审核完成后补审核记录和开跑门，不允许再改训练代码。"""
+
+diff --git a/workflow/gtpj_workflow.py b/workflow/gtpj_workflow.py
+index 5e2f0ff..722bb1e 100644
+--- a/workflow/gtpj_workflow.py
++++ b/workflow/gtpj_workflow.py
+@@ -1269,6 +1269,17 @@ def append_readme_result_row(readme: Path, row: str) -> None:
+
+
+ def parse_training_log_text(text: str, label: str) -> dict[str, str]:
++    v5_summary_pattern = re.compile(
++        r"最佳\s*epoch\s*=\s*(?P<best_epoch>[0-9]+)\s*[，,]\s*"
++        r"U\s*=\s*(?P<U>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
++        r"S\s*=\s*(?P<S>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
++        r"H\s*=\s*(?P<H>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
++        r"ZS\s*=\s*(?P<ZS>[0-9]+(?:\.[0-9]+)?)\s*[%％]"
++    )
++    v5_summary_matches = list(v5_summary_pattern.finditer(text))
++    if v5_summary_matches:
++        return v5_summary_matches[-1].groupdict()
++
+     best_start = text.rfind("Best Results")
+     metric_text = text[best_start:] if best_start != -1 else text
+     metrics: dict[str, str] = {}

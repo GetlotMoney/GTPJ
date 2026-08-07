@@ -80,4 +80,4 @@
 - [x] CUDA 类别编号修复完成服务器真实测试、`strict-3` 复核与新的运行前冻结。
 - [x] R4 的两项成功记录已经补齐不可替换的恢复证据清单；控制器新增负向测试，缺清单、清单哈希错误或清单内证据文件被替换时均拒绝 R5 启动。
 
-当前决定：`block_until_r5_parser_fix_review_and_final_bundle_verify`。
+当前决定：`allow_r5_after_final_bundle_and_launch_manifest_verify`。

@@ -10,8 +10,8 @@ attempt_id: ""
 subject_id: V5-ABLATION-001
 subject_type: campaign_task
 runner_scope: formal_runner
-formal_runner_allowed: false
-formal_evidence_allowed: false
+formal_runner_allowed: true
+formal_evidence_allowed: true
 github_write: experiment_branch_only
 research_write: none
 warehouse_write: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001
@@ -57,7 +57,7 @@ owner_monitor:
 evidence_routing:
   subject_id: V5-ABLATION-001
   subject_type: campaign_task
-  current_state: repairing_after_r4_bookkeeping_failure
+  current_state: ready_to_run_r5
   authority_refs:
     - EXPERIMENT.yaml
     - PARAMETER_MATRIX.csv
@@ -65,10 +65,10 @@ evidence_routing:
     - agent_runtime.yaml
     - quality_check.md
 hard_gates:
-  code_review: pending
+  code_review: strict-3 pass
   agent_runtime: pass
   artifact_boundary: pass
-  pre_run_freeze_commit: pending
+  pre_run_freeze_commit: pass
 expected_outputs:
   github:
     - PARAMETER_MATRIX.csv
