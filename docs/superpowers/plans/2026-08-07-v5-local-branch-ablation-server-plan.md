@@ -137,9 +137,11 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workfl
 - 结果仓库：`/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001/`
 
 - [ ] 再查两张 GPU、旧训练进程、磁盘空间和目标目录不存在或属于本实验。
+- [ ] 在本地全部审核与运行时门通过后生成一次性 `launch_manifest.json`；上传后由控制器核对九项许可和准确冻结提交，任一不符都不得创建训练进程。
 - [ ] 用冻结提交生成可验证代码包；在 `.runtime/` 内建立两个独立干净运行副本。
 - [ ] GPU 0 启动完整组队列，GPU 1 启动无局部组队列；每队按 5、17、29 串行。
 - [ ] 写 controller PID、每个子任务 PID、状态、停止文件路径、命令哈希和日志路径。
+- [ ] STOP 或系统信号先停止真实训练 PID，超时后强制停止；失败时写 `recovery_handoff.json`，后续只能新建冻结 RUN，不能复用半截目录。
 - [ ] 启动后等待至少一个真实训练 step，确认两张卡都有进程、日志持续增长且没有 NaN/路径错误。
 
 服务器验证：

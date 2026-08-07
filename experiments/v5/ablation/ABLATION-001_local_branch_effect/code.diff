@@ -18,7 +18,8 @@ model/V5GlobalOnly.py
 train_V5_ABLATION_001_CUB.py
   + 新增无局部分支专属训练入口
   - 不读取局部配置字段，不输出局部日志
-  = 保留数据加载、类别映射、评估、优化器、学习率计划和 checkpoint 身份检查
+  - 删除 checkpoint 续训入口，正式 RUN 只能从头训练
+  = 保留数据加载、类别映射、评估、优化器、学习率计划和 checkpoint 保存
 
 tests/
   + 新增补丁不敏感、梯度隔离、损失边界和参数删除测试
@@ -27,6 +28,9 @@ tests/
 tools/
   + 新增固定 GPU/固定入口训练包装器
   + 新增双队列服务器控制器、状态文件和 STOP 文件机制
+  + 启动前强制核对 launch manifest 和冻结提交
+  + STOP 先停止真实训练 PID，超时后强制停止
+  + 失败后生成 recovery_handoff.json，禁止复用半截 RUN
 ```
 
 复核完整差异：

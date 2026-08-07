@@ -147,6 +147,8 @@ class V5GlobalOnlyAblationTest(unittest.TestCase):
             self.assertNotIn(token, model_source)
             self.assertNotIn(token, train_source)
         self.assertIn("V5-ABLATION-001", train_source)
+        self.assertNotIn("--resume-from", train_source)
+        self.assertNotIn("weights_only=False", train_source)
 
 
 if __name__ == "__main__":

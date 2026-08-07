@@ -22,9 +22,7 @@ from tools.v5_runtime import (
     capture_rng_state,
     input_fingerprints,
     input_record,
-    restore_rng_state,
     sha256_file,
-    validate_resume_identity,
     validate_stable_input_records,
 )
 from tools.v5_evaluation import (
@@ -74,12 +72,6 @@ def _parse_args():
             "configs/RUN-004.yaml"
         ),
         help="正式母版或实验副本中的 config.yaml。",
-    )
-    parser.add_argument(
-        "--resume-from",
-        type=Path,
-        default=None,
-        help="同一 V5 母版产生的完整 checkpoint；不支持 auto、重启或微调猜测。",
     )
     return parser.parse_args()
 
@@ -321,65 +313,6 @@ active_stage = 0
 start_epoch = 1
 best_h = 0.0
 best_metrics = {"U": 0.0, "S": 0.0, "H": 0.0, "ZS": 0.0, "epoch": 0}
-
-if args.resume_from is not None:
-    resume_path = args.resume_from.resolve()
-    if not resume_path.is_file():
-        raise FileNotFoundError(f"续训 checkpoint 不存在：{resume_path}")
-    checkpoint = torch.load(resume_path, map_location=config.device, weights_only=False)
-    required = {
-        "template_id",
-        "code_commit",
-        "epoch",
-        "stage_index",
-        "best_H",
-        "best_metrics",
-        "config",
-        "config_sha256",
-        "input_files",
-        "input_fingerprints",
-        "rng_state",
-        "seenclasses",
-        "unseenclasses",
-        "model_state_dict",
-        "optimizer_state_dict",
-        "scheduler_state_dict",
-    }
-    if not isinstance(checkpoint, dict) or not required.issubset(checkpoint):
-        missing = sorted(required - set(checkpoint if isinstance(checkpoint, dict) else {}))
-        raise ValueError(f"续训只接受同一母版的完整 checkpoint；缺少 {missing}。")
-    if checkpoint["template_id"] != MODEL_TEMPLATE_ID:
-        raise ValueError(
-            f"checkpoint 来自 {checkpoint['template_id']!r}，不是 {MODEL_TEMPLATE_ID!r}。"
-        )
-    seenclass_ids = seenclasses.detach().cpu().long().tolist()
-    unseenclass_ids = unseenclasses.detach().cpu().long().tolist()
-    validate_resume_identity(
-        checkpoint,
-        template_id=MODEL_TEMPLATE_ID,
-        code_commit=code_commit,
-        config_values=config_values,
-        config_sha256=config_hash,
-        fingerprints=run_input_fingerprints,
-        seenclasses=seenclass_ids,
-        unseenclasses=unseenclass_ids,
-    )
-    model.load_state_dict(checkpoint["model_state_dict"], strict=True)
-    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-    active_stage = int(checkpoint["stage_index"])
-    checkpoint_epoch = int(checkpoint["epoch"])
-    expected_stage = _stage_for_epoch(checkpoint_epoch, boundaries)
-    if active_stage != expected_stage:
-        raise ValueError(
-            f"checkpoint 的 stage_index={active_stage} 与 epoch={checkpoint_epoch} "
-            f"应处阶段 {expected_stage} 不一致。"
-        )
-    start_epoch = checkpoint_epoch + 1
-    best_h = float(checkpoint["best_H"])
-    best_metrics = dict(checkpoint["best_metrics"])
-    restore_rng_state(checkpoint["rng_state"])
-    print_log(f"从 epoch {start_epoch} 继续；历史最佳 H={best_h * 100:.2f}%。")
 
 iters_per_epoch = len(train_labels) // int(config.batch_size)
 if iters_per_epoch <= 0:

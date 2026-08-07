@@ -221,7 +221,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
 | `tools/run_v5_ablation_001_training.py` | `V5-ABLATION-001` 专用训练包装器；完整组固定 GPU 0 和母版入口，无局部组固定 GPU 1 和专属入口，并在真实训练前检查代码提交与工作树。 |
-| `tools/run_v5_ablation_001_server_controller.py` | `V5-ABLATION-001` 专用服务器双队列控制器；两张 GPU 并行、每组内部串行，维护独立账本副本、启动凭证、状态文件和停止文件。 |
+| `tools/run_v5_ablation_001_server_controller.py` | `V5-ABLATION-001` 专用服务器双队列控制器；两张 GPU 并行、每组内部串行；启动前核对许可清单和冻结提交，STOP 时先停止真实训练 PID，异常后写恢复交接文件。 |
 
 注意：
 

@@ -50,3 +50,5 @@ review_tier: strict-3
 | 1 | 干净无局部：seed 5 → 17 → 29 | 本实验运行前冻结提交 |
 
 原始日志、checkpoint 和运行状态进入服务器 Warehouse；Git 只保存配置、凭证、哈希和轻量结果。
+
+正式启动还必须提供一次性的 `launch_manifest.json`，其中的审核、参数表、运行时和服务器预检必须全部通过，且冻结提交必须与实际运行提交一致。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后新建 RUN 从头执行。
