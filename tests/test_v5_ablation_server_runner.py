@@ -663,6 +663,88 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 )
             self.assertFalse(gate.claim_start())
 
+    def test_running_status_binding_is_atomic_with_process_launch(self):
+        running_status_started = threading.Event()
+        release_running_status = threading.Event()
+
+        class BlockingRunningStatus:
+            def update_job(self, _job_id, **values):
+                if values.get("status") == "running":
+                    running_status_started.set()
+                    release_running_status.wait(2)
+                    raise RuntimeError("running status write failed")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            process = Mock(pid=1234)
+            process.poll.return_value = None
+            cleanup_result = {
+                "training_pid": None,
+                "training_termination": None,
+                "helper_termination": "helper_group_terminated",
+                "cleanup_complete": True,
+                "errors": [],
+                "finish_receipt": str(root / "finish.json"),
+                "process_evidence_state": "incomplete_before_training_pid",
+                "receipt_state": "incomplete_missing_finish_receipt",
+            }
+            gate = controller.RunGate()
+            errors = []
+            later_results = []
+
+            def execute_job():
+                try:
+                    controller.run_job(
+                        args=SimpleNamespace(
+                            python=Path(sys.executable),
+                            commit="a" * 40,
+                        ),
+                        group="FULL",
+                        job_id="RUN-001",
+                        code_root=root / "code",
+                        ledger_root=ledger,
+                        warehouse_root=warehouse,
+                        stop_file=root / "STOP",
+                        stop_requested=threading.Event(),
+                        run_gate=gate,
+                        status=BlockingRunningStatus(),
+                    )
+                except Exception as exc:
+                    errors.append(exc)
+
+            with patch.object(controller.subprocess, "Popen", return_value=process), patch.object(
+                controller,
+                "cleanup_process_tree",
+                return_value=cleanup_result,
+            ) as cleanup:
+                worker = threading.Thread(target=execute_job)
+                worker.start()
+                self.assertTrue(running_status_started.wait(1))
+                later = threading.Thread(
+                    target=lambda: later_results.append(
+                        gate.launch_if_allowed(lambda: "started")
+                    )
+                )
+                later.start()
+                later.join(0.05)
+                self.assertTrue(later.is_alive())
+                release_running_status.set()
+                worker.join(1)
+                later.join(1)
+            self.assertEqual([None], later_results)
+            self.assertEqual(1, len(errors))
+            cleanup.assert_called_once()
+
     def test_finish_receipt_failure_blocks_other_queue_before_status_cleanup(self):
         cleanup_status_started = threading.Event()
         release_cleanup_status = threading.Event()

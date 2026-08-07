@@ -153,7 +153,11 @@ class RunGate:
         with self.lock:
             if self.blocked or (should_block is not None and should_block()):
                 return None
-            return launch()
+            try:
+                return launch()
+            except BaseException:
+                self.blocked = True
+                raise
 
     def mark_failure(self):
         with self.lock:
@@ -822,13 +826,28 @@ def run_job(
     def launch_helper():
         job_dir.mkdir(parents=True, exist_ok=False)
         with helper_log.open("xb") as stream:
-            return subprocess.Popen(
+            helper_process = subprocess.Popen(
                 helper_args,
                 cwd=str(ledger_root),
                 stdout=stream,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
             )
+        try:
+            status.update_job(
+                job_id,
+                status="running",
+                helper_pid=helper_process.pid,
+                helper_process_group_id=helper_process.pid,
+            )
+        except BaseException:
+            cleanup_process_tree(
+                helper_process=helper_process,
+                training_log=training_log,
+                receipt=receipt,
+            )
+            raise
+        return helper_process
 
     try:
         process = run_gate.launch_if_allowed(
@@ -838,12 +857,6 @@ def run_job(
         if process is None:
             status.update_job(job_id, status="not_started_after_stop_or_failure")
             return None
-        status.update_job(
-            job_id,
-            status="running",
-            helper_pid=process.pid,
-            helper_process_group_id=process.pid,
-        )
         while process.poll() is None:
             if stop_file.exists() or stop_requested.is_set():
                 run_gate.request_stop()
