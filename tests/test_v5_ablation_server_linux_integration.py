@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 from tools import run_v5_ablation_001_server_controller as controller
@@ -34,6 +35,7 @@ class V5AblationLinuxProcessIntegrationTest(unittest.TestCase):
                     text=True,
                     start_new_session=True,
                 )
+                helper_identity = controller.capture_helper_identity(helper)
                 assert helper.stdout is not None
                 child_pid = int(helper.stdout.readline().strip())
                 training_log.write_text(
@@ -45,6 +47,7 @@ class V5AblationLinuxProcessIntegrationTest(unittest.TestCase):
                 )
                 outcome = controller.cleanup_process_tree(
                     helper_process=helper,
+                    helper_identity=helper_identity,
                     training_log=training_log,
                     receipt=receipt,
                 )
@@ -62,6 +65,72 @@ class V5AblationLinuxProcessIntegrationTest(unittest.TestCase):
                         os.kill(child_pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
+                if helper is not None:
+                    if helper.stdout is not None:
+                        helper.stdout.close()
+                    if helper.stderr is not None:
+                        helper.stderr.close()
+
+    def test_cleanup_stops_orphan_child_after_helper_already_exited(self):
+        helper = None
+        child_pid = None
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            training_log = root / "training.log"
+            receipt = root / "run_start_receipt.json"
+            helper_code = (
+                "import subprocess,sys; "
+                "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); "
+                "print(child.pid, flush=True)"
+            )
+            try:
+                helper = subprocess.Popen(
+                    [sys.executable, "-c", helper_code],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    start_new_session=True,
+                )
+                helper_identity = controller.capture_helper_identity(helper)
+                assert helper.stdout is not None
+                child_pid = int(helper.stdout.readline().strip())
+                helper.wait(timeout=5)
+                training_log.write_text(
+                    "GTPJ_TRAINING_PROCESS_STARTED command_sha256="
+                    + "b" * 64
+                    + f" pid={child_pid} started_at=2026-08-07T00:00:00+00:00\n",
+                    encoding="utf-8",
+                )
+                outcome = controller.cleanup_process_tree(
+                    helper_process=helper,
+                    helper_identity=helper_identity,
+                    training_log=training_log,
+                    receipt=receipt,
+                )
+                self.assertTrue(outcome["cleanup_complete"])
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    try:
+                        os.kill(child_pid, 0)
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.05)
+                else:
+                    self.fail("孤儿训练子进程没有被回收")
+            finally:
+                if helper is not None and helper.poll() is None:
+                    os.killpg(helper.pid, signal.SIGKILL)
+                    helper.wait(timeout=5)
+                if child_pid is not None:
+                    try:
+                        os.kill(child_pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                if helper is not None:
+                    if helper.stdout is not None:
+                        helper.stdout.close()
+                    if helper.stderr is not None:
+                        helper.stderr.close()
 
 
 if __name__ == "__main__":
