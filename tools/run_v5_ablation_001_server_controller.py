@@ -10,6 +10,7 @@ import re
 import shlex
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -29,6 +30,11 @@ WRAPPER = "tools/run_v5_ablation_001_training.py"
 TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
 LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v2"
 KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
+SERVER_RUNTIME_BASE = Path("/data/lby/projects/cv_project/GTPJ/.runtime/ablation")
+SERVER_WAREHOUSE_BASE = Path(
+    "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation"
+)
+SERVER_CLAIM_ROOT = SERVER_WAREHOUSE_BASE / ".gtpj_execution_claims"
 REVIEW_PACK = Path("docs/agent_reviews/2026-08-07-v5-local-ablation")
 TRUSTED_EVIDENCE_REFS = {
     "task_start_ref": EXPERIMENT_DIR / "TASK_START.yaml",
@@ -67,7 +73,7 @@ def execution_id_for_commit(commit):
 def ensure_supported_platform(
     *, platform_name=None, killpg_available=None, sigkill_available=None
 ):
-    platform_name = os.name if platform_name is None else platform_name
+    platform_name = sys.platform if platform_name is None else platform_name
     killpg_available = (
         hasattr(os, "killpg") if killpg_available is None else killpg_available
     )
@@ -76,7 +82,7 @@ def ensure_supported_platform(
         if sigkill_available is None
         else sigkill_available
     )
-    if platform_name != "posix" or not killpg_available or not sigkill_available:
+    if platform_name != "linux" or not killpg_available or not sigkill_available:
         raise RuntimeError(
             "正式服务器控制器只支持具备进程组与 SIGKILL 语义的 Linux。"
         )
@@ -460,6 +466,21 @@ def verify_frozen_launch_evidence(bundle, python, manifest, expected_commit):
             ["git", "cat-file", "-e", f"{TEMPLATE_COMMIT}^{{commit}}"],
             cwd=bare_repo,
         )
+        if manifest.get("template_commit") != TEMPLATE_COMMIT:
+            raise ValueError("启动许可清单 template_commit 与控制器信任根不一致。")
+        validator_path = "workflow/gtpj_workflow.py"
+        trusted_validator_blob = run_checked(
+            ["git", "rev-parse", f"{TEMPLATE_COMMIT}:{validator_path}"],
+            cwd=bare_repo,
+        ).stdout.strip()
+        candidate_validator_blob = run_checked(
+            ["git", "rev-parse", f"{expected_commit}:{validator_path}"],
+            cwd=bare_repo,
+        ).stdout.strip()
+        if candidate_validator_blob != trusted_validator_blob:
+            raise ValueError(
+                "冻结提交替换了 workflow/gtpj_workflow.py；拒绝执行代码包自带校验器。"
+            )
         checkout.mkdir()
         run_checked(
             [
@@ -513,14 +534,27 @@ def verify_frozen_launch_evidence(bundle, python, manifest, expected_commit):
         }
 
 
-def validate_fresh_execution_roots(runtime_root, warehouse_root, expected_commit):
+def validate_fresh_execution_roots(
+    runtime_root,
+    warehouse_root,
+    expected_commit,
+    *,
+    runtime_base=SERVER_RUNTIME_BASE,
+    warehouse_base=SERVER_WAREHOUSE_BASE,
+):
     runtime_root = Path(runtime_root).resolve()
     warehouse_root = Path(warehouse_root).resolve()
+    runtime_base = Path(runtime_base).resolve()
+    warehouse_base = Path(warehouse_base).resolve()
     expected_name = execution_id_for_commit(expected_commit)
     if runtime_root.name != expected_name:
         raise ValueError(f"runtime-root 必须以准确 execution_id 命名：{expected_name}")
     if warehouse_root.name != expected_name:
         raise ValueError(f"warehouse-root 必须以准确 execution_id 命名：{expected_name}")
+    if runtime_root.parent != runtime_base:
+        raise ValueError(f"runtime-root 必须直接位于固定目录：{runtime_base}")
+    if warehouse_root.parent != warehouse_base:
+        raise ValueError(f"warehouse-root 必须直接位于固定目录：{warehouse_base}")
     if runtime_root == warehouse_root:
         raise ValueError("runtime-root 与 warehouse-root 不能是同一路径。")
     if runtime_root.exists():
@@ -851,6 +885,7 @@ def run_job(
                     )
                     if not stopped_by_request and caught is None:
                         caught = exc
+                    run_gate.mark_failure()
             cleanup_values = {
                 "training_pid": cleanup.get("training_pid"),
                 "training_termination": cleanup.get("training_termination"),
@@ -866,8 +901,10 @@ def run_job(
             except BaseException as exc:
                 if caught is None:
                     caught = exc
+                run_gate.mark_failure()
             if not cleanup.get("cleanup_complete") and caught is None:
                 caught = RuntimeError("helper 进程树清理不完整，正式证据阻断。")
+                run_gate.mark_failure()
             if (
                 not stopped_by_request
                 and return_code == 0
@@ -875,7 +912,9 @@ def run_job(
                 and caught is None
             ):
                 caught = RuntimeError("训练返回成功但缺少 finish receipt，正式证据阻断。")
+                run_gate.mark_failure()
     if caught is not None:
+        run_gate.mark_failure()
         raise caught
     if return_code != 0:
         run_gate.mark_failure()
@@ -914,7 +953,7 @@ def main():
         args.runtime_root, args.warehouse_root, args.commit
     )
     claim_path = claim_execution_identity(
-        warehouse_root.parent / ".gtpj_execution_claims",
+        SERVER_CLAIM_ROOT,
         execution_id=launch_manifest["execution_id"],
         commit=args.commit,
         run_ids=launch_manifest["run_ids"],

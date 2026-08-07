@@ -30,9 +30,12 @@ tools/
   + 新增固定 GPU/固定入口训练包装器
   + 新增双队列服务器控制器、状态文件和 STOP 文件机制
   + 外部 launch manifest 只绑定身份和哈希；实际 gate 从 Git bundle 冻结提交重新验证
+  + bundle 自带 workflow 必须与冻结母版 Git 对象相同，不能用恶意自校验器放行
   + execution_id 与六个 run_id 在服务器持久领取，禁止重复启动
+  + runtime、Warehouse 与领取记录使用固定服务器父目录，不能换目录绕过
   + 双队列最终检查和 Popen 使用同一把锁
   + signal handler 只设置停止事件；异常路径统一回收训练/helper 进程树
+  + 收据或清理异常先锁住双队列，再继续写状态或抛错
   + 结束收据核对 job、run、启动收据哈希、退出码、PID 和日志哈希
   + 失败后生成 recovery_handoff.json，恢复必须使用新的提交、job 和 run
 ```

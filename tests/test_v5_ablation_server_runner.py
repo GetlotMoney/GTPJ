@@ -71,7 +71,7 @@ def _launch_manifest_payload(commit, hashes=None):
     }
 
 
-def _create_evidence_bundle(root):
+def _create_evidence_bundle(root, *, tamper_validator=False):
     repo = root / "source"
     repo.mkdir()
     subprocess.run(
@@ -149,6 +149,41 @@ raise SystemExit(0)
         capture_output=True,
         text=True,
     )
+    template_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if tamper_validator:
+        (workflow / "gtpj_workflow.py").write_text(
+            "raise SystemExit(0)  # forged self-validator\n",
+            encoding="utf-8",
+        )
+        subprocess.run(
+            ["git", "add", "workflow/gtpj_workflow.py"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=GTPJ Test",
+                "-c",
+                "user.email=gtpj-test@example.invalid",
+                "commit",
+                "-m",
+                "forge validator",
+            ],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=repo,
@@ -171,7 +206,9 @@ raise SystemExit(0)
         "parameter_matrix": _sha256(matrix),
         "experiment_binding": _sha256(experiment_binding),
     }
-    return bundle, commit, _launch_manifest_payload(commit, hashes)
+    payload = _launch_manifest_payload(commit, hashes)
+    payload["template_commit"] = template_commit
+    return bundle, commit, payload, template_commit
 
 
 class V5AblationServerRunnerTest(unittest.TestCase):
@@ -240,9 +277,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
         self.assertIsNotNone(verify)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            bundle, commit, payload = _create_evidence_bundle(root)
-            payload["template_commit"] = commit
-            with patch.object(controller, "TEMPLATE_COMMIT", commit):
+            bundle, commit, payload, template_commit = _create_evidence_bundle(root)
+            with patch.object(controller, "TEMPLATE_COMMIT", template_commit):
                 result = verify(bundle, Path(sys.executable), payload, commit)
                 self.assertEqual(_run_ids(), result["run_ids"])
 
@@ -250,11 +286,25 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "parameter_matrix_sha256"):
                     verify(bundle, Path(sys.executable), payload, commit)
 
+    def test_frozen_evidence_refuses_a_bundle_that_replaces_its_own_validator(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle, commit, payload, template_commit = _create_evidence_bundle(
+                root, tamper_validator=True
+            )
+            with patch.object(controller, "TEMPLATE_COMMIT", template_commit):
+                with self.assertRaisesRegex(ValueError, "workflow/gtpj_workflow.py"):
+                    controller.verify_frozen_launch_evidence(
+                        bundle, Path(sys.executable), payload, commit
+                    )
+
     def test_server_controller_rejects_non_linux_process_semantics(self):
         check = getattr(controller, "ensure_supported_platform", None)
         self.assertIsNotNone(check)
         with self.assertRaisesRegex(RuntimeError, "Linux"):
             check(platform_name="nt", killpg_available=False, sigkill_available=False)
+        with self.assertRaisesRegex(RuntimeError, "Linux"):
+            check(platform_name="darwin", killpg_available=True, sigkill_available=True)
 
     def test_execution_identity_and_run_ids_are_claimed_only_once(self):
         claim = getattr(controller, "claim_execution_identity", None)
@@ -296,10 +346,35 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             name = "V5-ABLATION-001-aaaaaaaaaaaa"
             runtime = root / "runtime" / name
             warehouse = root / "warehouse" / name
-            check(runtime, warehouse, "a" * 40)
+            check(
+                runtime,
+                warehouse,
+                "a" * 40,
+                runtime_base=root / "runtime",
+                warehouse_base=root / "warehouse",
+            )
             runtime.mkdir(parents=True)
             with self.assertRaisesRegex(FileExistsError, "runtime"):
-                check(runtime, warehouse, "a" * 40)
+                check(
+                    runtime,
+                    warehouse,
+                    "a" * 40,
+                    runtime_base=root / "runtime",
+                    warehouse_base=root / "warehouse",
+                )
+
+    def test_runtime_identity_cannot_be_reclaimed_by_changing_parent_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            name = "V5-ABLATION-001-aaaaaaaaaaaa"
+            with self.assertRaisesRegex(ValueError, "warehouse-root"):
+                controller.validate_fresh_execution_roots(
+                    root / "runtime" / name,
+                    root / "different-warehouse" / name,
+                    "a" * 40,
+                    runtime_base=root / "runtime",
+                    warehouse_base=root / "warehouse",
+                )
 
     def test_signal_handler_only_requests_stop_through_event(self):
         factory = getattr(controller, "make_stop_signal_handler", None)
@@ -550,6 +625,85 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     )
             cleanup.assert_called_once()
             self.assertFalse(gate.claim_start())
+
+    def test_finish_receipt_failure_blocks_other_queue_before_status_cleanup(self):
+        cleanup_status_started = threading.Event()
+        release_cleanup_status = threading.Event()
+
+        class BlockingCleanupStatus:
+            def update_job(self, _job_id, **values):
+                if "finish_receipt_state" in values:
+                    cleanup_status_started.set()
+                    release_cleanup_status.wait(2)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            process = Mock(pid=1234)
+            process.poll.return_value = 0
+            process.wait.return_value = 0
+            cleanup_result = {
+                "training_pid": 4321,
+                "training_termination": None,
+                "helper_termination": None,
+                "cleanup_complete": True,
+                "errors": [],
+                "finish_receipt": str(root / "finish.json"),
+                "process_evidence_state": "helper_already_exited",
+                "receipt_state": "sealed",
+            }
+            gate = controller.RunGate()
+            errors = []
+
+            def execute_job():
+                try:
+                    controller.run_job(
+                        args=SimpleNamespace(
+                            python=Path(sys.executable),
+                            commit="a" * 40,
+                        ),
+                        group="FULL",
+                        job_id="RUN-001",
+                        code_root=root / "code",
+                        ledger_root=ledger,
+                        warehouse_root=warehouse,
+                        stop_file=root / "STOP",
+                        stop_requested=threading.Event(),
+                        run_gate=gate,
+                        status=BlockingCleanupStatus(),
+                    )
+                except Exception as exc:
+                    errors.append(exc)
+
+            with patch.object(controller.subprocess, "Popen", return_value=process), patch.object(
+                controller,
+                "cleanup_process_tree",
+                return_value=cleanup_result,
+            ), patch.object(
+                controller,
+                "validate_finish_receipt",
+                side_effect=RuntimeError("finish receipt invalid"),
+            ):
+                worker = threading.Thread(target=execute_job)
+                worker.start()
+                self.assertTrue(cleanup_status_started.wait(1))
+                later_launches = []
+                self.assertIsNone(
+                    gate.launch_if_allowed(lambda: later_launches.append("started"))
+                )
+                release_cleanup_status.set()
+                worker.join(1)
+            self.assertEqual([], later_launches)
+            self.assertEqual(1, len(errors))
 
     def test_recovery_handoff_forbids_reusing_a_partial_run(self):
         with tempfile.TemporaryDirectory() as directory:

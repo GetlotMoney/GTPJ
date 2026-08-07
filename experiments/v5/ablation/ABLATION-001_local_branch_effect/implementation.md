@@ -34,13 +34,16 @@
 
 - `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；它只绑定冻结提交、实验分支、母版提交、六个 `run_id` 和五份受信文件的 SHA-256；
 - 控制器先从 Git bundle 建立临时隔离校验仓，重新运行 strict-3、agent runtime、参数表、实验绑定和仓库边界校验；通过前不创建正式运行副本和训练进程；
+- 代码包里的 `workflow/gtpj_workflow.py` 只有与硬编码冻结母版中的 Git 对象完全相同才会被执行；恶意或误改的自校验器会提前被拒绝；
 - runtime 与 Warehouse 使用 `V5-ABLATION-001-<冻结提交前12位>` 命名；服务器持久化领取 `execution_id` 和六个 `run_id`，停止后也不能重复使用；
+- runtime、Warehouse 和身份领取目录都固定在服务器约定父目录，不能靠更换 `--warehouse-root` 父目录重新领取；
 - STOP 或系统信号由普通控制流程处理；signal handler 只设置停止事件，不获取状态锁；
 - 任意异常都进入统一 `finally`：先处理真实训练 PID，再兜底停止 helper 进程组，并确认进程已经回收；
 - `run_start_receipt.finish.json` 会再次核对 job、run、启动收据哈希、退出码、PID 和日志哈希；只存在文件但内容不一致仍然阻断正式证据；
 - 冻结证据校验调用 `validate-experiment-base` 时传入完整实验目录；测试中的最小工作流会检查该路径确实包含 `EXPERIMENT.yaml`，防止参数写错却被假校验放过；
 - 最终的失败检查与 `Popen` 在同一把锁内；任一 RUN 失败登记完成后，两个队列都不能再启动后续 RUN；
-- 正式控制器只支持具备真实进程组和 `SIGKILL` 的 Linux，Windows 只允许运行本地单元测试；
+- finish receipt 或清理异常会在写后续状态前立即登记共享失败，另一队列不能利用异常处理窗口启动后续 RUN；
+- 正式控制器只接受 `sys.platform == linux` 且具备真实进程组和 `SIGKILL` 的环境，Windows、macOS 和 BSD 均不能正式运行；
 - 本实验的无局部分支入口不提供续训参数，不读取外部 checkpoint；停止后的重跑必须新建冻结 RUN；
 - 非正常结束会生成 `recovery_handoff.json`，具体规则见 `SERVER_RECOVERY.md`。
 
@@ -50,7 +53,8 @@
 
 ## 当前机器验证
 
-- 服务器控制器专属测试：19 项通过；
+- 服务器控制器专属测试：22 项通过；
+- 真实 Linux 进程组收口测试已写入；Windows 本地按设计跳过，正式启动前必须在服务器实际通过；
 - V5 相关模型、母版和旧数学路径测试：41 项通过；
 - 仓库完整回归：311 项通过；
 - `validate-experiment-base`、6 行冻结参数表、总工作流、规则一致性、框架账本和仓库边界检查均通过。

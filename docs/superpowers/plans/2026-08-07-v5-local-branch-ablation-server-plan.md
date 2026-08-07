@@ -112,6 +112,7 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m uni
 **文件：**
 
 - 修改：`tests/test_v5_ablation_server_runner.py`
+- 新增：`tests/test_v5_ablation_server_linux_integration.py`
 - 修改：`tools/run_v5_ablation_001_server_controller.py`
 - 修改：`experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md`
 
@@ -123,6 +124,10 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m uni
 - [ ] 使用 Git bundle 的临时隔离校验仓读取冻结提交，不依赖调用者填写的布尔值；校验通过前不得建立正式运行副本或训练进程。
 - [ ] 使用服务器持久化身份领取记录阻止重复执行；中断后的恢复必须更换冻结提交、`job_id`、`run_id`，并填写 `repeat_of`。
 - [ ] signal handler 只设置停止事件，文件和状态写入由普通控制流程完成，避免锁重入。
+- [ ] bundle 内的 workflow 校验器必须与冻结母版 Git 对象一致；未验证来源的代码不得在预检阶段执行。
+- [ ] runtime、Warehouse 和一次性领取记录绑定固定服务器父目录，不能通过换目录复用身份。
+- [ ] finish receipt 或清理异常先锁住双队列，再继续写状态或抛错；用 barrier 测试固定该时序。
+- [ ] 在 Linux 服务器用无训练 helper/子进程实际验证 TERM、回收和进程组语义。
 
 RED 验证：
 

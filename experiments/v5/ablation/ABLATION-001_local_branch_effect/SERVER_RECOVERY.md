@@ -18,8 +18,10 @@
 - `EXPERIMENT.yaml`。
 
 控制器先把 Git bundle 解入操作系统临时目录中的隔离校验仓，核对实验分支和准确提交，
-重新计算上述哈希，再实际运行审核、运行时、参数矩阵、实验绑定和仓库边界校验。这个阶段
-不会建立正式运行副本，也不会创建训练进程。只有全部通过，才会继续服务器 GPU 预检。
+重新计算上述哈希。执行代码包里的 `workflow/gtpj_workflow.py` 前，还必须证明该文件的 Git
+对象与控制器硬编码信任的冻结 V5 母版完全相同；代码包如果替换了校验器，会在执行它之前
+直接失败。随后才运行审核、运行时、参数矩阵、实验绑定和仓库边界校验。这个阶段不会建立
+正式运行副本，也不会创建训练进程。只有全部通过，才会继续服务器 GPU 预检。
 
 每次正式执行使用：
 
@@ -27,9 +29,11 @@
 execution_id = V5-ABLATION-001-<冻结提交前12位>
 ```
 
-runtime 与 Warehouse 目录都必须以这个 `execution_id` 命名，并且开始时完全不存在。控制器
-还会在 Warehouse 上一级的 `.gtpj_execution_claims/` 中一次性领取 `execution_id` 和六个
-`run_id`。领取记录不会自动删除；即使旧目录被人工搬走，相同身份也不能再次启动。
+runtime 与 Warehouse 目录都必须以这个 `execution_id` 命名，并且开始时完全不存在。它们
+还必须分别直接位于固定的服务器父目录，命令行不能换一个父目录绕过检查。控制器只在固定的
+`/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/.gtpj_execution_claims/`
+中一次性领取 `execution_id` 和六个 `run_id`。领取记录不会自动删除；即使旧目录被人工搬走，
+相同身份也不能再次启动。
 
 ## 什么时候会停止
 
@@ -56,6 +60,9 @@ process_evidence_state: incomplete_before_training_pid
 
 如果停止真实训练 PID 时发生异常，控制器仍会在统一 `finally` 清理中继续停止 helper 进程组。
 只有确认进程树已经退出，`cleanup_complete` 才能为 `true`。
+
+结束收据无效、状态落盘失败或清理不完整一经发现，会先在共享启动锁中登记失败，再继续写状态
+或向上抛错；另一张卡不能利用异常处理的时间窗口领取下一项 RUN。
 
 每个已启动 RUN 的 `run_start_receipt.finish.json` 还会再次核对：JSON 结构、`job_id`、
 `run_id`、启动收据哈希、退出码、PID 和日志哈希。文件只存在但内容对不上，仍然属于证据不完整，
