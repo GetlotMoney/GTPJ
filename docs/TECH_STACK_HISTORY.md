@@ -29,7 +29,7 @@
 - 选择原因：这项消融会产生论文证据，宁可每次正式执行多占一份输入数据空间和一次复制时间，也不能让运行身份、数据或进程清理存在说不清的边界。
 - 已知限制：私有数据快照会额外占用约一份正式输入数据的磁盘空间；pidfd 的内核调用号按当前 `lab4090` 的 Linux x86_64 环境实现；断电瞬间的目录级持久性没有单独做掉电注入；三组同 seed 不等于共享参数逐元素相同初始化。
 - 素材位置：`tools/run_v5_ablation_001_server_controller.py`、`tools/run_v5_ablation_001_training.py`、`workflow/gtpj_workflow.py`、`tests/test_v5_ablation_server_runner.py`、`tests/test_v5_ablation_server_linux_integration.py`。
-- 验证命令与结果：恢复修复后的本地服务器控制器测试 42 项通过；全仓与服务器 Linux 最终计数将在新一轮冻结前补齐。首次失败执行的两项训练 PID 均为空，四项后续 RUN 未启动，两个 helper 进程组均已清理。`py_compile` 通过；本地未安装 `pyflakes`，该项未运行。
+- 验证命令与结果：恢复修复后的本地服务器控制器测试 42 项通过；全仓共 336 项，其中 334 项通过、2 项 Linux 专属测试在 Windows 跳过；`lab4090` 上 42 项控制器测试和 2 项真实 Linux 进程测试共 44 项通过。首次失败执行的两项训练 PID 均为空，四项后续 RUN 未启动，两个 helper 进程组均已清理。`py_compile` 通过；本地未安装 `pyflakes`，该项未运行。
 - 回退方式：回退本实验分支上的执行器提交；冻结母版 `model/v5-template-v1@2f5fa5e`、数据文件、旧运行证据和其他框架不动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地已冻结）

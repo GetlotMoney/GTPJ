@@ -1476,7 +1476,10 @@ def clone_at(bundle, target, commit, *, bind_experiment_branch=False):
             cwd=target,
         )
     if bind_experiment_branch:
-        run_checked(["git", "branch", "-f", EXPERIMENT_BRANCH, commit], cwd=target)
+        run_checked(
+            ["git", "checkout", "-B", EXPERIMENT_BRANCH, commit],
+            cwd=target,
+        )
     status = run_checked(["git", "status", "--porcelain"], cwd=target).stdout.strip()
     if status:
         raise RuntimeError(f"新建运行副本不干净：{target}")

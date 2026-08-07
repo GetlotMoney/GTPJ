@@ -507,6 +507,31 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 )
                 self.assertEqual(template_commit, result.stdout.strip())
 
+            current_branch = subprocess.run(
+                ["git", "-C", str(checkout), "branch", "--show-current"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                controller.EXPERIMENT_BRANCH,
+                current_branch.stdout.strip(),
+            )
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    "workflow/gtpj_workflow.py",
+                    "validate-experiment-base",
+                    "--path",
+                    controller.EXPERIMENT_DIR.as_posix(),
+                ],
+                cwd=checkout,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
     def test_server_controller_rejects_non_linux_process_semantics(self):
         check = getattr(controller, "ensure_supported_platform", None)
         self.assertIsNotNone(check)
