@@ -1,6 +1,6 @@
 # 质量检查
 
-当前阶段：`repairing_after_r4_bookkeeping_failure`。
+当前阶段：`completed_pending_post_run_review`。
 
 - [x] 精确绑定冻结母版提交；
 - [x] 实验分支与母版工作区分离；
@@ -16,7 +16,9 @@
 - [x] 正式控制器必须从被审核代码候选的干净 checkout 执行；从最终提交或被篡改工作树启动会在绑定 Python 和领取身份前拒绝；
 - [x] 服务器 Python、数据身份、Linux 进程能力和 GPU 空闲状态预检通过；正式启动时仍会从冻结 bundle 重验提交、配置和数据哈希；
 - [x] STOP/停止机制存在并通过本地与服务器测试；
-- [ ] 正式 RUN 的真实启动收据已经生成。
+- [x] 正式 RUN 的真实启动与结束收据已经生成，四条 R5 任务返回码均为 0；
+- [x] 六条有效结果已经写回参数矩阵，并按每个任务绑定证据清单；
+- [ ] 三路训练后结果复核完成并把最终结论改为 `completed_reviewed`。
 
 ## 首轮独立审核后的修复
 
@@ -80,4 +82,4 @@
 - [x] CUDA 类别编号修复完成服务器真实测试、`strict-3` 复核与新的运行前冻结。
 - [x] R4 的两项成功记录已经补齐不可替换的恢复证据清单；控制器新增负向测试，缺清单、清单哈希错误或清单内证据文件被替换时均拒绝 R5 启动。
 
-当前决定：`allow_r5_after_final_bundle_and_launch_manifest_verify`。
+当前决定：`hold_final_claim_until_post_run_strict_3_review`。训练与证据封存已完成；机器结果显示局部分支平均仅带来 `+0.08 H`，正式论文表述等待三路训练后复核。

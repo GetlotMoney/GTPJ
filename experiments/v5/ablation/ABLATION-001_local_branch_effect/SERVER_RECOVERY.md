@@ -183,3 +183,11 @@ cat <runtime-root>/recovery_handoff.json
 - 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-6f0c382edfbe`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe`；`RUN-007` 日志 SHA-256 为 `6e70729a177d081144a6556de53f84e3e1e5feb6a7f08603df747db38d2bfd95`，`RUN-010` 为 `c850f53ce1e491f59ed679d7959a00f7231434f93cd9e44ab136c38db129477e`。
 - 恢复证据清单：`RUN-007/artifact_manifest.json` 的 SHA-256 为 `3eb27b0e18327ebcef8d89131040322851302deedbdd6a594b8bf58973c4146b`，`RUN-010/artifact_manifest.json` 为 `f7d6228fda5bd9ce99c191911022206697d88ece5d89dc0d558a300deecdf4ef`。每张清单同时固定 job/run 身份、启动与结束收据、封口日志、训练内部日志、最佳模型、指标和各文件哈希；R5 启动前会重新读取真实 Warehouse 文件逐项核对。
 - 恢复规则：两项成功训练不重跑；`RUN-008/009/011/012` 已随 R4 execution 被领取但没有启动，保留为取消记录。R5 使用 `RUN-013…016` 和四个全新 `run_id`，逐项 `repeat_of` 指回对应的 R4 未启动行，只补跑 seed 17、29。
+
+## 2026-08-08 第五次正式执行完成
+
+- 执行号：`V5-ABLATION-001-66302091e6e7`；冻结提交 `66302091e6e7403e094f8e1fe69b6bf6874abdf9`，被审核代码候选 `58fa5a8af9aa295a0fa9e2bb90afdfd92b237095`。
+- 运行事实：`RUN-013…016` 全部返回 0，四个结束收据均通过，控制器最终状态为 `completed`，两张 GPU 已释放；FULL seed 17/29 的 H 为 `74.05/74.12`，GLOBAL_ONLY seed 17/29 为 `74.14/74.03`。
+- 完整结果：与已恢复 seed 5 合并后，FULL 三种子平均 H=`74.11`，GLOBAL_ONLY=`74.03`，配对差值 `+0.25/-0.09/+0.09`，平均 `+0.08`。
+- 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-66302091e6e7`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-66302091e6e7`。每个 R5 任务目录均包含启动/结束收据、封口日志和 `artifact_manifest.json`；清单还固定对应内部训练日志与最佳模型。
+- 当前动作：不需要恢复或补跑；进入训练后结果 strict-3 复核。任何后续新实验必须新建实验项或新 RUN，不能复用本次身份。

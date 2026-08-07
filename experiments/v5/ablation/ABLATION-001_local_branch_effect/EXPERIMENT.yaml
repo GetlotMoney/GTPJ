@@ -11,7 +11,8 @@ historical_code_ref: codex/attempt019-local-ablation#ATTEMPT-019@954851b0d2dfd2d
 template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
 legacy_ref: codex/attempt019-local-ablation#ATTEMPT-019
-status: pre_run_gated
+status: completed
+result_review_status: pending
 research_question: 彻底移除局部子系统后，V5 的 CUB GZSL 分类性能变化多大
 disabled_subsystem:
   - FGVD
@@ -28,4 +29,4 @@ preserved_subsystem:
 formal_evidence: true
 workflow_mode: server_frozen_runner
 review_tier: strict-3
-implementation_status: reviewed_candidate_ready_for_final_bundle
+implementation_status: formal_runs_completed_result_review_pending

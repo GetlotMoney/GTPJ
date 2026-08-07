@@ -2,7 +2,8 @@
 
 ```yaml
 framework: FRAMEWORK-V5
-status: pre_run_gated
+status: completed
+result_review_status: pending
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
@@ -45,8 +46,10 @@ review_tier: strict-3
 - [x] CUDA 类别编号修复后的 `strict-3` 审核通过；
 - [x] 创建 R5 的 `RUN-013…016` 四个新身份，只补跑 R4 未启动的 seed 17、29；
 - [x] R4 双卡训练成功完成 seed 5；记账程序的中文日志兼容问题已定位并修复；
-- [ ] R5 通过新一轮审核和冻结后在服务器双卡启动；
-- [ ] 剩余 4 次运行收口，并与已恢复的 seed 5 一起做三种子配对统计。
+- [x] R5 通过新一轮审核和冻结后在服务器双卡启动；
+- [x] 剩余 4 次运行收口，并与已恢复的 seed 5 一起完成三种子配对统计；
+- [x] 四条 R5 运行均返回 0，收据、日志、最佳模型和证据清单已封存；
+- [ ] 完成训练后 strict-3 结果复核，再把结论状态改为正式完成。
 
 ## 运行分配
 
@@ -56,5 +59,9 @@ review_tier: strict-3
 | 1 | 干净无局部：只补 seed 17 → 29 | 本实验运行前冻结提交 |
 
 原始日志、checkpoint 和运行状态进入服务器 Warehouse；Git 只保存配置、凭证、哈希和轻量结果。
+
+## 当前结果
+
+三个 seed 的 H 配对差值为 `+0.25/-0.09/+0.09`，平均只有 `+0.08`。完整 V5 的平均 H 为 `74.11`，干净无局部为 `74.03`。局部分支平均提高 U `0.55`，同时降低 S `0.45`，没有形成稳定的综合 H 提升；完整模型训练耗时约为纯全局的 `1.69 倍`，最佳模型文件约为 `6.16 倍`。因此当前建议是不把局部分支作为论文主性能贡献，并用无局部版本继续后续模块消融；只读 V5 母版本身保持不动。
 
 正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和本批 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。

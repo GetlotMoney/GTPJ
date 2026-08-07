@@ -57,7 +57,7 @@ owner_monitor:
 evidence_routing:
   subject_id: V5-ABLATION-001
   subject_type: campaign_task
-  current_state: ready_to_run_r5
+  current_state: completed
   authority_refs:
     - EXPERIMENT.yaml
     - PARAMETER_MATRIX.csv
@@ -69,6 +69,8 @@ hard_gates:
   agent_runtime: pass
   artifact_boundary: pass
   pre_run_freeze_commit: pass
+  formal_runner_completion: pass
+  post_run_result_review: pending
 expected_outputs:
   github:
     - PARAMETER_MATRIX.csv
