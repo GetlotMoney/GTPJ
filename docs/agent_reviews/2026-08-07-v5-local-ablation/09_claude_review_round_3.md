@@ -16,7 +16,7 @@ commands_run:
 verdict: pass
 blocking_issues:
 non_blocking_issues:
-- 文档保持 `pre_run`，没有把预检或历史测试写成正式精度结果。
+- 本轮增量不包含模型、配置、训练或评估文件；文档没有把预检写成正式精度结果。
 unsupported_claims:
 - 本轮没有进行服务器训练，也没有复算最终指标。
 missing_validation:
@@ -24,4 +24,4 @@ missing_validation:
 
 # 第三轮结论
 
-未发现可复现的启动失败、停止竞态、进程身份、冻结证据或科学结论边界阻断问题。
+`859d544` 强制检查并恢复全套管理分支与 Tag；参数以列表传递，不存在 shell 拼接；未发现命令注入、覆盖正式实验分支、启动失败、进程身份或科学结论边界阻断问题。

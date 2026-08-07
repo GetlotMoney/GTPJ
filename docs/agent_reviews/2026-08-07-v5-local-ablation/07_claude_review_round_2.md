@@ -10,7 +10,8 @@ files_reviewed:
 - experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
 - experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
 commands_run:
-- python -m unittest tests.test_v5_ablation_server_runner.V5AblationServerRunnerTest.test_stop_observed_during_launch_preparation_prevents_helper_launch -v
+- python -m unittest tests.test_v5_ablation_server_runner -v
+- python workflow/gtpj_workflow.py validate-framework-ledgers
 - git diff --check
 verdict: pass
 blocking_issues:
@@ -23,4 +24,4 @@ missing_validation:
 
 # 第二轮结论
 
-上一候选的 `STOP_POPEN_TOCTOU` 已关闭：目录、环境和日志准备位于最后检查之前；最后检查后的第一项动作是 `Popen`，且身份捕获与首次 running 状态仍受同一 RunGate 锁保护。
+`859d544` 已关闭管理分支缺失阻断：六个本地分支和六个必需 Tag 都被强制带入 bundle，clone 后先按已验证对象号恢复分支，再运行全仓 validator；母版 Tag、母版分支和 `TEMPLATE_COMMIT` 一致。

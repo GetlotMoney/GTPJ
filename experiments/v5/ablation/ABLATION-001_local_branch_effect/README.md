@@ -2,7 +2,7 @@
 
 ```yaml
 framework: FRAMEWORK-V5
-status: pre_run_gated
+status: ready_to_run
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
@@ -39,8 +39,8 @@ review_tier: strict-3
 - [x] 冻结 12 个正式输入文件及 split、label、class order、metric 口径；
 - [x] 本地机器测试通过；
 - [x] `agent_runtime.yaml` 与三份开跑前角色检查通过；
-- [ ] bundle 管理引用修复后的 `strict-3` 代码审核通过；
-- [ ] 创建新的运行前冻结提交；
+- [x] bundle 管理引用修复后的 `strict-3` 代码审核通过；
+- [x] 创建新的运行前冻结提交；
 - [ ] 服务器双卡正式启动；
 - [ ] 6 次运行全部收口并做配对统计。
 
