@@ -140,3 +140,13 @@ cat <runtime-root>/recovery_handoff.json
 
 只有两张卡上属于本次实验的训练进程都已经退出，且每个已启动 RUN 都记录了
 `cleanup_complete: true`，才算停止完成。证据不完整的 RUN 必须按上面的恢复规则新建，不能原地重试。
+
+## 2026-08-07 首次正式执行失败记录
+
+- 旧执行号：`V5-ABLATION-001-d86fc5614d3f`；
+- 失败阶段：`RUN-001` 与 `RUN-004` 的启动收据生成之前；
+- 直接报错：每个 RUN 的独立 Git 账本缺少本地 `refs/heads/main`，工作流拒绝生成启动收据；
+- 训练影响：两项 `training_pid` 均为空，两张 GPU 始终没有进入训练，`RUN-002/003/005/006` 被失败总闸标为未启动；
+- 清理结果：两个 helper 进程组均已停止，`cleanup_complete: true`；
+- 证据位置：服务器 runtime 与 Warehouse 中保留旧 claim、`status.json`、`helper.log` 和失败收口状态；
+- 恢复规则：旧执行号和旧六个 `run_id` 永不复用。修复必须经过新测试和新审核，再用新冻结提交、新执行号以及带 `R2` 的六个 `run_id` 启动。

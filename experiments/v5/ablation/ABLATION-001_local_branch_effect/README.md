@@ -2,7 +2,7 @@
 
 ```yaml
 framework: FRAMEWORK-V5
-status: ready_to_run
+status: pre_run_gated
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect

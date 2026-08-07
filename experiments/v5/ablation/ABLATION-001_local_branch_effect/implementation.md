@@ -44,7 +44,7 @@
 - helper 创建后若连身份都没来得及固定，控制器会在该直接子进程被 `wait` 回收前强制停止它的独立进程组，并写 `launch_failure.json`；
 - `run_start_receipt.finish.json` 会再次核对 job、run、启动收据哈希、退出码、PID 和日志哈希；只存在文件但内容不一致仍然阻断正式证据；
 - 冻结证据校验调用 `validate-experiment-base` 时传入完整实验目录；测试中的最小工作流会检查该路径确实包含 `EXPERIMENT.yaml`，防止参数写错却被假校验放过；
-- 正式 bundle 必须携带 `main`、现行 `framework/v1/v2/v3/v5` 与来源 Tag，以及 `framework/v5-template-v1` 和 `model/v5-template-v1`；Git clone 把非当前分支保存为远端引用后，控制器只会用 bundle 列表中已经验证的提交恢复本地管理分支，再执行全仓框架账本和母版起点校验；
+- 正式 bundle 必须携带 `main`、现行 `framework/v1/v2/v3/v5` 与来源 Tag，以及 `framework/v5-template-v1` 和 `model/v5-template-v1`；Git clone 把非当前分支保存为远端引用后，控制器会在总校验副本、FULL/GLOBAL_ONLY 代码副本和六个 RUN 独立账本中，统一用 bundle 列表中已经验证的提交恢复本地管理分支，再执行全仓框架账本、母版起点或启动收据校验；
 - 目录、环境变量和 helper 日志先准备完，再在共享锁内执行最后一次 STOP/失败检查；检查通过后的第一项动作就是 `Popen`，任一 RUN 失败登记完成后，两个队列都不能再启动后续 RUN；
 - `Popen` 与首次 `running` 状态写入也在同一把锁内；如果状态无法落盘，会先清理刚创建的 helper 并锁住另一队列；
 - 上述启动期清理结果写入不可覆盖的 `launch_failure.json`；清理不完整时错误会携带 helper PID 和清理错误，不会丢失孤儿进程线索；
@@ -60,7 +60,7 @@
 
 ## 当前机器验证
 
-- 服务器控制器专属测试：41 项通过；
+- 服务器控制器专属测试：42 项通过；
 - `lab4090` 上 41 项服务器控制器测试与 2 项真实 Linux 进程收口测试共 43 项通过，其中一项专门覆盖 helper 已退出但训练子进程仍存活的情况；
 - V5 相关模型、母版和旧数学路径测试：41 项通过；
 - 仓库完整回归共 335 项：333 项通过，另有 2 项 Linux 专属测试在 Windows 按设计跳过；这两项已在服务器通过；

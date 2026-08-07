@@ -476,6 +476,37 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                         bundle, Path(sys.executable), data_source, payload, commit
                     )
 
+    def test_runtime_clones_restore_governance_refs_before_receipt_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle, commit, _payload, template_commit, _data_source = (
+                _create_evidence_bundle(root)
+            )
+            checkout = root / "runtime-checkout"
+            with patch.object(controller, "TEMPLATE_COMMIT", template_commit):
+                controller.clone_at(
+                    bundle,
+                    checkout,
+                    commit,
+                    bind_experiment_branch=True,
+                )
+
+            for local_branch in controller.VALIDATION_LOCAL_BRANCH_REFS:
+                result = subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(checkout),
+                        "rev-parse",
+                        "--verify",
+                        f"refs/heads/{local_branch}",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                self.assertEqual(template_commit, result.stdout.strip())
+
     def test_server_controller_rejects_non_linux_process_semantics(self):
         check = getattr(controller, "ensure_supported_platform", None)
         self.assertIsNotNone(check)

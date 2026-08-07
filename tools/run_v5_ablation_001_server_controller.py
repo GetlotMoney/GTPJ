@@ -1445,8 +1445,36 @@ def verify_server_gpu_preflight():
 def clone_at(bundle, target, commit, *, bind_experiment_branch=False):
     if target.exists():
         raise FileExistsError(f"拒绝覆盖已有运行副本：{target}")
+    heads = run_checked(
+        ["git", "bundle", "list-heads", str(bundle)]
+    ).stdout.splitlines()
+    refs = {}
+    for line in heads:
+        parts = line.strip().split(maxsplit=1)
+        if len(parts) == 2:
+            refs[parts[1]] = parts[0]
+    required_validation_refs = {
+        *VALIDATION_LOCAL_BRANCH_REFS.values(),
+        *VALIDATION_REQUIRED_TAG_REFS,
+    }
+    missing_validation_refs = sorted(required_validation_refs - refs.keys())
+    if missing_validation_refs:
+        raise ValueError(
+            "Git bundle 缺少运行副本所需的管理引用："
+            f"{missing_validation_refs}"
+        )
+    if (
+        refs[VALIDATION_LOCAL_BRANCH_REFS["framework/v5-template-v1"]]
+        != TEMPLATE_COMMIT
+    ):
+        raise ValueError("Git bundle 的 V5 母版分支没有指向冻结母版提交。")
     run_checked(["git", "clone", "--quiet", str(bundle), str(target)])
     run_checked(["git", "checkout", "--detach", commit], cwd=target)
+    for local_branch, bundle_ref in VALIDATION_LOCAL_BRANCH_REFS.items():
+        run_checked(
+            ["git", "branch", "-f", local_branch, refs[bundle_ref]],
+            cwd=target,
+        )
     if bind_experiment_branch:
         run_checked(["git", "branch", "-f", EXPERIMENT_BRANCH, commit], cwd=target)
     status = run_checked(["git", "status", "--porcelain"], cwd=target).stdout.strip()
