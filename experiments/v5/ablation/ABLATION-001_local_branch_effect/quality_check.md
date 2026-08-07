@@ -66,5 +66,6 @@
 - [x] 恢复修复候选 `99ef711` 的全仓回归共 336 项，其中 334 项通过、2 项 Linux 专属测试在 Windows 跳过；`lab4090` 上 42 项控制器测试与 2 项真实 Linux 进程测试共 44 项通过；
 - [x] 旧执行号和旧六个 `run_id` 永久保留为失败证据；恢复批次改用带 `R2` 的全新 `run_id`；
 - [x] runtime clone 修复完成新的 `strict-3` 复核和运行前冻结提交。
+- [x] 冻结提交 `f49be7d` 的服务器预领取检查因 `hard_gates.code_review` 带了额外说明文字而安全拒绝；未创建 claim、runtime、Warehouse 或训练进程，字段已收敛为控制器要求的准确值 `strict-3 pass`。
 
 当前决定：`allow_formal_runner_with_frozen_manifest`。

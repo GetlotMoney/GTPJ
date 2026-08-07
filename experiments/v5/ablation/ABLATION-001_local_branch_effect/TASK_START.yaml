@@ -65,7 +65,7 @@ evidence_routing:
     - agent_runtime.yaml
     - quality_check.md
 hard_gates:
-  code_review: strict-3 pass for 99ef7112 recovery candidate
+  code_review: strict-3 pass
   agent_runtime: pass
   artifact_boundary: pass
   pre_run_freeze_commit: pass
