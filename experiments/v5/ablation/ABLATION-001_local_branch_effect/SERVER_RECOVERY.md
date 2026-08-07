@@ -22,7 +22,7 @@
 CUB/xlsa17 输入文件的相对路径、大小和 SHA-256，以及 split、label、class order 和 metric
 口径。控制器会先在固定源目录逐个重算，再把 12 个文件复制到本次 execution 的
 `data_snapshot/`；复制过程中再次核对大小和完整 SHA-256，完成后把文件与目录改为只读。FULL 和
-GLOBAL_ONLY 都只链接这同一份私有快照；每个 RUN 启动前再次重算快照内容，训练入口加载时还会自行
+GLOBAL_ONLY 都只通过已打开的 Linux 目录文件描述符读取这同一份私有快照，代码副本不创建运行时链接；每个 RUN 启动前再次重算快照内容，训练入口加载时还会自行
 重算输入哈希并检查缓存标签与 xlsa17 划分逐元素一致。源目录在预检后变化不会进入本次训练。
 
 控制器先把 Git bundle 克隆为带 `.git` 的临时隔离校验仓，切到准确实验分支和提交，
@@ -162,4 +162,4 @@ cat <runtime-root>/recovery_handoff.json
 - 训练影响：没有进入 `train_GTPJ_CUB.py` 或 `train_V5_ABLATION_001_CUB.py`，两张 GPU 显存保持 6 MiB，没有完成任何训练 step；`RUN-002/003/005/006` 未启动；
 - 清理结果：两个包装器正常返回错误并生成经过核对的结束收据，两个 helper 进程组均已收口，`cleanup_complete: true`；
 - 证据位置：服务器 runtime 与 Warehouse 保留 R2 claim、`status.json`、`recovery_handoff.json`、启动/结束收据和完整错误日志；
-- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。首个链接修复候选 `d847266` 被独立审核阻断且未领取 R3 身份；当前方案彻底取消代码副本中的 `data`、`train_log` 链接，改用设备号、inode 与 Linux 目录文件描述符绑定本次只读快照和对应 Warehouse。下一批仍使用带 `R3` 的六个新 `run_id`，但只能在新候选完成服务器复验和三路审核后领取。
+- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。首个链接修复候选 `d847266` 被独立审核阻断且未领取 R3 身份；当前方案彻底取消代码副本中的 `data`、`train_log` 链接，改用设备号、inode 与 Linux 目录文件描述符绑定本次只读快照和对应 Warehouse。服务器 50 项机器验证和三路审核已通过，下一批使用带 `R3` 的六个新 `run_id`，并在冻结启动清单再次通过后一次性领取。

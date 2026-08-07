@@ -2,31 +2,30 @@ round: 1
 reviewer: independent_codex_fallback
 independent_codex_read_only: true
 fallback_reason: claude_code_unavailable
-reviewer_instance_id: /root/runtime_recovery_review@99ef7112
+reviewer_instance_id: /root/runtime_recovery_review@28185a0
 independent_context: true
 files_reviewed:
 - tools/run_v5_ablation_001_server_controller.py
+- tools/run_v5_ablation_001_training.py
+- train_GTPJ_CUB.py
+- train_V5_ABLATION_001_CUB.py
 - tests/test_v5_ablation_server_runner.py
+- tests/test_v5_ablation_server_linux_integration.py
 - experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
-- experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
-- experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml
 commands_run:
-- python -m unittest tests.test_v5_ablation_server_runner -v
-- python -m unittest discover -s tests -v
-- python workflow/gtpj_workflow.py validate
+- python -m unittest tests.test_v5_ablation_server_runner tests.test_v5_ablation_server_linux_integration -v
 - python workflow/gtpj_workflow.py validate-experiment-base --path experiments/v5/ablation/ABLATION-001_local_branch_effect
-- git diff --check d86fc561 99ef711
+- git status --porcelain --untracked-files=all
+- git diff --check 50369c8b 28185a0
 verdict: pass
 blocking_issues:
 non_blocking_issues:
-- 测试辅助函数仍用旧 `run_id` 示例；正式控制器从冻结矩阵读取 R2 编号，不会混用。
-- Windows 审核不能替代服务器 Linux pidfd 与权限检查；主任务已在精确候选上另跑 44 项服务器测试。
-- 恢复文档里的 `job_id` 容易与保留的逻辑行号 `RUN-001…006` 混淆，最终冻结文档需要把两者说开。
+- TASK_START.yaml 与 SERVER_RECOVERY.md 个别旧说明仍写“受控链接”，最终冻结时应改为“目录文件描述符绑定”。
+- 端到端测试使用最小训练探针，首次 R3 仍要观察真实模型入口和 GPU。
 unsupported_claims:
-- 本轮只放行恢复代码，不代表训练已经成功或已有精度结果。
+- 本轮只放行运行恢复，不代表六个训练已完成或已有精度结论。
 missing_validation:
-- 本轮审核者未亲自访问服务器；服务器机器验证由主任务执行。
 
 # 第一轮结论
 
-精确候选 `99ef711` 的旧执行号、旧六个 `run_id` 与 R2 新身份没有交集。独立真实 bundle 检查了两个代码副本和六个 RUN 账本：代码副本保持准确提交的 detached HEAD，六个账本处于正式实验分支并通过实验起点校验；任一布局失败都发生在线程和 GPU 训练启动前。结论为 `pass`。
+精确候选 `28185a0f1f1c2bdc9b6239cbbc919165a84077df` 已关闭 `d847266` 的两个阻断：FULL 和 GLOBAL_ONLY 都使用候选提交，代码目录完全干净且没有 `data`/`train_log` 链接。R1、R2、R3 运行身份两两不重复，服务器尚未领取 R3；失败关闸、进程组清理和六个账本副本的生命周期未退化。结论为 `pass`。

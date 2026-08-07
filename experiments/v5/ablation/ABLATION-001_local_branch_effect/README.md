@@ -2,7 +2,7 @@
 
 ```yaml
 framework: FRAMEWORK-V5
-status: pre_run_gated
+status: ready_to_run
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
@@ -19,7 +19,7 @@ review_tier: strict-3
 - 完整 V5；
 - 干净无局部版本。
 
-两组都跑 seed 5、17、29，一共 6 次训练。完整组使用冻结母版代码；无局部组使用本实验分支代码。数据、类别顺序、评估函数、PSE、ICSA、训练轮数和学习率计划保持一致。
+两组都跑 seed 5、17、29，一共 6 次训练。两组的运行入口都来自本次冻结候选；完整组的模型和科学计算路径与冻结母版等价，无局部组使用本实验的专属瘦身模型。数据、类别顺序、评估函数、PSE、ICSA、训练轮数和学习率计划保持一致。
 
 无局部版本删除 FGVD、BVSA、SGMP、局部融合，以及 consistency、BMDD、MPP、negative semantic 这些依赖局部路径的损失。PSE 和 ICSA 保留，因为它们会改变全局文本原型，删掉它们就不再是单纯测局部分支。
 
@@ -39,8 +39,8 @@ review_tier: strict-3
 - [x] 冻结 12 个正式输入文件及 split、label、class order、metric 口径；
 - [x] 本地机器测试通过；
 - [x] `agent_runtime.yaml` 与三份开跑前角色检查通过；
-- [ ] 目录句柄修复后的 `strict-3` 代码审核通过；
-- [ ] 创建新的运行前冻结提交；
+- [x] 目录句柄修复后的 `strict-3` 代码审核通过；
+- [x] 创建新的运行前冻结提交；
 - [ ] 服务器双卡正式启动；
 - [ ] 6 次运行全部收口并做配对统计。
 

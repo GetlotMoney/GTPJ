@@ -14,6 +14,10 @@
 - 冻结 bundle 必须包含 `main`、现行框架母版分支与来源 Tag、V5 干净母版分支与 Tag；控制器从 `list-heads` 精确对象号恢复隔离仓的本地管理分支后再运行全仓校验。
 - `bind_experiment_branch=true` 的六个 RUN 账本不能只创建分支引用，必须用 `git checkout -B` 真正进入实验分支；回归测试同时检查当前分支名，并在真实 clone 中运行 `validate-experiment-base`。
 - 两个代码副本仍保持 detached HEAD，只作为准确提交的只读代码源；只有需要生成正式账本收据的六个账本进入命名实验分支。
+- 两个代码副本都 checkout 本次候选提交，Git 状态必须完全为空，不再创建 `data` 或 `train_log` 链接；FULL 的模型、配置、数据划分和保留工具仍与冻结母版逐项比对。
+- 控制器把真实数据和结果目录的设备号、inode 写入唯一训练命令；包装器用 `O_NOFOLLOW` 打开并核对目录身份，把可继承文件描述符的 `/proc/self/fd/<编号>` 交给两个训练入口。
+- `train_GTPJ_CUB.py` 与 `train_V5_ABLATION_001_CUB.py` 在导入本地模型或工具之前先检查工作树；缓存、xlsa17、评估和结果路径只从绑定目录构造。`tools/v5_evaluation.py` 与 `tools/v5_runtime.py` 不再把 `/proc/self/fd` 路径解析回可替换的普通路径。
+- 参数矩阵把已领取并失败的 R2 六个执行身份全部替换为 R3；R2 runtime、Warehouse、claim、收据和日志原样保留。
 
 ## 需要诚实保留的边界
 
