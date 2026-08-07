@@ -44,11 +44,11 @@ agents:
     promote: not_allowed_by_this_task
   agent_runtime_gate:
     path: agent_runtime.yaml
-    validated: false
+    validated: true
     validator_command: python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/v5/ablation/ABLATION-001_local_branch_effect/agent_runtime.yaml
-    runner_start_allowed: false
-    formal_runner_allowed: false
-    formal_evidence_allowed: false
+    runner_start_allowed: true
+    formal_runner_allowed: true
+    formal_evidence_allowed: true
 owner_monitor:
   enabled: true
   report_channel: current_conversation
@@ -61,11 +61,13 @@ evidence_routing:
   authority_refs:
     - EXPERIMENT.yaml
     - PARAMETER_MATRIX.csv
+    - DATA_MANIFEST.json
+    - agent_runtime.yaml
     - quality_check.md
 hard_gates:
   code_review: strict-3 pending
-  agent_runtime: pending
-  artifact_boundary: pending
+  agent_runtime: pass
+  artifact_boundary: pass
   pre_run_freeze_commit: pending
 expected_outputs:
   github:
@@ -78,4 +80,4 @@ expected_outputs:
     - checkpoints
     - receipts
     - status
-blocked_reason: formal Runner blocked until strict-3 review, runtime gate and pre-run freeze commit pass
+blocked_reason: formal Runner blocked until strict-3 review and pre-run freeze commit pass

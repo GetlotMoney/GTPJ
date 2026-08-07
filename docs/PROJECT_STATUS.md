@@ -12,7 +12,7 @@ Date: 2026-08-07
 这只证明代码路径与管理边界通过本地验证，不代表服务器 U/S/H/ZS 已经复跑确认。
 
 `V5-ABLATION-001` 已从新母版重新绑定，独立分支为
-`exp/v5/ablation/ablation-001-local-branch-effect`；15 行计划已重算母版哈希和参数指纹。所有行仍是 `planned`，实验代码和真实配置快照尚未完成，因此不会启动训练。
+`exp/v5/ablation/ablation-001-local-branch-effect`；现在是 6 行同种子配对矩阵，实验代码、真实配置、数据清单和服务器控制器均已完成。当前仍处于开跑前门禁阶段，strict-3 审核与最终冻结提交未完成前不会启动训练。
 
 ## 2026-08-06 管理结构更新
 
@@ -150,6 +150,6 @@ excluded: logs, receipts, summaries, configs, manifests, registries, and data/ca
 
 ## Next Steps
 
-先在 `V5-ABLATION-001` 独立分支实现并审核两种能力：可变局部分数权重，以及代码级 `global_only`。随后生成真实配置快照，把选中的计划行冻结。
-用户对本轮服务器成本再次明确授权后，先跑基线与“完全去掉局部分支”的最小闭环，再决定是否扩展权重和模块消融。
+先完成 `V5-ABLATION-001` 的 strict-3 复核、运行时门和冻结提交，再在两张 GPU 上运行完整 V5 与代码级 `global_only` 的 3 个 seed 配对实验。
+本轮只回答“彻底去掉局部分支后效果变化多大”；局部权重调参和其他模块消融在这组结果收口后另开独立实验项。
 效果比较仍以 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 为正式参考。

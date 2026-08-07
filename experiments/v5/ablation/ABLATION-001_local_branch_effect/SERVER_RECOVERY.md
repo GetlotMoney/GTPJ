@@ -15,9 +15,15 @@
 - `agent_runtime.yaml`；
 - strict-3 审核最终决定；
 - `PARAMETER_MATRIX.csv`；
-- `EXPERIMENT.yaml`。
+- `EXPERIMENT.yaml`；
+- `DATA_MANIFEST.json`。
 
-控制器先把 Git bundle 解入操作系统临时目录中的隔离校验仓，核对实验分支和准确提交，
+清单还固定服务器 Python 路径和 SHA-256。`DATA_MANIFEST.json` 恰好记录 12 个正式
+CUB/xlsa17 输入文件的相对路径、大小和 SHA-256，以及 split、label、class order 和 metric
+口径。控制器会在创建训练进程前逐个重算；每个 RUN 启动前再核对文件身份，训练入口加载时还会
+自行重算输入哈希并检查缓存标签与 xlsa17 划分逐元素一致。
+
+控制器先把 Git bundle 克隆为带 `.git` 的临时隔离校验仓，切到准确实验分支和提交，
 重新计算上述哈希。执行代码包里的 `workflow/gtpj_workflow.py` 前，还必须证明该文件的 Git
 对象与控制器硬编码信任的冻结 V5 母版完全相同；代码包如果替换了校验器，会在执行它之前
 直接失败。随后才运行审核、运行时、参数矩阵、实验绑定和仓库边界校验。这个阶段不会建立
@@ -49,7 +55,8 @@ signal handler 只设置内存中的停止事件，不直接写文件、不获�
 
 ## 停止时具体做什么
 
-控制器从正式 `training.log` 的启动标记读取真实训练 PID。它先向训练进程发送 `SIGTERM`，
+控制器从正式 `training.log` 的启动标记读取真实训练 PID，并用 Linux `/proc` 同时固定 PID、
+进程组、会话和启动时钟。它先向训练进程发送 `SIGTERM`，
 给账本 helper 写完失败日志、结束标记和收据的机会；训练没有收口时再发送 `SIGKILL`。
 
 如果训练 PID 尚未写入日志，控制器会停止整个 helper 进程组，并记录：
@@ -59,7 +66,8 @@ process_evidence_state: incomplete_before_training_pid
 ```
 
 如果停止真实训练 PID 时发生异常，控制器仍会在统一 `finally` 清理中继续停止 helper 进程组。
-只有确认进程树已经退出，`cleanup_complete` 才能为 `true`。
+即使 helper 已先退出，只要同一受信会话里还有训练子进程，控制器仍会停止整个进程组。只有确认
+进程组已空、helper 已回收且没有 PID 身份冲突，`cleanup_complete` 才能为 `true`。
 
 结束收据无效、状态落盘失败或清理不完整一经发现，会先在共享启动锁中登记失败，再继续写状态
 或向上抛错；另一张卡不能利用异常处理的时间窗口领取下一项 RUN。
@@ -78,6 +86,7 @@ process_evidence_state: incomplete_before_training_pid
 - `status.json`：控制器和六个 RUN 的最终状态、helper PID、训练 PID、清理结果和收据状态；
 - `recovery_handoff.json`：需要处理的 RUN、旧账本副本和下一步动作；
 - `.gtpj_execution_claims/<execution_id>.json`：不可重复使用的执行身份和六个 `run_id`；
+- `.gtpj_execution_claims/<execution_id>.failure.json`：领取身份后建目录、克隆或状态写入失败时的不可覆盖凭证；
 - 每个已启动 RUN 的启动收据、结束收据、训练日志和 helper 日志；
 - 首次运行状态落盘失败时的 `launch_failure.json`；
 - Warehouse 中已经产生的模型、checkpoint 和训练日志，全部保留，不自动删除。
