@@ -25,8 +25,8 @@ EXPERIMENT_DIR = Path(
     "experiments/v5/ablation/ABLATION-001_local_branch_effect"
 )
 GROUP_JOBS = {
-    "FULL": ("RUN-001", "RUN-002", "RUN-003"),
-    "GLOBAL_ONLY": ("RUN-004", "RUN-005", "RUN-006"),
+    "FULL": ("RUN-007", "RUN-008", "RUN-009"),
+    "GLOBAL_ONLY": ("RUN-010", "RUN-011", "RUN-012"),
 }
 WRAPPER = "tools/run_v5_ablation_001_training.py"
 TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
@@ -1129,9 +1129,22 @@ def _read_frozen_run_ids(matrix_path):
     with Path(matrix_path).open("r", encoding="utf-8", newline="") as stream:
         rows = list(csv.DictReader(stream))
     expected_jobs = set(sum((list(items) for items in GROUP_JOBS.values()), []))
+    job_ids = [row.get("job_id") for row in rows]
+    if len(job_ids) != len(set(job_ids)):
+        raise ValueError("参数矩阵 job_id 必须唯一，历史行不能被覆盖。")
     by_job = {row.get("job_id"): row for row in rows}
-    if set(by_job) != expected_jobs or len(rows) != len(expected_jobs):
-        raise ValueError("冻结参数矩阵必须恰好包含六个指定 job_id。")
+    missing = sorted(expected_jobs - set(by_job))
+    if missing:
+        raise ValueError(f"冻结参数矩阵缺少本批六个 job_id：{missing}")
+    terminal_statuses = {"completed", "failed", "skipped", "cancelled"}
+    non_terminal_history = sorted(
+        row.get("job_id", "")
+        for row in rows
+        if row.get("job_id") not in expected_jobs
+        and row.get("status") not in terminal_statuses
+    )
+    if non_terminal_history:
+        raise ValueError(f"参数矩阵历史行必须先进入终态：{non_terminal_history}")
     run_ids = {}
     for job_id in sorted(expected_jobs):
         row = by_job[job_id]
@@ -1141,6 +1154,9 @@ def _read_frozen_run_ids(matrix_path):
         run_ids[job_id] = run_id
     if len(set(run_ids.values())) != len(run_ids):
         raise ValueError("冻结参数矩阵 run_id 必须唯一。")
+    all_run_ids = [row.get("run_id", "") for row in rows if row.get("run_id", "")]
+    if len(all_run_ids) != len(set(all_run_ids)):
+        raise ValueError("参数矩阵 run_id 不能复用历史身份。")
     return run_ids
 
 
@@ -1273,10 +1289,20 @@ def verify_frozen_launch_evidence(
 
         workflow = checkout / "workflow/gtpj_workflow.py"
         runtime_python = python_execution_ref or python
+        matrix_command = [
+            runtime_python,
+            workflow,
+            "validate-parameter-matrix",
+            "--path",
+            matrix,
+            "--require-ready",
+        ]
+        for job_id in sorted(sum((list(items) for items in GROUP_JOBS.values()), [])):
+            matrix_command.extend(["--ready-job-id", job_id])
         commands = [
             [runtime_python, workflow, "validate-ai-cross-review", "--path", checkout / REVIEW_PACK],
             [runtime_python, workflow, "validate-agent-runtime", "--path", checkout / EXPERIMENT_DIR / "agent_runtime.yaml"],
-            [runtime_python, workflow, "validate-parameter-matrix", "--path", matrix, "--expected-jobs", "6", "--require-ready"],
+            matrix_command,
             [runtime_python, workflow, "validate-experiment-base", "--path", checkout / EXPERIMENT_DIR],
             [runtime_python, workflow, "validate"],
             [runtime_python, workflow, "validate-workflow-consistency"],

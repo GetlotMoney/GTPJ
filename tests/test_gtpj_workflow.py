@@ -5110,6 +5110,38 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("must be frozen and unused", "\n".join(ready_errors))
         self.assertIn("cannot accept a formal result", "\n".join(record_errors))
 
+    def test_parameter_matrix_ready_gate_accepts_terminal_history_and_selected_frozen_rows(self) -> None:
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[
+                {"job_id": "RUN-001", "seed": 5, "config_updates": {}},
+                {"job_id": "RUN-007", "seed": 5, "config_updates": {}},
+            ],
+            base_config_text="version: v5\n",
+            base_version="v5",
+            code_ref="v5",
+        )
+        rows[0]["status"] = "failed"
+        rows[0]["run_id"] = "RUN-R3-FAILED"
+        rows[1]["status"] = "frozen"
+        rows[1]["run_id"] = "RUN-R4-READY"
+        rows[1]["repeat_of"] = "RUN-001"
+        rows[1]["config_snapshot_ref"] = "generated-from-frozen-plan:test"
+
+        errors = self.module.validate_parameter_matrix_rows(
+            rows,
+            require_ready=True,
+            ready_job_ids={"RUN-007"},
+        )
+        self.assertEqual([], errors)
+
+        rows[0]["status"] = "running"
+        errors = self.module.validate_parameter_matrix_rows(
+            rows,
+            require_ready=True,
+            ready_job_ids={"RUN-007"},
+        )
+        self.assertIn("historical row must be terminal", "\n".join(errors))
+
     def test_parameter_matrix_reader_rejects_cells_outside_the_fixed_header(self) -> None:
         matrix_dir = self.repo / "experiments/v5/ablation/ABLATION-900_extra-cell"
         rows = self.module.build_parameter_matrix_rows(

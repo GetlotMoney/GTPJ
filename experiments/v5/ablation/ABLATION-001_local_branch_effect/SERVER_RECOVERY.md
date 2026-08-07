@@ -173,4 +173,4 @@ cat <runtime-root>/recovery_handoff.json
 - 训练影响：两个进程都在模型初始化时以返回码 1 退出，没有完成任何训练 step，也没有产生可用精度；`RUN-002/003/005/006` 在失败总闸后保持未启动；
 - 清理结果：`RUN-001` 与 `RUN-004` 的结束收据均已核对，两个进程树都已停止，`cleanup_complete: true`；GPU 随后恢复空闲；
 - 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-cca4e0e6419a`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a`，其中保留 claim、状态、收据、错误日志和 `recovery_handoff.json`；
-- 恢复规则：R3 execution 和六个 R3 `run_id` 永不复用。最小修复是在两个训练入口加载划分时让类别编号先留在 CPU，完成模型内部的类别顺序核对后，再随模型整体迁移到 GPU；模型公式、数据划分和评估口径不变。修复必须先通过真实 CUDA 测试和三路审核，再使用全新的 R4 `run_id` 与新冻结提交启动。
+- 恢复规则：R3 execution 和六个 R3 `run_id` 永不复用。正式参数表同表保留 R3 的 `RUN-001…006`：两项真实失败回填收据、命令/日志哈希和退出码，四项标记为领取后未启动；R4 新建 `RUN-007…012`，逐行通过 `repeat_of` 指回 R3，并使用六个全新 `run_id`。最小代码修复是在两个训练入口加载划分时让类别编号先留在 CPU，完成模型内部的类别顺序核对后，再随模型整体迁移到 GPU；模型公式、数据划分和评估口径不变。修复和新账本必须先通过真实 CUDA 测试与三路审核，再由新冻结提交启动。

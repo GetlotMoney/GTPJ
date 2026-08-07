@@ -26,12 +26,12 @@ def _sha256(path):
 
 def _run_ids():
     return {
-        "RUN-001": "RUN-20260807-V5ABL001-R3-FULL-S5",
-        "RUN-002": "RUN-20260807-V5ABL001-R3-FULL-S17",
-        "RUN-003": "RUN-20260807-V5ABL001-R3-FULL-S29",
-        "RUN-004": "RUN-20260807-V5ABL001-R3-GLOBAL-S5",
-        "RUN-005": "RUN-20260807-V5ABL001-R3-GLOBAL-S17",
-        "RUN-006": "RUN-20260807-V5ABL001-R3-GLOBAL-S29",
+        "RUN-007": "RUN-20260808-V5ABL001-R4-FULL-S5",
+        "RUN-008": "RUN-20260808-V5ABL001-R4-FULL-S17",
+        "RUN-009": "RUN-20260808-V5ABL001-R4-FULL-S29",
+        "RUN-010": "RUN-20260808-V5ABL001-R4-GLOBAL-S5",
+        "RUN-011": "RUN-20260808-V5ABL001-R4-GLOBAL-S17",
+        "RUN-012": "RUN-20260808-V5ABL001-R4-GLOBAL-S29",
     }
 
 
@@ -399,12 +399,42 @@ class V5AblationServerRunnerTest(unittest.TestCase):
 
     def test_each_group_has_the_expected_three_job_queue(self):
         self.assertEqual(
-            ("RUN-001", "RUN-002", "RUN-003"), controller.GROUP_JOBS["FULL"]
+            ("RUN-007", "RUN-008", "RUN-009"), controller.GROUP_JOBS["FULL"]
         )
         self.assertEqual(
-            ("RUN-004", "RUN-005", "RUN-006"),
+            ("RUN-010", "RUN-011", "RUN-012"),
             controller.GROUP_JOBS["GLOBAL_ONLY"],
         )
+
+    def test_frozen_run_reader_keeps_terminal_history_and_selects_only_r4(self):
+        with tempfile.TemporaryDirectory() as directory:
+            matrix = Path(directory) / "PARAMETER_MATRIX.csv"
+            historical = [
+                ("RUN-001", "RUN-R3-FULL-S5", "failed"),
+                ("RUN-002", "RUN-R3-FULL-S17", "cancelled"),
+                ("RUN-003", "RUN-R3-FULL-S29", "cancelled"),
+                ("RUN-004", "RUN-R3-GLOBAL-S5", "failed"),
+                ("RUN-005", "RUN-R3-GLOBAL-S17", "cancelled"),
+                ("RUN-006", "RUN-R3-GLOBAL-S29", "cancelled"),
+            ]
+            matrix.write_text(
+                "job_id,run_id,status\n"
+                + "".join(f"{job_id},{run_id},{status}\n" for job_id, run_id, status in historical)
+                + "".join(
+                    f"{job_id},{run_id},frozen\n" for job_id, run_id in _run_ids().items()
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(_run_ids(), controller._read_frozen_run_ids(matrix))
+
+            text = matrix.read_text(encoding="utf-8").replace(
+                "RUN-002,RUN-R3-FULL-S17,cancelled",
+                "RUN-002,RUN-R3-FULL-S17,frozen",
+            )
+            matrix.write_text(text, encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "历史行.*终态"):
+                controller._read_frozen_run_ids(matrix)
 
     def test_layout_uses_candidate_for_both_clean_code_roots(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1071,8 +1101,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             payload = {
                 "schema_version": "gtpj-run-finish-receipt/v1",
                 "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
-                "job_id": "RUN-001",
-                "run_id": _run_ids()["RUN-001"],
+                "job_id": "RUN-007",
+                "run_id": _run_ids()["RUN-007"],
                 "run_start_receipt_sha256": _sha256(receipt),
                 "command_sha256": hashlib.sha256(command.encode("utf-8")).hexdigest(),
                 "pid": 1234,
@@ -1088,8 +1118,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     receipt,
                     training_log,
                     command,
-                    "RUN-001",
-                    _run_ids()["RUN-001"],
+                    "RUN-007",
+                    _run_ids()["RUN-007"],
                     0,
                 ),
             )
@@ -1098,7 +1128,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     receipt,
                     training_log,
                     command,
-                    "RUN-001",
+                    "RUN-007",
                     "different-run",
                     0,
                 )
@@ -1109,8 +1139,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     receipt,
                     training_log,
                     command,
-                    "RUN-001",
-                    _run_ids()["RUN-001"],
+                    "RUN-007",
+                    _run_ids()["RUN-007"],
                     0,
                 )
 
@@ -1122,8 +1152,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     receipt,
                     training_log,
                     command,
-                    "RUN-001",
-                    _run_ids()["RUN-001"],
+                    "RUN-007",
+                    _run_ids()["RUN-007"],
                     0,
                 )
 
@@ -1175,7 +1205,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1218,7 +1248,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                             data_runtime_identity={},
                         ),
                         group="FULL",
-                        job_id="RUN-001",
+                        job_id="RUN-007",
                         code_root=root / "code",
                         ledger_root=ledger,
                         warehouse_root=warehouse,
@@ -1229,7 +1259,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     )
             cleanup.assert_called_once()
             self.assertFalse(gate.claim_start())
-            failure_record = warehouse / "RUN-001" / "launch_failure.json"
+            failure_record = warehouse / "RUN-007" / "launch_failure.json"
             self.assertTrue(failure_record.is_file())
             payload = json.loads(failure_record.read_text(encoding="utf-8"))
             self.assertEqual(1234, payload["helper_pid"])
@@ -1247,7 +1277,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1265,7 +1295,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                         data_runtime_identity={},
                     ),
                     group="FULL",
-                    job_id="RUN-001",
+                    job_id="RUN-007",
                     code_root=root / "code",
                     ledger_root=ledger,
                     warehouse_root=warehouse,
@@ -1293,7 +1323,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1327,7 +1357,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                             data_runtime_identity={},
                         ),
                         group="FULL",
-                        job_id="RUN-001",
+                        job_id="RUN-007",
                         code_root=root / "code",
                         ledger_root=ledger,
                         warehouse_root=warehouse,
@@ -1386,7 +1416,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1420,7 +1450,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                             data_runtime_identity={},
                         ),
                         group="FULL",
-                        job_id="RUN-001",
+                        job_id="RUN-007",
                         code_root=root / "code",
                         ledger_root=ledger,
                         warehouse_root=warehouse,
@@ -1477,7 +1507,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1511,7 +1541,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                             data_runtime_identity={},
                         ),
                         group="FULL",
-                        job_id="RUN-001",
+                        job_id="RUN-007",
                         code_root=root / "code",
                         ledger_root=ledger,
                         warehouse_root=warehouse,
@@ -1557,7 +1587,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1592,7 +1622,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                             data_runtime_identity={},
                         ),
                         group="FULL",
-                        job_id="RUN-001",
+                        job_id="RUN-007",
                         code_root=root / "code",
                         ledger_root=ledger,
                         warehouse_root=warehouse,
@@ -1651,7 +1681,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1682,7 +1712,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                         data_runtime_identity={},
                     ),
                     group="FULL",
-                    job_id="RUN-001",
+                    job_id="RUN-007",
                     code_root=root / "code",
                     ledger_root=ledger,
                     warehouse_root=warehouse,
@@ -1706,7 +1736,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             experiment = ledger / controller.EXPERIMENT_DIR
             experiment.mkdir(parents=True)
             (experiment / "PARAMETER_MATRIX.csv").write_text(
-                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                "job_id,run_id\nRUN-007," + _run_ids()["RUN-007"] + "\n",
                 encoding="utf-8",
             )
             (experiment / "configs").mkdir()
@@ -1756,7 +1786,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                         data_runtime_identity={},
                     ),
                     group="FULL",
-                    job_id="RUN-001",
+                    job_id="RUN-007",
                     code_root=root / "code",
                     ledger_root=ledger,
                     warehouse_root=warehouse,

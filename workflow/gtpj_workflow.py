@@ -14704,6 +14704,7 @@ def validate_parameter_matrix_rows(
     require_ready: bool = False,
     require_recordable: bool = False,
     matrix_path: Path | None = None,
+    ready_job_ids: set[str] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     if not rows:
@@ -14735,9 +14736,10 @@ def validate_parameter_matrix_rows(
         if not row.get("base_version", "") or not row.get("base_config_sha256", "") or not row.get("code_ref", ""):
             errors.append(f"line {line_number} is missing base_version, base_config_sha256, or code_ref")
         snapshot_ref = row.get("config_snapshot_ref", "").strip()
-        if require_ready and not snapshot_ref:
+        is_ready_target = ready_job_ids is None or job_id in ready_job_ids
+        if require_ready and is_ready_target and not snapshot_ref:
             errors.append(f"line {line_number} is missing config_snapshot_ref")
-        if require_ready and not row.get("seed", "").strip():
+        if require_ready and is_ready_target and not row.get("seed", "").strip():
             errors.append(f"line {line_number} is missing seed")
         fingerprint = row.get("config_fingerprint", "")
         if not fingerprint:
@@ -14759,16 +14761,30 @@ def validate_parameter_matrix_rows(
                 raise ValueError("not an object")
         except (json.JSONDecodeError, ValueError):
             errors.append(f"line {line_number} changed_parameters must be a JSON object")
-        if require_ready and row.get("status") != "frozen":
+        if require_ready and is_ready_target and row.get("status") != "frozen":
             errors.append(
                 f"line {line_number} status {row.get('status')!r} cannot enter a formal run; "
                 "every row must be frozen and unused"
+            )
+        if (
+            require_ready
+            and ready_job_ids is not None
+            and not is_ready_target
+            and row.get("status") not in PARAMETER_MATRIX_TERMINAL_STATUSES
+        ):
+            errors.append(
+                f"line {line_number} historical row must be terminal before selected jobs can run"
             )
         if require_recordable and row.get("status") in {"draft", "planned", "legacy_summary_only"}:
             errors.append(
                 f"line {line_number} status {row.get('status')!r} cannot accept a formal result"
             )
-        if require_ready and snapshot_ref and not snapshot_ref.startswith("generated-from-frozen-plan:"):
+        if (
+            require_ready
+            and is_ready_target
+            and snapshot_ref
+            and not snapshot_ref.startswith("generated-from-frozen-plan:")
+        ):
             snapshot_path = Path(snapshot_ref)
             if not snapshot_path.is_absolute():
                 snapshot_path = (matrix_path.parent if matrix_path is not None else REPO_ROOT) / snapshot_path
@@ -14815,6 +14831,10 @@ def validate_parameter_matrix_rows(
             f"line {line_number} repeat_of must name a job in this matrix, a pending top_rank:n, "
             "or matrix:<path>#<job_id>"
         )
+    if require_ready and ready_job_ids is not None:
+        missing_ready = sorted(ready_job_ids - job_ids)
+        if missing_ready:
+            errors.append("matrix is missing selected ready jobs: " + ", ".join(missing_ready))
     if expected_job_ids is not None and job_ids != expected_job_ids:
         missing = sorted(expected_job_ids - job_ids)
         extra = sorted(job_ids - expected_job_ids)
@@ -16012,7 +16032,15 @@ def cmd_validate_parameter_matrix(args: argparse.Namespace) -> int:
         path = REPO_ROOT / path
     rows = read_parameter_matrix(path)
     expected_jobs = int(args.expected_jobs or 0)
-    errors = validate_parameter_matrix_rows(rows, require_ready=bool(args.require_ready), matrix_path=path)
+    ready_job_ids = set(args.ready_job_id or [])
+    if ready_job_ids and not args.require_ready:
+        raise WorkflowError("--ready-job-id requires --require-ready")
+    errors = validate_parameter_matrix_rows(
+        rows,
+        require_ready=bool(args.require_ready),
+        matrix_path=path,
+        ready_job_ids=ready_job_ids or None,
+    )
     errors.extend(parameter_matrix_view_errors(path, rows))
     if args.require_ready:
         errors.extend(
@@ -18636,6 +18664,12 @@ def build_parser() -> argparse.ArgumentParser:
     validate_matrix.add_argument("--path", required=True)
     validate_matrix.add_argument("--expected-jobs", type=int, default=0)
     validate_matrix.add_argument("--require-ready", action="store_true")
+    validate_matrix.add_argument(
+        "--ready-job-id",
+        action="append",
+        default=[],
+        help="只要求指定任务为 frozen；同表其他历史行必须已经结束，可重复传入",
+    )
     validate_matrix.set_defaults(func=cmd_validate_parameter_matrix)
 
     refresh_matrix_view = sub.add_parser(

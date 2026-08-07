@@ -10,7 +10,7 @@ files_reviewed:
 - model/V5GlobalOnly.py
 - train_GTPJ_CUB.py
 - train_V5_ABLATION_001_CUB.py
-- configs/RUN-001.yaml 至 configs/RUN-006.yaml
+- R3 历史配置 `configs/RUN-001.yaml` 至 `RUN-006.yaml`，以及内容逐对相同、身份全新的 R4 配置 `RUN-007.yaml` 至 `RUN-012.yaml`
 - tools/v5_cub_data.py
 - tools/v5_evaluation.py
 
