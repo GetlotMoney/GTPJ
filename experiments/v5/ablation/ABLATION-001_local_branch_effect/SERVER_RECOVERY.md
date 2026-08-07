@@ -174,3 +174,11 @@ cat <runtime-root>/recovery_handoff.json
 - 清理结果：`RUN-001` 与 `RUN-004` 的结束收据均已核对，两个进程树都已停止，`cleanup_complete: true`；GPU 随后恢复空闲；
 - 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-cca4e0e6419a`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a`，其中保留 claim、状态、收据、错误日志和 `recovery_handoff.json`；
 - 恢复规则：R3 execution 和六个 R3 `run_id` 永不复用。正式参数表同表保留 R3 的 `RUN-001…006`：两项真实失败回填收据、命令/日志哈希和退出码，四项标记为领取后未启动；R4 新建 `RUN-007…012`，逐行通过 `repeat_of` 指回 R3，并使用六个全新 `run_id`。最小代码修复是在两个训练入口加载划分时让类别编号先留在 CPU，完成模型内部的类别顺序核对后，再随模型整体迁移到 GPU；模型公式、数据划分和评估口径不变。修复和新账本必须先通过真实 CUDA 测试与三路审核，再由新冻结提交启动。
+
+## 2026-08-08 第四次正式执行的训练后记账失败
+
+- 执行号：`V5-ABLATION-001-6f0c382edfbe`。
+- 训练事实：`RUN-007` 与 `RUN-010` 的训练进程返回码都是 0，结束收据和日志哈希一致；FULL seed 5 为 U=72.36、S=76.07、H=74.17、ZS=81.28、best epoch=31，GLOBAL_ONLY seed 5 为 U=71.52、S=76.50、H=73.92、ZS=81.27、best epoch=48。
+- 失败位置：训练结束后，`workflow/gtpj_workflow.py` 只按旧英文 `Best Results` 格式读取成绩，无法读取当前两个 V5 入口输出的中文最佳成绩行，helper 因此返回 1；控制器把 helper 的记账返回码与训练结束收据中的返回码 0 比较后，将两项误标为失败。
+- 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-6f0c382edfbe`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-6f0c382edfbe`；`RUN-007` 日志 SHA-256 为 `6e70729a177d081144a6556de53f84e3e1e5feb6a7f08603df747db38d2bfd95`，`RUN-010` 为 `c850f53ce1e491f59ed679d7959a00f7231434f93cd9e44ab136c38db129477e`。
+- 恢复规则：两项成功训练不重跑；`RUN-008/009/011/012` 已随 R4 execution 被领取但没有启动，保留为取消记录。R5 使用 `RUN-013…016` 和四个全新 `run_id`，逐项 `repeat_of` 指回对应的 R4 未启动行，只补跑 seed 17、29。

@@ -1269,6 +1269,17 @@ def append_readme_result_row(readme: Path, row: str) -> None:
 
 
 def parse_training_log_text(text: str, label: str) -> dict[str, str]:
+    v5_summary_pattern = re.compile(
+        r"最佳\s*epoch\s*=\s*(?P<best_epoch>[0-9]+)\s*[，,]\s*"
+        r"U\s*=\s*(?P<U>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
+        r"S\s*=\s*(?P<S>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
+        r"H\s*=\s*(?P<H>[0-9]+(?:\.[0-9]+)?)\s*[%％]\s*[，,]\s*"
+        r"ZS\s*=\s*(?P<ZS>[0-9]+(?:\.[0-9]+)?)\s*[%％]"
+    )
+    v5_summary_matches = list(v5_summary_pattern.finditer(text))
+    if v5_summary_matches:
+        return v5_summary_matches[-1].groupdict()
+
     best_start = text.rfind("Best Results")
     metric_text = text[best_start:] if best_start != -1 else text
     metrics: dict[str, str] = {}

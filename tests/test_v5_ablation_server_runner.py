@@ -25,14 +25,24 @@ def _sha256(path):
 
 
 def _run_ids():
+    class ActiveRunIds(dict):
+        def __missing__(self, key):
+            if key == "RUN-007":
+                return _legacy_run_id(key)
+            raise KeyError(key)
+
+    return ActiveRunIds({
+        "RUN-013": "RUN-20260808-V5ABL001-R5-FULL-S17",
+        "RUN-014": "RUN-20260808-V5ABL001-R5-FULL-S29",
+        "RUN-015": "RUN-20260808-V5ABL001-R5-GLOBAL-S17",
+        "RUN-016": "RUN-20260808-V5ABL001-R5-GLOBAL-S29",
+    })
+
+
+def _legacy_run_id(job_id):
     return {
         "RUN-007": "RUN-20260808-V5ABL001-R4-FULL-S5",
-        "RUN-008": "RUN-20260808-V5ABL001-R4-FULL-S17",
-        "RUN-009": "RUN-20260808-V5ABL001-R4-FULL-S29",
-        "RUN-010": "RUN-20260808-V5ABL001-R4-GLOBAL-S5",
-        "RUN-011": "RUN-20260808-V5ABL001-R4-GLOBAL-S17",
-        "RUN-012": "RUN-20260808-V5ABL001-R4-GLOBAL-S29",
-    }
+    }[job_id]
 
 
 def _launch_manifest_payload(commit, hashes=None):
@@ -56,11 +66,8 @@ def _launch_manifest_payload(commit, hashes=None):
             "agent_runtime.yaml"
         ),
         "agent_runtime_sha256": hashes.get("agent_runtime", "2" * 64),
-        "review_pack_ref": "docs/agent_reviews/2026-08-07-v5-local-ablation",
-        "review_decision_ref": (
-            "docs/agent_reviews/2026-08-07-v5-local-ablation/"
-            "10_final_decision.md"
-        ),
+        "review_pack_ref": controller.REVIEW_PACK.as_posix(),
+        "review_decision_ref": (controller.REVIEW_PACK / "10_final_decision.md").as_posix(),
         "review_decision_sha256": hashes.get("review_decision", "3" * 64),
         "parameter_matrix_ref": (
             "experiments/v5/ablation/ABLATION-001_local_branch_effect/"
@@ -97,7 +104,7 @@ def _create_evidence_bundle(
     )
     exp = repo / "experiments/v5/ablation/ABLATION-001_local_branch_effect"
     exp.mkdir(parents=True)
-    review = repo / "docs/agent_reviews/2026-08-07-v5-local-ablation"
+    review = repo / controller.REVIEW_PACK
     review.mkdir(parents=True)
     workflow = repo / "workflow"
     workflow.mkdir()
@@ -513,16 +520,16 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             training_spec("GLOBAL_ONLY"),
         )
 
-    def test_each_group_has_the_expected_three_job_queue(self):
+    def test_each_group_has_only_the_two_unstarted_r5_jobs(self):
         self.assertEqual(
-            ("RUN-007", "RUN-008", "RUN-009"), controller.GROUP_JOBS["FULL"]
+            ("RUN-013", "RUN-014"), controller.GROUP_JOBS["FULL"]
         )
         self.assertEqual(
-            ("RUN-010", "RUN-011", "RUN-012"),
+            ("RUN-015", "RUN-016"),
             controller.GROUP_JOBS["GLOBAL_ONLY"],
         )
 
-    def test_frozen_run_reader_keeps_terminal_history_and_selects_only_r4(self):
+    def test_frozen_run_reader_keeps_terminal_history_and_selects_only_r5(self):
         with tempfile.TemporaryDirectory() as directory:
             matrix = Path(directory) / "PARAMETER_MATRIX.csv"
             historical = [

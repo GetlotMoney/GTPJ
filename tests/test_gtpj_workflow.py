@@ -4898,6 +4898,23 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual("73.0", self.module.parse_training_log_text(captured, "no-newline test")["ZS"])
 
+    def test_parse_training_log_accepts_current_v5_chinese_best_summary(self) -> None:
+        metrics = self.module.parse_training_log_text(
+            "训练完成。\n最佳 epoch=31，U=72.36%，S=76.07%，H=74.17%，ZS=81.28%。\n",
+            "V5 中文训练结尾",
+        )
+
+        self.assertEqual(
+            {
+                "best_epoch": "31",
+                "U": "72.36",
+                "S": "76.07",
+                "H": "74.17",
+                "ZS": "81.28",
+            },
+            metrics,
+        )
+
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-901-legacy-summary")
         code, _stdout, stderr = self._run_main(

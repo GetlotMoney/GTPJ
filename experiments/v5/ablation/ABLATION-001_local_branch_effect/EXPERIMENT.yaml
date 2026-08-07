@@ -28,4 +28,4 @@ preserved_subsystem:
 formal_evidence: true
 workflow_mode: server_frozen_runner
 review_tier: strict-3
-implementation_status: reviewed_candidate_ready_for_final_bundle
+implementation_status: parser_fix_and_r5_queue_pending_review

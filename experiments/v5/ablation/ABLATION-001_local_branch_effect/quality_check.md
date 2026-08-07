@@ -1,12 +1,12 @@
 # 质量检查
 
-当前阶段：`ready_to_run`。
+当前阶段：`repairing_after_r4_bookkeeping_failure`。
 
 - [x] 精确绑定冻结母版提交；
 - [x] 实验分支与母版工作区分离；
 - [x] 一次只消融局部子系统；
 - [x] PSE、ICSA、数据、类别顺序和评估口径保留；
-- [x] 参数矩阵共 12 行：R3 六行已进入 `failed/cancelled` 终态并保留真实身份，R4 六行全部冻结、指向新配置且逐行引用 R3；
+- [x] 参数矩阵共 16 行：R3 六行保留失败历史；R4 两行恢复成功结果、四行记录未启动；R5 四行使用新 job/run 身份补跑 seed 17、29；
 - [x] 局部块不影响输出和梯度；
 - [x] 母版与实验分支机器测试通过；
 - [x] bundle 管理引用修复后的 `strict-3` 代码审核通过；
@@ -79,4 +79,4 @@
 - [x] 第一轮设备修复审核发现 R3 行曾被 R4 覆盖，已阻断；现已恢复 R3 两行失败收据与四行未启动状态，R4 改用 `RUN-007…012`，控制器只选择六个冻结 R4 行且要求其他历史行全部终结。
 - [x] CUDA 类别编号修复完成服务器真实测试、`strict-3` 复核与新的运行前冻结。
 
-当前决定：`allow_formal_runner_after_final_bundle_and_manifest_verify`。
+当前决定：`block_until_r5_parser_fix_review_and_final_bundle_verify`。

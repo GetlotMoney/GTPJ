@@ -25,12 +25,12 @@ EXPERIMENT_DIR = Path(
     "experiments/v5/ablation/ABLATION-001_local_branch_effect"
 )
 GROUP_JOBS = {
-    "FULL": ("RUN-007", "RUN-008", "RUN-009"),
-    "GLOBAL_ONLY": ("RUN-010", "RUN-011", "RUN-012"),
+    "FULL": ("RUN-013", "RUN-014"),
+    "GLOBAL_ONLY": ("RUN-015", "RUN-016"),
 }
 WRAPPER = "tools/run_v5_ablation_001_training.py"
 TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
-BOUND_RUNTIME_WORKFLOW_BLOB = "5e2f0ff39170bde4f9a3bfba4d6d69ffe2ce3387"
+BOUND_RUNTIME_WORKFLOW_BLOB = "722bb1eb1ff291ec5ce44efe8d4608317227946b"
 LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v4"
 KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
@@ -64,7 +64,7 @@ SERVER_WAREHOUSE_BASE = Path(
     "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation"
 )
 SERVER_CLAIM_ROOT = SERVER_WAREHOUSE_BASE / ".gtpj_execution_claims"
-REVIEW_PACK = Path("docs/agent_reviews/2026-08-07-v5-local-ablation")
+REVIEW_PACK = Path("docs/agent_reviews/2026-08-08-v5-local-ablation-r5-recovery")
 POST_REVIEW_ALLOWED_PATHS = {
     "docs/TECH_STACK_HISTORY.md",
     "experiments/EXPERIMENT_REGISTRY.md",
@@ -216,7 +216,7 @@ def validate_launch_manifest(path, expected_commit):
     run_ids = payload.get("run_ids")
     expected_jobs = set(sum((list(items) for items in GROUP_JOBS.values()), []))
     if not isinstance(run_ids, dict) or set(run_ids) != expected_jobs:
-        raise ValueError("启动许可清单 run_ids 必须与六个冻结 job_id 完全一致。")
+        raise ValueError("启动许可清单 run_ids 必须与本批冻结 job_id 完全一致。")
     values = list(run_ids.values())
     if len(set(values)) != len(values) or any(
         not isinstance(item, str)
@@ -1153,7 +1153,7 @@ def _read_frozen_run_ids(matrix_path):
     by_job = {row.get("job_id"): row for row in rows}
     missing = sorted(expected_jobs - set(by_job))
     if missing:
-        raise ValueError(f"冻结参数矩阵缺少本批六个 job_id：{missing}")
+        raise ValueError(f"冻结参数矩阵缺少本批 job_id：{missing}")
     terminal_statuses = {"completed", "failed", "skipped", "cancelled"}
     non_terminal_history = sorted(
         row.get("job_id", "")

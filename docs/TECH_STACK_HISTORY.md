@@ -12,12 +12,25 @@
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
 | 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
-| V5 正式实验执行器 | `SYS-RUNNER-V1.2` | 已完成，R4 可启动 | 类别编号先在 CPU 完成构造核对，再随模型进入 GPU；R3 失败历史与 R4 新运行同表保留，被审核控制器和两步冻结门均已通过机器验证及三路审核。 |
+| V5 正式实验执行器 | `SYS-RUNNER-V1.3` | 计划中 | 兼容当前 V5 中文最佳成绩结尾；保留 R4 两项成功训练，只用 R5 新身份补跑四项未启动任务。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
+
+## 2026-08-08：SYS-RUNNER-V1.3（计划中）
+
+- 本次改的是哪个对象：`V5-ABLATION-001` 的训练日志成绩读取、失败恢复账本和剩余任务队列；不改模型、训练公式、数据或评估。
+- 目标问题：R4 的 FULL 与 GLOBAL_ONLY seed 5 都以返回码 0 完成训练，但工作流只认识旧英文 `Best Results` 结尾，不认识当前入口输出的“最佳 epoch=…，U=…”，因此在训练后记账阶段报错。
+- 采用技术：成绩读取同时支持旧英文格式和当前 V5 中文完整汇总行；用真实 R4 结尾增加回归测试；参数表保留两项成功证据和四项未启动记录，R5 只新建 `RUN-013…016` 补跑 seed 17、29。
+- 替换了什么：替换“所有六项从头重跑”的恢复方式；已成功的两个 seed 5 不重复消耗 GPU，也不复用已经领取的 R4 身份。
+- 实际可见效果：R4 seed 5 已恢复为 FULL H=74.17、GLOBAL_ONLY H=73.92，配对差值为 +0.25；该单种子结果不作为最终消融结论。
+- 选择原因：不可变结束收据、训练返回码和日志哈希都证明两项训练完整成功，保留它们比手改日志或重新训练更节省且更可追溯。
+- 已知限制：R5 尚未完成审核和服务器训练；只有 seed 17、29 完成后才能判断局部分支的平均贡献与稳定性。
+- 素材位置：`workflow/gtpj_workflow.py`、`tools/run_v5_ablation_001_server_controller.py`、`tests/test_gtpj_workflow.py`、`tests/test_v5_ablation_server_runner.py`、`experiments/v5/ablation/ABLATION-001_local_branch_effect/`。
+- 验证命令与结果：计划运行日志读取专项测试、控制器测试、参数表校验、全仓回归、服务器 Linux 测试和三路独立审核。
+- 回退方式：回退 V1.3 代码候选；R4 原始 Warehouse、结束收据、训练日志和已领取身份保持不动，不能删除或复用。
 
 ## 2026-08-08：SYS-RUNNER-V1.2（已完成，R4 可启动）
 
