@@ -7512,6 +7512,7 @@ decision:
         self._write(
             f"{pack_dir}/10_final_decision.md",
             "ai_cross_review_status: pass\n"
+            f"reviewed_candidate_commit: {'a' * 40}\n"
             "owner_participation: not_required\n"
             "rounds_completed: 3\n"
             "claude_code_read_only: true\n"
@@ -7530,6 +7531,32 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("validate-ai-cross-review-ok", stdout)
         self.assertIn("rounds=3", stdout)
+
+    def test_validate_ai_cross_review_expected_commit_must_match_decision(self) -> None:
+        pack_dir = "docs/agent_reviews/2026-07-03-commit-bound"
+        self._write_valid_ai_cross_review_pack(pack_dir)
+
+        code, stdout, stderr = self._run_main(
+            "validate-ai-cross-review",
+            "--path",
+            pack_dir,
+            "--expected-commit",
+            "a" * 40,
+        )
+        self.assertEqual(0, code)
+        self.assertEqual("", stderr)
+        self.assertIn("validate-ai-cross-review-ok", stdout)
+
+        code, stdout, stderr = self._run_main(
+            "validate-ai-cross-review",
+            "--path",
+            pack_dir,
+            "--expected-commit",
+            "b" * 40,
+        )
+        self.assertEqual(1, code)
+        self.assertEqual("", stdout)
+        self.assertIn("reviewed_candidate_commit", stderr)
 
     def test_validate_ai_cross_review_accepts_independent_codex_fallback_rounds(self) -> None:
         pack_dir = "docs/agent_reviews/2026-07-03-codex-fallback"

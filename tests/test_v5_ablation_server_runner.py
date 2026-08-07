@@ -38,11 +38,12 @@ def _run_ids():
 def _launch_manifest_payload(commit, hashes=None):
     hashes = hashes or {}
     return {
-        "schema_version": "gtpj.v5_ablation_001.launch.v3",
+        "schema_version": "gtpj.v5_ablation_001.launch.v4",
         "experiment_id": "V5-ABLATION-001",
         "workflow_mode": "server_frozen_runner",
         "execution_id": f"V5-ABLATION-001-{commit[:12]}",
         "pre_run_freeze_commit": commit,
+        "reviewed_candidate_commit": hashes.get("reviewed_candidate", "a" * 40),
         "experiment_branch": controller.EXPERIMENT_BRANCH,
         "template_commit": controller.TEMPLATE_COMMIT,
         "task_start_ref": (
@@ -191,6 +192,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "validate-experiment-base":
             capture_output=True,
             text=True,
         )
+if len(sys.argv) > 1 and sys.argv[1] == "validate-ai-cross-review":
+    path = Path(sys.argv[sys.argv.index("--path") + 1])
+    expected = sys.argv[sys.argv.index("--expected-commit") + 1]
+    decision = (path / "10_final_decision.md").read_text(encoding="utf-8")
+    if f"reviewed_candidate_commit: {expected}" not in decision:
+        raise SystemExit(11)
 raise SystemExit(0)
 """,
         encoding="utf-8",
@@ -221,6 +228,34 @@ raise SystemExit(0)
         capture_output=True,
         text=True,
     ).stdout.strip()
+    review_decision.write_text(
+        "ai_cross_review_status: pass\n"
+        f"reviewed_candidate_commit: {template_commit}\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", review_decision.relative_to(repo).as_posix()],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=GTPJ Test",
+            "-c",
+            "user.email=gtpj-test@example.invalid",
+            "commit",
+            "-m",
+            "record review decision",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     if include_validation_refs:
         for branch_name in (
             "main",
@@ -298,12 +333,53 @@ raise SystemExit(0)
         "python": _sha256(sys.executable),
     }
     payload = _launch_manifest_payload(commit, hashes)
+    payload["reviewed_candidate_commit"] = template_commit
     payload["python_ref"] = Path(sys.executable).absolute().as_posix()
     payload["template_commit"] = template_commit
     return bundle, commit, payload, template_commit, data_source
 
 
 class V5AblationServerRunnerTest(unittest.TestCase):
+    def test_post_review_commit_boundary_allows_only_evidence_and_gate_files(self):
+        verify_boundary = getattr(controller, "verify_post_review_commit_boundary", None)
+        self.assertIsNotNone(verify_boundary)
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory) / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "GTPJ Test"], cwd=repo, check=True)
+            (repo / "train.py").write_text("trusted\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "review candidate"], cwd=repo, check=True, capture_output=True)
+            reviewed = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+            ).stdout.strip()
+
+            review_dir = repo / controller.REVIEW_PACK
+            review_dir.mkdir(parents=True)
+            (review_dir / "10_final_decision.md").write_text(
+                f"reviewed_candidate_commit: {reviewed}\n", encoding="utf-8"
+            )
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "record review"], cwd=repo, check=True, capture_output=True)
+            final_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+            ).stdout.strip()
+            self.assertEqual(
+                [controller.REVIEW_PACK.as_posix() + "/10_final_decision.md"],
+                verify_boundary(repo, reviewed, final_commit),
+            )
+
+            (repo / "train.py").write_text("tampered\n", encoding="utf-8")
+            subprocess.run(["git", "add", "train.py"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "tamper code"], cwd=repo, check=True, capture_output=True)
+            tampered_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+            ).stdout.strip()
+            with self.assertRaisesRegex(ValueError, "审核后.*训练代码"):
+                verify_boundary(repo, reviewed, tampered_commit)
+
     def test_training_entries_use_only_bound_runtime_roots(self):
         for relative_path in (
             "train_GTPJ_CUB.py",
@@ -534,6 +610,12 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "pre_run_freeze_commit"):
                 controller.validate_launch_manifest(path, "a" * 40)
 
+            payload = _launch_manifest_payload("a" * 40)
+            payload["reviewed_candidate_commit"] = "28185a0"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "reviewed_candidate_commit"):
+                controller.validate_launch_manifest(path, "a" * 40)
+
     def test_launch_manifest_pins_the_exact_python_path_and_hash(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "launch_manifest.json"
@@ -645,6 +727,31 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 controller, "SERVER_DATA_SOURCE", data_source.absolute()
             ):
                 with self.assertRaisesRegex(ValueError, "管理引用"):
+                    controller.verify_frozen_launch_evidence(
+                        bundle, Path(sys.executable), data_source, payload, commit
+                    )
+
+    def test_frozen_evidence_requires_experiment_branch_ref_at_exact_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _bundle, commit, payload, template_commit, data_source = _create_evidence_bundle(root)
+            bundle = root / "missing-experiment-branch.bundle"
+            explicit_refs = [
+                "HEAD",
+                *(f"refs/heads/{name}" for name in controller.VALIDATION_LOCAL_BRANCH_REFS),
+                *controller.VALIDATION_REQUIRED_TAG_REFS,
+            ]
+            subprocess.run(
+                ["git", "bundle", "create", str(bundle), *explicit_refs],
+                cwd=root / "source",
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            with patch.object(controller, "TEMPLATE_COMMIT", template_commit), patch.object(
+                controller, "SERVER_PYTHON", Path(sys.executable).absolute()
+            ), patch.object(controller, "SERVER_DATA_SOURCE", data_source.absolute()):
+                with self.assertRaisesRegex(ValueError, "实验分支"):
                     controller.verify_frozen_launch_evidence(
                         bundle, Path(sys.executable), data_source, payload, commit
                     )

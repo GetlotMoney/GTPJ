@@ -30,8 +30,8 @@ GROUP_JOBS = {
 }
 WRAPPER = "tools/run_v5_ablation_001_training.py"
 TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
-BOUND_RUNTIME_WORKFLOW_BLOB = "d387f75ae987572ef0bb8a8c9f68859be2e55ecc"
-LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v3"
+BOUND_RUNTIME_WORKFLOW_BLOB = "5e2f0ff39170bde4f9a3bfba4d6d69ffe2ce3387"
+LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v4"
 KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
 SERVER_DATA_SOURCE = Path("/data/lby/projects/cv_project/GTPJ/data")
@@ -65,6 +65,20 @@ SERVER_WAREHOUSE_BASE = Path(
 )
 SERVER_CLAIM_ROOT = SERVER_WAREHOUSE_BASE / ".gtpj_execution_claims"
 REVIEW_PACK = Path("docs/agent_reviews/2026-08-07-v5-local-ablation")
+POST_REVIEW_ALLOWED_PATHS = {
+    "docs/TECH_STACK_HISTORY.md",
+    "experiments/EXPERIMENT_REGISTRY.md",
+    "experiments/EXPERIMENT_TREE.md",
+    "experiments/PARAMETER_MATRIX_CATALOG.md",
+    "experiments/v5/ablation/INDEX.md",
+    (EXPERIMENT_DIR / "TASK_START.yaml").as_posix(),
+    (EXPERIMENT_DIR / "EXPERIMENT.yaml").as_posix(),
+    (EXPERIMENT_DIR / "README.md").as_posix(),
+    (EXPERIMENT_DIR / "result.md").as_posix(),
+    (EXPERIMENT_DIR / "quality_check.md").as_posix(),
+    (EXPERIMENT_DIR / "implementation.md").as_posix(),
+    (EXPERIMENT_DIR / "SERVER_RECOVERY.md").as_posix(),
+}
 TRUSTED_EVIDENCE_REFS = {
     "task_start_ref": EXPERIMENT_DIR / "TASK_START.yaml",
     "agent_runtime_ref": EXPERIMENT_DIR / "agent_runtime.yaml",
@@ -177,6 +191,10 @@ def validate_launch_manifest(path, expected_commit):
         raise ValueError("启动许可清单顶层必须是对象。")
     if payload.get("schema_version") != LAUNCH_MANIFEST_SCHEMA:
         raise ValueError("启动许可清单 schema_version 不正确。")
+    if not re.fullmatch(
+        r"[0-9a-f]{40}", str(payload.get("reviewed_candidate_commit", ""))
+    ):
+        raise ValueError("启动许可清单 reviewed_candidate_commit 不是 40 位小写 Git 提交号。")
     expected_values = {
         **LAUNCH_IDENTITY_VALUES,
         "execution_id": execution_id_for_commit(expected_commit),
@@ -1160,6 +1178,52 @@ def _read_frozen_run_ids(matrix_path):
     return run_ids
 
 
+def verify_post_review_commit_boundary(checkout, reviewed_commit, expected_commit):
+    """只允许审核完成后补审核记录和开跑门，不允许再改训练代码。"""
+
+    checkout = Path(checkout)
+    for value, label in (
+        (reviewed_commit, "reviewed_candidate_commit"),
+        (expected_commit, "pre_run_freeze_commit"),
+    ):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(value)):
+            raise ValueError(f"{label} 必须是 40 位小写 Git 提交号。")
+        try:
+            resolved = run_checked(
+                ["git", "rev-parse", f"{value}^{{commit}}"], cwd=checkout
+            ).stdout.strip()
+        except subprocess.CalledProcessError as exc:
+            raise ValueError(f"Git 中无法解析 {label}。") from exc
+        if resolved != value:
+            raise ValueError(f"Git 中的 {label} 不是准确提交。")
+    try:
+        run_checked(
+            ["git", "merge-base", "--is-ancestor", reviewed_commit, expected_commit],
+            cwd=checkout,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise ValueError("审核候选不是运行前冻结提交的祖先。") from exc
+    changed_paths = [
+        line.strip()
+        for line in run_checked(
+            ["git", "diff", "--name-only", reviewed_commit, expected_commit, "--"],
+            cwd=checkout,
+        ).stdout.splitlines()
+        if line.strip()
+    ]
+    review_prefix = REVIEW_PACK.as_posix() + "/"
+    forbidden = sorted(
+        path
+        for path in changed_paths
+        if path not in POST_REVIEW_ALLOWED_PATHS and not path.startswith(review_prefix)
+    )
+    if forbidden:
+        raise ValueError(
+            "审核后冻结提交仍修改了训练代码或非许可文件：" + ", ".join(forbidden)
+        )
+    return changed_paths
+
+
 def verify_frozen_launch_evidence(
     bundle,
     python,
@@ -1267,6 +1331,11 @@ def verify_frozen_launch_evidence(
         if run_checked(["git", "status", "--porcelain"], cwd=checkout).stdout.strip():
             raise ValueError("隔离校验仓库不是干净工作树。")
 
+        reviewed_candidate_commit = manifest.get("reviewed_candidate_commit", "")
+        post_review_paths = verify_post_review_commit_boundary(
+            checkout, reviewed_candidate_commit, expected_commit
+        )
+
         for ref_field, relative_path in TRUSTED_EVIDENCE_REFS.items():
             evidence_path = checkout / relative_path
             digest_field = ref_field.replace("_ref", "_sha256")
@@ -1300,7 +1369,15 @@ def verify_frozen_launch_evidence(
         for job_id in sorted(sum((list(items) for items in GROUP_JOBS.values()), [])):
             matrix_command.extend(["--ready-job-id", job_id])
         commands = [
-            [runtime_python, workflow, "validate-ai-cross-review", "--path", checkout / REVIEW_PACK],
+            [
+                runtime_python,
+                workflow,
+                "validate-ai-cross-review",
+                "--path",
+                checkout / REVIEW_PACK,
+                "--expected-commit",
+                reviewed_candidate_commit,
+            ],
             [runtime_python, workflow, "validate-agent-runtime", "--path", checkout / EXPERIMENT_DIR / "agent_runtime.yaml"],
             matrix_command,
             [runtime_python, workflow, "validate-experiment-base", "--path", checkout / EXPERIMENT_DIR],
@@ -1319,6 +1396,8 @@ def verify_frozen_launch_evidence(
             "branch": EXPERIMENT_BRANCH,
             "template_commit": TEMPLATE_COMMIT,
             "run_ids": run_ids,
+            "reviewed_candidate_commit": reviewed_candidate_commit,
+            "post_review_paths": post_review_paths,
             "validated_command_count": len(commands),
             "python_runtime": python_runtime_identity,
             "data_identity": data_identity,

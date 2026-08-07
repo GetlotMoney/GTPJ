@@ -142,6 +142,7 @@ experiments/templates/ai_cross_review_template.md
 
 ```text
 ai_cross_review_status: pass
+reviewed_candidate_commit: <40 位小写 Git 提交号>
 owner_participation: not_required
 review_tier: fast | review-1 | strict-3
 claude_rounds_required: 0 | 1 | 3
@@ -170,6 +171,8 @@ ai_cross_review_status: blocked
 
 blocked 改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
 
+正式 Runner 使用审核包时，必须执行 `validate-ai-cross-review --expected-commit <reviewed_candidate_commit>`。因为审核文字无法预先包含其自身提交号，允许在被审核代码候选之后再建一个只补审核记录和开跑门的最终冻结提交；项目控制器必须核对祖先关系，并确认这两个提交之间没有训练代码、配置、参数矩阵或工作流改动。
+
 ## 快速审核优化
 
 默认使用：
@@ -194,5 +197,5 @@ python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --task-tit
 校验证据包：
 
 ```powershell
-python workflow\gtpj_workflow.py validate-ai-cross-review --path docs\agent_reviews\YYYY-MM-DD-task-name
+python workflow\gtpj_workflow.py validate-ai-cross-review --path docs\agent_reviews\YYYY-MM-DD-task-name --expected-commit <被审核代码候选的40位提交号>
 ```

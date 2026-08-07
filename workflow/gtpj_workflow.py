@@ -10155,6 +10155,22 @@ evidence_ref: 02_codex_named_thread_pre_review.md
 def cmd_validate_ai_cross_review(args: argparse.Namespace) -> int:
     pack_dir = resolve_ai_cross_review_path(args.path)
     errors = ai_cross_review_errors(pack_dir)
+    expected_commit = str(args.expected_commit or "")
+    if expected_commit:
+        if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
+            errors.append("--expected-commit must be a 40-character lowercase Git commit")
+        else:
+            final_path = pack_dir / "10_final_decision.md"
+            reviewed_commit = (
+                single_top_level_scalar(read_text(final_path), "reviewed_candidate_commit")
+                if final_path.is_file()
+                else ""
+            )
+            if reviewed_commit != expected_commit:
+                errors.append(
+                    "10_final_decision.md reviewed_candidate_commit must exactly match "
+                    f"--expected-commit {expected_commit}"
+                )
     if errors:
         raise WorkflowError("AI 交叉审核校验失败:\n" + "\n".join(errors))
     _required_files, rounds_required, _tiered_pack = ai_cross_review_required_files_for_pack(pack_dir)
@@ -18549,6 +18565,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 分层 AI 交叉审核证据包")
     validate_ai_cross_review.add_argument("--path", required=True)
+    validate_ai_cross_review.add_argument("--expected-commit", default="")
     validate_ai_cross_review.set_defaults(func=cmd_validate_ai_cross_review)
 
     run_ai_cross_review = sub.add_parser("run-ai-cross-review", help="生成证据包并按 review_tier 调用 Claude Code 只读审核")

@@ -160,6 +160,7 @@ missing_validation:
 
 ```text
 ai_cross_review_status: pass | blocked
+reviewed_candidate_commit: <40 位小写 Git 提交号>
 owner_participation: not_required
 review_tier: fast | review-1 | strict-3
 rounds_completed: 0 | 1 | 3
