@@ -1,0 +1,81 @@
+schema_version: gtpj.task_start_card.v0
+owner_request: 彻底移除局部分支，服务器两张 GPU 并行完成完整 V5 与无局部版本的 seed 5、17、29 配对实验
+task_type: ablation
+base_version: v5
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+idea_id: ""
+trial_id: ""
+attempt_id: ""
+subject_id: V5-ABLATION-001
+subject_type: campaign_task
+runner_scope: formal_runner
+formal_runner_allowed: false
+formal_evidence_allowed: false
+github_write: experiment_branch_only
+research_write: none
+warehouse_write: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001
+agents:
+  activation_mode: role_only
+  activation_reason: 用户要求服务器两张 GPU 后台运行，训练期不创建命名线程
+  decision_basis:
+    fastest_valid_path: server_detached_role_only
+  agent_instance_mode: role_only
+  lifecycle: server_detached_formal
+  formal_runtime_backend: server_detached_role_only
+  required_roles:
+    - runner_monitor
+    - interface_checker
+    - evidence_quality_checker
+    - log_analyst
+    - result_analyst
+  required_real_agents: []
+  tool_support:
+    real_multi_agent_available: true
+    fallback_mode: role_only_server_detached
+  thread_creation_allowed: false
+  persistent_threads: false
+  memory_policy:
+    memory_used: false
+    repo_and_artifacts_are_authority: true
+  transition_permissions:
+    start_runner: blocked_until_runtime_and_review_gates_pass
+    record_result: allowed_after_run_receipts
+    promote: not_allowed_by_this_task
+  agent_runtime_gate:
+    path: agent_runtime.yaml
+    validated: false
+    validator_command: python workflow/gtpj_workflow.py validate-agent-runtime --path experiments/v5/ablation/ABLATION-001_local_branch_effect/agent_runtime.yaml
+    runner_start_allowed: false
+    formal_runner_allowed: false
+    formal_evidence_allowed: false
+owner_monitor:
+  enabled: true
+  report_channel: current_conversation
+  agent_activity_stream: AGENT_ACTIVITY.md
+  handoff_on_pause: required
+evidence_routing:
+  subject_id: V5-ABLATION-001
+  subject_type: campaign_task
+  current_state: pre_run_gated
+  authority_refs:
+    - EXPERIMENT.yaml
+    - PARAMETER_MATRIX.csv
+    - quality_check.md
+hard_gates:
+  code_review: strict-3 pending
+  agent_runtime: pending
+  artifact_boundary: pending
+  pre_run_freeze_commit: pending
+expected_outputs:
+  github:
+    - PARAMETER_MATRIX.csv
+    - result.md
+    - quality_check.md
+  research: []
+  warehouse:
+    - logs
+    - checkpoints
+    - receipts
+    - status
+blocked_reason: formal Runner blocked until strict-3 review, runtime gate and pre-run freeze commit pass

@@ -1,0 +1,36 @@
+# V5-ABLATION-001 代码差异索引
+
+这是一份给人快速定位的差异索引，不冒充完整补丁。完整补丁由 `strict-3` 审核包的 `02_diff.patch` 保存，并以运行前冻结提交为准。
+
+```text
+base: model/v5-template-v1@2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+head: exp/v5/ablation/ablation-001-local-branch-effect@pre-run-pending
+
+model/MyModel.py + train_GTPJ_CUB.py
+  = 与冻结母版逐字一致
+
+model/V5GlobalOnly.py
+  + 新增一个不含 FGVD/BVSA/SGMP 的专属模型
+  - 删除局部分数融合
+  - 删除 consistency/BMDD/MPP/negative semantic 损失
+  = 保留 PSE、ICSA、全局余弦分数、CE、topology
+
+train_V5_ABLATION_001_CUB.py
+  + 新增无局部分支专属训练入口
+  - 不读取局部配置字段，不输出局部日志
+  = 保留数据加载、类别映射、评估、优化器、学习率计划和 checkpoint 身份检查
+
+tests/
+  + 新增补丁不敏感、梯度隔离、损失边界和参数删除测试
+  = 完整 V5 专属局部测试在冻结母版工作区继续全部运行
+
+tools/
+  + 新增固定 GPU/固定入口训练包装器
+  + 新增双队列服务器控制器、状态文件和 STOP 文件机制
+```
+
+复核完整差异：
+
+```powershell
+git diff model/v5-template-v1 -- model/V5GlobalOnly.py train_V5_ABLATION_001_CUB.py tests/test_v5_global_only_ablation.py
+```

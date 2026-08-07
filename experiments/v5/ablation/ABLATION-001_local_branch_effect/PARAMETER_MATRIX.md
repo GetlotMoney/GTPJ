@@ -2,25 +2,16 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：`MODEL-V5-TEMPLATE-V1@2f5fa5e` 重新绑定的 15 行计划；旧 `codex/attempt019-local-ablation#ATTEMPT-019` 仅供回查。
+来源：正式第一批仅比较完整 V5 与干净无局部版本；seed 5、17、29 配对。
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 完整母版复跑 1 | ablation | planned | {} | 5 |  |  | 建立新母版基线；旧计划 DR-001 |  |  |  |
-| RUN-002 | 完整母版复跑 2 | ablation | planned | {} | 5 | RUN-001 |  | 建立新母版基线；旧计划 DR-002 |  |  |  |
-| RUN-003 | 完整母版复跑 3 | ablation | planned | {} | 5 | RUN-001 |  | 建立新母版基线；旧计划 DR-003 |  |  |  |
-| RUN-004 | 只关闭局部分数 1 | ablation | planned | {"local_weight":0.0} | 5 |  |  | 只测融合分数贡献；旧计划 DR-004 |  |  |  |
-| RUN-005 | 只关闭局部分数 2 | ablation | planned | {"local_weight":0.0} | 5 | RUN-004 |  | 只测融合分数贡献；旧计划 DR-005 |  |  |  |
-| RUN-006 | 只关闭局部分数 3 | ablation | planned | {"local_weight":0.0} | 5 | RUN-004 |  | 只测融合分数贡献；旧计划 DR-006 |  |  |  |
-| RUN-007 | 局部权重 0.1 复跑 1 | ablation | planned | {"local_weight":0.1} | 5 |  |  | 局部分数权重敏感性；旧计划 DR-007 |  |  |  |
-| RUN-008 | 局部权重 0.1 复跑 2 | ablation | planned | {"local_weight":0.1} | 5 | RUN-007 |  | 局部分数权重敏感性；旧计划 DR-008 |  |  |  |
-| RUN-009 | 局部权重 0.1 复跑 3 | ablation | planned | {"local_weight":0.1} | 5 | RUN-007 |  | 局部分数权重敏感性；旧计划 DR-009 |  |  |  |
-| RUN-010 | 局部权重 0.3 复跑 1 | ablation | planned | {"local_weight":0.3} | 5 |  |  | 局部分数权重敏感性；旧计划 DR-010 |  |  |  |
-| RUN-011 | 局部权重 0.3 复跑 2 | ablation | planned | {"local_weight":0.3} | 5 | RUN-010 |  | 局部分数权重敏感性；旧计划 DR-011 |  |  |  |
-| RUN-012 | 局部权重 0.3 复跑 3 | ablation | planned | {"local_weight":0.3} | 5 | RUN-010 |  | 局部分数权重敏感性；旧计划 DR-012 |  |  |  |
-| RUN-013 | 完全移除局部分支 1 | ablation | planned | {"experiment_variant":"global_only"} | 5 |  |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-013 |  |  |  |
-| RUN-014 | 完全移除局部分支 2 | ablation | planned | {"experiment_variant":"global_only"} | 5 | RUN-013 |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-014 |  |  |  |
-| RUN-015 | 完全移除局部分支 3 | ablation | planned | {"experiment_variant":"global_only"} | 5 | RUN-013 |  | 代码级移除 FGVD/BVSA/ICSA/SGMP；旧计划 DR-015 |  |  |  |
+| RUN-001 | 完整 V5 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-FULL-S5 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-002 | 完整 V5 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-003 | 完整 V5 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-FULL-S29 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-004 | 干净无局部 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+| RUN-005 | 干净无局部 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+| RUN-006 | 干净无局部 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
 
 ## 查重说明
 
