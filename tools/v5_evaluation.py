@@ -20,7 +20,7 @@ _CACHE_FILES = {
 
 
 def v5_test_cache_paths(cache_dir="./data/cache"):
-    root = Path(cache_dir).resolve()
+    root = Path(cache_dir)
     return {name: root / filename for name, filename in _CACHE_FILES.items()}
 
 

@@ -304,7 +304,7 @@ raise SystemExit(0)
 
 
 class V5AblationServerRunnerTest(unittest.TestCase):
-    def test_training_entries_recheck_tracked_files_without_rejecting_runtime_links(self):
+    def test_training_entries_use_only_bound_runtime_roots(self):
         for relative_path in (
             "train_GTPJ_CUB.py",
             "train_V5_ABLATION_001_CUB.py",
@@ -312,9 +312,17 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             source = (Path(__file__).resolve().parents[1] / relative_path).read_text(
                 encoding="utf-8"
             )
-            self.assertIn('"--untracked-files=no"', source, relative_path)
+            self.assertIn('"--data-root"', source, relative_path)
+            self.assertIn('"--train-log-root"', source, relative_path)
+            self.assertNotIn('Path("./data', source, relative_path)
+            self.assertNotIn('Path("./train_log', source, relative_path)
+            self.assertLess(
+                source.index("_require_clean_code_tree()\n", source.index("args = _parse_args()")),
+                source.index("from model."),
+                relative_path,
+            )
 
-    def test_training_checkout_allows_only_verified_runtime_links(self):
+    def test_training_checkout_must_remain_entirely_clean(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             checkout = root / "checkout"
@@ -354,17 +362,10 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
             ).stdout.strip()
-            (checkout / "data").symlink_to(data_root, target_is_directory=True)
-            (checkout / "train_log").symlink_to(
-                train_log_root, target_is_directory=True
-            )
-
             entry = validate_code_checkout(
                 checkout,
                 commit,
                 "GLOBAL_ONLY",
-                data_root=data_root,
-                train_log_root=train_log_root,
             )
             self.assertEqual(
                 (checkout / "train_V5_ABLATION_001_CUB.py").resolve(),
@@ -377,25 +378,14 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     checkout,
                     commit,
                     "GLOBAL_ONLY",
-                    data_root=data_root,
-                    train_log_root=train_log_root,
                 )
 
             (checkout / "unexpected.txt").unlink()
-            (checkout / "data").unlink()
-            wrong_data_root = root / "wrong_data"
-            wrong_data_root.mkdir()
-            (checkout / "data").symlink_to(
-                wrong_data_root, target_is_directory=True
+            (checkout / "train_V5_ABLATION_001_CUB.py").write_text(
+                "# tracked tamper\n", encoding="utf-8"
             )
-            with self.assertRaisesRegex(RuntimeError, "没有指向冻结运行目录"):
-                validate_code_checkout(
-                    checkout,
-                    commit,
-                    "GLOBAL_ONLY",
-                    data_root=data_root,
-                    train_log_root=train_log_root,
-                )
+            with self.assertRaisesRegex(RuntimeError, "干净工作树"):
+                validate_code_checkout(checkout, commit, "GLOBAL_ONLY")
 
     def test_groups_are_fixed_to_two_distinct_gpus_and_entries(self):
         self.assertEqual(
@@ -416,9 +406,60 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             controller.GROUP_JOBS["GLOBAL_ONLY"],
         )
 
+    def test_layout_uses_candidate_for_both_clean_code_roots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "candidate.bundle"
+            bundle.write_bytes(b"bundle")
+            python = root / "python"
+            python.write_bytes(b"python")
+            data_source = root / "source_data"
+            data_source.mkdir()
+            calls = []
+
+            def fake_snapshot(_source, target, _identity):
+                target.mkdir()
+                return {"snapshot_mode": "private_copy_read_only"}
+
+            def fake_clone(_bundle, target, commit, **kwargs):
+                target.mkdir()
+                calls.append((target.name, commit, kwargs))
+
+            args = SimpleNamespace(
+                runtime_root=root / "runtime",
+                warehouse_root=root / "warehouse",
+                bundle=bundle,
+                data_source=data_source,
+                python=python,
+                launch_manifest_payload={},
+                python_runtime_identity={},
+                data_runtime_identity={},
+                commit="a" * 40,
+            )
+            with patch.object(controller, "verify_python_runtime"), patch.object(
+                controller, "verify_data_source_identity"
+            ), patch.object(
+                controller, "materialize_data_snapshot", side_effect=fake_snapshot
+            ), patch.object(controller, "clone_at", side_effect=fake_clone):
+                _, _, code_roots, code_commits, _ = controller.prepare_layout(args)
+
+            self.assertEqual(
+                {"FULL": "a" * 40, "GLOBAL_ONLY": "a" * 40},
+                code_commits,
+            )
+            self.assertEqual("a" * 40, calls[0][1])
+            self.assertEqual("a" * 40, calls[1][1])
+            for code_root in code_roots.values():
+                self.assertFalse((code_root / "data").exists())
+                self.assertFalse((code_root / "train_log").exists())
+
     def test_receipt_command_names_exactly_one_python_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "data_snapshot").mkdir()
+            (root / "warehouse" / "GLOBAL_ONLY" / "train_log").mkdir(
+                parents=True
+            )
             command = controller.build_training_command(
                 Path("/data/lby/.conda/envs/dvsr_gpu/bin/python"),
                 "GLOBAL_ONLY",
@@ -431,6 +472,10 @@ class V5AblationServerRunnerTest(unittest.TestCase):
         self.assertEqual(1, sum(token.endswith(".py") for token in command.split()))
         self.assertIn("--group GLOBAL_ONLY", command)
         self.assertIn("--config", command)
+        self.assertIn("--data-device", command)
+        self.assertIn("--data-inode", command)
+        self.assertIn("--train-log-device", command)
+        self.assertIn("--train-log-inode", command)
         self.assertNotIn("&&", command)
         self.assertNotIn(";", command)
 
@@ -1135,7 +1180,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             process = Mock(pid=1234)
             process.poll.return_value = None
             cleanup_result = {
@@ -1207,7 +1252,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             gate = controller.RunGate()
             with self.assertRaisesRegex(RuntimeError, "starting status write failed"):
                 controller.run_job(
@@ -1253,7 +1298,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             process = Mock(pid=1234)
             process.poll.return_value = None
             cleanup_result = {
@@ -1346,7 +1391,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             process = Mock(pid=1234)
             process.poll.return_value = 0
             process.wait.return_value = 0
@@ -1437,7 +1482,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             process = Mock(pid=1234)
             process.poll.return_value = 1
             process.wait.return_value = 1
@@ -1517,7 +1562,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             process = Mock(pid=1234)
             process.poll.return_value = 0
             process.wait.return_value = 0
@@ -1611,7 +1656,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             stop_requested = threading.Event()
             gate = controller.RunGate()
 
@@ -1666,7 +1711,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             (experiment / "configs").mkdir()
             warehouse = root / "warehouse"
-            warehouse.mkdir()
+            (warehouse / "FULL" / "train_log").mkdir(parents=True)
             stop_requested = threading.Event()
             gate = controller.RunGate()
             original_environment = controller.os.environ.copy()

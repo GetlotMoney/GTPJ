@@ -162,4 +162,4 @@ cat <runtime-root>/recovery_handoff.json
 - 训练影响：没有进入 `train_GTPJ_CUB.py` 或 `train_V5_ABLATION_001_CUB.py`，两张 GPU 显存保持 6 MiB，没有完成任何训练 step；`RUN-002/003/005/006` 未启动；
 - 清理结果：两个包装器正常返回错误并生成经过核对的结束收据，两个 helper 进程组均已收口，`cleanup_complete: true`；
 - 证据位置：服务器 runtime 与 Warehouse 保留 R2 claim、`status.json`、`recovery_handoff.json`、启动/结束收据和完整错误日志；
-- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。修复只允许 `data` 与 `train_log` 两个未跟踪项，并逐个验证它们是符号链接且准确指向本次只读快照和对应 Warehouse；任何其他未跟踪文件或错误链接仍拒绝启动。下一批使用带 `R3` 的六个新 `run_id`。
+- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。首个链接修复候选 `d847266` 被独立审核阻断且未领取 R3 身份；当前方案彻底取消代码副本中的 `data`、`train_log` 链接，改用设备号、inode 与 Linux 目录文件描述符绑定本次只读快照和对应 Warehouse。下一批仍使用带 `R3` 的六个新 `run_id`，但只能在新候选完成服务器复验和三路审核后领取。

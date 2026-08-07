@@ -1485,12 +1485,6 @@ def clone_at(bundle, target, commit, *, bind_experiment_branch=False):
         raise RuntimeError(f"新建运行副本不干净：{target}")
 
 
-def ensure_link(link, target):
-    if link.exists() or link.is_symlink():
-        raise FileExistsError(f"拒绝覆盖已有路径：{link}")
-    link.symlink_to(target, target_is_directory=True)
-
-
 def build_training_command(
     python,
     group,
@@ -1501,6 +1495,8 @@ def build_training_command(
     data_root,
     train_log_root,
 ):
+    data_identity = os.stat(data_root, follow_symlinks=False)
+    train_log_identity = os.stat(train_log_root, follow_symlinks=False)
     tokens = [
         str(python),
         WRAPPER,
@@ -1516,6 +1512,14 @@ def build_training_command(
         str(data_root),
         "--train-log-root",
         str(train_log_root),
+        "--data-device",
+        str(data_identity.st_dev),
+        "--data-inode",
+        str(data_identity.st_ino),
+        "--train-log-device",
+        str(train_log_identity.st_dev),
+        "--train-log-inode",
+        str(train_log_identity.st_ino),
     ]
     return shlex.join(tokens)
 
@@ -1581,13 +1585,11 @@ def prepare_layout(args):
         "FULL": runtime_root / "code_FULL",
         "GLOBAL_ONLY": runtime_root / "code_GLOBAL_ONLY",
     }
-    code_commits = {"FULL": TEMPLATE_COMMIT, "GLOBAL_ONLY": args.commit}
+    code_commits = {"FULL": args.commit, "GLOBAL_ONLY": args.commit}
     for group, code_root in code_roots.items():
         clone_at(bundle, code_root, code_commits[group])
         group_warehouse = warehouse_root / group
         (group_warehouse / "train_log").mkdir(parents=True)
-        ensure_link(code_root / "data", args.run_data_source)
-        ensure_link(code_root / "train_log", group_warehouse / "train_log")
 
     ledger_roots = {}
     for job_id in sum((list(items) for items in GROUP_JOBS.values()), []):
@@ -1625,7 +1627,7 @@ def run_job(
     if len(matches) != 1 or not matches[0]["run_id"]:
         raise RuntimeError(f"{job_id} 没有唯一且非空的冻结 run_id。")
     frozen_run_id = matches[0]["run_id"]
-    code_commit = TEMPLATE_COMMIT if group == "FULL" else args.commit
+    code_commit = args.commit
     fixed_python = Path(os.path.abspath(os.fspath(args.python)))
     command = build_training_command(
         fixed_python,

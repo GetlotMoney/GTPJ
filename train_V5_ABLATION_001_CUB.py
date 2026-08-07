@@ -15,31 +15,7 @@ import torch
 import torch.optim as optim
 import yaml
 
-from model.V5GlobalOnly import GTPJ
-from tools.reproducibility import configure_reproducibility
-from tools.v5_cub_data import load_v5_cub_split
-from tools.v5_runtime import (
-    capture_rng_state,
-    input_fingerprints,
-    input_record,
-    sha256_file,
-    validate_stable_input_records,
-)
-from tools.v5_evaluation import (
-    evaluate_cached_v5,
-    load_v5_test_cache,
-    v5_test_cache_paths,
-)
-
-
 MODEL_TEMPLATE_ID = "V5-ABLATION-001-global-only@model/v5-template-v1"
-CACHE_DIR = Path("./data/cache")
-TRAIN_CLS_PATH = CACHE_DIR / "CUB_train_features.pt"
-TRAIN_PATCH_PATH = CACHE_DIR / "CUB_train_patch_features.pt"
-TRAIN_LABEL_PATH = CACHE_DIR / "CUB_train_labels.pt"
-GPT55_SENTENCE_PATH = CACHE_DIR / "CUB_gpt55_sentence_embeds.pt"
-DATA_RES101_PATH = Path("./data/xlsa17/data/CUB/res101.mat")
-DATA_SPLIT_PATH = Path("./data/xlsa17/data/CUB/att_splits.mat")
 
 V5_CONFIG_KEYS = {
     "dataset",
@@ -73,6 +49,8 @@ def _parse_args():
         ),
         help="正式母版或实验副本中的 config.yaml。",
     )
+    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--train-log-root", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -200,13 +178,39 @@ def _new_scheduler(optimizer, stage):
 
 
 args = _parse_args()
+if not args.data_root.is_dir() or not args.train_log_root.is_dir():
+    raise FileNotFoundError("无局部组训练缺少已绑定的数据或结果根目录。")
+CACHE_DIR = args.data_root / "cache"
+TRAIN_CLS_PATH = CACHE_DIR / "CUB_train_features.pt"
+TRAIN_PATCH_PATH = CACHE_DIR / "CUB_train_patch_features.pt"
+TRAIN_LABEL_PATH = CACHE_DIR / "CUB_train_labels.pt"
+GPT55_SENTENCE_PATH = CACHE_DIR / "CUB_gpt55_sentence_embeds.pt"
+DATA_RES101_PATH = args.data_root / "xlsa17/data/CUB/res101.mat"
+DATA_SPLIT_PATH = args.data_root / "xlsa17/data/CUB/att_splits.mat"
 config, config_values, config_path = _load_config(args.config)
-config_hash = sha256_file(config_path)
 _require_clean_code_tree()
 code_commit = _current_code_commit()
 
+# 必须先确认工作树完全干净，再加载任何本地模型或工具代码。
+from model.V5GlobalOnly import GTPJ
+from tools.reproducibility import configure_reproducibility
+from tools.v5_cub_data import load_v5_cub_split
+from tools.v5_runtime import (
+    capture_rng_state,
+    input_fingerprints,
+    input_record,
+    sha256_file,
+    validate_stable_input_records,
+)
+from tools.v5_evaluation import (
+    evaluate_cached_v5,
+    load_v5_test_cache,
+    v5_test_cache_paths,
+)
+config_hash = sha256_file(config_path)
+
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_dir = Path("./train_log/CUB")
+log_dir = args.train_log_root / "CUB"
 log_dir.mkdir(parents=True, exist_ok=True)
 log_path = log_dir / f"training_log_CUB_{current_time}.txt"
 
@@ -247,14 +251,14 @@ input_paths = {
     "train_patches": TRAIN_PATCH_PATH,
     "train_labels": TRAIN_LABEL_PATH,
     "gpt55_sentences": GPT55_SENTENCE_PATH,
-    **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
+    **{f"test_{name}": path for name, path in v5_test_cache_paths(CACHE_DIR).items()},
 }
 before_load_records = {name: input_record(path) for name, path in input_paths.items()}
 train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
 sentence_embeds = _load_gpt55_sentences(
     int(config.num_class), int(config.dim_f_clip), config.device
 )
-test_cache = load_v5_test_cache()
+test_cache = load_v5_test_cache(CACHE_DIR)
 seenclasses, unseenclasses = load_v5_cub_split(
     DATA_RES101_PATH,
     DATA_SPLIT_PATH,

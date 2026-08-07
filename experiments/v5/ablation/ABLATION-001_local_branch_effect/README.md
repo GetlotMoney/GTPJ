@@ -39,7 +39,7 @@ review_tier: strict-3
 - [x] 冻结 12 个正式输入文件及 split、label、class order、metric 口径；
 - [x] 本地机器测试通过；
 - [x] `agent_runtime.yaml` 与三份开跑前角色检查通过；
-- [ ] 运行时链接修复后的 `strict-3` 代码审核通过；
+- [ ] 目录句柄修复后的 `strict-3` 代码审核通过；
 - [ ] 创建新的运行前冻结提交；
 - [ ] 服务器双卡正式启动；
 - [ ] 6 次运行全部收口并做配对统计。

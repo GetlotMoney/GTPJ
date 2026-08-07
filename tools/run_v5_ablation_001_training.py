@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 
@@ -33,41 +34,24 @@ def _git(code_root, *args):
     return result.stdout.strip()
 
 
-def _validate_runtime_link(code_root, name, expected_root):
-    link = code_root / name
-    expected_root = Path(expected_root).resolve(strict=True)
-    if not link.is_symlink():
-        raise RuntimeError(f"训练代码副本的 {name} 不是受控运行时链接。")
-    if link.resolve(strict=True) != expected_root:
-        raise RuntimeError(f"训练代码副本的 {name} 没有指向冻结运行目录。")
-
-
 def validate_code_checkout(
     code_root,
     commit,
     group,
-    *,
-    data_root,
-    train_log_root,
 ):
     code_root = Path(code_root).resolve()
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("--commit 必须是 40 位小写 Git 提交号。")
     if _git(code_root, "rev-parse", "HEAD") != commit:
         raise RuntimeError("训练代码副本 HEAD 与运行前冻结提交不一致。")
-    status_lines = set(
-        _git(
-            code_root,
-            "status",
-            "--porcelain",
-            "--untracked-files=all",
-        ).splitlines()
+    status = _git(
+        code_root,
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
     )
-    expected_runtime_links = {"?? data", "?? train_log"}
-    if status_lines != expected_runtime_links:
+    if status:
         raise RuntimeError("训练代码副本不是干净工作树。")
-    _validate_runtime_link(code_root, "data", data_root)
-    _validate_runtime_link(code_root, "train_log", train_log_root)
 
     spec = training_spec(group)
     entry = code_root / spec["entry"]
@@ -84,12 +68,13 @@ def validate_code_checkout(
                 TEMPLATE_TAG,
                 "--",
                 "model/MyModel.py",
-                "train_GTPJ_CUB.py",
                 "config/versions/v5.yaml",
+                "tools/reproducibility.py",
+                "tools/v5_cub_data.py",
             ]
         )
         if result.returncode != 0:
-            raise RuntimeError("完整组的母版模型、训练入口或配置已偏离冻结 Tag。")
+            raise RuntimeError("完整组的模型、配置、数据或评估代码已偏离冻结 Tag。")
     else:
         required = [
             code_root / "model" / "V5GlobalOnly.py",
@@ -100,6 +85,64 @@ def validate_code_checkout(
     return entry
 
 
+def _open_bound_directory(path, *, expected_device, expected_inode, label):
+    if sys.platform != "linux":
+        raise RuntimeError("目录文件描述符绑定只允许在 Linux 正式服务器运行。")
+    path = Path(path)
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open(path, flags)
+    try:
+        identity = os.fstat(descriptor)
+        if not stat.S_ISDIR(identity.st_mode):
+            raise RuntimeError(f"{label} 不是目录。")
+        if (identity.st_dev, identity.st_ino) != (
+            int(expected_device),
+            int(expected_inode),
+        ):
+            raise RuntimeError(f"{label} 在启动前被替换。")
+        os.set_inheritable(descriptor, True)
+        reference = f"/proc/self/fd/{descriptor}"
+        if not Path(reference).is_dir():
+            raise RuntimeError(f"{label} 的文件描述符不可用。")
+        return descriptor, reference
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def bind_runtime_roots(
+    data_root,
+    train_log_root,
+    *,
+    data_device,
+    data_inode,
+    train_log_device,
+    train_log_inode,
+):
+    data_fd, data_ref = _open_bound_directory(
+        data_root,
+        expected_device=data_device,
+        expected_inode=data_inode,
+        label="只读数据根目录",
+    )
+    try:
+        train_log_fd, train_log_ref = _open_bound_directory(
+            train_log_root,
+            expected_device=train_log_device,
+            expected_inode=train_log_inode,
+            label="训练结果根目录",
+        )
+    except BaseException:
+        os.close(data_fd)
+        raise
+    return {
+        "data_fd": data_fd,
+        "data_ref": data_ref,
+        "train_log_fd": train_log_fd,
+        "train_log_ref": train_log_ref,
+    }
+
+
 def parse_args():
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("--config", type=Path, required=True)
@@ -108,6 +151,10 @@ def parse_args():
     parser.add_argument("--group", choices=sorted(GROUP_SPECS), required=True)
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--train-log-root", type=Path, required=True)
+    parser.add_argument("--data-device", type=int, required=True)
+    parser.add_argument("--data-inode", type=int, required=True)
+    parser.add_argument("--train-log-device", type=int, required=True)
+    parser.add_argument("--train-log-inode", type=int, required=True)
     return parser.parse_args()
 
 
@@ -121,8 +168,14 @@ def main():
         code_root,
         args.commit,
         args.group,
-        data_root=args.data_root,
-        train_log_root=args.train_log_root,
+    )
+    binding = bind_runtime_roots(
+        args.data_root,
+        args.train_log_root,
+        data_device=args.data_device,
+        data_inode=args.data_inode,
+        train_log_device=args.train_log_device,
+        train_log_inode=args.train_log_inode,
     )
     spec = training_spec(args.group)
 
@@ -138,11 +191,24 @@ def main():
     if not Path(bound_python).is_file():
         raise RuntimeError("受信 Python 文件描述符已经失效。")
     os.chdir(code_root)
-    os.execve(
-        bound_python,
-        [sys.executable, str(entry), "--config", str(config)],
-        environment,
-    )
+    try:
+        os.execve(
+            bound_python,
+            [
+                sys.executable,
+                str(entry),
+                "--config",
+                str(config),
+                "--data-root",
+                binding["data_ref"],
+                "--train-log-root",
+                binding["train_log_ref"],
+            ],
+            environment,
+        )
+    finally:
+        os.close(binding["data_fd"])
+        os.close(binding["train_log_fd"])
 
 
 if __name__ == "__main__":
