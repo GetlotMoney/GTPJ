@@ -101,7 +101,7 @@ process_evidence_state: incomplete_before_training_pid
 
 ## 停止后留下什么
 
-- `status.json`：控制器和六个 RUN 的最终状态、helper PID、训练 PID、清理结果和收据状态；
+- `status.json`：控制器和本批全部 RUN 的最终状态、helper PID、训练 PID、清理结果和收据状态；
 - `recovery_handoff.json`：需要处理的 RUN、旧账本副本和下一步动作；
 - `.gtpj_execution_claims/<execution_id>.json`：不可重复使用的执行身份和六个 `run_id`；
 - `.gtpj_execution_claims/<execution_id>.failure.json`：领取身份后建目录、克隆或状态写入失败时的不可覆盖凭证；

@@ -19,3 +19,4 @@ named_training_threads: none
 - evidence_quality_checker：为四个 R5 任务逐一固定启动收据、结束收据、封口日志、内部日志和最佳模型的文件大小与 SHA-256；
 - result_analyst：三种子 H 配对差值为 `+0.25/-0.09/+0.09`，均值 `+0.08`，当前证据不支持稳定 H 增益；
 - 训练阶段没有创建命名任务；训练后正式结论另走 strict-3 独立复核。
+- strict-3 训练后复核：`/root/r5_recovery_audit@a9f8a83`、`/root/scientific_semantics_review@a9f8a83`、`/root/release_reliability_review@a9f8a83` 三路均为 PASS，无阻断。

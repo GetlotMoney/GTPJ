@@ -70,7 +70,7 @@ hard_gates:
   artifact_boundary: pass
   pre_run_freeze_commit: pass
   formal_runner_completion: pass
-  post_run_result_review: pending
+  post_run_result_review: strict-3 pass
 expected_outputs:
   github:
     - PARAMETER_MATRIX.csv

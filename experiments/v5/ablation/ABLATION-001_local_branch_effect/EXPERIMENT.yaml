@@ -12,7 +12,7 @@ template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
 legacy_ref: codex/attempt019-local-ablation#ATTEMPT-019
 status: completed
-result_review_status: pending
+result_review_status: strict_3_pass
 research_question: 彻底移除局部子系统后，V5 的 CUB GZSL 分类性能变化多大
 disabled_subsystem:
   - FGVD
@@ -29,4 +29,4 @@ preserved_subsystem:
 formal_evidence: true
 workflow_mode: server_frozen_runner
 review_tier: strict-3
-implementation_status: formal_runs_completed_result_review_pending
+implementation_status: formal_runs_completed_and_reviewed

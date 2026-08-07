@@ -24,7 +24,7 @@ Project: GTPJ
 | `V3-TUNE-001` | `FRAMEWORK-V3` | tune | completed | `experiments/v3/tune/TUNE-001_local_v3_054` | `v4 legacy config-only` |
 | `V3-CONFIRM-001` | `FRAMEWORK-V3` | confirmation | completed | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | `RUN-20260629-1722` |
 | `V3-INNOVATION-001` | `FRAMEWORK-V3` | innovation | legacy_owner_activated | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa` | `TRIAL-003 -> FRAMEWORK-V5；历史 owner 激活` |
-| `V5-ABLATION-001` | `FRAMEWORK-V5` | ablation | completed | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | `三种子 FULL/GLOBAL_ONLY 配对完成；平均 H 差值 +0.08，训练后 strict-3 复核中` |
+| `V5-ABLATION-001` | `FRAMEWORK-V5` | ablation | completed | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | `三种子 FULL/GLOBAL_ONLY 配对完成；平均 H 差值 +0.08，训练后 strict-3 已通过` |
 | `V5-TUNE-001` | `FRAMEWORK-V5` | tune | completed | `experiments/v5/tune/TUNE-001_dynamic_routing_search` | `ATTEMPT-006 / DR-003..010，8 个真实任务` |
 | `V5-INNOVATION-001` | `FRAMEWORK-V5` | innovation | candidate | `experiments/v5/innovation/INNOVATION-001_dynamic_routing` | `ATTEMPT-006 / DR-001..002 已逐任务恢复；其余见 LEGACY_ATTEMPT_MAP.md` |
 

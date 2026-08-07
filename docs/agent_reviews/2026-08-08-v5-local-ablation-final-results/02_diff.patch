@@ -1,0 +1,9 @@
+Reviewed Git range:
+  66302091e6e7403e094f8e1fe69b6bf6874abdf9..a9f8a83c2c0fa2c86cb5b53443579d8ddfd26f1d
+
+Exact review commands:
+  git diff --stat 66302091e6e7403e094f8e1fe69b6bf6874abdf9..a9f8a83c2c0fa2c86cb5b53443579d8ddfd26f1d
+  git diff --check 66302091e6e7403e094f8e1fe69b6bf6874abdf9..a9f8a83c2c0fa2c86cb5b53443579d8ddfd26f1d
+  git diff 66302091e6e7403e094f8e1fe69b6bf6874abdf9..a9f8a83c2c0fa2c86cb5b53443579d8ddfd26f1d
+
+Scope: 17 lightweight ledger/document files, 88 insertions, 37 deletions. No model, training, evaluation, data, config, workflow, log, checkpoint, or bundle change.

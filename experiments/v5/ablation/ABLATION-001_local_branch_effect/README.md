@@ -3,7 +3,7 @@
 ```yaml
 framework: FRAMEWORK-V5
 status: completed
-result_review_status: pending
+result_review_status: strict_3_pass
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
@@ -49,7 +49,7 @@ review_tier: strict-3
 - [x] R5 通过新一轮审核和冻结后在服务器双卡启动；
 - [x] 剩余 4 次运行收口，并与已恢复的 seed 5 一起完成三种子配对统计；
 - [x] 四条 R5 运行均返回 0，收据、日志、最佳模型和证据清单已封存；
-- [ ] 完成训练后 strict-3 结果复核，再把结论状态改为正式完成。
+- [x] 完成训练后 strict-3 三路结果复核，正式结论无阻断。
 
 ## 运行分配
 

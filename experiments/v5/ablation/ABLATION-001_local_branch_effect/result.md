@@ -1,6 +1,6 @@
 # V5-ABLATION-001 结果
 
-状态：`completed_pending_post_run_review`。R4 的 seed 5 与 R5 的 seed 17、29 均已完成，六条有效训练全部有返回码 0、结束收据、封口日志和最佳模型证据；正式结论正在做训练后复核。
+状态：`completed_reviewed`。R4 的 seed 5 与 R5 的 seed 17、29 均已完成，六条有效训练全部有返回码 0、结束收据、封口日志和最佳模型证据；训练后 strict-3 三路复核均为 PASS。
 
 | seed | 组别 | U | S | H | ZS | best epoch |
 |---:|---|---:|---:|---:|---:|---:|
