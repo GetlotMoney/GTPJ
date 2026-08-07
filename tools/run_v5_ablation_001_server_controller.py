@@ -370,6 +370,23 @@ def write_recovery_handoff(path, status_data):
     temp.replace(path)
 
 
+def write_launch_failure_record(path, *, helper_pid, status_error, cleanup):
+    """状态账本不可写时，在 RUN 目录保留不可覆盖的最小故障凭证。"""
+
+    payload = {
+        "schema_version": "gtpj.v5_ablation_001.launch_failure.v1",
+        "helper_pid": int(helper_pid),
+        "status_error": f"{type(status_error).__name__}: {status_error}",
+        "cleanup": cleanup,
+        "recorded_at_epoch": time.time(),
+    }
+    path = Path(path)
+    with path.open("x", encoding="utf-8", newline="\n") as stream:
+        json.dump(payload, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    return path
+
+
 def run_checked(command, *, cwd=None):
     return subprocess.run(
         [str(item) for item in command],
@@ -840,12 +857,39 @@ def run_job(
                 helper_pid=helper_process.pid,
                 helper_process_group_id=helper_process.pid,
             )
-        except BaseException:
-            cleanup_process_tree(
-                helper_process=helper_process,
-                training_log=training_log,
-                receipt=receipt,
-            )
+        except BaseException as status_error:
+            try:
+                launch_cleanup = cleanup_process_tree(
+                    helper_process=helper_process,
+                    training_log=training_log,
+                    receipt=receipt,
+                )
+            except BaseException as cleanup_error:
+                launch_cleanup = {
+                    "cleanup_complete": False,
+                    "process_evidence_state": "incomplete_cleanup_exception",
+                    "errors": [f"{type(cleanup_error).__name__}: {cleanup_error}"],
+                }
+            try:
+                write_launch_failure_record(
+                    job_dir / "launch_failure.json",
+                    helper_pid=helper_process.pid,
+                    status_error=status_error,
+                    cleanup=launch_cleanup,
+                )
+            except BaseException as record_error:
+                raise RuntimeError(
+                    "running 状态写入失败，且 launch_failure.json 无法落盘；"
+                    f"helper_pid={helper_process.pid}；"
+                    f"cleanup_complete={launch_cleanup.get('cleanup_complete')}；"
+                    f"record_error={type(record_error).__name__}: {record_error}"
+                ) from status_error
+            if not launch_cleanup.get("cleanup_complete"):
+                raise RuntimeError(
+                    "running 状态写入失败且 helper 进程树清理不完整；"
+                    f"helper_pid={helper_process.pid}；"
+                    f"errors={launch_cleanup.get('errors', [])}"
+                ) from status_error
             raise
         return helper_process
 

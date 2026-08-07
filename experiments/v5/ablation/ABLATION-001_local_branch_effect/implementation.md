@@ -43,6 +43,7 @@
 - 冻结证据校验调用 `validate-experiment-base` 时传入完整实验目录；测试中的最小工作流会检查该路径确实包含 `EXPERIMENT.yaml`，防止参数写错却被假校验放过；
 - 最终的失败检查与 `Popen` 在同一把锁内；任一 RUN 失败登记完成后，两个队列都不能再启动后续 RUN；
 - `Popen` 与首次 `running` 状态写入也在同一把锁内；如果状态无法落盘，会先清理刚创建的 helper 并锁住另一队列；
+- 上述启动期清理结果写入不可覆盖的 `launch_failure.json`；清理不完整时错误会携带 helper PID 和清理错误，不会丢失孤儿进程线索；
 - finish receipt 或清理异常会在写后续状态前立即登记共享失败，另一队列不能利用异常处理窗口启动后续 RUN；
 - 正式控制器只接受 `sys.platform == linux` 且具备真实进程组和 `SIGKILL` 的环境，Windows、macOS 和 BSD 均不能正式运行；
 - 本实验的无局部分支入口不提供续训参数，不读取外部 checkpoint；停止后的重跑必须新建冻结 RUN；

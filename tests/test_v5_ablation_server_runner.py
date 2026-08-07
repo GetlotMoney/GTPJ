@@ -595,8 +595,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 "training_pid": 4321,
                 "training_termination": "terminated",
                 "helper_termination": None,
-                "cleanup_complete": True,
-                "errors": [],
+                "cleanup_complete": False,
+                "errors": ["helper still alive"],
                 "finish_receipt": str(root / "finish.json"),
                 "process_evidence_state": "process_tree_stopped",
                 "receipt_state": "incomplete_missing_finish_receipt",
@@ -607,7 +607,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 "cleanup_process_tree",
                 return_value=cleanup_result,
             ) as cleanup:
-                with self.assertRaisesRegex(RuntimeError, "status write failed"):
+                with self.assertRaisesRegex(RuntimeError, "清理不完整"):
                     controller.run_job(
                         args=SimpleNamespace(
                             python=Path(sys.executable),
@@ -625,6 +625,11 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     )
             cleanup.assert_called_once()
             self.assertFalse(gate.claim_start())
+            failure_record = warehouse / "RUN-001" / "launch_failure.json"
+            self.assertTrue(failure_record.is_file())
+            payload = json.loads(failure_record.read_text(encoding="utf-8"))
+            self.assertEqual(1234, payload["helper_pid"])
+            self.assertFalse(payload["cleanup"]["cleanup_complete"])
 
     def test_starting_status_write_failure_blocks_other_queue_immediately(self):
         class FailOnStartingStatus:

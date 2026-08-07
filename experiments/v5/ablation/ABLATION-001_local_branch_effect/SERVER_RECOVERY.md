@@ -64,6 +64,11 @@ process_evidence_state: incomplete_before_training_pid
 结束收据无效、状态落盘失败或清理不完整一经发现，会先在共享启动锁中登记失败，再继续写状态
 或向上抛错；另一张卡不能利用异常处理的时间窗口领取下一项 RUN。
 
+如果 helper 已创建但首次 `running` 状态无法落盘，控制器会在仍持有启动锁时立即清理该 helper，
+并在本项 RUN 目录写入不可覆盖的 `launch_failure.json`，记录 helper PID、原始状态错误和完整清理
+结果。`cleanup_complete` 不是 `true` 时会明确报“进程树清理不完整”，不会丢掉 PID 或把它伪装成
+普通状态写入失败。
+
 每个已启动 RUN 的 `run_start_receipt.finish.json` 还会再次核对：JSON 结构、`job_id`、
 `run_id`、启动收据哈希、退出码、PID 和日志哈希。文件只存在但内容对不上，仍然属于证据不完整，
 不能作为正式结果。
@@ -74,6 +79,7 @@ process_evidence_state: incomplete_before_training_pid
 - `recovery_handoff.json`：需要处理的 RUN、旧账本副本和下一步动作；
 - `.gtpj_execution_claims/<execution_id>.json`：不可重复使用的执行身份和六个 `run_id`；
 - 每个已启动 RUN 的启动收据、结束收据、训练日志和 helper 日志；
+- 首次运行状态落盘失败时的 `launch_failure.json`；
 - Warehouse 中已经产生的模型、checkpoint 和训练日志，全部保留，不自动删除。
 
 ## 恢复规则
