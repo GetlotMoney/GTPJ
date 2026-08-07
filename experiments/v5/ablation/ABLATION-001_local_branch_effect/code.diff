@@ -4,7 +4,7 @@
 
 ```text
 base: model/v5-template-v1@2f5fa5e631ef82658d4bac587cdfd17f3534cb35
-head: exp/v5/ablation/ablation-001-local-branch-effect@pre-run-pending
+head: exp/v5/ablation/ablation-001-local-branch-effect@HEAD（以 launch manifest 中的 40 位冻结提交为准）
 
 model/MyModel.py + train_GTPJ_CUB.py
   = 与冻结母版逐字一致
@@ -36,7 +36,7 @@ tools/
   + DATA_MANIFEST.json 固定 12 个 CUB/xlsa17 输入及 split/label/class-order/metric 口径；每个 RUN 重算完整哈希
   + execution_id 与六个 run_id 在服务器持久领取，禁止重复启动
   + runtime、Warehouse 与领取记录使用固定服务器父目录，不能换目录绕过
-  + 双队列最终检查和 Popen 使用同一把锁
+  + 目录、环境和日志先准备，最后 STOP 检查通过后的第一项动作直接是 Popen；整个启动段使用同一把锁
   + signal handler 只设置停止事件；异常路径用 `/proc` 核对并用 pidfd 绑定具体进程
   + helper 先退出时仍继续回收同一受信会话中的训练子进程；正常信号不按裸 PID 发送
   + 收据或清理异常先锁住双队列，再继续写状态或抛错
