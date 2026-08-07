@@ -171,7 +171,7 @@ ai_cross_review_status: blocked
 
 blocked 改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
 
-正式 Runner 使用审核包时，必须执行 `validate-ai-cross-review --expected-commit <reviewed_candidate_commit>`。因为审核文字无法预先包含其自身提交号，允许在被审核代码候选之后再建一个只补审核记录和开跑门的最终冻结提交；项目控制器必须核对祖先关系，并确认这两个提交之间没有训练代码、配置、参数矩阵或工作流改动。
+正式 Runner 使用审核包时，必须执行 `validate-ai-cross-review --expected-commit <reviewed_candidate_commit>`。因为审核文字无法预先包含其自身提交号，允许在被审核代码候选之后再建一个只补审核记录和开跑门的最终冻结提交；项目控制器必须从被审核代码候选的干净 checkout 执行，核对祖先关系，并确认这两个提交之间没有训练代码、配置、参数矩阵或工作流改动。不能执行最终提交里的控制器来自我证明最终提交安全。
 
 ## 快速审核优化
 

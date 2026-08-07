@@ -380,6 +380,46 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "审核后.*训练代码"):
                 verify_boundary(repo, reviewed, tampered_commit)
 
+    def test_formal_controller_must_execute_from_reviewed_candidate_checkout(self):
+        verify_controller = getattr(controller, "verify_reviewed_controller_checkout", None)
+        self.assertIsNotNone(verify_controller)
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory) / "repo"
+            controller_path = repo / "tools/run_v5_ablation_001_server_controller.py"
+            controller_path.parent.mkdir(parents=True)
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "GTPJ Test"], cwd=repo, check=True)
+            controller_path.write_text("# reviewed controller\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "review controller"], cwd=repo, check=True, capture_output=True)
+            reviewed = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+            ).stdout.strip()
+            self.assertEqual(reviewed, verify_controller(reviewed, controller_path)["commit"])
+
+            controller_path.write_text("# bypass all checks\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "tamper controller"], cwd=repo, check=True, capture_output=True)
+            with self.assertRaisesRegex(ValueError, "被审核代码候选"):
+                verify_controller(reviewed, controller_path)
+
+    def test_main_rejects_unreviewed_controller_before_binding_python(self):
+        args = SimpleNamespace(launch_manifest=Path("manifest.json"), commit="b" * 40)
+        manifest = {"reviewed_candidate_commit": "a" * 40}
+        with patch.object(controller, "parse_args", return_value=args), patch.object(
+            controller, "ensure_supported_platform"
+        ), patch.object(controller.signal, "signal"), patch.object(
+            controller, "validate_launch_manifest", return_value=(manifest, "f" * 64)
+        ), patch.object(
+            controller,
+            "verify_reviewed_controller_checkout",
+            side_effect=ValueError("控制器不是被审核代码候选"),
+        ), patch.object(controller, "bind_python_runtime") as bind_python:
+            with self.assertRaisesRegex(ValueError, "被审核代码候选"):
+                controller.main()
+        bind_python.assert_not_called()
+
     def test_training_entries_use_only_bound_runtime_roots(self):
         for relative_path in (
             "train_GTPJ_CUB.py",

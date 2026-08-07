@@ -1,5 +1,5 @@
 diff --git a/docs/TECH_STACK_HISTORY.md b/docs/TECH_STACK_HISTORY.md
-index dc604d9..a9587f9 100644
+index dc604d9..98e58d9 100644
 --- a/docs/TECH_STACK_HISTORY.md
 +++ b/docs/TECH_STACK_HISTORY.md
 @@ -12,13 +12,26 @@
@@ -24,7 +24,7 @@ index dc604d9..a9587f9 100644
 +- 选择原因：根因位于入口的设备选择，最小修复只改两个相同调用参数，比修改冻结模型中的类别身份校验更容易证明不影响数学结果。
 +- 已知限制：当前条目仍在复核中；本地没有 CUDA，只能验证入口静态约束和 CPU 行为，必须以服务器真实 CUDA 测试及重新启动后的训练日志为准。相同 seed 仍不代表两种结构逐元素共享初始化。
 +- 素材位置：`train_GTPJ_CUB.py`、`train_V5_ABLATION_001_CUB.py`、`tests/test_v5_global_only_ablation.py`、`experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md`。
-+- 验证命令与结果：本地新增测试已先复现两个入口错误地请求 CUDA 类别编号，再在最小修复后通过；当前完整回归 349 项中 343 项通过、6 项按平台跳过。首个设备修复候选已通过服务器 CUDA 测试，但因覆盖失败历史被审核阻断；随后审核又复现“旧审核可误放行新提交”，现已新增 `reviewed_candidate_commit`、审核后差异白名单及对应失败测试，最终候选仍需服务器复验与三路审核。
++- 验证命令与结果：本地新增测试已先复现两个入口错误地请求 CUDA 类别编号，再在最小修复后通过；当前完整回归为 351 项中 345 项通过、6 项按平台跳过。审核先后复现“覆盖失败历史”“旧审核误放行新提交”和“最终提交篡改控制器后自我放行”，现已分别用历史同表、`reviewed_candidate_commit`、审核后差异白名单和被审核控制器 checkout 身份门关闭；新候选仍需服务器复验与三路审核。
 +- 回退方式：回退本实验分支上的两个入口参数和对应测试、台账；冻结母版、R1/R2/R3 失败证据、claim 与服务器结果目录全部保持不动，R3 身份仍禁止复用。
 +
  ## 2026-08-08：SYS-RUNNER-V1.1（已完成）
@@ -40,7 +40,7 @@ index dc604d9..a9587f9 100644
  ## 2026-08-07：SYS-RUNNER-V1（软链接路线已放弃，前序修复保留）
 
 diff --git a/docs/agent_reviews/2026-08-07-v5-local-ablation/00_task.md b/docs/agent_reviews/2026-08-07-v5-local-ablation/00_task.md
-index 616b2d2..ddb5f9a 100644
+index 616b2d2..0b37da9 100644
 --- a/docs/agent_reviews/2026-08-07-v5-local-ablation/00_task.md
 +++ b/docs/agent_reviews/2026-08-07-v5-local-ablation/00_task.md
 @@ -4,9 +4,11 @@ claude_rounds_required: 3
@@ -53,7 +53,7 @@ index 616b2d2..ddb5f9a 100644
 -最终审核候选：`28185a0f1f1c2bdc9b6239cbbc919165a84077df`；本轮增量范围为 `50369c8b8154c163ac7ad6262bda492bd4e3d5e0..28185a0f1f1c2bdc9b6239cbbc919165a84077df`。`50369c8b` 的第二次正式执行因 `data`/`train_log` 链接被误判而失败；首个修复候选 `d847266` 又被独立审核证明没有改到 FULL 实际入口，并存在检查后换链风险。最终候选必须证明代码副本完全不依赖运行时链接，FULL 与 GLOBAL_ONLY 都执行本次候选入口，数据和结果目录由跨进程保留的 Linux 目录文件描述符固定。
 +最终审核候选以本文件所在提交为准，审核记录必须填写其 40 位提交号；本轮增量范围为 `cca4e0e6419a462d36df5cad5177562cbf8fb31e..审核候选`。`cca4e0e` 的 R3 正式执行已经通过 Git、数据、目录句柄和双卡启动门，并进入 FULL 与 GLOBAL_ONLY 的真实模型入口；两个入口随后都因类别编号和初始化核对张量分处 CUDA/CPU 而返回 1。最终候选必须证明：类别编号只在模型构造前留在 CPU，构造后随模型迁入 GPU；模型、损失、评估、数据和配对语义不变；R3 六个身份及失败证据完整保留，R4 使用六个新 job/run 身份。
 +
-+为避免提交号自引用，审核采用两步冻结：先审核代码候选，再提交只含审核记录和开跑门的证据提交。`10_final_decision.md` 的 `reviewed_candidate_commit` 必须绑定前一步代码候选；控制器还会确认代码候选是最终冻结提交的祖先，且两者之间没有训练代码、配置、参数矩阵或工作流改动。
++为避免提交号自引用，审核采用两步冻结：先审核代码候选，再提交只含审核记录和开跑门的证据提交。`10_final_decision.md` 的 `reviewed_candidate_commit` 必须绑定前一步代码候选；正式控制器必须从该代码候选的干净独立 checkout 执行，不能从最终提交运行一个可能自我放宽的版本。它还会确认代码候选是最终冻结提交的祖先，且两者之间没有训练代码、配置、参数矩阵或工作流改动。
 
  母版提交：`2f5fa5e631ef82658d4bac587cdfd17f3534cb35`。
 
@@ -69,7 +69,7 @@ index 3e515e9..8704e4b 100644
 +- 先增加静态失败测试，证明两个训练入口都错误地把类别编号提前送往 CUDA；再把两个 `load_v5_cub_split` 调用的设备参数统一改为 CPU。模型完成构造后，类别编号作为注册缓冲仍会随 `.to("cuda")` 进入 GPU，训练计算没有改成 CPU。
 +- R3 execution 和六个 R3 `run_id` 永不复用。第一路复核发现首个设备修复候选直接用 R4 覆盖了 R3 六行，因此立即阻断；随后回填 R3 两行失败收据与四行未启动状态，R4 改用 `RUN-007…012` 和六个全新 `run_id`，逐行通过 `repeat_of` 指回 R3。控制器也改为从历史同表中只选择六个冻结 R4 行，并要求其他行全部是终态。
 diff --git a/docs/agent_reviews/2026-08-07-v5-local-ablation/02_focused_diff.md b/docs/agent_reviews/2026-08-07-v5-local-ablation/02_focused_diff.md
-index fcda769..8ffc97a 100644
+index fcda769..1f9fdaf 100644
 --- a/docs/agent_reviews/2026-08-07-v5-local-ablation/02_focused_diff.md
 +++ b/docs/agent_reviews/2026-08-07-v5-local-ablation/02_focused_diff.md
 @@ -2,8 +2,8 @@
@@ -83,7 +83,7 @@ index fcda769..8ffc97a 100644
  - `tests/test_v5_global_only_ablation.py`：证明局部块不能改变输出、不能收到梯度，且局部模块没有被实例化。
 
  ## 正式服务器执行
-@@ -17,10 +17,19 @@
+@@ -17,10 +17,20 @@
  - 两个代码副本都 checkout 本次候选提交，Git 状态必须完全为空，不再创建 `data` 或 `train_log` 链接；FULL 的模型、配置、数据划分和保留工具仍与冻结母版逐项比对。
  - 控制器把真实数据和结果目录的设备号、inode 写入唯一训练命令；包装器用 `O_NOFOLLOW` 打开并核对目录身份，把可继承文件描述符的 `/proc/self/fd/<编号>` 交给两个训练入口。
  - `train_GTPJ_CUB.py` 与 `train_V5_ABLATION_001_CUB.py` 在导入本地模型或工具之前先检查工作树；缓存、xlsa17、评估和结果路径只从绑定目录构造。`tools/v5_evaluation.py` 与 `tools/v5_runtime.py` 不再把 `/proc/self/fd` 路径解析回可替换的普通路径。
@@ -98,6 +98,7 @@ index fcda769..8ffc97a 100644
 +- R3 身份永不复用；参数矩阵同表保留 R3 的 `RUN-001…006`，R4 使用新 `RUN-007…012` 和六个新 `run_id`，逐行 `repeat_of`，配对 seed 仍为 5、17、29。
 +- 通用参数表校验新增“只选择本批冻结行”的模式；没有被选择的历史行必须已经结束。控制器据此只领取 R4 六行，并拒绝重复 job、缺失 R4、未结束历史行或任何复用的 `run_id`。
 +- 最终审核文件新增 `reviewed_candidate_commit`。正式启动时，审核校验器必须精确匹配该代码候选；最终冻结提交只能在其后补审核记录与开跑门，若又改训练代码、配置、参数矩阵或工作流，控制器直接拒绝。
++- 启动入口还会核对自身 checkout：HEAD 必须就是 `reviewed_candidate_commit`，控制器文件必须与该提交的 Git 对象一致且工作树完全干净。最终证据提交里的控制器即使内容相同也不能作为正式入口，避免它自我删除审核后差异检查。
 
  ## 需要诚实保留的边界
 
@@ -106,7 +107,7 @@ index fcda769..8ffc97a 100644
 -首次失败执行没有生成训练 PID，也没有产生精度结果；它只能证明旧初始化失败，不能参与局部分支效果比较。
 +前三次失败执行都没有产生可用精度；R3 虽进入模型入口，但仍在第一个训练 step 前退出，因此三批失败证据都不能参与局部分支效果比较。
 diff --git a/docs/agent_reviews/2026-08-07-v5-local-ablation/02_review_brief.md b/docs/agent_reviews/2026-08-07-v5-local-ablation/02_review_brief.md
-index 20786f2..7f8e278 100644
+index 20786f2..e9ba31e 100644
 --- a/docs/agent_reviews/2026-08-07-v5-local-ablation/02_review_brief.md
 +++ b/docs/agent_reviews/2026-08-07-v5-local-ablation/02_review_brief.md
 @@ -4,7 +4,7 @@ claude_rounds_required: 3
@@ -118,7 +119,7 @@ index 20786f2..7f8e278 100644
 
  1. 两个实验组是否只差局部子系统；
  2. 数据、类别顺序、指标和全局路线是否保持一致；
-@@ -13,10 +13,13 @@ claude_rounds_required: 3
+@@ -13,10 +13,14 @@ claude_rounds_required: 3
  5. 文档是否把预检结果误写成正式精度结论。
  6. bundle clone 后，所有全仓治理所需本地分支是否只按已核对的对象号恢复，错误或缺失引用是否拒绝启动。
  7. 六个 RUN 账本是否真正处于实验分支，而不是只存在一个同名引用但 HEAD 仍游离；真实 `validate-experiment-base` 是否通过。
@@ -132,10 +133,11 @@ index 20786f2..7f8e278 100644
 +13. 两个入口把类别编号初始设备改为 CPU 后，是否只关闭模型构造时的设备冲突；完成 `.to("cuda")` 后类别缓冲是否仍在 GPU。
 +14. R3 没有训练 step 或精度的事实是否如实记录，文档是否避免据此判断局部分支价值。
 +15. 审核结论是否用 `reviewed_candidate_commit` 绑定准确代码候选；最终冻结提交相对该候选是否只改审核记录和开跑门，旧审核能否被拒绝。
++16. 正式控制器是否强制从被审核代码候选的干净 checkout 执行；若最终提交篡改控制器以删除边界检查，能否在绑定 Python 和领取身份前拒绝。
 
  每轮必须给出 `pass` 或可复现的阻断问题。三轮均使用不同的独立 Codex 只读任务；Claude Code 本轮不可用，因此按项目规范使用独立 Codex 作为后备审核者。
 diff --git a/docs/agent_reviews/2026-08-07-v5-local-ablation/03_validation.md b/docs/agent_reviews/2026-08-07-v5-local-ablation/03_validation.md
-index d9d7fea..18361dc 100644
+index d9d7fea..c53a4cf 100644
 --- a/docs/agent_reviews/2026-08-07-v5-local-ablation/03_validation.md
 +++ b/docs/agent_reviews/2026-08-07-v5-local-ablation/03_validation.md
 @@ -1,11 +1,13 @@
@@ -145,7 +147,7 @@ index d9d7fea..18361dc 100644
 -- `python -m unittest discover -s tests -v`：总计 342 项，其中 337 项通过、5 项 Linux 专属测试在 Windows 按设计跳过。
 -- `lab4090` 精确候选 `28185a0f1f1c2bdc9b6239cbbc919165a84077df`：45 项控制器测试和 5 项真实 Linux 测试，共 50 项，全部通过。
 +- `python -m unittest tests/test_v5_ablation_server_runner.py -q`：48 项通过。
-+- `python -m unittest discover -s tests -p "test_*.py" -q`：总计 349 项，其中 343 项通过、5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过。
++- `python -m unittest discover -s tests -p "test_*.py" -q`：总计 351 项，其中 345 项通过、5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过。
 +- `lab4090` 精确候选 `1df6e9c0e05af9022b81c3133008d735d3db287b`：45 项控制器测试和 5 项真实 Linux 测试，共 50 项，全部通过。
 +- `lab4090` CUDA 模型测试：`tests.test_v5_global_only_ablation` 共 7 项全部通过；其中新增用例真实以 CPU 类别编号和 CUDA 文本特征构造 FULL 与 GLOBAL_ONLY，并确认 `.to("cuda")` 后两者的类别缓冲都在 GPU。
 +- `lab4090` V5 相关测试：规范数学路径、复现、母版合同和消融语义共 32 项全部通过，CUDA 专属用例没有跳过。
@@ -208,7 +210,7 @@ index 8bb181d..49191ee 100644
 -这个决定只放行带 R3 新身份的六个正式 RUN，不等于已经得到局部分支的精度结论。R1、R2 的旧执行号和旧 `run_id` 只保留为失败证据，不得复用。必须等 seed 5、17、29 的 FULL 与 GLOBAL_ONLY 全部完成、收据和结果核对通过后，才能比较逐 seed 差值、均值和波动。
 +这个历史决定只放行当时尚未领取的 R3 六个正式 RUN，不覆盖后续类别编号修复与 R4。R3 后来已在模型初始化阶段失败并停用；当前 R4 必须完成本轮新审核与新冻结后才能启动，也不等于已经得到局部分支的精度结论。
 diff --git a/docs/workflow/protocols/ai_cross_review_protocol.md b/docs/workflow/protocols/ai_cross_review_protocol.md
-index df260de..c562a59 100644
+index df260de..4706484 100644
 --- a/docs/workflow/protocols/ai_cross_review_protocol.md
 +++ b/docs/workflow/protocols/ai_cross_review_protocol.md
 @@ -142,6 +142,7 @@ experiments/templates/ai_cross_review_template.md
@@ -223,7 +225,7 @@ index df260de..c562a59 100644
 
  blocked 改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
 
-+正式 Runner 使用审核包时，必须执行 `validate-ai-cross-review --expected-commit <reviewed_candidate_commit>`。因为审核文字无法预先包含其自身提交号，允许在被审核代码候选之后再建一个只补审核记录和开跑门的最终冻结提交；项目控制器必须核对祖先关系，并确认这两个提交之间没有训练代码、配置、参数矩阵或工作流改动。
++正式 Runner 使用审核包时，必须执行 `validate-ai-cross-review --expected-commit <reviewed_candidate_commit>`。因为审核文字无法预先包含其自身提交号，允许在被审核代码候选之后再建一个只补审核记录和开跑门的最终冻结提交；项目控制器必须从被审核代码候选的干净 checkout 执行，核对祖先关系，并确认这两个提交之间没有训练代码、配置、参数矩阵或工作流改动。不能执行最终提交里的控制器来自我证明最终提交安全。
 +
  ## 快速审核优化
 
@@ -385,7 +387,7 @@ index 62d582e..63ca182 100644
  ## 查重说明
 
 diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
-index ae06532..fa2c8b1 100644
+index ae06532..ed2cf8f 100644
 --- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
 +++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md
 @@ -2,7 +2,7 @@
@@ -431,7 +433,7 @@ index ae06532..fa2c8b1 100644
  原始日志、checkpoint 和运行状态进入服务器 Warehouse；Git 只保存配置、凭证、哈希和轻量结果。
 
 -正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、固定 Python 和证据哈希；控制器会从 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，不能靠手填“通过”绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和六个 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
-+正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器会从 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”或复用旧审核绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和六个 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
++正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和六个 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
 diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
 index 2c08187..b89a01f 100644
 --- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
@@ -891,7 +893,7 @@ index 0000000..1f055ed
 +    epochs: 10
 +    eta_min: 1e-7
 diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
-index 8b6ee15..d875e8c 100644
+index 8b6ee15..082f95c 100644
 --- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
 +++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/implementation.md
 @@ -11,7 +11,7 @@
@@ -903,36 +905,37 @@ index 8b6ee15..d875e8c 100644
 
  ## 保留内容
 
-@@ -32,7 +32,8 @@
+@@ -32,7 +32,9 @@
 
  ## 服务器运行安全补强
 
 -- `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；它只绑定冻结提交、实验分支、母版提交、六个 `run_id`、六份受信文件和固定 Python 的 SHA-256；
 +- `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；V4 清单绑定最终冻结提交、被审核的代码候选、实验分支、母版提交、六个 `run_id`、六份受信文件和固定 Python 的 SHA-256；
 +- 审核结论必须用 `reviewed_candidate_commit` 精确绑定代码候选。由于包含审核文字的提交不可能在自身内容中预先写入自己的提交号，正式流程采用“代码候选 → 只补审核记录和开跑门的最终冻结提交”两步；控制器核对祖先关系，并拒绝两步之间出现训练代码、配置、参数矩阵或工作流改动；
++- 正式控制器本身只允许从 `reviewed_candidate_commit` 的独立干净 checkout 执行；启动时同时核对 checkout HEAD、控制器 Git blob、文件 SHA-256 和全工作树状态，再绑定 Python、校验最终 bundle 或领取身份。最终证据提交里的控制器不能自我放行，因此即使有人在审核后提交中删除边界检查也不会成为受信启动入口；
  - 控制器先从 Git bundle 克隆出带 `.git` 的临时隔离仓，并准确切到正式实验分支，再运行 strict-3、agent runtime、参数表、实验绑定和仓库边界校验；通过前不创建正式运行副本和训练进程；
  - 代码包里的 `workflow/gtpj_workflow.py` 只允许冻结母版 Git 对象或控制器硬编码的已审核“绑定 Python”版本；其他自校验器会在执行前被拒绝；
  - 正式 Python 固定为 `/data/lby/.conda/envs/dvsr_gpu/bin/python`；控制器核对清单哈希后打开文件描述符，helper、收据流程、训练包装器和最终训练入口都执行这个已打开文件，路径在检查后被替换也不会换掉实际解释器；
-@@ -62,8 +63,11 @@
+@@ -62,8 +64,11 @@
 
  ## 当前机器验证
 
 -- 服务器控制器专属测试：45 项通过；
-+- 服务器控制器专属测试：48 项通过；
++- 服务器控制器专属测试：50 项通过；
  - 精确候选 `28185a0f1f1c2bdc9b6239cbbc919165a84077df` 在 `lab4090` 完成 45 项控制器测试和 5 项真实 Linux 测试，共 50 项全部通过；上一候选 `d847266` 仍只保留为 FULL 实际入口和软链接换向阻断的审核证据；
 +- 冻结提交 `cca4e0e6419a462d36df5cad5177562cbf8fb31e` 的 R3 正式执行已进入两张 GPU 的真实模型入口，但 FULL 与 GLOBAL_ONLY 都因类别编号在 CUDA、初始化核对张量在 CPU 而退出；两项结束收据和进程树清理完整，其余四项没有启动，R3 仅作为失败证据保留；
 +- 当前修复让两个训练入口都以 CPU 类别编号构造模型，并新增“两个真实模型使用 CPU 类别编号和 CUDA 文本特征均可完成初始化”的服务器测试；本地静态与 CPU 行为测试已通过，精确修复候选的服务器 CUDA 验证和三路审核仍待完成；
  - V5 相关模型、母版和旧数学路径测试：41 项通过；
 -- 仓库完整回归共 342 项：337 项通过，另有 5 项 Linux 专属测试在 Windows 按设计跳过；
 -- `validate-experiment-base`、6 行冻结参数表、总工作流、规则一致性、框架账本和仓库边界检查均通过。
-+- 当前修复的仓库完整回归共 349 项：343 项通过，另有 5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过；
++- 当前仓库完整回归共 351 项：345 项通过，另有 5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过；新增两项失败测试证明从最终提交或脏工作树执行控制器会在绑定 Python 前拒绝；
 +- 参数表现在共 12 行：R3 的 `RUN-001/004` 回填失败收据、命令哈希、日志哈希和退出码 1，`RUN-002/003/005/006` 标记为领取后未启动；R4 使用新的 `RUN-007…012`，逐行通过 `repeat_of` 指回 R3；
 +- 控制器的正式队列只选择六个冻结 R4 行，同时要求同表其余历史行全部处于终态，并拒绝任何历史 `run_id` 复用；`validate-experiment-base`、选定行参数表、总工作流、规则一致性、框架账本和仓库边界检查将在新候选冻结前重跑。
 diff --git a/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md b/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
-index 450184d..ea4e8c2 100644
+index 450184d..b291918 100644
 --- a/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
 +++ b/experiments/v5/ablation/ABLATION-001_local_branch_effect/quality_check.md
-@@ -1,17 +1,18 @@
+@@ -1,17 +1,19 @@
  # 质量检查
 
 -当前阶段：`pre_run_frozen`。
@@ -951,10 +954,11 @@ index 450184d..ea4e8c2 100644
 -- [x] 目录句柄修复后的新冻结提交存在且工作树 clean；
 +- [ ] CUDA 类别编号修复后的新冻结提交存在且工作树 clean；
 +- [x] 审核结论与代码候选精确绑定；审核后若再改训练代码、配置、参数矩阵或工作流，正式控制器会拒绝；
++- [x] 正式控制器必须从被审核代码候选的干净 checkout 执行；从最终提交或被篡改工作树启动会在绑定 Python 和领取身份前拒绝；
  - [x] 服务器 Python、数据身份、Linux 进程能力和 GPU 空闲状态预检通过；正式启动时仍会从冻结 bundle 重验提交、配置和数据哈希；
  - [x] STOP/停止机制存在并通过本地与服务器测试；
  - [ ] 正式 RUN 的真实启动收据已经生成。
-@@ -72,5 +73,9 @@
+@@ -72,5 +74,9 @@
  - [x] R2 execution 和六个 `run_id` 永不复用；参数矩阵已换成带 `R3` 的六个新 `run_id`；
  - [x] 目录句柄修复后的控制器 45 项通过；全仓 342 项中 337 项通过，5 项 Linux 专属测试在 Windows 按设计跳过；两个代码副本不再创建运行时链接，FULL 与 GLOBAL_ONLY 均使用本次候选入口；
  - [x] 目录句柄修复完成服务器机器验证、`strict-3` 复核与运行前冻结提交。
@@ -1071,7 +1075,7 @@ index dbf8114..32937c8 100644
          pack_dir = "docs/agent_reviews/2026-07-03-codex-fallback"
          self._write_valid_ai_cross_review_pack(pack_dir)
 diff --git a/tests/test_v5_ablation_server_runner.py b/tests/test_v5_ablation_server_runner.py
-index 7c0f916..952738a 100644
+index 7c0f916..cc7bf3b 100644
 --- a/tests/test_v5_ablation_server_runner.py
 +++ b/tests/test_v5_ablation_server_runner.py
 @@ -26,23 +26,24 @@ def _sha256(path):
@@ -1154,7 +1158,7 @@ index 7c0f916..952738a 100644
      if include_validation_refs:
          for branch_name in (
              "main",
-@@ -298,12 +333,53 @@ raise SystemExit(0)
+@@ -298,12 +333,93 @@ raise SystemExit(0)
          "python": _sha256(sys.executable),
      }
      payload = _launch_manifest_payload(commit, hashes)
@@ -1205,10 +1209,50 @@ index 7c0f916..952738a 100644
 +            with self.assertRaisesRegex(ValueError, "审核后.*训练代码"):
 +                verify_boundary(repo, reviewed, tampered_commit)
 +
++    def test_formal_controller_must_execute_from_reviewed_candidate_checkout(self):
++        verify_controller = getattr(controller, "verify_reviewed_controller_checkout", None)
++        self.assertIsNotNone(verify_controller)
++        with tempfile.TemporaryDirectory() as directory:
++            repo = Path(directory) / "repo"
++            controller_path = repo / "tools/run_v5_ablation_001_server_controller.py"
++            controller_path.parent.mkdir(parents=True)
++            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
++            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
++            subprocess.run(["git", "config", "user.name", "GTPJ Test"], cwd=repo, check=True)
++            controller_path.write_text("# reviewed controller\n", encoding="utf-8")
++            subprocess.run(["git", "add", "."], cwd=repo, check=True)
++            subprocess.run(["git", "commit", "-m", "review controller"], cwd=repo, check=True, capture_output=True)
++            reviewed = subprocess.run(
++                ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
++            ).stdout.strip()
++            self.assertEqual(reviewed, verify_controller(reviewed, controller_path)["commit"])
++
++            controller_path.write_text("# bypass all checks\n", encoding="utf-8")
++            subprocess.run(["git", "add", "."], cwd=repo, check=True)
++            subprocess.run(["git", "commit", "-m", "tamper controller"], cwd=repo, check=True, capture_output=True)
++            with self.assertRaisesRegex(ValueError, "被审核代码候选"):
++                verify_controller(reviewed, controller_path)
++
++    def test_main_rejects_unreviewed_controller_before_binding_python(self):
++        args = SimpleNamespace(launch_manifest=Path("manifest.json"), commit="b" * 40)
++        manifest = {"reviewed_candidate_commit": "a" * 40}
++        with patch.object(controller, "parse_args", return_value=args), patch.object(
++            controller, "ensure_supported_platform"
++        ), patch.object(controller.signal, "signal"), patch.object(
++            controller, "validate_launch_manifest", return_value=(manifest, "f" * 64)
++        ), patch.object(
++            controller,
++            "verify_reviewed_controller_checkout",
++            side_effect=ValueError("控制器不是被审核代码候选"),
++        ), patch.object(controller, "bind_python_runtime") as bind_python:
++            with self.assertRaisesRegex(ValueError, "被审核代码候选"):
++                controller.main()
++        bind_python.assert_not_called()
++
      def test_training_entries_use_only_bound_runtime_roots(self):
          for relative_path in (
              "train_GTPJ_CUB.py",
-@@ -399,13 +475,43 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -399,13 +515,43 @@ class V5AblationServerRunnerTest(unittest.TestCase):
 
      def test_each_group_has_the_expected_three_job_queue(self):
          self.assertEqual(
@@ -1254,7 +1298,7 @@ index 7c0f916..952738a 100644
      def test_layout_uses_candidate_for_both_clean_code_roots(self):
          with tempfile.TemporaryDirectory() as directory:
              root = Path(directory)
-@@ -504,6 +610,12 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -504,6 +650,12 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              with self.assertRaisesRegex(ValueError, "pre_run_freeze_commit"):
                  controller.validate_launch_manifest(path, "a" * 40)
 
@@ -1267,7 +1311,7 @@ index 7c0f916..952738a 100644
      def test_launch_manifest_pins_the_exact_python_path_and_hash(self):
          with tempfile.TemporaryDirectory() as directory:
              path = Path(directory) / "launch_manifest.json"
-@@ -619,6 +731,31 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -619,6 +771,31 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                          bundle, Path(sys.executable), data_source, payload, commit
                      )
 
@@ -1299,7 +1343,7 @@ index 7c0f916..952738a 100644
      def test_runtime_clones_restore_governance_refs_before_receipt_validation(self):
          with tempfile.TemporaryDirectory() as directory:
              root = Path(directory)
-@@ -1071,8 +1208,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1071,8 +1248,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              payload = {
                  "schema_version": "gtpj-run-finish-receipt/v1",
                  "generated_by": "workflow/gtpj_workflow.py prepare-run-start-receipt",
@@ -1310,7 +1354,7 @@ index 7c0f916..952738a 100644
                  "run_start_receipt_sha256": _sha256(receipt),
                  "command_sha256": hashlib.sha256(command.encode("utf-8")).hexdigest(),
                  "pid": 1234,
-@@ -1088,8 +1225,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1088,8 +1265,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                      receipt,
                      training_log,
                      command,
@@ -1321,7 +1365,7 @@ index 7c0f916..952738a 100644
                      0,
                  ),
              )
-@@ -1098,7 +1235,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1098,7 +1275,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                      receipt,
                      training_log,
                      command,
@@ -1330,7 +1374,7 @@ index 7c0f916..952738a 100644
                      "different-run",
                      0,
                  )
-@@ -1109,8 +1246,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1109,8 +1286,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                      receipt,
                      training_log,
                      command,
@@ -1341,7 +1385,7 @@ index 7c0f916..952738a 100644
                      0,
                  )
 
-@@ -1122,8 +1259,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1122,8 +1299,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                      receipt,
                      training_log,
                      command,
@@ -1352,7 +1396,7 @@ index 7c0f916..952738a 100644
                      0,
                  )
 
-@@ -1175,7 +1312,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1175,7 +1352,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1361,7 +1405,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1218,7 +1355,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1218,7 +1395,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                              data_runtime_identity={},
                          ),
                          group="FULL",
@@ -1370,7 +1414,7 @@ index 7c0f916..952738a 100644
                          code_root=root / "code",
                          ledger_root=ledger,
                          warehouse_root=warehouse,
-@@ -1229,7 +1366,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1229,7 +1406,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                      )
              cleanup.assert_called_once()
              self.assertFalse(gate.claim_start())
@@ -1379,7 +1423,7 @@ index 7c0f916..952738a 100644
              self.assertTrue(failure_record.is_file())
              payload = json.loads(failure_record.read_text(encoding="utf-8"))
              self.assertEqual(1234, payload["helper_pid"])
-@@ -1247,7 +1384,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1247,7 +1424,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1388,7 +1432,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1265,7 +1402,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1265,7 +1442,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                          data_runtime_identity={},
                      ),
                      group="FULL",
@@ -1397,7 +1441,7 @@ index 7c0f916..952738a 100644
                      code_root=root / "code",
                      ledger_root=ledger,
                      warehouse_root=warehouse,
-@@ -1293,7 +1430,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1293,7 +1470,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1406,7 +1450,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1327,7 +1464,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1327,7 +1504,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                              data_runtime_identity={},
                          ),
                          group="FULL",
@@ -1415,7 +1459,7 @@ index 7c0f916..952738a 100644
                          code_root=root / "code",
                          ledger_root=ledger,
                          warehouse_root=warehouse,
-@@ -1386,7 +1523,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1386,7 +1563,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1424,7 +1468,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1420,7 +1557,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1420,7 +1597,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                              data_runtime_identity={},
                          ),
                          group="FULL",
@@ -1433,7 +1477,7 @@ index 7c0f916..952738a 100644
                          code_root=root / "code",
                          ledger_root=ledger,
                          warehouse_root=warehouse,
-@@ -1477,7 +1614,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1477,7 +1654,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1442,7 +1486,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1511,7 +1648,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1511,7 +1688,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                              data_runtime_identity={},
                          ),
                          group="FULL",
@@ -1451,7 +1495,7 @@ index 7c0f916..952738a 100644
                          code_root=root / "code",
                          ledger_root=ledger,
                          warehouse_root=warehouse,
-@@ -1557,7 +1694,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1557,7 +1734,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1460,7 +1504,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1592,7 +1729,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1592,7 +1769,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                              data_runtime_identity={},
                          ),
                          group="FULL",
@@ -1469,7 +1513,7 @@ index 7c0f916..952738a 100644
                          code_root=root / "code",
                          ledger_root=ledger,
                          warehouse_root=warehouse,
-@@ -1651,7 +1788,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1651,7 +1828,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1478,7 +1522,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1682,7 +1819,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1682,7 +1859,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                          data_runtime_identity={},
                      ),
                      group="FULL",
@@ -1487,7 +1531,7 @@ index 7c0f916..952738a 100644
                      code_root=root / "code",
                      ledger_root=ledger,
                      warehouse_root=warehouse,
-@@ -1706,7 +1843,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1706,7 +1883,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
              experiment = ledger / controller.EXPERIMENT_DIR
              experiment.mkdir(parents=True)
              (experiment / "PARAMETER_MATRIX.csv").write_text(
@@ -1496,7 +1540,7 @@ index 7c0f916..952738a 100644
                  encoding="utf-8",
              )
              (experiment / "configs").mkdir()
-@@ -1756,7 +1893,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
+@@ -1756,7 +1933,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                          data_runtime_identity={},
                      ),
                      group="FULL",
@@ -1587,7 +1631,7 @@ index ea91bde..5151943 100644
          model = _model()
          names = {name for name, _ in model.named_parameters()}
 diff --git a/tools/run_v5_ablation_001_server_controller.py b/tools/run_v5_ablation_001_server_controller.py
-index f931f16..5876044 100644
+index f931f16..d771aa1 100644
 --- a/tools/run_v5_ablation_001_server_controller.py
 +++ b/tools/run_v5_ablation_001_server_controller.py
 @@ -25,13 +25,13 @@ EXPERIMENT_DIR = Path(
@@ -1665,7 +1709,7 @@ index f931f16..5876044 100644
      run_ids = {}
      for job_id in sorted(expected_jobs):
          row = by_job[job_id]
-@@ -1141,9 +1172,58 @@ def _read_frozen_run_ids(matrix_path):
+@@ -1141,9 +1172,99 @@ def _read_frozen_run_ids(matrix_path):
          run_ids[job_id] = run_id
      if len(set(run_ids.values())) != len(run_ids):
          raise ValueError("冻结参数矩阵 run_id 必须唯一。")
@@ -1721,10 +1765,51 @@ index f931f16..5876044 100644
 +    return changed_paths
 +
 +
++def verify_reviewed_controller_checkout(reviewed_commit, controller_path=None):
++    """正式控制器本身必须从被审核代码候选运行，不能执行最终提交里的自改版本。"""
++
++    if not re.fullmatch(r"[0-9a-f]{40}", str(reviewed_commit)):
++        raise ValueError("reviewed_candidate_commit 必须是 40 位小写 Git 提交号。")
++    controller_path = Path(controller_path or __file__).resolve()
++    repo_root = controller_path.parents[1]
++    try:
++        relative_path = controller_path.relative_to(repo_root).as_posix()
++    except ValueError as exc:
++        raise ValueError("正式控制器不在被审核代码仓库中。") from exc
++    if relative_path != "tools/run_v5_ablation_001_server_controller.py":
++        raise ValueError("正式控制器路径不是受信入口。")
++    try:
++        head = run_checked(["git", "rev-parse", "HEAD"], cwd=repo_root).stdout.strip()
++        reviewed_blob = run_checked(
++            ["git", "rev-parse", f"{reviewed_commit}:{relative_path}"], cwd=repo_root
++        ).stdout.strip()
++        actual_blob = run_checked(
++            ["git", "hash-object", str(controller_path)], cwd=repo_root
++        ).stdout.strip()
++    except subprocess.CalledProcessError as exc:
++        raise ValueError("无法从被审核代码候选核对正式控制器。") from exc
++    if head != reviewed_commit:
++        raise ValueError(
++            "正式控制器必须从被审核代码候选的独立 checkout 执行，不能从最终冻结提交自我放行。"
++        )
++    if reviewed_blob != actual_blob:
++        raise ValueError("正式控制器内容不是被审核代码候选中的准确 Git 对象。")
++    if run_checked(
++        ["git", "status", "--porcelain", "--untracked-files=all"], cwd=repo_root
++    ).stdout.strip():
++        raise ValueError("被审核代码候选的控制器 checkout 不是干净工作树。")
++    return {
++        "commit": reviewed_commit,
++        "controller_path": relative_path,
++        "controller_blob": reviewed_blob,
++        "controller_sha256": _sha256_file(controller_path),
++    }
++
++
  def verify_frozen_launch_evidence(
      bundle,
      python,
-@@ -1251,6 +1331,11 @@ def verify_frozen_launch_evidence(
+@@ -1251,6 +1372,11 @@ def verify_frozen_launch_evidence(
          if run_checked(["git", "status", "--porcelain"], cwd=checkout).stdout.strip():
              raise ValueError("隔离校验仓库不是干净工作树。")
 
@@ -1736,7 +1821,7 @@ index f931f16..5876044 100644
          for ref_field, relative_path in TRUSTED_EVIDENCE_REFS.items():
              evidence_path = checkout / relative_path
              digest_field = ref_field.replace("_ref", "_sha256")
-@@ -1273,10 +1358,28 @@ def verify_frozen_launch_evidence(
+@@ -1273,10 +1399,28 @@ def verify_frozen_launch_evidence(
 
          workflow = checkout / "workflow/gtpj_workflow.py"
          runtime_python = python_execution_ref or python
@@ -1767,7 +1852,7 @@ index f931f16..5876044 100644
              [runtime_python, workflow, "validate-experiment-base", "--path", checkout / EXPERIMENT_DIR],
              [runtime_python, workflow, "validate"],
              [runtime_python, workflow, "validate-workflow-consistency"],
-@@ -1293,6 +1396,8 @@ def verify_frozen_launch_evidence(
+@@ -1293,6 +1437,8 @@ def verify_frozen_launch_evidence(
              "branch": EXPERIMENT_BRANCH,
              "template_commit": TEMPLATE_COMMIT,
              "run_ids": run_ids,
@@ -1776,6 +1861,24 @@ index f931f16..5876044 100644
              "validated_command_count": len(commands),
              "python_runtime": python_runtime_identity,
              "data_identity": data_identity,
+@@ -1905,6 +2051,9 @@ def main():
+     launch_manifest, launch_manifest_sha256 = validate_launch_manifest(
+         args.launch_manifest, args.commit
+     )
++    controller_identity = verify_reviewed_controller_checkout(
++        launch_manifest["reviewed_candidate_commit"]
++    )
+     python_binding = bind_python_runtime(args.python, launch_manifest)
+     args.bound_python_fd = python_binding["fd"]
+     args.bound_python_exec_ref = python_binding["exec_ref"]
+@@ -1917,6 +2066,7 @@ def main():
+         args.commit,
+         python_execution_ref=args.bound_python_exec_ref,
+     )
++    evidence_verification["controller_identity"] = controller_identity
+     args.launch_manifest_payload = launch_manifest
+     args.python_runtime_identity = evidence_verification["python_runtime"]
+     args.data_runtime_identity = evidence_verification["data_identity"]
 diff --git a/train_GTPJ_CUB.py b/train_GTPJ_CUB.py
 index 159a102..c09bf8a 100644
 --- a/train_GTPJ_CUB.py

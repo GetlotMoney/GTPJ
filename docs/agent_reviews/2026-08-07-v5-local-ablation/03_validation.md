@@ -1,7 +1,7 @@
 # 机器验证
 
 - `python -m unittest tests/test_v5_ablation_server_runner.py -q`：48 项通过。
-- `python -m unittest discover -s tests -p "test_*.py" -q`：总计 349 项，其中 343 项通过、5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过。
+- `python -m unittest discover -s tests -p "test_*.py" -q`：总计 351 项，其中 345 项通过、5 项 Linux 专属测试和 1 项 CUDA 专属测试在 Windows 按设计跳过。
 - `lab4090` 精确候选 `1df6e9c0e05af9022b81c3133008d735d3db287b`：45 项控制器测试和 5 项真实 Linux 测试，共 50 项，全部通过。
 - `lab4090` CUDA 模型测试：`tests.test_v5_global_only_ablation` 共 7 项全部通过；其中新增用例真实以 CPU 类别编号和 CUDA 文本特征构造 FULL 与 GLOBAL_ONLY，并确认 `.to("cuda")` 后两者的类别缓冲都在 GPU。
 - `lab4090` V5 相关测试：规范数学路径、复现、母版合同和消融语义共 32 项全部通过，CUDA 专属用例没有跳过。

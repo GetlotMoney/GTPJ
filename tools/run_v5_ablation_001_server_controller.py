@@ -1224,6 +1224,47 @@ def verify_post_review_commit_boundary(checkout, reviewed_commit, expected_commi
     return changed_paths
 
 
+def verify_reviewed_controller_checkout(reviewed_commit, controller_path=None):
+    """正式控制器本身必须从被审核代码候选运行，不能执行最终提交里的自改版本。"""
+
+    if not re.fullmatch(r"[0-9a-f]{40}", str(reviewed_commit)):
+        raise ValueError("reviewed_candidate_commit 必须是 40 位小写 Git 提交号。")
+    controller_path = Path(controller_path or __file__).resolve()
+    repo_root = controller_path.parents[1]
+    try:
+        relative_path = controller_path.relative_to(repo_root).as_posix()
+    except ValueError as exc:
+        raise ValueError("正式控制器不在被审核代码仓库中。") from exc
+    if relative_path != "tools/run_v5_ablation_001_server_controller.py":
+        raise ValueError("正式控制器路径不是受信入口。")
+    try:
+        head = run_checked(["git", "rev-parse", "HEAD"], cwd=repo_root).stdout.strip()
+        reviewed_blob = run_checked(
+            ["git", "rev-parse", f"{reviewed_commit}:{relative_path}"], cwd=repo_root
+        ).stdout.strip()
+        actual_blob = run_checked(
+            ["git", "hash-object", str(controller_path)], cwd=repo_root
+        ).stdout.strip()
+    except subprocess.CalledProcessError as exc:
+        raise ValueError("无法从被审核代码候选核对正式控制器。") from exc
+    if head != reviewed_commit:
+        raise ValueError(
+            "正式控制器必须从被审核代码候选的独立 checkout 执行，不能从最终冻结提交自我放行。"
+        )
+    if reviewed_blob != actual_blob:
+        raise ValueError("正式控制器内容不是被审核代码候选中的准确 Git 对象。")
+    if run_checked(
+        ["git", "status", "--porcelain", "--untracked-files=all"], cwd=repo_root
+    ).stdout.strip():
+        raise ValueError("被审核代码候选的控制器 checkout 不是干净工作树。")
+    return {
+        "commit": reviewed_commit,
+        "controller_path": relative_path,
+        "controller_blob": reviewed_blob,
+        "controller_sha256": _sha256_file(controller_path),
+    }
+
+
 def verify_frozen_launch_evidence(
     bundle,
     python,
@@ -2010,6 +2051,9 @@ def main():
     launch_manifest, launch_manifest_sha256 = validate_launch_manifest(
         args.launch_manifest, args.commit
     )
+    controller_identity = verify_reviewed_controller_checkout(
+        launch_manifest["reviewed_candidate_commit"]
+    )
     python_binding = bind_python_runtime(args.python, launch_manifest)
     args.bound_python_fd = python_binding["fd"]
     args.bound_python_exec_ref = python_binding["exec_ref"]
@@ -2022,6 +2066,7 @@ def main():
         args.commit,
         python_execution_ref=args.bound_python_exec_ref,
     )
+    evidence_verification["controller_identity"] = controller_identity
     args.launch_manifest_payload = launch_manifest
     args.python_runtime_identity = evidence_verification["python_runtime"]
     args.data_runtime_identity = evidence_verification["data_identity"]
