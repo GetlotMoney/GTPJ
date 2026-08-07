@@ -12,10 +12,10 @@
 | RUN-004 | 干净无局部 seed 5 | ablation | failed | {} | 5 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | process_failed_cuda_class_identity_device_mismatch |  |
 | RUN-005 | 干净无局部 seed 17 | ablation | cancelled | {} | 17 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_stop_or_failure |  |
 | RUN-006 | 干净无局部 seed 29 | ablation | cancelled | {} | 29 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_stop_or_failure |  |
-| RUN-007 | 完整 V5 seed 5 | ablation | completed | {} | 5 | RUN-001 | RUN-20260808-V5ABL001-R4-FULL-S5 | 与无局部组做同种子配对比较 | 74.17 | completed_recovered_after_v5_log_parser_fix |  |
+| RUN-007 | 完整 V5 seed 5 | ablation | completed | {} | 5 | RUN-001 | RUN-20260808-V5ABL001-R4-FULL-S5 | 与无局部组做同种子配对比较 | 74.17 | completed_recovered_after_v5_log_parser_fix | 3eb27b0e18327ebcef8d89131040322851302deedbdd6a594b8bf58973c4146b |
 | RUN-008 | 完整 V5 seed 17 | ablation | cancelled | {} | 17 | RUN-002 | RUN-20260808-V5ABL001-R4-FULL-S17 | 与无局部组做同种子配对比较 |  | not_started_after_r4_bookkeeping_failure |  |
 | RUN-009 | 完整 V5 seed 29 | ablation | cancelled | {} | 29 | RUN-003 | RUN-20260808-V5ABL001-R4-FULL-S29 | 与无局部组做同种子配对比较 |  | not_started_after_r4_bookkeeping_failure |  |
-| RUN-010 | 干净无局部 seed 5 | ablation | completed | {} | 5 | RUN-004 | RUN-20260808-V5ABL001-R4-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology | 73.92 | completed_recovered_after_v5_log_parser_fix |  |
+| RUN-010 | 干净无局部 seed 5 | ablation | completed | {} | 5 | RUN-004 | RUN-20260808-V5ABL001-R4-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology | 73.92 | completed_recovered_after_v5_log_parser_fix | f7d6228fda5bd9ce99c191911022206697d88ece5d89dc0d558a300deecdf4ef |
 | RUN-011 | 干净无局部 seed 17 | ablation | cancelled | {} | 17 | RUN-005 | RUN-20260808-V5ABL001-R4-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_r4_bookkeeping_failure |  |
 | RUN-012 | 干净无局部 seed 29 | ablation | cancelled | {} | 29 | RUN-006 | RUN-20260808-V5ABL001-R4-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  | not_started_after_r4_bookkeeping_failure |  |
 | RUN-013 | 完整 V5 seed 17 | ablation | frozen | {} | 17 | RUN-008 | RUN-20260808-V5ABL001-R5-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |

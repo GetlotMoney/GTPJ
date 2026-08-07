@@ -57,4 +57,4 @@ review_tier: strict-3
 
 原始日志、checkpoint 和运行状态进入服务器 Warehouse；Git 只保存配置、凭证、哈希和轻量结果。
 
-正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和六个 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。
+正式启动还必须提供一次性的 `launch_manifest.json`。清单只绑定冻结身份、被审核的代码候选、固定 Python 和证据哈希；控制器必须从被审核代码候选的干净 checkout 执行，再从最终 Git bundle 的准确提交中克隆真实实验分支，重新核对审核包、运行时门、参数表、数据清单、实验绑定和仓库边界，并确认审核后只补了审核记录与开跑门，不能靠手填“通过”、复用旧审核或篡改最终提交里的控制器绕过。runtime 与 Warehouse 使用冻结提交前 12 位命名，`execution_id` 和本批 `run_id` 在服务器只能领取一次。停止和失败后的处理见 [SERVER_RECOVERY.md](SERVER_RECOVERY.md)：半截运行不自动续跑，保留证据后必须用新的提交、job 和 run 从头执行。

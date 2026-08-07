@@ -36,6 +36,9 @@ KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
 SERVER_DATA_SOURCE = Path("/data/lby/projects/cv_project/GTPJ/data")
 DATA_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.data_manifest.v1"
+RECOVERED_ARTIFACT_MANIFEST_SCHEMA = (
+    "gtpj.v5_ablation_001.recovered_artifact_manifest.v1"
+)
 BOUND_PYTHON_EXEC_ENV = "GTPJ_BOUND_PYTHON_EXEC"
 BOUND_PYTHON_ARGV0_ENV = "GTPJ_BOUND_PYTHON_ARGV0"
 V5_REQUIRED_DATA_FILES = {
@@ -1163,6 +1166,12 @@ def _read_frozen_run_ids(matrix_path):
     )
     if non_terminal_history:
         raise ValueError(f"参数矩阵历史行必须先进入终态：{non_terminal_history}")
+    for row in rows:
+        if (
+            row.get("job_id") not in expected_jobs
+            and row.get("status") == "completed"
+        ):
+            _verify_completed_history_artifact_manifest(row)
     run_ids = {}
     for job_id in sorted(expected_jobs):
         row = by_job[job_id]
@@ -1176,6 +1185,144 @@ def _read_frozen_run_ids(matrix_path):
     if len(all_run_ids) != len(set(all_run_ids)):
         raise ValueError("参数矩阵 run_id 不能复用历史身份。")
     return run_ids
+
+
+def _verify_completed_history_artifact_manifest(row):
+    """把历史完成记录重新绑定到服务器上的真实证据文件。"""
+
+    job_id = str(row.get("job_id", ""))
+    run_id = str(row.get("run_id", ""))
+    artifact_ref = str(row.get("artifact_ref", "")).strip()
+    expected_manifest_sha = str(row.get("artifact_manifest_sha256", "")).strip()
+    if not artifact_ref or not re.fullmatch(r"[0-9a-f]{64}", expected_manifest_sha):
+        raise ValueError(f"completed 历史行 {job_id} 缺少有效证据清单哈希。")
+    artifact_root = Path(artifact_ref)
+    manifest_path = artifact_root / "artifact_manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单不存在。")
+    manifest_bytes = manifest_path.read_bytes()
+    if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha:
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单哈希不匹配。")
+    try:
+        payload = json.loads(manifest_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单不是有效 UTF-8 JSON。") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单顶层必须是对象。")
+    try:
+        row_exit_code = int(str(row.get("run_exit_code", "")))
+    except ValueError as exc:
+        raise ValueError(f"completed 历史行 {job_id} 的退出码无效。") from exc
+    if row_exit_code != 0:
+        raise ValueError(f"completed 历史行 {job_id} 的退出码不是 0。")
+    expected_fields = {
+        "schema_version": RECOVERED_ARTIFACT_MANIFEST_SCHEMA,
+        "job_id": job_id,
+        "run_id": run_id,
+        "run_start_receipt_sha256": str(row.get("run_start_receipt_sha256", "")),
+        "run_command_sha256": str(row.get("run_command_sha256", "")),
+        "run_log_sha256": str(row.get("run_log_sha256", "")),
+        "run_exit_code": row_exit_code,
+    }
+    for field, expected in expected_fields.items():
+        if payload.get(field) != expected:
+            raise ValueError(f"completed 历史行 {job_id} 的证据清单 {field} 不匹配。")
+    expected_metrics = {
+        field: str(row.get(field, ""))
+        for field in ("U", "S", "H", "ZS", "best_epoch")
+    }
+    if payload.get("metrics") != expected_metrics:
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单指标不匹配。")
+    evidence_files = payload.get("evidence_files")
+    if not isinstance(evidence_files, list) or not evidence_files:
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单没有证据文件。")
+    execution_root = artifact_root.parent.resolve()
+    evidence_by_role = {}
+    seen_paths = set()
+    for item in evidence_files:
+        if not isinstance(item, dict):
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件条目无效。")
+        role = str(item.get("role", ""))
+        relative_path = Path(str(item.get("path", "")))
+        expected_sha = str(item.get("sha256", ""))
+        if (
+            not role
+            or relative_path.is_absolute()
+            or not re.fullmatch(r"[0-9a-f]{64}", expected_sha)
+        ):
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件条目不完整。")
+        if role in evidence_by_role:
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件角色重复：{role}")
+        evidence_path = (execution_root / relative_path).resolve()
+        try:
+            evidence_path.relative_to(execution_root)
+        except ValueError as exc:
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件越过运行目录。") from exc
+        if not evidence_path.is_file():
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件不存在：{relative_path}")
+        if _sha256_file(evidence_path) != expected_sha:
+            raise ValueError(f"completed 历史行 {job_id} 的证据文件哈希不匹配：{relative_path}")
+        if evidence_path in seen_paths:
+            raise ValueError(f"completed 历史行 {job_id} 的不同证据角色不能复用同一文件。")
+        seen_paths.add(evidence_path)
+        evidence_by_role[role] = {
+            "path": evidence_path,
+            "sha256": expected_sha,
+        }
+    required_roles = {
+        "run_start_receipt",
+        "run_finish_receipt",
+        "sealed_training_log",
+        "training_internal_log",
+        "best_model",
+    }
+    missing_roles = sorted(required_roles - set(evidence_by_role))
+    if missing_roles:
+        raise ValueError(f"completed 历史行 {job_id} 的证据清单缺少角色：{missing_roles}")
+    start_evidence = evidence_by_role["run_start_receipt"]
+    finish_evidence = evidence_by_role["run_finish_receipt"]
+    log_evidence = evidence_by_role["sealed_training_log"]
+    if start_evidence["sha256"] != expected_fields["run_start_receipt_sha256"]:
+        raise ValueError(f"completed 历史行 {job_id} 的启动收据证据哈希不匹配。")
+    if log_evidence["sha256"] != expected_fields["run_log_sha256"]:
+        raise ValueError(f"completed 历史行 {job_id} 的封口日志证据哈希不匹配。")
+    receipt_ref = Path(str(row.get("run_start_receipt_ref", "")))
+    if not receipt_ref.is_absolute() or receipt_ref.resolve() != start_evidence["path"]:
+        raise ValueError(f"completed 历史行 {job_id} 的启动收据路径不匹配。")
+    try:
+        start_payload = json.loads(start_evidence["path"].read_text(encoding="utf-8"))
+        finish_payload = json.loads(finish_evidence["path"].read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"completed 历史行 {job_id} 的启动或结束收据不是有效 JSON。") from exc
+    if not isinstance(start_payload, dict) or not isinstance(finish_payload, dict):
+        raise ValueError(f"completed 历史行 {job_id} 的启动或结束收据顶层必须是对象。")
+    start_expected = {
+        "schema_version": "gtpj-run-start-receipt/v1",
+        "job_id": job_id,
+        "run_id": run_id,
+        "command_sha256": expected_fields["run_command_sha256"],
+    }
+    for field, expected in start_expected.items():
+        if start_payload.get(field) != expected:
+            raise ValueError(f"completed 历史行 {job_id} 的启动收据 {field} 不匹配。")
+    command = str(start_payload.get("command", ""))
+    if hashlib.sha256(command.encode("utf-8")).hexdigest() != expected_fields["run_command_sha256"]:
+        raise ValueError(f"completed 历史行 {job_id} 的启动命令哈希不匹配。")
+    finish_expected = {
+        "schema_version": "gtpj-run-finish-receipt/v1",
+        "job_id": job_id,
+        "run_id": run_id,
+        "run_start_receipt_sha256": expected_fields["run_start_receipt_sha256"],
+        "command_sha256": expected_fields["run_command_sha256"],
+        "log_sha256": expected_fields["run_log_sha256"],
+        "returncode": row_exit_code,
+    }
+    for field, expected in finish_expected.items():
+        if finish_payload.get(field) != expected:
+            raise ValueError(f"completed 历史行 {job_id} 的结束收据 {field} 不匹配。")
+    finish_sha = str(payload.get("run_finish_receipt_sha256", ""))
+    if not re.fullmatch(r"[0-9a-f]{64}", finish_sha) or finish_evidence["sha256"] != finish_sha:
+        raise ValueError(f"completed 历史行 {job_id} 的结束收据证据哈希不匹配。")
 
 
 def verify_post_review_commit_boundary(checkout, reviewed_commit, expected_commit):

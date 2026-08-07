@@ -559,6 +559,137 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "历史行.*终态"):
                 controller._read_frozen_run_ids(matrix)
 
+    def test_frozen_run_reader_rejects_completed_history_without_bound_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            execution_root = root / "warehouse" / "execution"
+            artifact_root = execution_root / "RUN-007"
+            artifact_root.mkdir(parents=True)
+            command = "python train.py"
+            command_sha = hashlib.sha256(command.encode("utf-8")).hexdigest()
+            training_log = artifact_root / "training.log"
+            training_log.write_text("trusted training evidence\n", encoding="utf-8")
+            training_log_sha = _sha256(training_log)
+            start_receipt = artifact_root / "run_start_receipt.json"
+            start_receipt.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "gtpj-run-start-receipt/v1",
+                        "job_id": "RUN-007",
+                        "run_id": _legacy_run_id("RUN-007"),
+                        "command": command,
+                        "command_sha256": command_sha,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            start_receipt_sha = _sha256(start_receipt)
+            finish_receipt = artifact_root / "run_start_receipt.finish.json"
+            finish_receipt.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "gtpj-run-finish-receipt/v1",
+                        "job_id": "RUN-007",
+                        "run_id": _legacy_run_id("RUN-007"),
+                        "run_start_receipt_sha256": start_receipt_sha,
+                        "command_sha256": command_sha,
+                        "log_sha256": training_log_sha,
+                        "returncode": 0,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            internal_log = execution_root / "FULL" / "train_log" / "training.txt"
+            internal_log.parent.mkdir(parents=True)
+            internal_log.write_text("internal training evidence\n", encoding="utf-8")
+            best_model = internal_log.with_name("best_model.pth")
+            best_model.write_bytes(b"trusted model")
+            evidence_specs = (
+                ("run_start_receipt", start_receipt),
+                ("run_finish_receipt", finish_receipt),
+                ("sealed_training_log", training_log),
+                ("training_internal_log", internal_log),
+                ("best_model", best_model),
+            )
+            manifest_path = artifact_root / "artifact_manifest.json"
+            manifest_payload = {
+                "schema_version": controller.RECOVERED_ARTIFACT_MANIFEST_SCHEMA,
+                "job_id": "RUN-007",
+                "run_id": _legacy_run_id("RUN-007"),
+                "run_start_receipt_sha256": start_receipt_sha,
+                "run_finish_receipt_sha256": _sha256(finish_receipt),
+                "run_command_sha256": command_sha,
+                "run_log_sha256": training_log_sha,
+                "run_exit_code": 0,
+                "metrics": {
+                    "U": "72.36",
+                    "S": "76.07",
+                    "H": "74.17",
+                    "ZS": "81.28",
+                    "best_epoch": "31",
+                },
+                "evidence_files": [
+                    {
+                        "role": role,
+                        "path": path.relative_to(execution_root).as_posix(),
+                        "sha256": _sha256(path),
+                    }
+                    for role, path in evidence_specs
+                ],
+            }
+            manifest_path.write_text(
+                json.dumps(manifest_payload, ensure_ascii=False, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            manifest_sha = _sha256(manifest_path)
+
+            historical = [
+                ("RUN-001", "RUN-R3-FULL-S5", "failed", "", ""),
+                (
+                    "RUN-007",
+                    _legacy_run_id("RUN-007"),
+                    "completed",
+                    str(artifact_root),
+                    manifest_sha,
+                ),
+            ]
+            matrix = root / "PARAMETER_MATRIX.csv"
+
+            def write_matrix(*, manifest_digest=manifest_sha):
+                rows = [
+                    "job_id,run_id,status,artifact_ref,artifact_manifest_sha256,"
+                    "run_start_receipt_ref,run_start_receipt_sha256,run_command_sha256,run_log_sha256,"
+                    "run_exit_code,U,S,H,ZS,best_epoch\n"
+                ]
+                for job_id, run_id, status, artifact_ref, digest in historical:
+                    if job_id == "RUN-007":
+                        digest = manifest_digest
+                        rows.append(
+                            f"{job_id},{run_id},{status},{artifact_ref},{digest},{start_receipt},"
+                            f"{start_receipt_sha},{command_sha},{training_log_sha},0,"
+                            "72.36,76.07,74.17,81.28,31\n"
+                        )
+                    else:
+                        rows.append(f"{job_id},{run_id},{status},{artifact_ref},{digest},,,,,,,,,,,\n")
+                rows.extend(
+                    f"{job_id},{run_id},frozen,,,,,,,,,,,,\n"
+                    for job_id, run_id in _run_ids().items()
+                )
+                matrix.write_text("".join(rows), encoding="utf-8")
+
+            write_matrix(manifest_digest="")
+            with self.assertRaisesRegex(ValueError, "completed.*证据清单"):
+                controller._read_frozen_run_ids(matrix)
+
+            write_matrix()
+            self.assertEqual(_run_ids(), controller._read_frozen_run_ids(matrix))
+
+            best_model.write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "证据文件哈希"):
+                controller._read_frozen_run_ids(matrix)
+
     def test_layout_uses_candidate_for_both_clean_code_roots(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
