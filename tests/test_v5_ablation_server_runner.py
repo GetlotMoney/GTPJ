@@ -1440,6 +1440,79 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             popen.assert_not_called()
             self.assertFalse(gate.claim_start())
 
+    def test_stop_observed_during_launch_preparation_prevents_helper_launch(self):
+        class Status:
+            def update_job(self, _job_id, **_values):
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            stop_requested = threading.Event()
+            gate = controller.RunGate()
+            original_environment = controller.os.environ.copy()
+
+            def observe_stop_while_preparing():
+                stop_requested.set()
+                return original_environment.copy()
+
+            helper_process = Mock(pid=1234)
+            helper_process.poll.return_value = 0
+            helper_process.wait.return_value = 0
+            cleanup_result = {
+                "cleanup_complete": True,
+                "process_evidence_state": "confirmed_absent",
+                "errors": [],
+            }
+            with patch.object(
+                controller, "verify_python_runtime", return_value={}
+            ), patch.object(
+                controller, "verify_data_source_identity", return_value=True
+            ), patch.object(
+                controller.os.environ,
+                "copy",
+                side_effect=observe_stop_while_preparing,
+            ), patch.object(
+                controller.subprocess, "Popen", return_value=helper_process
+            ) as popen, patch.object(
+                controller,
+                "capture_helper_identity",
+                return_value={"start_time_ticks": 99},
+            ), patch.object(
+                controller, "cleanup_process_tree", return_value=cleanup_result
+            ), patch.object(controller, "validate_finish_receipt"):
+                controller.run_job(
+                    args=SimpleNamespace(
+                        python=Path(sys.executable),
+                        commit="a" * 40,
+                        launch_manifest_payload={},
+                        python_runtime_identity={},
+                        data_source=root,
+                        run_data_source=root,
+                        data_runtime_identity={},
+                    ),
+                    group="FULL",
+                    job_id="RUN-001",
+                    code_root=root / "code",
+                    ledger_root=ledger,
+                    warehouse_root=warehouse,
+                    stop_file=root / "STOP",
+                    stop_requested=stop_requested,
+                    run_gate=gate,
+                    status=Status(),
+                )
+            popen.assert_not_called()
+            self.assertFalse(gate.claim_start())
+
     def test_runtime_uses_private_read_only_data_snapshot(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

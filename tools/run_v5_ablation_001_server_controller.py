@@ -1602,15 +1602,24 @@ def run_job(
         )
         helper_environment[BOUND_PYTHON_ARGV0_ENV] = str(fixed_python)
         with helper_log.open("xb") as stream:
-            helper_process = subprocess.Popen(
-                helper_args,
-                cwd=str(ledger_root),
-                stdout=stream,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-                executable=getattr(args, "bound_python_exec_ref", None),
-                env=helper_environment,
+            def spawn_helper():
+                return subprocess.Popen(
+                    helper_args,
+                    cwd=str(ledger_root),
+                    stdout=stream,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                    executable=getattr(args, "bound_python_exec_ref", None),
+                    env=helper_environment,
+                )
+
+            helper_process = run_gate.launch_if_allowed(
+                spawn_helper,
+                should_block=lambda: stop_file.exists() or stop_requested.is_set(),
             )
+            if helper_process is None:
+                run_gate.request_stop()
+                return None
         try:
             helper_identity = capture_helper_identity(helper_process)
         except BaseException as identity_error:
