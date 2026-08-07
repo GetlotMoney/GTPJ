@@ -257,5 +257,3 @@ class GTPJ(nn.Module):
             "loss_ce": loss_ce,
             "loss_topo": loss_topo,
         }
-
-

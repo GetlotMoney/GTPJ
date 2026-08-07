@@ -1,7 +1,7 @@
 # V5 局部分支消融设计
 
-日期：2026-08-07  
-实验：`V5-ABLATION-001`  
+日期：2026-08-07
+实验：`V5-ABLATION-001`
 母版：`MODEL-V5-TEMPLATE-V1` / `model/v5-template-v1` / `2f5fa5e631ef82658d4bac587cdfd17f3534cb35`
 
 ## 要回答的问题
