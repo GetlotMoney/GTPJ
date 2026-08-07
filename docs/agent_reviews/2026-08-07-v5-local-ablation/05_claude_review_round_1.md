@@ -2,28 +2,31 @@ round: 1
 reviewer: independent_codex_fallback
 independent_codex_read_only: true
 fallback_reason: claude_code_unavailable
-reviewer_instance_id: 019fdbe2-3a86-7bb3-ba8f-bc72354febfd
+reviewer_instance_id: /root/runtime_recovery_review@99ef7112
 independent_context: true
 files_reviewed:
 - tools/run_v5_ablation_001_server_controller.py
 - tests/test_v5_ablation_server_runner.py
-- models/FAE_Memory_JEPA_global_only.py
-- tools/run_v5_ablation_001_global_only.py
-- experiments/v5/ablation/ABLATION-001_local_branch_effect
+- experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
+- experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
+- experiments/v5/ablation/ABLATION-001_local_branch_effect/TASK_START.yaml
 commands_run:
-- python -m unittest discover -v
+- python -m unittest tests.test_v5_ablation_server_runner -v
+- python -m unittest discover -s tests -v
 - python workflow/gtpj_workflow.py validate
-- python workflow/gtpj_workflow.py validate-workflow-consistency
-- python workflow/gtpj_workflow.py audit-boundary
+- python workflow/gtpj_workflow.py validate-experiment-base --path experiments/v5/ablation/ABLATION-001_local_branch_effect
+- git diff --check d86fc561 99ef711
 verdict: pass
 blocking_issues:
 non_blocking_issues:
-- 同 seed 不保证两个版本的共享参数逐元素同初始化；文档已明确，三个 seed 用于估计训练波动。
+- 测试辅助函数仍用旧 `run_id` 示例；正式控制器从冻结矩阵读取 R2 编号，不会混用。
+- Windows 审核不能替代服务器 Linux pidfd 与权限检查；主任务已在精确候选上另跑 44 项服务器测试。
+- 恢复文档里的 `job_id` 容易与保留的逻辑行号 `RUN-001…006` 混淆，最终冻结文档需要把两者说开。
 unsupported_claims:
-- 本轮没有访问服务器，不独立背书服务器训练或指标。
+- 本轮只放行恢复代码，不代表训练已经成功或已有精度结果。
 missing_validation:
-- 未访问服务器；真实 Linux 进程测试采用主任务在 `lab4090` 的 43 项机器证据。
+- 本轮审核者未亲自访问服务器；服务器机器验证由主任务执行。
 
 # 第一轮结论
 
-第一版 bundle 修复只恢复 V5 分支时，本轮发现全仓账本仍缺 V1/V2/V3/V5 本地分支并判为阻断；主任务修复到 `859d544` 后，本轮用真实 bundle clone、335 项全仓回归和全套工作流校验复验，最终结论为 `pass`。
+精确候选 `99ef711` 的旧执行号、旧六个 `run_id` 与 R2 新身份没有交集。独立真实 bundle 检查了两个代码副本和六个 RUN 账本：代码副本保持准确提交的 detached HEAD，六个账本处于正式实验分支并通过实验起点校验；任一布局失败都发生在线程和 GPU 训练启动前。结论为 `pass`。

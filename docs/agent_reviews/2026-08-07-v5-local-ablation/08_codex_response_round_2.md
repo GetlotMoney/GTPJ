@@ -1,11 +1,12 @@
 round: 2
 reviewer: codex
 addressed_claude_findings:
-- 已确认第二轮对 `859d544` 的复核为 `pass`；恢复顺序、引用绑定、恶意 bundle 和校验器篡改拒绝路径均无遗留阻断。
+- `499002b` 只创建实验分支引用但没有切换，已改为 `git checkout -B <实验分支> <准确提交>`。
+- 回归测试新增当前分支名断言，并在真实 clone 中运行 `validate-experiment-base`，避免只检查引用存在。
 validation_rerun:
-- 本地控制器 41 项通过；全仓 335 项中 333 项通过、2 项 Windows 跳过；服务器控制器和真实 Linux 进程测试共 43 项通过。
+- 本地控制器 42 项通过；全仓 336 项中 334 项通过、2 项 Windows 跳过；服务器控制器与真实 Linux 进程测试共 44 项通过。
 remaining_blocking_issues:
 
 # 主任务回应
 
-不再扩大实现。保留极窄的系统调用边界说明，继续第三路独立反方审核。
+第二轮原阻断已经按失败测试、最小修复、真实 clone 复验的顺序关闭。bundle 路径重开窗口记录为非阻断风险，本次不扩大实现。

@@ -1,6 +1,6 @@
 # 质量检查
 
-当前阶段：`recovery_review_pending`。
+当前阶段：`pre_run_frozen`。
 
 - [x] 精确绑定冻结母版提交；
 - [x] 实验分支与母版工作区分离；
@@ -62,8 +62,9 @@
 - [x] 首次正式执行 `V5-ABLATION-001-d86fc5614d3f` 在训练 PID 与启动收据生成前失败；两张卡均未进入训练，控制器完成子进程清理并封锁后续 RUN；
 - [x] 根因已用失败测试复现：每个 RUN 的独立 Git 副本没有恢复本地 `main` 与框架管理分支；
 - [x] 修复统一放在 `clone_at()`，所有代码副本和六个 RUN 账本都从 bundle 已验证对象号恢复管理分支；控制器专项测试增至 42 项并通过；
-- [x] 恢复修复候选 `499002b` 的全仓回归共 336 项，其中 334 项通过、2 项 Linux 专属测试在 Windows 跳过；`lab4090` 上 42 项控制器测试与 2 项真实 Linux 进程测试共 44 项通过；
+- [x] 候选 `499002b` 补回管理引用后，独立审核继续发现账本仍为 detached HEAD；候选 `99ef711` 已真正切到实验分支，并在真实 clone 中通过 `validate-experiment-base`；
+- [x] 恢复修复候选 `99ef711` 的全仓回归共 336 项，其中 334 项通过、2 项 Linux 专属测试在 Windows 跳过；`lab4090` 上 42 项控制器测试与 2 项真实 Linux 进程测试共 44 项通过；
 - [x] 旧执行号和旧六个 `run_id` 永久保留为失败证据；恢复批次改用带 `R2` 的全新 `run_id`；
-- [ ] runtime clone 修复完成新的 `strict-3` 复核和运行前冻结提交。
+- [x] runtime clone 修复完成新的 `strict-3` 复核和运行前冻结提交。
 
-当前决定：`block_formal_runner_until_runtime_clone_fix_reviewed_and_frozen`。
+当前决定：`allow_formal_runner_with_frozen_manifest`。

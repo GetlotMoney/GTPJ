@@ -1,9 +1,9 @@
 # 机器验证
 
-- `python -m unittest tests.test_v5_ablation_server_runner -v`：41 项通过。
-- `python -m unittest discover -v`：总计 335 项，其中 333 项通过、2 项 Linux 专属测试在 Windows 按设计跳过。
-- `lab4090`：41 项控制器测试和 2 项真实 Linux 进程测试，共 43 项通过。
-- 真实临时 bundle clone：恢复 `main`、`framework/v1/v2/v3/v5`、`framework/v5-template-v1`，保留 `v1/v2/v3/v4/v5` 和 `model/v5-template-v1` Tag；全仓框架账本、母版与工作流校验通过。
+- `python -m unittest tests/test_v5_ablation_server_runner.py -v`：42 项通过。
+- `python -m unittest discover -s tests -v`：总计 336 项，其中 334 项通过、2 项 Linux 专属测试在 Windows 按设计跳过。
+- `lab4090` 精确候选 `99ef711`：42 项控制器测试和 2 项真实 Linux 进程测试，共 44 项通过。
+- 真实临时 bundle clone：恢复 `main`、`framework/v1/v2/v3/v5`、`framework/v5-template-v1`，保留 `v1/v2/v3/v4/v5` 和 `model/v5-template-v1` Tag；RUN 账本当前分支为 `exp/v5/ablation/ablation-001-local-branch-effect`，并在 clone 中真实运行 `validate-experiment-base` 通过。
 - `python -m py_compile tools/run_v5_ablation_001_server_controller.py tests/test_v5_ablation_server_runner.py`：通过。
 - `python workflow/gtpj_workflow.py validate`：通过。
 - `python workflow/gtpj_workflow.py validate-workflow-consistency`：通过。
