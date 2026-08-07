@@ -1,6 +1,6 @@
 # 质量检查
 
-当前阶段：`pre_run_frozen`。
+当前阶段：`cuda_class_identity_fix_review_pending`。
 
 - [x] 精确绑定冻结母版提交；
 - [x] 实验分支与母版工作区分离；
@@ -11,7 +11,7 @@
 - [x] 母版与实验分支机器测试通过；
 - [x] bundle 管理引用修复后的 `strict-3` 代码审核通过；
 - [x] `agent_runtime.yaml` 校验、开跑前角色检查和清理计划通过；
-- [x] 目录句柄修复后的新冻结提交存在且工作树 clean；
+- [ ] CUDA 类别编号修复后的新冻结提交存在且工作树 clean；
 - [x] 服务器 Python、数据身份、Linux 进程能力和 GPU 空闲状态预检通过；正式启动时仍会从冻结 bundle 重验提交、配置和数据哈希；
 - [x] STOP/停止机制存在并通过本地与服务器测试；
 - [ ] 正式 RUN 的真实启动收据已经生成。
@@ -72,5 +72,8 @@
 - [x] R2 execution 和六个 `run_id` 永不复用；参数矩阵已换成带 `R3` 的六个新 `run_id`；
 - [x] 目录句柄修复后的控制器 45 项通过；全仓 342 项中 337 项通过，5 项 Linux 专属测试在 Windows 按设计跳过；两个代码副本不再创建运行时链接，FULL 与 GLOBAL_ONLY 均使用本次候选入口；
 - [x] 目录句柄修复完成服务器机器验证、`strict-3` 复核与运行前冻结提交。
+- [x] R3 正式执行 `V5-ABLATION-001-cca4e0e6419a` 在 FULL 与 GLOBAL_ONLY 模型初始化时均复现 CUDA/CPU 类别编号冲突；两项返回码为 1，收据已核对，进程树已停止，后四项未启动。
+- [x] R3 execution 和六个 `run_id` 已停用；参数表改用全新 R4 身份。
+- [ ] CUDA 类别编号修复完成服务器真实测试、`strict-3` 复核与新的运行前冻结。
 
-当前决定：`allow_formal_runner_with_frozen_manifest_and_new_r3_ids`。
+当前决定：`block_formal_runner_until_cuda_class_identity_fix_reviewed_and_frozen`。

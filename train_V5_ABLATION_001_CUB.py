@@ -265,7 +265,7 @@ seenclasses, unseenclasses = load_v5_cub_split(
     train_labels,
     test_cache["seen_labels"],
     test_cache["unseen_labels"],
-    config.device,
+    "cpu",
 )
 input_tensors = {
     "train_cls": train_cls,

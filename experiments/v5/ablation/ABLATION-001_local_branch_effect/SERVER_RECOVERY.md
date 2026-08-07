@@ -162,4 +162,15 @@ cat <runtime-root>/recovery_handoff.json
 - 训练影响：没有进入 `train_GTPJ_CUB.py` 或 `train_V5_ABLATION_001_CUB.py`，两张 GPU 显存保持 6 MiB，没有完成任何训练 step；`RUN-002/003/005/006` 未启动；
 - 清理结果：两个包装器正常返回错误并生成经过核对的结束收据，两个 helper 进程组均已收口，`cleanup_complete: true`；
 - 证据位置：服务器 runtime 与 Warehouse 保留 R2 claim、`status.json`、`recovery_handoff.json`、启动/结束收据和完整错误日志；
-- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。首个链接修复候选 `d847266` 被独立审核阻断且未领取 R3 身份；当前方案彻底取消代码副本中的 `data`、`train_log` 链接，改用设备号、inode 与 Linux 目录文件描述符绑定本次只读快照和对应 Warehouse。服务器 50 项机器验证和三路审核已通过，下一批使用带 `R3` 的六个新 `run_id`，并在冻结启动清单再次通过后一次性领取。
+- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。首个链接修复候选 `d847266` 被独立审核阻断且没有领取 R3 身份；后续方案彻底取消代码副本中的 `data`、`train_log` 链接，改用设备号、inode 与 Linux 目录文件描述符绑定本次只读快照和对应 Warehouse。该方案通过服务器 50 项机器验证和三路审核后，以 R3 新身份进入了下一次正式执行。
+
+## 2026-08-08 第三次正式执行失败记录
+
+- 旧执行号：`V5-ABLATION-001-cca4e0e6419a`；
+- 清单预检：第一份清单误用了 Windows 工作树的换行字节计算 CSV 哈希，与 Git 中冻结的 LF 字节不一致，控制器在领取身份前安全拒绝，没有创建正式 runtime、Warehouse 或 claim；随后改为直接按 Git 对象字节生成清单，预检通过；
+- 失败阶段：R3 六个 `run_id` 已正式领取，约 9.9 GiB 私有数据快照完成；`RUN-001` 和 `RUN-004` 均已生成启动收据，并分别进入 FULL 与 GLOBAL_ONLY 的真实模型入口；
+- 直接报错：两个入口都把类别编号提前放到 CUDA，而模型初始化会先用 CPU 上的 `torch.arange` 核对类别顺序，`torch.equal` 因两侧设备不同报错；FULL 位于 `model/MyModel.py:310`，GLOBAL_ONLY 位于 `model/V5GlobalOnly.py:65`；
+- 训练影响：两个进程都在模型初始化时以返回码 1 退出，没有完成任何训练 step，也没有产生可用精度；`RUN-002/003/005/006` 在失败总闸后保持未启动；
+- 清理结果：`RUN-001` 与 `RUN-004` 的结束收据均已核对，两个进程树都已停止，`cleanup_complete: true`；GPU 随后恢复空闲；
+- 证据位置：runtime 为 `/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-cca4e0e6419a`，Warehouse 为 `/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-cca4e0e6419a`，其中保留 claim、状态、收据、错误日志和 `recovery_handoff.json`；
+- 恢复规则：R3 execution 和六个 R3 `run_id` 永不复用。最小修复是在两个训练入口加载划分时让类别编号先留在 CPU，完成模型内部的类别顺序核对后，再随模型整体迁移到 GPU；模型公式、数据划分和评估口径不变。修复必须先通过真实 CUDA 测试和三路审核，再使用全新的 R4 `run_id` 与新冻结提交启动。

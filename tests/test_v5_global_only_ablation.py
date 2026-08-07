@@ -1,5 +1,6 @@
 """V5-ABLATION-001 干净无局部分支的行为测试。"""
 
+import ast
 from pathlib import Path
 import re
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ import torch
 import torch.nn.functional as F
 
 from model.V5GlobalOnly import GTPJ
+from model.MyModel import GTPJ as FullGTPJ
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +21,7 @@ CONFIG_PATHS = (
 )
 MODEL_SOURCE = ROOT / "model" / "V5GlobalOnly.py"
 TRAIN_SOURCE = ROOT / "train_V5_ABLATION_001_CUB.py"
+FULL_TRAIN_SOURCE = ROOT / "train_GTPJ_CUB.py"
 
 GLOBAL_ONLY_CONFIG_KEYS = {
     "dataset",
@@ -76,6 +79,53 @@ def _top_level_keys(text):
 
 
 class V5GlobalOnlyAblationTest(unittest.TestCase):
+    def test_training_entries_keep_class_identity_tensors_on_cpu(self):
+        for path in (FULL_TRAIN_SOURCE, TRAIN_SOURCE):
+            with self.subTest(path=path.name):
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                calls = [
+                    node
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "load_v5_cub_split"
+                ]
+                self.assertEqual(1, len(calls))
+                self.assertGreaterEqual(len(calls[0].args), 6)
+                self.assertIsInstance(calls[0].args[5], ast.Constant)
+                self.assertEqual("cpu", calls[0].args[5].value)
+
+    @unittest.skipUnless(torch.cuda.is_available(), "需要真实 CUDA 验证类别编号设备边界")
+    def test_cpu_class_ids_initialize_both_models_with_cuda_text(self):
+        from tests.test_fae_memory_jepa import make_config
+
+        full_seen = torch.tensor([0, 2, 3, 5])
+        full_unseen = torch.tensor([1, 4])
+        full_sentences = torch.randn(6, 3, 16, device="cuda")
+        full = FullGTPJ(
+            make_config(),
+            full_seen,
+            full_unseen,
+            seen_text_embeds=full_sentences[full_seen].mean(dim=1),
+            unseen_text_embeds=full_sentences[full_unseen].mean(dim=1),
+            seen_sentence_embeds=full_sentences[full_seen],
+        ).to("cuda")
+
+        global_seen = torch.tensor([0, 2])
+        global_unseen = torch.tensor([1, 3])
+        global_sentences = torch.randn(4, 3, 8, device="cuda")
+        global_only = GTPJ(
+            _config(),
+            global_seen,
+            global_unseen,
+            seen_text_embeds=global_sentences[global_seen].mean(dim=1),
+            unseen_text_embeds=global_sentences[global_unseen].mean(dim=1),
+            seen_sentence_embeds=global_sentences[global_seen],
+        ).to("cuda")
+
+        self.assertEqual("cuda", full.seenclass.device.type)
+        self.assertEqual("cuda", global_only.seenclass.device.type)
+
     def test_local_subsystem_is_not_instantiated(self):
         model = _model()
         names = {name for name, _ in model.named_parameters()}

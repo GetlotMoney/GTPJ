@@ -2,7 +2,7 @@
 
 ```yaml
 framework: FRAMEWORK-V5
-status: ready_to_run
+status: pre_run_gated
 base_template: MODEL-V5-TEMPLATE-V1
 base_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
@@ -40,7 +40,10 @@ review_tier: strict-3
 - [x] 本地机器测试通过；
 - [x] `agent_runtime.yaml` 与三份开跑前角色检查通过；
 - [x] 目录句柄修复后的 `strict-3` 代码审核通过；
-- [x] 创建新的运行前冻结提交；
+- [x] R3 真实双卡启动进入两个模型入口，并在初始化时暴露类别编号的 CPU/CUDA 设备冲突；
+- [x] R3 两个进程返回码为 1，收据与清理完整，其余四项未启动；
+- [ ] CUDA 类别编号修复后的 `strict-3` 审核通过；
+- [ ] 创建带全新 R4 身份的运行前冻结提交；
 - [ ] 服务器双卡正式启动；
 - [ ] 6 次运行全部收口并做配对统计。
 
