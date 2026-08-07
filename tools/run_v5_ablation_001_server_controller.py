@@ -761,6 +761,7 @@ def run_job(
     status,
 ):
     if stop_file.exists() or stop_requested.is_set():
+        run_gate.request_stop()
         status.update_job(job_id, status="not_started_after_stop_or_failure")
         return None
     job_dir = warehouse_root / job_id
@@ -799,15 +800,19 @@ def run_job(
         "--log",
         str(training_log),
     ]
-    status.update_job(
-        job_id,
-        status="starting",
-        group=group,
-        ledger=str(ledger_root),
-        code_root=str(code_root),
-        receipt=str(receipt),
-        training_log=str(training_log),
-    )
+    try:
+        status.update_job(
+            job_id,
+            status="starting",
+            group=group,
+            ledger=str(ledger_root),
+            code_root=str(code_root),
+            receipt=str(receipt),
+            training_log=str(training_log),
+        )
+    except BaseException:
+        run_gate.mark_failure()
+        raise
     process = None
     return_code = None
     stopped_by_request = False
@@ -1009,13 +1014,16 @@ def main():
                     status=status,
                 )
             except Exception as exc:
-                status.update_job(
-                    job_id,
-                    status="failed",
-                    controller_error=f"{type(exc).__name__}: {exc}",
-                )
-                code = 1
                 run_gate.mark_failure()
+                try:
+                    status.update_job(
+                        job_id,
+                        status="failed",
+                        controller_error=f"{type(exc).__name__}: {exc}",
+                    )
+                except BaseException:
+                    return
+                code = 1
             if code not in {None, 0}:
                 run_gate.mark_failure()
 

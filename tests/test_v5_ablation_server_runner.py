@@ -626,6 +626,43 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             cleanup.assert_called_once()
             self.assertFalse(gate.claim_start())
 
+    def test_starting_status_write_failure_blocks_other_queue_immediately(self):
+        class FailOnStartingStatus:
+            def update_job(self, _job_id, **values):
+                if values.get("status") == "starting":
+                    raise RuntimeError("starting status write failed")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            gate = controller.RunGate()
+            with self.assertRaisesRegex(RuntimeError, "starting status write failed"):
+                controller.run_job(
+                    args=SimpleNamespace(
+                        python=Path(sys.executable),
+                        commit="a" * 40,
+                    ),
+                    group="FULL",
+                    job_id="RUN-001",
+                    code_root=root / "code",
+                    ledger_root=ledger,
+                    warehouse_root=warehouse,
+                    stop_file=root / "STOP",
+                    stop_requested=threading.Event(),
+                    run_gate=gate,
+                    status=FailOnStartingStatus(),
+                )
+            self.assertFalse(gate.claim_start())
+
     def test_finish_receipt_failure_blocks_other_queue_before_status_cleanup(self):
         cleanup_status_started = threading.Event()
         release_cleanup_status = threading.Event()
