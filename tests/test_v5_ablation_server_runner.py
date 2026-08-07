@@ -79,7 +79,9 @@ def _launch_manifest_payload(commit, hashes=None):
     }
 
 
-def _create_evidence_bundle(root, *, tamper_validator=False):
+def _create_evidence_bundle(
+    root, *, tamper_validator=False, include_validation_refs=True
+):
     repo = root / "source"
     repo.mkdir()
     subprocess.run(
@@ -172,6 +174,16 @@ if len(sys.argv) > 1 and sys.argv[1] == "validate-experiment-base":
     ).stdout.strip()
     if branch != "exp/v5/ablation/ablation-001-local-branch-effect":
         raise SystemExit(10)
+    for required_ref in (
+        "refs/heads/main",
+        "refs/heads/framework/v5-template-v1",
+    ):
+        subprocess.run(
+            ["git", "rev-parse", "--verify", required_ref],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 raise SystemExit(0)
 """,
         encoding="utf-8",
@@ -202,6 +214,23 @@ raise SystemExit(0)
         capture_output=True,
         text=True,
     ).stdout.strip()
+    if include_validation_refs:
+        for branch_name in ("main", "framework/v5-template-v1"):
+            subprocess.run(
+                ["git", "branch", branch_name, template_commit],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        for tag_name in ("v5", "model/v5-template-v1"):
+            subprocess.run(
+                ["git", "tag", tag_name, template_commit],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
     if tamper_validator:
         (workflow / "gtpj_workflow.py").write_text(
             "raise SystemExit(0)  # forged self-validator\n",
@@ -416,6 +445,22 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 controller, "SERVER_DATA_SOURCE", data_source.absolute()
             ):
                 with self.assertRaisesRegex(ValueError, "workflow/gtpj_workflow.py"):
+                    controller.verify_frozen_launch_evidence(
+                        bundle, Path(sys.executable), data_source, payload, commit
+                    )
+
+    def test_frozen_evidence_requires_governance_refs_for_base_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle, commit, payload, template_commit, data_source = _create_evidence_bundle(
+                root, include_validation_refs=False
+            )
+            with patch.object(controller, "TEMPLATE_COMMIT", template_commit), patch.object(
+                controller, "SERVER_PYTHON", Path(sys.executable).absolute()
+            ), patch.object(
+                controller, "SERVER_DATA_SOURCE", data_source.absolute()
+            ):
+                with self.assertRaisesRegex(ValueError, "管理引用"):
                     controller.verify_frozen_launch_evidence(
                         bundle, Path(sys.executable), data_source, payload, commit
                     )

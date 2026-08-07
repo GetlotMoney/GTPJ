@@ -80,6 +80,14 @@ LAUNCH_IDENTITY_VALUES = {
     "template_commit": TEMPLATE_COMMIT,
     "review_pack_ref": REVIEW_PACK.as_posix(),
 }
+VALIDATION_LOCAL_BRANCH_REFS = {
+    "main": "refs/heads/main",
+    "framework/v5-template-v1": "refs/heads/framework/v5-template-v1",
+}
+VALIDATION_REQUIRED_TAG_REFS = (
+    "refs/tags/v5",
+    "refs/tags/model/v5-template-v1",
+)
 
 
 def parse_args():
@@ -1163,6 +1171,21 @@ def verify_frozen_launch_evidence(
             raise ValueError(
                 "Git bundle 中实验分支没有准确指向 pre_run_freeze_commit。"
             )
+        required_validation_refs = {
+            *VALIDATION_LOCAL_BRANCH_REFS.values(),
+            *VALIDATION_REQUIRED_TAG_REFS,
+        }
+        missing_validation_refs = sorted(required_validation_refs - refs.keys())
+        if missing_validation_refs:
+            raise ValueError(
+                "Git bundle 缺少实验起点校验所需的管理引用："
+                f"{missing_validation_refs}"
+            )
+        if (
+            refs[VALIDATION_LOCAL_BRANCH_REFS["framework/v5-template-v1"]]
+            != TEMPLATE_COMMIT
+        ):
+            raise ValueError("Git bundle 的 V5 母版分支没有指向冻结母版提交。")
         run_checked(["git", "bundle", "unbundle", str(bundle)], cwd=bare_repo)
         resolved = run_checked(
             ["git", "rev-parse", f"{expected_commit}^{{commit}}"], cwd=bare_repo
@@ -1175,6 +1198,16 @@ def verify_frozen_launch_evidence(
         )
         if manifest.get("template_commit") != TEMPLATE_COMMIT:
             raise ValueError("启动许可清单 template_commit 与控制器信任根不一致。")
+        resolved_template_tag = run_checked(
+            [
+                "git",
+                "rev-parse",
+                f"{refs['refs/tags/model/v5-template-v1']}^{{commit}}",
+            ],
+            cwd=bare_repo,
+        ).stdout.strip()
+        if resolved_template_tag != TEMPLATE_COMMIT:
+            raise ValueError("Git bundle 的 V5 母版 Tag 没有指向冻结母版提交。")
         validator_path = "workflow/gtpj_workflow.py"
         trusted_validator_blob = run_checked(
             ["git", "rev-parse", f"{TEMPLATE_COMMIT}:{validator_path}"],
@@ -1202,6 +1235,11 @@ def verify_frozen_launch_evidence(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=checkout
         ).stdout.strip() != EXPERIMENT_BRANCH:
             raise ValueError("隔离校验仓库没有绑定正式实验分支。")
+        for local_branch, bundle_ref in VALIDATION_LOCAL_BRANCH_REFS.items():
+            run_checked(
+                ["git", "branch", "-f", local_branch, refs[bundle_ref]],
+                cwd=checkout,
+            )
         if run_checked(["git", "status", "--porcelain"], cwd=checkout).stdout.strip():
             raise ValueError("隔离校验仓库不是干净工作树。")
 
