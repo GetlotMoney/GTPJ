@@ -31,17 +31,18 @@ tools/
   + 新增双队列服务器控制器、状态文件和 STOP 文件机制
   + 外部 launch manifest 只绑定身份和哈希；实际 gate 从 Git bundle 冻结提交重新验证
   + 隔离校验使用带 `.git` 的真实实验分支，不在普通导出目录里假跑 Git 门
-  + bundle 自带 workflow 必须与冻结母版 Git 对象相同，不能用恶意自校验器放行
-  + 固定服务器 Python 路径、内容哈希和文件身份；每个 RUN 启动前复核
-  + DATA_MANIFEST.json 固定 12 个 CUB/xlsa17 输入及 split/label/class-order/metric 口径
+  + bundle 自带 workflow 只能是冻结母版对象或硬编码的已审核绑定运行时版本
+  + 固定服务器 Python 路径、内容哈希和打开的文件描述符；helper 到最终训练都执行同一个文件对象
+  + DATA_MANIFEST.json 固定 12 个 CUB/xlsa17 输入及 split/label/class-order/metric 口径；每个 RUN 重算完整哈希
   + execution_id 与六个 run_id 在服务器持久领取，禁止重复启动
   + runtime、Warehouse 与领取记录使用固定服务器父目录，不能换目录绕过
   + 双队列最终检查和 Popen 使用同一把锁
-  + signal handler 只设置停止事件；异常路径用 `/proc` 身份统一回收训练/helper 进程树
-  + helper 先退出时仍继续回收同一受信会话中的训练子进程，PID 复用时拒绝误杀
+  + signal handler 只设置停止事件；异常路径用 `/proc` 核对并用 pidfd 绑定具体进程
+  + helper 先退出时仍继续回收同一受信会话中的训练子进程；正常信号不按裸 PID 发送
   + 收据或清理异常先锁住双队列，再继续写状态或抛错
   + 结束收据核对 job、run、启动收据哈希、退出码、PID 和日志哈希
   + claim 后失败生成不可覆盖的 controller failure 凭证和 recovery_handoff.json
+  + claim 先完整写临时文件，再用不可覆盖硬链接原子发布；半写入不会占用正式身份
   + 恢复必须使用新的提交、job 和 run
 ```
 

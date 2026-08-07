@@ -12,11 +12,25 @@
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
 | 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
+| V5 正式实验执行器 | `SYS-RUNNER-V1` | 已完成 | 双卡队列使用绑定 Python、pidfd 进程句柄、逐 RUN 数据全哈希、原子 claim 和先关闸后写状态；正式训练待启动。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
+
+## 2026-08-07：SYS-RUNNER-V1（已完成）
+
+- 本次改的是哪个对象：`V5-ABLATION-001` 的服务器双卡正式执行器、训练进程绑定和失败凭证路径；没有修改冻结 V5 母版模型。
+- 目标问题：普通的“先检查路径、再按路径启动”和“先读 PID、再按 PID 停止”存在极短竞态；数据只复核 inode、大小和时间也不能证明内容仍等于冻结清单。
+- 采用技术：正式 Python 先打开文件描述符，后续 helper、训练包装器和最终训练入口都从 `/proc/<控制器PID>/fd/<文件描述符>` 执行；Linux 停止使用 pidfd 绑定具体进程对象，Python 没封装接口时直接调用内核系统调用；12 个数据文件在每个 RUN 启动前重算 SHA-256；execution claim 先完整写临时文件再用硬链接原子发布；失败闸门在任何可能阻塞的状态写入前关闭。
+- 替换了什么：替换按可变路径执行 Python、按裸 PID/PGID 发送正常停止信号、只复核数据元数据、直接向最终 claim 文件写 JSON，以及清理状态写完后才阻断另一队列的做法。
+- 实际可见效果：服务器控制器可以证明实际执行的是已打开的 Python 文件对象；PID 被复用时信号也不会发给新进程；保持 inode、大小和 mtime 不变的数据内容变化仍会被拦截；claim 写入中断不会留下空的正式领取记录。
+- 选择原因：这项消融会产生论文证据，宁可每个 RUN 多做一次约 10GB 输入哈希，也不能让运行身份、数据或进程清理存在说不清的边界。
+- 已知限制：pidfd 的内核调用号按当前 `lab4090` 的 Linux x86_64 环境实现；断电瞬间的目录级持久性没有单独做掉电注入；三组同 seed 不等于共享参数逐元素相同初始化。
+- 素材位置：`tools/run_v5_ablation_001_server_controller.py`、`tools/run_v5_ablation_001_training.py`、`workflow/gtpj_workflow.py`、`tests/test_v5_ablation_server_runner.py`、`tests/test_v5_ablation_server_linux_integration.py`。
+- 验证命令与结果：本地服务器控制器测试 35 项通过；全仓 329 项通过，2 项 Linux 专属测试在 Windows 跳过；`lab4090` 上 35 项控制器测试和 2 项真实 Linux 进程测试共 37 项通过；pidfd 能力探测为 `true`，绑定 Python 子进程实际报告固定解释器路径和清单中的 SHA-256。
+- 回退方式：回退本实验分支上的执行器提交；冻结母版 `model/v5-template-v1@2f5fa5e`、数据文件、旧运行证据和其他框架不动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地已冻结）
 

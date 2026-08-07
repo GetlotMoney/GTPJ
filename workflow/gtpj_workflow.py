@@ -15379,12 +15379,24 @@ def run_training_with_start_receipt(command: str, log_path: Path) -> dict[str, o
     """Launch the frozen command directly and capture its complete output in the anchored log."""
     command_sha256 = parameter_matrix_sha256(command)
     tokens = run_start_command_tokens(command)
+    bound_python = os.environ.get("GTPJ_BOUND_PYTHON_EXEC", "").strip()
+    bound_argv0 = os.environ.get("GTPJ_BOUND_PYTHON_ARGV0", "").strip()
+    executable = None
+    if bound_python or bound_argv0:
+        if not re.fullmatch(r"/proc/[1-9][0-9]*/fd/[1-9][0-9]*", bound_python):
+            raise TrainingLaunchError("bound Python descriptor path is invalid")
+        if not tokens or tokens[0] != bound_argv0:
+            raise TrainingLaunchError("bound Python argv0 does not match frozen command")
+        if not Path(bound_python).is_file():
+            raise TrainingLaunchError("bound Python descriptor is no longer available")
+        executable = bound_python
     try:
         process = subprocess.Popen(
             tokens,
             cwd=REPO_ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            executable=executable,
         )
     except OSError as exc:
         raise TrainingLaunchError(f"frozen training command could not start: {exc}") from exc

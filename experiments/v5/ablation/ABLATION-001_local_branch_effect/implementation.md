@@ -34,21 +34,22 @@
 
 - `launch_manifest.json` 不再用调用者填写的通过布尔值自我证明；它只绑定冻结提交、实验分支、母版提交、六个 `run_id`、六份受信文件和固定 Python 的 SHA-256；
 - 控制器先从 Git bundle 克隆出带 `.git` 的临时隔离仓，并准确切到正式实验分支，再运行 strict-3、agent runtime、参数表、实验绑定和仓库边界校验；通过前不创建正式运行副本和训练进程；
-- 代码包里的 `workflow/gtpj_workflow.py` 只有与硬编码冻结母版中的 Git 对象完全相同才会被执行；恶意或误改的自校验器会提前被拒绝；
-- 正式 Python 固定为 `/data/lby/.conda/envs/dvsr_gpu/bin/python`，启动清单绑定内容哈希，首次校验和每个 RUN 启动前都复核文件身份；
-- `DATA_MANIFEST.json` 冻结 12 个 CUB/xlsa17 正式输入的路径、大小和 SHA-256，并同时固定 split、label、class order 与 metric 口径；任一文件变化都会在训练进程创建前阻断；
+- 代码包里的 `workflow/gtpj_workflow.py` 只允许冻结母版 Git 对象或控制器硬编码的已审核“绑定 Python”版本；其他自校验器会在执行前被拒绝；
+- 正式 Python 固定为 `/data/lby/.conda/envs/dvsr_gpu/bin/python`；控制器核对清单哈希后打开文件描述符，helper、收据流程、训练包装器和最终训练入口都执行这个已打开文件，路径在检查后被替换也不会换掉实际解释器；
+- `DATA_MANIFEST.json` 冻结 12 个 CUB/xlsa17 正式输入的路径、大小和 SHA-256，并同时固定 split、label、class order 与 metric 口径；首次预检和每个 RUN 启动前都重算完整内容哈希；
 - runtime 与 Warehouse 使用 `V5-ABLATION-001-<冻结提交前12位>` 命名；服务器持久化领取 `execution_id` 和六个 `run_id`，停止后也不能重复使用；
 - runtime、Warehouse 和身份领取目录都固定在服务器约定父目录，不能靠更换 `--warehouse-root` 父目录重新领取；
 - STOP 或系统信号由普通控制流程处理；signal handler 只设置停止事件，不获取状态锁；
-- 任意异常都进入统一 `finally`：先用 `/proc` 的 PID、进程组、会话和启动时钟固定真实身份，再处理训练 PID 和 helper 进程组；即使 helper 先退出，也会继续清理仍存活的训练子进程；
+- 任意异常都进入统一 `finally`：先用 `/proc` 核对 PID、进程组、会话和启动时钟，再打开 Linux pidfd 绑定具体进程对象；正常停止信号只发给 pidfd，不按可能复用的裸 PID 发信号；即使 helper 先退出，也会继续清理仍存活的训练子进程；
+- helper 创建后若连身份都没来得及固定，控制器会在该直接子进程被 `wait` 回收前强制停止它的独立进程组，并写 `launch_failure.json`；
 - `run_start_receipt.finish.json` 会再次核对 job、run、启动收据哈希、退出码、PID 和日志哈希；只存在文件但内容不一致仍然阻断正式证据；
 - 冻结证据校验调用 `validate-experiment-base` 时传入完整实验目录；测试中的最小工作流会检查该路径确实包含 `EXPERIMENT.yaml`，防止参数写错却被假校验放过；
 - 最终的失败检查与 `Popen` 在同一把锁内；任一 RUN 失败登记完成后，两个队列都不能再启动后续 RUN；
 - `Popen` 与首次 `running` 状态写入也在同一把锁内；如果状态无法落盘，会先清理刚创建的 helper 并锁住另一队列；
 - 上述启动期清理结果写入不可覆盖的 `launch_failure.json`；清理不完整时错误会携带 helper PID 和清理错误，不会丢失孤儿进程线索；
-- execution claim 领取后如果建目录、克隆或最终状态落盘失败，会额外写入不可覆盖的 `controller_failure.json` 同类凭证，并尽力生成 `recovery_handoff.json`；半成品目录不会变成可重用身份；
+- execution claim 先完整写同目录临时文件、`fsync` 后用不可覆盖硬链接原子发布；领取后如果建目录、克隆或最终状态落盘失败，会额外写入不可覆盖的 `controller_failure.json` 同类凭证，并尽力生成 `recovery_handoff.json`；
 - finish receipt 或清理异常会在写后续状态前立即登记共享失败，另一队列不能利用异常处理窗口启动后续 RUN；
-- 正式控制器只接受 `sys.platform == linux` 且具备真实进程组和 `SIGKILL` 的环境，Windows、macOS 和 BSD 均不能正式运行；
+- 正式控制器只接受 `sys.platform == linux` 且通过真实进程组、pidfd 和 `SIGKILL` 能力探测的环境；当前服务器 Python 未直接暴露 pidfd 时，控制器调用 Linux 内核接口；
 - 本实验的无局部分支入口不提供续训参数，不读取外部 checkpoint；停止后的重跑必须新建冻结 RUN；
 - 非正常结束会生成 `recovery_handoff.json`，具体规则见 `SERVER_RECOVERY.md`。
 
@@ -58,8 +59,8 @@
 
 ## 当前机器验证
 
-- 服务器控制器专属测试：29 项通过；
-- 两项真实 Linux 进程组收口测试已在 `lab4090` 通过，其中一项专门覆盖 helper 已退出但训练子进程仍存活的情况；
+- 服务器控制器专属测试：35 项通过；
+- `lab4090` 上服务器控制器与两项真实 Linux 进程收口测试共 37 项通过，其中一项专门覆盖 helper 已退出但训练子进程仍存活的情况；
 - V5 相关模型、母版和旧数学路径测试：41 项通过；
-- 仓库完整回归：323 项通过，另有 2 项 Linux 专属测试在 Windows 按设计跳过；这两项已在服务器通过；
+- 仓库完整回归：329 项通过，另有 2 项 Linux 专属测试在 Windows 按设计跳过；这两项已在服务器通过；
 - `validate-experiment-base`、6 行冻结参数表、总工作流、规则一致性、框架账本和仓库边界检查均通过。

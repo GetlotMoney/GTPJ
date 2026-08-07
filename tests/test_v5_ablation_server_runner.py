@@ -3,6 +3,7 @@
 from pathlib import Path
 import hashlib
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -351,6 +352,25 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                         runtime, manifest, expected_identity=identity
                     )
 
+    def test_python_runtime_is_bound_to_an_open_executable_descriptor(self):
+        bind = getattr(controller, "bind_python_runtime", None)
+        self.assertIsNotNone(bind)
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "python"
+            runtime.write_bytes(b"trusted-runtime")
+            manifest = {
+                "python_ref": runtime.as_posix(),
+                "python_sha256": _sha256(runtime),
+            }
+            with patch.object(controller, "SERVER_PYTHON", runtime.absolute()):
+                binding = bind(runtime, manifest)
+                try:
+                    self.assertRegex(binding["exec_ref"], r"^/proc/[1-9][0-9]*/fd/[1-9][0-9]*$")
+                    self.assertEqual(_sha256(runtime), binding["identity"]["sha256"])
+                    self.assertEqual(runtime.as_posix(), binding["argv0"])
+                finally:
+                    os.close(binding["fd"])
+
     def test_frozen_evidence_is_verified_from_bundle_not_manifest_booleans(self):
         verify = getattr(controller, "verify_frozen_launch_evidence", None)
         self.assertIsNotNone(verify)
@@ -440,6 +460,18 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                     warehouse_root=root.parent / "warehouse-c",
                 )
 
+    def test_claim_is_not_published_when_atomic_link_fails(self):
+        publish = getattr(controller, "_atomic_create_json", None)
+        self.assertIsNotNone(publish)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "claim.json"
+            with patch.object(controller.os, "link", side_effect=OSError("link failed")):
+                with self.assertRaisesRegex(OSError, "link failed"):
+                    publish(target, {"execution_id": "test"})
+            self.assertFalse(target.exists())
+            self.assertEqual([], list(root.glob(".*.tmp")))
+
     def test_runtime_and_warehouse_roots_must_be_new_and_commit_named(self):
         check = getattr(controller, "validate_fresh_execution_roots", None)
         self.assertIsNotNone(check)
@@ -498,10 +530,29 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             )
             self.assertEqual(4321, controller.training_pid_from_log(path))
 
-    @patch.object(controller.os, "kill")
-    def test_stop_escalates_from_term_to_kill_when_training_does_not_exit(
-        self, kill
-    ):
+    def test_pidfd_signal_targets_the_open_process_handle(self):
+        send = getattr(controller, "_signal_pidfd", None)
+        self.assertIsNotNone(send)
+        with patch.object(controller.signal, "pidfd_send_signal", create=True) as pidfd_send, patch.object(
+            controller.os, "kill"
+        ) as raw_kill, patch.object(controller.os, "killpg", create=True) as raw_killpg:
+            send(17, signal.SIGTERM)
+        pidfd_send.assert_called_once_with(17, signal.SIGTERM, None, 0)
+        raw_kill.assert_not_called()
+        raw_killpg.assert_not_called()
+
+    def test_uncaptured_helper_is_killed_before_it_can_be_reaped(self):
+        terminate = getattr(controller, "_terminate_uncaptured_helper", None)
+        self.assertIsNotNone(terminate)
+        helper = Mock(pid=1234)
+        helper.wait.return_value = -int(controller.KILL_SIGNAL)
+        with patch.object(controller.os, "killpg", create=True) as killpg:
+            outcome = terminate(helper)
+        killpg.assert_called_once_with(1234, controller.KILL_SIGNAL)
+        helper.wait.assert_called_once()
+        self.assertTrue(outcome["cleanup_complete"])
+
+    def test_stop_escalates_from_term_to_kill_when_training_does_not_exit(self):
         helper = Mock()
         helper.poll.return_value = 1
         helper_identity = {
@@ -517,10 +568,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             "start_time_ticks": 101,
         }
         with patch.object(
-            controller,
-            "read_linux_process_identity",
-            return_value=training_identity,
-        ), patch.object(
+            controller, "_signal_bound_identity", return_value=True
+        ) as signal_training, patch.object(
             controller,
             "_wait_for_process_group_empty",
             side_effect=[False, True],
@@ -535,7 +584,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 poll_interval_seconds=0,
             )
         self.assertEqual("group_killed", outcome)
-        kill.assert_called_once_with(4321, signal.SIGTERM)
+        signal_training.assert_called_once_with(training_identity, signal.SIGTERM)
         signal_group.assert_called_once_with(helper_identity, controller.KILL_SIGNAL)
 
     def test_failure_gate_never_allows_a_later_job_to_start(self):
@@ -600,7 +649,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 "start_time_ticks": 101,
             }
             with patch.object(controller, "training_pid_from_log", return_value=4321), patch.object(
-                controller, "read_linux_process_identity", return_value=training_identity
+                controller, "capture_training_identity", return_value=training_identity
             ), patch.object(
                 controller,
                 "terminate_training_process",
@@ -649,7 +698,7 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 controller, "training_pid_from_log", return_value=4321
             ), patch.object(
                 controller,
-                "read_linux_process_identity",
+                "capture_training_identity",
                 return_value=training_identity,
             ), patch.object(
                 controller,
@@ -689,8 +738,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 controller, "training_pid_from_log", return_value=4321
             ), patch.object(
                 controller,
-                "read_linux_process_identity",
-                return_value=foreign_identity,
+                "capture_training_identity",
+                side_effect=RuntimeError("日志中的训练 PID 不属于本次 helper 进程组与会话。"),
             ), patch.object(controller.os, "kill") as kill, patch.object(
                 controller, "process_group_members", return_value=[]
             ):
@@ -1156,6 +1205,104 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 worker.join(1)
             self.assertEqual([], later_launches)
             self.assertEqual(1, len(errors))
+
+    def test_incomplete_cleanup_blocks_other_queue_before_status_write(self):
+        cleanup_status_started = threading.Event()
+        release_cleanup_status = threading.Event()
+
+        class BlockingCleanupStatus:
+            def update_job(self, _job_id, **values):
+                if "cleanup_complete" in values:
+                    cleanup_status_started.set()
+                    release_cleanup_status.wait(2)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            process = Mock(pid=1234)
+            process.poll.return_value = 1
+            process.wait.return_value = 1
+            cleanup_result = {
+                "training_pid": None,
+                "training_termination": None,
+                "helper_termination": None,
+                "cleanup_complete": False,
+                "errors": ["cleanup failed"],
+                "finish_receipt": str(root / "finish.json"),
+                "process_evidence_state": "incomplete_cleanup_error",
+                "receipt_state": "incomplete_missing_finish_receipt",
+            }
+            gate = controller.RunGate()
+            errors = []
+
+            def execute_job():
+                try:
+                    controller.run_job(
+                        args=SimpleNamespace(
+                            python=Path(sys.executable),
+                            commit="a" * 40,
+                            launch_manifest_payload={},
+                            python_runtime_identity={},
+                            data_source=root,
+                            data_runtime_identity={},
+                        ),
+                        group="FULL",
+                        job_id="RUN-001",
+                        code_root=root / "code",
+                        ledger_root=ledger,
+                        warehouse_root=warehouse,
+                        stop_file=root / "STOP",
+                        stop_requested=threading.Event(),
+                        run_gate=gate,
+                        status=BlockingCleanupStatus(),
+                    )
+                except Exception as exc:
+                    errors.append(exc)
+
+            with patch.object(controller.subprocess, "Popen", return_value=process), patch.object(
+                controller, "verify_python_runtime", return_value={}
+            ), patch.object(controller, "verify_data_source_identity", return_value=True), patch.object(
+                controller,
+                "capture_helper_identity",
+                return_value={"pid": 1234, "pgid": 1234, "sid": 1234, "start_time_ticks": 99},
+            ), patch.object(controller, "cleanup_process_tree", return_value=cleanup_result):
+                worker = threading.Thread(target=execute_job)
+                worker.start()
+                self.assertTrue(cleanup_status_started.wait(1))
+                later_launches = []
+                self.assertIsNone(gate.launch_if_allowed(lambda: later_launches.append("started")))
+                release_cleanup_status.set()
+                worker.join(1)
+            self.assertEqual([], later_launches)
+            self.assertEqual(1, len(errors))
+
+    def test_runtime_data_identity_rechecks_content_sha256(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, _, data_source = _create_evidence_bundle(root)
+            manifest_path = (
+                root
+                / "source/experiments/v5/ablation/ABLATION-001_local_branch_effect/DATA_MANIFEST.json"
+            )
+            with patch.object(controller, "SERVER_DATA_SOURCE", data_source.absolute()):
+                identity = controller.verify_data_source(data_source, manifest_path)
+                first_relative = next(iter(controller.V5_REQUIRED_DATA_FILES.values()))
+                changed = data_source / first_relative
+                before = changed.stat()
+                original = changed.read_bytes()
+                changed.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+                os.utime(changed, ns=(before.st_atime_ns, before.st_mtime_ns))
+                with self.assertRaisesRegex(ValueError, "SHA-256"):
+                    controller.verify_data_source_identity(data_source, identity)
 
     def test_recovery_handoff_forbids_reusing_a_partial_run(self):
         with tempfile.TemporaryDirectory() as directory:

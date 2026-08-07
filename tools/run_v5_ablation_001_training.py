@@ -94,9 +94,17 @@ def main():
     environment = os.environ.copy()
     environment["CUDA_VISIBLE_DEVICES"] = spec["gpu"]
     environment["PYTHONUNBUFFERED"] = "1"
+    bound_python = environment.get("GTPJ_BOUND_PYTHON_EXEC", "").strip()
+    bound_argv0 = environment.get("GTPJ_BOUND_PYTHON_ARGV0", "").strip()
+    if not re.fullmatch(r"/proc/[1-9][0-9]*/fd/[1-9][0-9]*", bound_python):
+        raise RuntimeError("正式训练缺少受信 Python 文件描述符。")
+    if bound_argv0 != sys.executable:
+        raise RuntimeError("受信 Python argv0 与当前解释器不一致。")
+    if not Path(bound_python).is_file():
+        raise RuntimeError("受信 Python 文件描述符已经失效。")
     os.chdir(code_root)
     os.execve(
-        sys.executable,
+        bound_python,
         [sys.executable, str(entry), "--config", str(config)],
         environment,
     )

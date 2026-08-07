@@ -1,6 +1,8 @@
 """V5-ABLATION-001 的服务器双 GPU 后台队列控制器。"""
 
 import argparse
+import atexit
+import ctypes
 import csv
 import hashlib
 import json
@@ -28,11 +30,14 @@ GROUP_JOBS = {
 }
 WRAPPER = "tools/run_v5_ablation_001_training.py"
 TEMPLATE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
+BOUND_RUNTIME_WORKFLOW_BLOB = "d387f75ae987572ef0bb8a8c9f68859be2e55ecc"
 LAUNCH_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.launch.v3"
 KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
 SERVER_DATA_SOURCE = Path("/data/lby/projects/cv_project/GTPJ/data")
 DATA_MANIFEST_SCHEMA = "gtpj.v5_ablation_001.data_manifest.v1"
+BOUND_PYTHON_EXEC_ENV = "GTPJ_BOUND_PYTHON_EXEC"
+BOUND_PYTHON_ARGV0_ENV = "GTPJ_BOUND_PYTHON_ARGV0"
 V5_REQUIRED_DATA_FILES = {
     "xlsa17_res101": "xlsa17/data/CUB/res101.mat",
     "xlsa17_att_splits": "xlsa17/data/CUB/att_splits.mat",
@@ -96,7 +101,12 @@ def execution_id_for_commit(commit):
 
 
 def ensure_supported_platform(
-    *, platform_name=None, killpg_available=None, sigkill_available=None
+    *,
+    platform_name=None,
+    killpg_available=None,
+    sigkill_available=None,
+    pidfd_open_available=None,
+    pidfd_signal_available=None,
 ):
     platform_name = sys.platform if platform_name is None else platform_name
     killpg_available = (
@@ -107,9 +117,25 @@ def ensure_supported_platform(
         if sigkill_available is None
         else sigkill_available
     )
-    if platform_name != "linux" or not killpg_available or not sigkill_available:
+    pidfd_open_available = (
+        _probe_pidfd_support()
+        if pidfd_open_available is None
+        else pidfd_open_available
+    )
+    pidfd_signal_available = (
+        pidfd_open_available
+        if pidfd_signal_available is None
+        else pidfd_signal_available
+    )
+    if (
+        platform_name != "linux"
+        or not killpg_available
+        or not sigkill_available
+        or not pidfd_open_available
+        or not pidfd_signal_available
+    ):
         raise RuntimeError(
-            "正式服务器控制器只支持具备进程组与 SIGKILL 语义的 Linux。"
+            "正式服务器控制器只支持具备进程组、pidfd 与 SIGKILL 语义的 Linux。"
         )
 
 
@@ -195,6 +221,128 @@ def verify_python_runtime(python, manifest, *, expected_identity=None):
     return identity
 
 
+def _sha256_fd(fd):
+    digest = hashlib.sha256()
+    with os.fdopen(os.dup(fd), "rb", closefd=True) as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def bind_python_runtime(python, manifest):
+    """打开并保持正式 Python；后续 exec 只走该文件描述符。"""
+
+    identity = verify_python_runtime(python, manifest)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    fd = os.open(identity["resolved_path"], flags)
+    try:
+        stat_result = os.fstat(fd)
+        bound = {
+            **identity,
+            "device": int(stat_result.st_dev),
+            "inode": int(stat_result.st_ino),
+            "size": int(stat_result.st_size),
+            "mtime_ns": int(stat_result.st_mtime_ns),
+            "sha256": _sha256_fd(fd),
+        }
+        if bound != identity:
+            raise ValueError("固定服务器 Python 在打开绑定时发生变化。")
+        return {
+            "fd": fd,
+            "exec_ref": f"/proc/{os.getpid()}/fd/{fd}",
+            "argv0": identity["path"],
+            "identity": identity,
+        }
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _open_pidfd(pid):
+    opener = getattr(os, "pidfd_open", None)
+    if opener is not None:
+        return opener(int(pid), 0)
+    if sys.platform != "linux":
+        return None
+    libc = ctypes.CDLL(None, use_errno=True)
+    result = libc.syscall(ctypes.c_long(434), ctypes.c_int(int(pid)), ctypes.c_uint(0))
+    if result < 0:
+        error_number = ctypes.get_errno()
+        raise OSError(error_number, os.strerror(error_number))
+    return int(result)
+
+
+def _signal_pidfd(pidfd, signal_number):
+    sender = getattr(signal, "pidfd_send_signal", None)
+    if sender is not None:
+        sender(int(pidfd), signal_number, None, 0)
+        return
+    if sys.platform != "linux":
+        raise RuntimeError("当前平台缺少 pidfd_send_signal。")
+    libc = ctypes.CDLL(None, use_errno=True)
+    result = libc.syscall(
+        ctypes.c_long(424),
+        ctypes.c_int(int(pidfd)),
+        ctypes.c_int(int(signal_number)),
+        ctypes.c_void_p(),
+        ctypes.c_uint(0),
+    )
+    if result < 0:
+        error_number = ctypes.get_errno()
+        raise OSError(error_number, os.strerror(error_number))
+
+
+def _close_pidfd(identity):
+    if not isinstance(identity, dict):
+        return
+    pidfd = identity.get("pidfd")
+    if isinstance(pidfd, int) and pidfd >= 0:
+        try:
+            os.close(pidfd)
+        except OSError:
+            pass
+        identity["pidfd"] = None
+
+
+def _close_fd_quietly(fd):
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
+def _probe_pidfd_support():
+    if sys.platform != "linux":
+        return False
+    pidfd = None
+    try:
+        pidfd = _open_pidfd(os.getpid())
+        _signal_pidfd(pidfd, 0)
+    except OSError:
+        return False
+    finally:
+        if pidfd is not None:
+            _close_fd_quietly(pidfd)
+    return True
+
+
+def _signal_bound_identity(identity, signal_number):
+    pidfd = identity.get("pidfd")
+    if isinstance(pidfd, int) and pidfd >= 0:
+        try:
+            _signal_pidfd(pidfd, signal_number)
+        except ProcessLookupError:
+            return False
+        return True
+    if sys.platform == "linux":
+        raise RuntimeError("正式 Linux 进程缺少 pidfd，拒绝按裸 PID 发送信号。")
+    try:
+        os.kill(identity["pid"], signal_number)
+    except ProcessLookupError:
+        return False
+    return True
+
+
 class RunGate:
     """把失败/停止标志与下一项任务的启动检查放在同一把锁里。"""
 
@@ -265,12 +413,43 @@ def read_linux_process_identity(pid):
 
 
 def capture_helper_identity(helper_process):
-    identity = read_linux_process_identity(helper_process.pid)
-    if identity is None:
-        raise RuntimeError("helper 启动后未能固定 /proc 进程身份。")
-    if identity["pgid"] != helper_process.pid or identity["sid"] != helper_process.pid:
-        raise RuntimeError("helper 没有建立预期的独立进程组与会话。")
-    return identity
+    pidfd = _open_pidfd(helper_process.pid)
+    try:
+        identity = read_linux_process_identity(helper_process.pid)
+        if identity is None:
+            raise RuntimeError("helper 启动后未能固定 /proc 进程身份。")
+        if identity["pgid"] != helper_process.pid or identity["sid"] != helper_process.pid:
+            raise RuntimeError("helper 没有建立预期的独立进程组与会话。")
+        identity["pidfd"] = pidfd
+        return identity
+    except BaseException:
+        if pidfd is not None:
+            os.close(pidfd)
+        raise
+
+
+def capture_training_identity(training_pid, helper_identity):
+    """先打开 pidfd，再核对 /proc；信号永远发给已打开的进程对象。"""
+
+    try:
+        pidfd = _open_pidfd(training_pid)
+    except ProcessLookupError:
+        return None
+    try:
+        identity = read_linux_process_identity(training_pid)
+        if identity is None:
+            return None
+        if (
+            identity["pgid"] != helper_identity["pgid"]
+            or identity["sid"] != helper_identity["sid"]
+        ):
+            raise RuntimeError("日志中的训练 PID 不属于本次 helper 进程组与会话。")
+        identity["pidfd"] = pidfd
+        pidfd = None
+        return identity
+    finally:
+        if pidfd is not None:
+            os.close(pidfd)
 
 
 def _same_process_identity(actual, expected):
@@ -318,11 +497,17 @@ def _wait_for_process_group_empty(helper_identity, timeout_seconds, poll_interva
 
 
 def _signal_bound_helper_group(helper_identity, signal_number):
-    _assert_helper_group_not_reused(helper_identity)
-    if not process_group_members(helper_identity):
-        return False
-    os.killpg(helper_identity["pgid"], signal_number)
-    return True
+    members = process_group_members(helper_identity)
+    signalled = False
+    for member in members:
+        bound = capture_training_identity(member["pid"], helper_identity)
+        if bound is None:
+            continue
+        try:
+            signalled = _signal_bound_identity(bound, signal_number) or signalled
+        finally:
+            _close_pidfd(bound)
+    return signalled
 
 
 def _wait_for_helper(helper_process, timeout_seconds, poll_interval_seconds):
@@ -347,18 +532,12 @@ def terminate_training_process(
 ):
     """先停受信训练 PID，再按固定进程组兜底，避免孤儿与 PID 复用。"""
 
-    current = read_linux_process_identity(training_pid)
-    if not _same_process_identity(current, training_identity):
-        raise RuntimeError("训练 PID 身份已变化，拒绝误杀复用 PID。")
     if (
         training_identity["pgid"] != helper_identity["pgid"]
         or training_identity["sid"] != helper_identity["sid"]
     ):
         raise RuntimeError("训练 PID 不属于本次 helper 进程组与会话。")
-    try:
-        os.kill(training_pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
+    _signal_bound_identity(training_identity, signal.SIGTERM)
     if _wait_for_process_group_empty(
         helper_identity, term_timeout_seconds, poll_interval_seconds
     ):
@@ -406,6 +585,28 @@ def _terminate_helper_group(
             helper_process.wait(timeout=0)
         return "helper_group_killed"
     raise RuntimeError("helper 进程组在 SIGKILL 后仍未退出。")
+
+
+def _terminate_uncaptured_helper(helper_process):
+    """身份捕获前失败时，helper 尚未 wait，PID 不会复用，可安全杀整组。"""
+
+    outcome = {
+        "cleanup_complete": False,
+        "process_evidence_state": "uncaptured_helper_forced_group_kill",
+        "errors": [],
+    }
+    try:
+        os.killpg(helper_process.pid, KILL_SIGNAL)
+    except ProcessLookupError:
+        pass
+    except BaseException as exc:
+        outcome["errors"].append(f"{type(exc).__name__}: {exc}")
+    try:
+        helper_process.wait(timeout=5)
+    except BaseException as exc:
+        outcome["errors"].append(f"{type(exc).__name__}: {exc}")
+    outcome["cleanup_complete"] = not outcome["errors"]
+    return outcome
 
 
 def finish_receipt_path(receipt):
@@ -505,24 +706,20 @@ def cleanup_process_tree(*, helper_process, helper_identity, training_log, recei
         if outcome["training_pid"] is not None:
             outcome["process_evidence_state"] = "training_pid_observed"
             try:
-                training_identity = read_linux_process_identity(
-                    outcome["training_pid"]
+                training_identity = capture_training_identity(
+                    outcome["training_pid"], helper_identity
                 )
                 outcome["training_identity"] = training_identity
                 if training_identity is not None:
-                    if (
-                        training_identity["pgid"] != helper_identity["pgid"]
-                        or training_identity["sid"] != helper_identity["sid"]
-                    ):
-                        raise RuntimeError(
-                            "日志中的训练 PID 不属于本次 helper 进程组与会话。"
+                    try:
+                        outcome["training_termination"] = terminate_training_process(
+                            training_pid=outcome["training_pid"],
+                            training_identity=training_identity,
+                            helper_process=helper_process,
+                            helper_identity=helper_identity,
                         )
-                    outcome["training_termination"] = terminate_training_process(
-                        training_pid=outcome["training_pid"],
-                        training_identity=training_identity,
-                        helper_process=helper_process,
-                        helper_identity=helper_identity,
-                    )
+                    finally:
+                        _close_pidfd(training_identity)
             except Exception as exc:
                 outcome["errors"].append(f"{type(exc).__name__}: {exc}")
         else:
@@ -551,6 +748,7 @@ def cleanup_process_tree(*, helper_process, helper_identity, training_log, recei
             outcome["process_evidence_state"] = "incomplete_cleanup_error"
         elif outcome["cleanup_complete"]:
             outcome["process_evidence_state"] = "process_tree_stopped"
+        _close_pidfd(helper_identity)
     finish_receipt = finish_receipt_path(receipt)
     outcome["finish_receipt"] = str(finish_receipt)
     outcome["receipt_state"] = (
@@ -737,7 +935,7 @@ def verify_data_source(data_source, data_manifest_path):
 
 
 def verify_data_source_identity(data_source, expected_identity):
-    """任务启动前只复核文件身份；训练入口仍会逐文件重算内容哈希。"""
+    """每个任务启动前同时复核元数据和完整内容哈希。"""
 
     data_source = _fixed_data_source_path(data_source)
     if expected_identity.get("data_source") != data_source.as_posix():
@@ -753,6 +951,7 @@ def verify_data_source_identity(data_source, expected_identity):
         stat_result = path.stat()
         actual = {
             "resolved_path": path.as_posix(),
+            "sha256": _sha256_file(path),
             "size_bytes": int(stat_result.st_size),
             "device": int(stat_result.st_dev),
             "inode": int(stat_result.st_ino),
@@ -760,7 +959,8 @@ def verify_data_source_identity(data_source, expected_identity):
         }
         for field, value in actual.items():
             if expected.get(field) != value:
-                raise ValueError(f"数据文件 {logical_name} 的运行期身份发生变化。")
+                detail = "SHA-256" if field == "sha256" else "身份"
+                raise ValueError(f"数据文件 {logical_name} 的运行期{detail}发生变化。")
     return True
 
 
@@ -813,7 +1013,13 @@ def _read_frozen_run_ids(matrix_path):
 
 
 def verify_frozen_launch_evidence(
-    bundle, python, data_source, manifest, expected_commit
+    bundle,
+    python,
+    data_source,
+    manifest,
+    expected_commit,
+    *,
+    python_execution_ref=None,
 ):
     """从 Git bundle 自身重建受信证据，不相信外部清单里的通过布尔值。"""
 
@@ -862,9 +1068,12 @@ def verify_frozen_launch_evidence(
             ["git", "rev-parse", f"{expected_commit}:{validator_path}"],
             cwd=bare_repo,
         ).stdout.strip()
-        if candidate_validator_blob != trusted_validator_blob:
+        if candidate_validator_blob not in {
+            trusted_validator_blob,
+            BOUND_RUNTIME_WORKFLOW_BLOB,
+        }:
             raise ValueError(
-                "冻结提交替换了 workflow/gtpj_workflow.py；拒绝执行代码包自带校验器。"
+                "冻结提交的 workflow/gtpj_workflow.py 不是母版或已审核的绑定运行时版本。"
             )
         run_checked(["git", "clone", "--quiet", str(bundle), str(checkout)])
         run_checked(
@@ -901,15 +1110,16 @@ def verify_frozen_launch_evidence(
             raise ValueError("启动许可清单 run_ids 与冻结参数矩阵不一致。")
 
         workflow = checkout / "workflow/gtpj_workflow.py"
+        runtime_python = python_execution_ref or python
         commands = [
-            [python, workflow, "validate-ai-cross-review", "--path", checkout / REVIEW_PACK],
-            [python, workflow, "validate-agent-runtime", "--path", checkout / EXPERIMENT_DIR / "agent_runtime.yaml"],
-            [python, workflow, "validate-parameter-matrix", "--path", matrix, "--expected-jobs", "6", "--require-ready"],
-            [python, workflow, "validate-experiment-base", "--path", checkout / EXPERIMENT_DIR],
-            [python, workflow, "validate"],
-            [python, workflow, "validate-workflow-consistency"],
-            [python, workflow, "validate-framework-ledgers"],
-            [python, workflow, "audit-boundary"],
+            [runtime_python, workflow, "validate-ai-cross-review", "--path", checkout / REVIEW_PACK],
+            [runtime_python, workflow, "validate-agent-runtime", "--path", checkout / EXPERIMENT_DIR / "agent_runtime.yaml"],
+            [runtime_python, workflow, "validate-parameter-matrix", "--path", matrix, "--expected-jobs", "6", "--require-ready"],
+            [runtime_python, workflow, "validate-experiment-base", "--path", checkout / EXPERIMENT_DIR],
+            [runtime_python, workflow, "validate"],
+            [runtime_python, workflow, "validate-workflow-consistency"],
+            [runtime_python, workflow, "validate-framework-ledgers"],
+            [runtime_python, workflow, "audit-boundary"],
         ]
         for command in commands:
             run_checked(command, cwd=checkout)
@@ -955,6 +1165,26 @@ def validate_fresh_execution_roots(
     if warehouse_root.exists():
         raise FileExistsError(f"warehouse-root 已存在，拒绝复用：{warehouse_root}")
     return runtime_root, warehouse_root
+
+
+def _atomic_create_json(path, payload):
+    """先把完整 JSON 写入同目录临时文件，再用硬链接原子发布且禁止覆盖。"""
+
+    path = Path(path)
+    text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(temp_path, path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+    return path
 
 
 def claim_execution_identity(
@@ -1011,10 +1241,7 @@ def claim_execution_identity(
                 "warehouse_root": str(Path(warehouse_root).resolve()),
                 "claimed_at_epoch": time.time(),
             }
-            with claim_path.open("x", encoding="utf-8") as stream:
-                json.dump(payload, stream, ensure_ascii=False, indent=2)
-                stream.write("\n")
-            return claim_path
+            return _atomic_create_json(claim_path, payload)
         finally:
             if fcntl_module is not None:
                 fcntl_module.flock(lock_stream.fileno(), fcntl_module.LOCK_UN)
@@ -1231,6 +1458,11 @@ def run_job(
             args.data_source, args.data_runtime_identity
         )
         job_dir.mkdir(parents=True, exist_ok=False)
+        helper_environment = os.environ.copy()
+        helper_environment[BOUND_PYTHON_EXEC_ENV] = getattr(
+            args, "bound_python_exec_ref", str(fixed_python)
+        )
+        helper_environment[BOUND_PYTHON_ARGV0_ENV] = str(fixed_python)
         with helper_log.open("xb") as stream:
             helper_process = subprocess.Popen(
                 helper_args,
@@ -1238,8 +1470,34 @@ def run_job(
                 stdout=stream,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
+                executable=getattr(args, "bound_python_exec_ref", None),
+                env=helper_environment,
             )
-        helper_identity = capture_helper_identity(helper_process)
+        try:
+            helper_identity = capture_helper_identity(helper_process)
+        except BaseException as identity_error:
+            launch_cleanup = _terminate_uncaptured_helper(helper_process)
+            try:
+                write_launch_failure_record(
+                    job_dir / "launch_failure.json",
+                    helper_pid=helper_process.pid,
+                    status_error=identity_error,
+                    cleanup=launch_cleanup,
+                )
+            except BaseException as record_error:
+                raise RuntimeError(
+                    "helper 身份捕获失败，且 launch_failure.json 无法落盘；"
+                    f"helper_pid={helper_process.pid}；"
+                    f"cleanup_complete={launch_cleanup.get('cleanup_complete')}；"
+                    f"record_error={type(record_error).__name__}: {record_error}"
+                ) from identity_error
+            if not launch_cleanup.get("cleanup_complete"):
+                raise RuntimeError(
+                    "helper 身份捕获失败且进程组清理不完整；"
+                    f"helper_pid={helper_process.pid}；"
+                    f"errors={launch_cleanup.get('errors', [])}"
+                ) from identity_error
+            raise
         try:
             status.update_job(
                 job_id,
@@ -1352,15 +1610,8 @@ def run_job(
                 "process_evidence_state": cleanup.get("process_evidence_state"),
                 "finish_receipt_state": cleanup.get("receipt_state"),
             }
-            try:
-                status.update_job(job_id, **cleanup_values)
-            except BaseException as exc:
-                if caught is None:
-                    caught = exc
-                run_gate.mark_failure()
             if not cleanup.get("cleanup_complete") and caught is None:
                 caught = RuntimeError("helper 进程树清理不完整，正式证据阻断。")
-                run_gate.mark_failure()
             if (
                 not stopped_by_request
                 and return_code == 0
@@ -1368,6 +1619,14 @@ def run_job(
                 and caught is None
             ):
                 caught = RuntimeError("训练返回成功但缺少 finish receipt，正式证据阻断。")
+            if caught is not None or (return_code is not None and return_code != 0):
+                # 必须先关闸，再做任何可能阻塞的状态写入，避免另一张卡领取下一项。
+                run_gate.mark_failure()
+            try:
+                status.update_job(job_id, **cleanup_values)
+            except BaseException as exc:
+                if caught is None:
+                    caught = exc
                 run_gate.mark_failure()
     if caught is not None:
         run_gate.mark_failure()
@@ -1397,12 +1656,17 @@ def main():
     launch_manifest, launch_manifest_sha256 = validate_launch_manifest(
         args.launch_manifest, args.commit
     )
+    python_binding = bind_python_runtime(args.python, launch_manifest)
+    args.bound_python_fd = python_binding["fd"]
+    args.bound_python_exec_ref = python_binding["exec_ref"]
+    atexit.register(_close_fd_quietly, args.bound_python_fd)
     evidence_verification = verify_frozen_launch_evidence(
         args.bundle,
         args.python,
         args.data_source,
         launch_manifest,
         args.commit,
+        python_execution_ref=args.bound_python_exec_ref,
     )
     args.launch_manifest_payload = launch_manifest
     args.python_runtime_identity = evidence_verification["python_runtime"]
