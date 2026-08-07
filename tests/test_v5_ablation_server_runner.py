@@ -1285,6 +1285,211 @@ class V5AblationServerRunnerTest(unittest.TestCase):
             self.assertEqual([], later_launches)
             self.assertEqual(1, len(errors))
 
+    def test_final_status_write_failure_blocks_other_queue_atomically(self):
+        final_status_started = threading.Event()
+        release_final_status = threading.Event()
+
+        class FailOnCompletedStatus:
+            def update_job(self, _job_id, **values):
+                if values.get("status") == "completed":
+                    final_status_started.set()
+                    release_final_status.wait(2)
+                    raise RuntimeError("final status write failed")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            process = Mock(pid=1234)
+            process.poll.return_value = 0
+            process.wait.return_value = 0
+            cleanup_result = {
+                "training_pid": 4321,
+                "training_termination": None,
+                "helper_termination": None,
+                "cleanup_complete": True,
+                "errors": [],
+                "finish_receipt": str(root / "finish.json"),
+                "process_evidence_state": "helper_already_exited",
+                "receipt_state": "verified",
+            }
+            gate = controller.RunGate()
+            errors = []
+            later_results = []
+
+            def execute_job():
+                try:
+                    controller.run_job(
+                        args=SimpleNamespace(
+                            python=Path(sys.executable),
+                            commit="a" * 40,
+                            launch_manifest_payload={},
+                            python_runtime_identity={},
+                            data_source=root,
+                            data_runtime_identity={},
+                        ),
+                        group="FULL",
+                        job_id="RUN-001",
+                        code_root=root / "code",
+                        ledger_root=ledger,
+                        warehouse_root=warehouse,
+                        stop_file=root / "STOP",
+                        stop_requested=threading.Event(),
+                        run_gate=gate,
+                        status=FailOnCompletedStatus(),
+                    )
+                except Exception as exc:
+                    errors.append(exc)
+
+            with patch.object(
+                controller.subprocess, "Popen", return_value=process
+            ), patch.object(
+                controller, "verify_python_runtime", return_value={}
+            ), patch.object(
+                controller, "verify_data_source_identity", return_value=True
+            ), patch.object(
+                controller,
+                "capture_helper_identity",
+                return_value={
+                    "pid": 1234,
+                    "pgid": 1234,
+                    "sid": 1234,
+                    "start_time_ticks": 99,
+                },
+            ), patch.object(
+                controller, "cleanup_process_tree", return_value=cleanup_result
+            ), patch.object(controller, "validate_finish_receipt"):
+                worker = threading.Thread(target=execute_job)
+                worker.start()
+                self.assertTrue(final_status_started.wait(1))
+                later = threading.Thread(
+                    target=lambda: later_results.append(
+                        gate.launch_if_allowed(lambda: "started")
+                    )
+                )
+                later.start()
+                later.join(0.05)
+                self.assertTrue(later.is_alive())
+                release_final_status.set()
+                worker.join(1)
+                later.join(1)
+            self.assertEqual([None], later_results)
+            self.assertEqual(1, len(errors))
+            self.assertIn("final status write failed", str(errors[0]))
+
+    def test_stop_observed_after_identity_check_prevents_helper_launch(self):
+        class Status:
+            def update_job(self, _job_id, **_values):
+                return None
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "ledger"
+            experiment = ledger / controller.EXPERIMENT_DIR
+            experiment.mkdir(parents=True)
+            (experiment / "PARAMETER_MATRIX.csv").write_text(
+                "job_id,run_id\nRUN-001," + _run_ids()["RUN-001"] + "\n",
+                encoding="utf-8",
+            )
+            (experiment / "configs").mkdir()
+            warehouse = root / "warehouse"
+            warehouse.mkdir()
+            stop_requested = threading.Event()
+            gate = controller.RunGate()
+
+            def observe_stop(*_args, **_kwargs):
+                stop_requested.set()
+                return True
+
+            with patch.object(
+                controller, "verify_python_runtime", return_value={}
+            ), patch.object(
+                controller,
+                "verify_data_source_identity",
+                side_effect=observe_stop,
+            ), patch.object(controller.subprocess, "Popen") as popen:
+                result = controller.run_job(
+                    args=SimpleNamespace(
+                        python=Path(sys.executable),
+                        commit="a" * 40,
+                        launch_manifest_payload={},
+                        python_runtime_identity={},
+                        data_source=root,
+                        run_data_source=root,
+                        data_runtime_identity={},
+                    ),
+                    group="FULL",
+                    job_id="RUN-001",
+                    code_root=root / "code",
+                    ledger_root=ledger,
+                    warehouse_root=warehouse,
+                    stop_file=root / "STOP",
+                    stop_requested=stop_requested,
+                    run_gate=gate,
+                    status=Status(),
+                )
+            self.assertIsNone(result)
+            popen.assert_not_called()
+            self.assertFalse(gate.claim_start())
+
+    def test_runtime_uses_private_read_only_data_snapshot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, _, data_source = _create_evidence_bundle(root)
+            manifest_path = (
+                root
+                / "source/experiments/v5/ablation/ABLATION-001_local_branch_effect/DATA_MANIFEST.json"
+            )
+            snapshot = root / "runtime" / "data_snapshot"
+            with patch.object(controller, "SERVER_DATA_SOURCE", data_source.absolute()):
+                source_identity = controller.verify_data_source(
+                    data_source, manifest_path
+                )
+            snapshot_identity = controller.materialize_data_snapshot(
+                data_source, snapshot, source_identity
+            )
+            first_relative = next(iter(controller.V5_REQUIRED_DATA_FILES.values()))
+            snapshot_file = snapshot / first_relative
+            snapshot_before = snapshot_file.read_bytes()
+            source_file = data_source / first_relative
+            source_file.write_bytes(b"changed-after-snapshot")
+
+            self.assertEqual(snapshot_before, snapshot_file.read_bytes())
+            self.assertTrue(
+                controller.verify_snapshot_data_identity(
+                    snapshot, snapshot_identity
+                )
+            )
+            self.assertEqual(0, snapshot_file.stat().st_mode & 0o222)
+
+    def test_atomic_claim_survives_temp_cleanup_failure_after_publish(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            claim = root / "claim.json"
+            original_unlink = Path.unlink
+
+            def fail_temp_cleanup(path, *args, **kwargs):
+                if Path(path).suffix == ".tmp":
+                    raise OSError("temporary cleanup failed")
+                return original_unlink(path, *args, **kwargs)
+
+            with patch.object(Path, "unlink", new=fail_temp_cleanup):
+                returned = controller._atomic_create_json(
+                    claim, {"execution_id": "test"}
+                )
+            self.assertEqual(claim, returned)
+            self.assertEqual(
+                "test", json.loads(claim.read_text(encoding="utf-8"))["execution_id"]
+            )
+
     def test_runtime_data_identity_rechecks_content_sha256(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

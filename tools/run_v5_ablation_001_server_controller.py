@@ -347,7 +347,7 @@ class RunGate:
     """把失败/停止标志与下一项任务的启动检查放在同一把锁里。"""
 
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.blocked = False
 
     def claim_start(self):
@@ -360,6 +360,16 @@ class RunGate:
                 return None
             try:
                 return launch()
+            except BaseException:
+                self.blocked = True
+                raise
+
+    def write_status_or_block(self, write):
+        """状态写入与失败关闸必须是同一个不可穿插的动作。"""
+
+        with self.lock:
+            try:
+                return write()
             except BaseException:
                 self.blocked = True
                 raise
@@ -937,6 +947,8 @@ def verify_data_source(data_source, data_manifest_path):
 def verify_data_source_identity(data_source, expected_identity):
     """每个任务启动前同时复核元数据和完整内容哈希。"""
 
+    if expected_identity.get("snapshot_mode") == "private_copy_read_only":
+        return verify_snapshot_data_identity(data_source, expected_identity)
     data_source = _fixed_data_source_path(data_source)
     if expected_identity.get("data_source") != data_source.as_posix():
         raise ValueError("运行期数据目录与预检身份不一致。")
@@ -961,6 +973,110 @@ def verify_data_source_identity(data_source, expected_identity):
             if expected.get(field) != value:
                 detail = "SHA-256" if field == "sha256" else "身份"
                 raise ValueError(f"数据文件 {logical_name} 的运行期{detail}发生变化。")
+    return True
+
+
+def materialize_data_snapshot(data_source, snapshot_root, expected_identity):
+    """把冻结输入复制到本次 execution 私有目录，并在复制时复算完整哈希。"""
+
+    data_source = Path(os.path.abspath(os.fspath(data_source)))
+    snapshot_root = Path(os.path.abspath(os.fspath(snapshot_root)))
+    if snapshot_root.exists():
+        raise FileExistsError(f"运行数据快照目录已存在，拒绝复用：{snapshot_root}")
+    expected_files = expected_identity.get("files")
+    if not isinstance(expected_files, dict) or set(expected_files) != set(
+        V5_REQUIRED_DATA_FILES
+    ):
+        raise ValueError("源数据身份记录不完整，无法制作运行快照。")
+    snapshot_root.mkdir(parents=True)
+    records = {}
+    for logical_name, relative_path in V5_REQUIRED_DATA_FILES.items():
+        expected = expected_files[logical_name]
+        source = (data_source / relative_path).resolve(strict=True)
+        destination = snapshot_root / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256()
+        size_bytes = 0
+        with source.open("rb") as input_stream, destination.open("xb") as output_stream:
+            for block in iter(lambda: input_stream.read(1024 * 1024), b""):
+                digest.update(block)
+                size_bytes += len(block)
+                output_stream.write(block)
+            output_stream.flush()
+            os.fsync(output_stream.fileno())
+        actual_sha256 = digest.hexdigest()
+        if (
+            size_bytes != expected.get("size_bytes")
+            or actual_sha256 != expected.get("sha256")
+        ):
+            raise ValueError(
+                f"复制数据快照时 {logical_name} 与冻结大小或 SHA-256 不一致。"
+            )
+        destination.chmod(0o444)
+        stat_result = destination.stat()
+        records[logical_name] = {
+            "relative_path": relative_path,
+            "resolved_path": destination.resolve(strict=True).as_posix(),
+            "sha256": actual_sha256,
+            "size_bytes": int(stat_result.st_size),
+            "device": int(stat_result.st_dev),
+            "inode": int(stat_result.st_ino),
+            "mtime_ns": int(stat_result.st_mtime_ns),
+        }
+    directories = sorted(
+        (path for path in snapshot_root.rglob("*") if path.is_dir()),
+        key=lambda item: len(item.parts),
+        reverse=True,
+    )
+    for directory in directories:
+        directory.chmod(0o555)
+    snapshot_root.chmod(0o555)
+    canonical = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    return {
+        "data_source": snapshot_root.as_posix(),
+        "source_data_source": data_source.as_posix(),
+        "source_combined_sha256": expected_identity.get("combined_sha256"),
+        "contracts": dict(expected_identity.get("contracts", {})),
+        "files": records,
+        "combined_sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+        "snapshot_mode": "private_copy_read_only",
+    }
+
+
+def verify_snapshot_data_identity(snapshot_root, expected_identity):
+    """每个 RUN 启动前重算私有只读快照，训练不再读取可变源目录。"""
+
+    snapshot_root = Path(os.path.abspath(os.fspath(snapshot_root)))
+    if expected_identity.get("data_source") != snapshot_root.as_posix():
+        raise ValueError("运行数据快照路径与冻结身份不一致。")
+    root_resolved = snapshot_root.resolve(strict=True)
+    expected_files = expected_identity.get("files")
+    if not isinstance(expected_files, dict) or set(expected_files) != set(
+        V5_REQUIRED_DATA_FILES
+    ):
+        raise ValueError("运行数据快照身份记录不完整。")
+    for logical_name, relative_path in V5_REQUIRED_DATA_FILES.items():
+        expected = expected_files[logical_name]
+        path = (snapshot_root / relative_path).resolve(strict=True)
+        if not path.is_relative_to(root_resolved) or not path.is_file():
+            raise ValueError(f"运行数据快照文件 {logical_name} 逃逸私有目录。")
+        stat_result = path.stat()
+        if stat_result.st_mode & 0o222:
+            raise ValueError(f"运行数据快照文件 {logical_name} 仍可写。")
+        actual = {
+            "resolved_path": path.as_posix(),
+            "sha256": _sha256_file(path),
+            "size_bytes": int(stat_result.st_size),
+            "device": int(stat_result.st_dev),
+            "inode": int(stat_result.st_ino),
+            "mtime_ns": int(stat_result.st_mtime_ns),
+        }
+        for field, value in actual.items():
+            if expected.get(field) != value:
+                detail = "SHA-256" if field == "sha256" else "身份"
+                raise ValueError(
+                    f"运行数据快照文件 {logical_name} 的{detail}发生变化。"
+                )
     return True
 
 
@@ -1176,14 +1292,25 @@ def _atomic_create_json(path, payload):
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temp_path = Path(temp_name)
+    published = False
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
             stream.write(text)
             stream.flush()
             os.fsync(stream.fileno())
         os.link(temp_path, path)
-    finally:
+        published = True
+    except BaseException:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    try:
         temp_path.unlink(missing_ok=True)
+    except OSError:
+        if not published:
+            raise
     return path
 
 
@@ -1353,6 +1480,13 @@ def prepare_layout(args):
 
     runtime_root.mkdir(parents=True, exist_ok=False)
     warehouse_root.mkdir(parents=True, exist_ok=False)
+    args.source_data_runtime_identity = args.data_runtime_identity
+    args.run_data_source = runtime_root / "data_snapshot"
+    args.data_runtime_identity = materialize_data_snapshot(
+        data_source,
+        args.run_data_source,
+        args.source_data_runtime_identity,
+    )
     code_roots = {
         "FULL": runtime_root / "code_FULL",
         "GLOBAL_ONLY": runtime_root / "code_GLOBAL_ONLY",
@@ -1362,7 +1496,7 @@ def prepare_layout(args):
         clone_at(bundle, code_root, code_commits[group])
         group_warehouse = warehouse_root / group
         (group_warehouse / "train_log").mkdir(parents=True)
-        ensure_link(code_root / "data", data_source)
+        ensure_link(code_root / "data", args.run_data_source)
         ensure_link(code_root / "train_log", group_warehouse / "train_log")
 
     ledger_roots = {}
@@ -1428,7 +1562,7 @@ def run_job(
         str(training_log),
     ]
     try:
-        status.update_job(
+        run_gate.write_status_or_block(lambda: status.update_job(
             job_id,
             status="starting",
             group=group,
@@ -1436,7 +1570,7 @@ def run_job(
             code_root=str(code_root),
             receipt=str(receipt),
             training_log=str(training_log),
-        )
+        ))
     except BaseException:
         run_gate.mark_failure()
         raise
@@ -1455,8 +1589,12 @@ def run_job(
             expected_identity=args.python_runtime_identity,
         )
         verify_data_source_identity(
-            args.data_source, args.data_runtime_identity
+            getattr(args, "run_data_source", args.data_source),
+            args.data_runtime_identity,
         )
+        if stop_file.exists() or stop_requested.is_set():
+            run_gate.request_stop()
+            return None
         job_dir.mkdir(parents=True, exist_ok=False)
         helper_environment = os.environ.copy()
         helper_environment[BOUND_PYTHON_EXEC_ENV] = getattr(
@@ -1499,13 +1637,13 @@ def run_job(
                 ) from identity_error
             raise
         try:
-            status.update_job(
+            run_gate.write_status_or_block(lambda: status.update_job(
                 job_id,
                 status="running",
                 helper_pid=helper_process.pid,
                 helper_process_group_id=helper_process.pid,
                 helper_start_time_ticks=helper_identity["start_time_ticks"],
-            )
+            ))
         except BaseException as status_error:
             try:
                 launch_cleanup = cleanup_process_tree(
@@ -1623,7 +1761,9 @@ def run_job(
                 # 必须先关闸，再做任何可能阻塞的状态写入，避免另一张卡领取下一项。
                 run_gate.mark_failure()
             try:
-                status.update_job(job_id, **cleanup_values)
+                run_gate.write_status_or_block(
+                    lambda: status.update_job(job_id, **cleanup_values)
+                )
             except BaseException as exc:
                 if caught is None:
                     caught = exc
@@ -1633,15 +1773,17 @@ def run_job(
         raise caught
     if return_code != 0:
         run_gate.mark_failure()
-    status.update_job(
-        job_id,
-        status=(
-            "stopped"
-            if stopped_by_request
-            else "completed" if return_code == 0 else "failed"
-        ),
-        return_code=return_code,
-        finished_at_epoch=time.time(),
+    run_gate.write_status_or_block(
+        lambda: status.update_job(
+            job_id,
+            status=(
+                "stopped"
+                if stopped_by_request
+                else "completed" if return_code == 0 else "failed"
+            ),
+            return_code=return_code,
+            finished_at_epoch=time.time(),
+        )
     )
     return return_code
 
@@ -1714,6 +1856,7 @@ def main():
             "launch_gate": launch_manifest,
             "evidence_verification": evidence_verification,
             "python_runtime": args.python_runtime_identity,
+            "data_runtime_snapshot": args.data_runtime_identity,
             "gpu_preflight": gpu_preflight,
             "execution_claim": str(claim_path),
             "controller_pid": os.getpid(),

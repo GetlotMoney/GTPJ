@@ -43,6 +43,9 @@ tools/
   + 结束收据核对 job、run、启动收据哈希、退出码、PID 和日志哈希
   + claim 后失败生成不可覆盖的 controller failure 凭证和 recovery_handoff.json
   + claim 先完整写临时文件，再用不可覆盖硬链接原子发布；半写入不会占用正式身份
+  + 12 个冻结输入复制为本次 execution 私有只读快照，FULL/无局部两组只读同一副本
+  + 耗时校验结束后再次检查 STOP；最终状态写入失败时在同一把锁内立即关闸
+  + 正式 claim 发布后，临时文件清理异常不会吞掉已经领取的身份
   + 恢复必须使用新的提交、job 和 run
 ```
 
