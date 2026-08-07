@@ -107,6 +107,37 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m uni
 - [ ] 将服务器冻结运行写成 `role_only + server_detached_role_only`，不把顺序角色冒充多智能体。
 - [ ] 依次通过 `validate-agent-runtime`、`multi-agent-preflight`、`agent-cleanup-plan`、`validate-ai-cross-review`。
 
+### 任务 5.1：关闭第二轮审核发现的服务器控制器缺口
+
+**文件：**
+
+- 修改：`tests/test_v5_ablation_server_runner.py`
+- 修改：`tools/run_v5_ablation_001_server_controller.py`
+- 修改：`experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md`
+
+- [ ] 先增加失败测试：许可清单必须绑定实验分支、母版提交、参数矩阵、`TASK_START.yaml`、`agent_runtime.yaml` 和 strict-3 最终决定的准确哈希。
+- [ ] 先增加失败测试：服务器只允许 Linux 进程组语义，不能在 Windows 上把 `SIGTERM` 冒充 `SIGKILL`。
+- [ ] 先增加失败测试：同一个冻结提交、同一个 `execution_id` 或已经领取过的 `run_id` 不得再次启动。
+- [ ] 先增加失败测试：最终的“检查失败状态 + `Popen`”必须在同一把锁内，失败登记完成后不能再启动后续 RUN。
+- [ ] 先增加失败测试：`Popen` 后任意异常都必须经过统一 `finally` 清理真实训练 PID 和 helper 进程组，并核对 `run_start_receipt.finish.json`。
+- [ ] 使用 Git bundle 的临时隔离校验仓读取冻结提交，不依赖调用者填写的布尔值；校验通过前不得建立正式运行副本或训练进程。
+- [ ] 使用服务器持久化身份领取记录阻止重复执行；中断后的恢复必须更换冻结提交、`job_id`、`run_id`，并填写 `repeat_of`。
+- [ ] signal handler 只设置停止事件，文件和状态写入由普通控制流程完成，避免锁重入。
+
+RED 验证：
+
+```powershell
+C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m unittest tests.test_v5_ablation_server_runner -v
+```
+
+预期：新增测试因上述接口或行为尚不存在而失败。
+
+GREEN 验证：
+
+```powershell
+C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m unittest tests.test_v5_ablation_server_runner tests.test_v5_global_only_ablation tests.test_v5_template_contract -v
+```
+
 ## 任务 6：生成真实配置快照并创建运行前冻结提交
 
 **文件：**
@@ -123,7 +154,7 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe -m uni
 验证：
 
 ```powershell
-C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workflow/gtpj_workflow.py validate-experiment-base --path experiments/v5/ablation/ABLATION-001_local_branch_effect/EXPERIMENT.yaml
+C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workflow/gtpj_workflow.py validate-experiment-base --path experiments/v5/ablation/ABLATION-001_local_branch_effect
 C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
 C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workflow/gtpj_workflow.py validate
 C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workflow/gtpj_workflow.py audit-boundary
@@ -133,12 +164,13 @@ C:\Users\Administrator\AppData\Local\Programs\Python\Python310\python.exe workfl
 
 **服务器位置：**
 
-- 运行副本：`/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001/`
-- 结果仓库：`/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001/`
+- 运行副本：`/data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001-<冻结提交前12位>/`
+- 结果仓库：`/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001-<冻结提交前12位>/`
 
 - [ ] 再查两张 GPU、旧训练进程、磁盘空间和目标目录不存在或属于本实验。
 - [ ] 在本地全部审核与运行时门通过后生成一次性 `launch_manifest.json`；上传后由控制器核对九项许可和准确冻结提交，任一不符都不得创建训练进程。
-- [ ] 用冻结提交生成可验证代码包；在 `.runtime/` 内建立两个独立干净运行副本。
+- [ ] 用冻结提交生成可验证代码包；控制器先在临时隔离校验仓中核对受信证据，再在 `.runtime/` 内建立两个独立干净运行副本。
+- [ ] 在服务器持久化领取 `execution_id` 和六个 `run_id`；同一身份只能领取一次，停止或失败后也不能复用。
 - [ ] GPU 0 启动完整组队列，GPU 1 启动无局部组队列；每队按 5、17、29 串行。
 - [ ] 写 controller PID、每个子任务 PID、状态、停止文件路径、命令哈希和日志路径。
 - [ ] STOP 或系统信号先停止真实训练 PID，超时后强制停止；失败时写 `recovery_handoff.json`，后续只能新建冻结 RUN，不能复用半截目录。
@@ -156,4 +188,5 @@ cat /data/lby/projects/cv_project/GTPJ/.runtime/ablation/V5-ABLATION-001/status.
 - [ ] 回报两张卡分别在跑什么、当前种子、PID、日志与停止位置。
 - [ ] 明确当前只有启动证据，没有提前宣称精度结论。
 - [ ] 结果完成后再做日志解析、配对统计、质量检查和 post-run result commit。
-- [ ] 不 push，不删除历史文件，不改冻结 V5 母版。
+- [ ] owner 已于 2026-08-07 明确授权按本计划执行 Git 上传；仅在审核、机器验证和运行门全部通过后，推送当前独立实验分支并设置 upstream。
+- [ ] 不删除历史文件、不改冻结 V5 母版、不把实验代码合并回母版；`main` 的 119 个本地提交另行审计，绝不与实验分支混推。
