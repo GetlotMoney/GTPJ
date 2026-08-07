@@ -153,3 +153,13 @@ cat <runtime-root>/recovery_handoff.json
 - 清理结果：两个 helper 进程组均已停止，`cleanup_complete: true`；
 - 证据位置：服务器 runtime 与 Warehouse 中保留旧 claim、`status.json`、`helper.log` 和失败收口状态；
 - 恢复规则：旧执行号和旧六个 `run_id` 永不复用。修复必须经过新测试和新审核，再用新冻结提交、新执行号以及带 `R2` 的六个 `run_id` 启动。
+
+## 2026-08-07 第二次正式执行失败记录
+
+- 旧执行号：`V5-ABLATION-001-50369c8b8154`；
+- 失败阶段：`RUN-001` 与 `RUN-004` 已生成启动收据和训练包装器 PID，但在模型训练入口执行前退出；
+- 直接报错：控制器按设计在代码副本中创建只读 `data` 快照链接和外部 `train_log` 链接，训练包装器却把这两个受控链接当成任意未跟踪文件，拒绝“脏工作树”；
+- 训练影响：没有进入 `train_GTPJ_CUB.py` 或 `train_V5_ABLATION_001_CUB.py`，两张 GPU 显存保持 6 MiB，没有完成任何训练 step；`RUN-002/003/005/006` 未启动；
+- 清理结果：两个包装器正常返回错误并生成经过核对的结束收据，两个 helper 进程组均已收口，`cleanup_complete: true`；
+- 证据位置：服务器 runtime 与 Warehouse 保留 R2 claim、`status.json`、`recovery_handoff.json`、启动/结束收据和完整错误日志；
+- 恢复规则：R2 的 execution 和六个 `run_id` 永不复用。修复只允许 `data` 与 `train_log` 两个未跟踪项，并逐个验证它们是符号链接且准确指向本次只读快照和对应 Warehouse；任何其他未跟踪文件或错误链接仍拒绝启动。下一批使用带 `R3` 的六个新 `run_id`。

@@ -6,12 +6,12 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 完整 V5 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-R2-FULL-S5 | 与无局部组做同种子配对比较 |  |  |  |
-| RUN-002 | 完整 V5 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-R2-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |
-| RUN-003 | 完整 V5 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-R2-FULL-S29 | 与无局部组做同种子配对比较 |  |  |  |
-| RUN-004 | 干净无局部 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-R2-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
-| RUN-005 | 干净无局部 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-R2-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
-| RUN-006 | 干净无局部 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-R2-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+| RUN-001 | 完整 V5 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-R3-FULL-S5 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-002 | 完整 V5 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-R3-FULL-S17 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-003 | 完整 V5 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-R3-FULL-S29 | 与无局部组做同种子配对比较 |  |  |  |
+| RUN-004 | 干净无局部 seed 5 | ablation | frozen | {} | 5 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S5 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+| RUN-005 | 干净无局部 seed 17 | ablation | frozen | {} | 17 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S17 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
+| RUN-006 | 干净无局部 seed 29 | ablation | frozen | {} | 29 |  | RUN-20260807-V5ABL001-R3-GLOBAL-S29 | 删除 FGVD、BVSA、SGMP、局部融合和局部损失；保留 PSE、ICSA、CE、topology |  |  |  |
 
 ## 查重说明
 

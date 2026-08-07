@@ -127,7 +127,7 @@ def _current_code_commit():
 
 def _require_clean_code_tree():
     result = subprocess.run(
-        ["git", "status", "--porcelain"],
+        ["git", "status", "--porcelain", "--untracked-files=no"],
         check=True,
         capture_output=True,
         text=True,

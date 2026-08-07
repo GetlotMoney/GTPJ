@@ -14,7 +14,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 from tools import run_v5_ablation_001_server_controller as controller
-from tools.run_v5_ablation_001_training import training_spec
+from tools.run_v5_ablation_001_training import (
+    training_spec,
+    validate_code_checkout,
+)
 
 
 def _sha256(path):
@@ -23,12 +26,12 @@ def _sha256(path):
 
 def _run_ids():
     return {
-        "RUN-001": "RUN-20260807-V5ABL001-FULL-S5",
-        "RUN-002": "RUN-20260807-V5ABL001-FULL-S17",
-        "RUN-003": "RUN-20260807-V5ABL001-FULL-S29",
-        "RUN-004": "RUN-20260807-V5ABL001-GLOBAL-S5",
-        "RUN-005": "RUN-20260807-V5ABL001-GLOBAL-S17",
-        "RUN-006": "RUN-20260807-V5ABL001-GLOBAL-S29",
+        "RUN-001": "RUN-20260807-V5ABL001-R3-FULL-S5",
+        "RUN-002": "RUN-20260807-V5ABL001-R3-FULL-S17",
+        "RUN-003": "RUN-20260807-V5ABL001-R3-FULL-S29",
+        "RUN-004": "RUN-20260807-V5ABL001-R3-GLOBAL-S5",
+        "RUN-005": "RUN-20260807-V5ABL001-R3-GLOBAL-S17",
+        "RUN-006": "RUN-20260807-V5ABL001-R3-GLOBAL-S29",
     }
 
 
@@ -301,6 +304,99 @@ raise SystemExit(0)
 
 
 class V5AblationServerRunnerTest(unittest.TestCase):
+    def test_training_entries_recheck_tracked_files_without_rejecting_runtime_links(self):
+        for relative_path in (
+            "train_GTPJ_CUB.py",
+            "train_V5_ABLATION_001_CUB.py",
+        ):
+            source = (Path(__file__).resolve().parents[1] / relative_path).read_text(
+                encoding="utf-8"
+            )
+            self.assertIn('"--untracked-files=no"', source, relative_path)
+
+    def test_training_checkout_allows_only_verified_runtime_links(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkout = root / "checkout"
+            data_root = root / "data_snapshot"
+            train_log_root = root / "warehouse_train_log"
+            checkout.mkdir()
+            data_root.mkdir()
+            train_log_root.mkdir()
+            (checkout / "model").mkdir()
+            (checkout / "model" / "V5GlobalOnly.py").write_text(
+                "# frozen model\n", encoding="utf-8"
+            )
+            (checkout / "train_V5_ABLATION_001_CUB.py").write_text(
+                "# frozen entry\n", encoding="utf-8"
+            )
+            subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=checkout,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test User"],
+                cwd=checkout,
+                check=True,
+            )
+            subprocess.run(["git", "add", "--all"], cwd=checkout, check=True)
+            subprocess.run(
+                ["git", "commit", "--quiet", "-m", "fixture"],
+                cwd=checkout,
+                check=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=checkout,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            (checkout / "data").symlink_to(data_root, target_is_directory=True)
+            (checkout / "train_log").symlink_to(
+                train_log_root, target_is_directory=True
+            )
+
+            entry = validate_code_checkout(
+                checkout,
+                commit,
+                "GLOBAL_ONLY",
+                data_root=data_root,
+                train_log_root=train_log_root,
+            )
+            self.assertEqual(
+                (checkout / "train_V5_ABLATION_001_CUB.py").resolve(),
+                entry,
+            )
+
+            (checkout / "unexpected.txt").write_text("tamper\n", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "干净工作树"):
+                validate_code_checkout(
+                    checkout,
+                    commit,
+                    "GLOBAL_ONLY",
+                    data_root=data_root,
+                    train_log_root=train_log_root,
+                )
+
+            (checkout / "unexpected.txt").unlink()
+            (checkout / "data").unlink()
+            wrong_data_root = root / "wrong_data"
+            wrong_data_root.mkdir()
+            (checkout / "data").symlink_to(
+                wrong_data_root, target_is_directory=True
+            )
+            with self.assertRaisesRegex(RuntimeError, "没有指向冻结运行目录"):
+                validate_code_checkout(
+                    checkout,
+                    commit,
+                    "GLOBAL_ONLY",
+                    data_root=data_root,
+                    train_log_root=train_log_root,
+                )
+
     def test_groups_are_fixed_to_two_distinct_gpus_and_entries(self):
         self.assertEqual(
             {"gpu": "0", "entry": "train_GTPJ_CUB.py"},
@@ -329,6 +425,8 @@ class V5AblationServerRunnerTest(unittest.TestCase):
                 root / "RUN-004.yaml",
                 root / "code_GLOBAL_ONLY",
                 "a" * 40,
+                data_root=root / "data_snapshot",
+                train_log_root=root / "warehouse" / "GLOBAL_ONLY" / "train_log",
             )
         self.assertEqual(1, sum(token.endswith(".py") for token in command.split()))
         self.assertIn("--group GLOBAL_ONLY", command)

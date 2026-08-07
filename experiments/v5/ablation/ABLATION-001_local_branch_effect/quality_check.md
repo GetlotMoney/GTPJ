@@ -1,6 +1,6 @@
 # 质量检查
 
-当前阶段：`pre_run_frozen`。
+当前阶段：`runtime_mount_review_pending`。
 
 - [x] 精确绑定冻结母版提交；
 - [x] 实验分支与母版工作区分离；
@@ -11,7 +11,7 @@
 - [x] 母版与实验分支机器测试通过；
 - [x] bundle 管理引用修复后的 `strict-3` 代码审核通过；
 - [x] `agent_runtime.yaml` 校验、开跑前角色检查和清理计划通过；
-- [x] 新的运行前冻结提交存在且工作树 clean；
+- [ ] 运行时链接修复后的新冻结提交存在且工作树 clean；
 - [x] 服务器 Python、数据身份、Linux 进程能力和 GPU 空闲状态预检通过；正式启动时仍会从冻结 bundle 重验提交、配置和数据哈希；
 - [x] STOP/停止机制存在并通过本地与服务器测试；
 - [ ] 正式 RUN 的真实启动收据已经生成。
@@ -67,5 +67,10 @@
 - [x] 旧执行号和旧六个 `run_id` 永久保留为失败证据；恢复批次改用带 `R2` 的全新 `run_id`；
 - [x] runtime clone 修复完成新的 `strict-3` 复核和运行前冻结提交。
 - [x] 冻结提交 `f49be7d` 的服务器预领取检查因 `hard_gates.code_review` 带了额外说明文字而安全拒绝；未创建 claim、runtime、Warehouse 或训练进程，字段已收敛为控制器要求的准确值 `strict-3 pass`。
+- [x] 第二次正式执行 `V5-ABLATION-001-50369c8b8154` 已通过代码、数据、快照、claim、账本与启动收据门，但两个训练包装器在模型入口前把受控 `data`/`train_log` 链接误判为脏工作树；GPU 未完成训练 step，后四项未启动，两个 helper 均完整收口；
+- [x] 失败根因已用测试复现；修复后只允许 `?? data` 与 `?? train_log`，并要求二者都是符号链接且准确指向本次只读快照和对应 Warehouse，其他未跟踪文件或错误目标仍会拒绝；
+- [x] R2 execution 和六个 `run_id` 永不复用；参数矩阵已换成带 `R3` 的六个新 `run_id`；
+- [x] 运行时链接修复后的控制器 44 项通过；全仓 338 项中 336 项通过，2 项 Linux 专属测试在 Windows 按设计跳过；两个训练入口只复查 tracked 代码，不再误拒绝已经由包装器逐一核验的运行时软链接；
+- [ ] 运行时链接修复完成新的机器验证、`strict-3` 复核与运行前冻结提交。
 
-当前决定：`allow_formal_runner_with_frozen_manifest`。
+当前决定：`block_formal_runner_until_runtime_mount_fix_reviewed_and_frozen`。

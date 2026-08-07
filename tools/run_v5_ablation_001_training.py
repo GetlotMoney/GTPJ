@@ -33,14 +33,41 @@ def _git(code_root, *args):
     return result.stdout.strip()
 
 
-def validate_code_checkout(code_root, commit, group):
+def _validate_runtime_link(code_root, name, expected_root):
+    link = code_root / name
+    expected_root = Path(expected_root).resolve(strict=True)
+    if not link.is_symlink():
+        raise RuntimeError(f"训练代码副本的 {name} 不是受控运行时链接。")
+    if link.resolve(strict=True) != expected_root:
+        raise RuntimeError(f"训练代码副本的 {name} 没有指向冻结运行目录。")
+
+
+def validate_code_checkout(
+    code_root,
+    commit,
+    group,
+    *,
+    data_root,
+    train_log_root,
+):
     code_root = Path(code_root).resolve()
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise ValueError("--commit 必须是 40 位小写 Git 提交号。")
     if _git(code_root, "rev-parse", "HEAD") != commit:
         raise RuntimeError("训练代码副本 HEAD 与运行前冻结提交不一致。")
-    if _git(code_root, "status", "--porcelain"):
+    status_lines = set(
+        _git(
+            code_root,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        ).splitlines()
+    )
+    expected_runtime_links = {"?? data", "?? train_log"}
+    if status_lines != expected_runtime_links:
         raise RuntimeError("训练代码副本不是干净工作树。")
+    _validate_runtime_link(code_root, "data", data_root)
+    _validate_runtime_link(code_root, "train_log", train_log_root)
 
     spec = training_spec(group)
     entry = code_root / spec["entry"]
@@ -79,6 +106,8 @@ def parse_args():
     parser.add_argument("--code-root", type=Path, required=True)
     parser.add_argument("--commit", required=True)
     parser.add_argument("--group", choices=sorted(GROUP_SPECS), required=True)
+    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--train-log-root", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -88,7 +117,13 @@ def main():
     code_root = args.code_root.resolve()
     if not config.is_file():
         raise FileNotFoundError(f"冻结配置不存在：{config}")
-    entry = validate_code_checkout(code_root, args.commit, args.group)
+    entry = validate_code_checkout(
+        code_root,
+        args.commit,
+        args.group,
+        data_root=args.data_root,
+        train_log_root=args.train_log_root,
+    )
     spec = training_spec(args.group)
 
     environment = os.environ.copy()

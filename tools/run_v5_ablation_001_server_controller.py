@@ -1491,7 +1491,16 @@ def ensure_link(link, target):
     link.symlink_to(target, target_is_directory=True)
 
 
-def build_training_command(python, group, config, code_root, commit):
+def build_training_command(
+    python,
+    group,
+    config,
+    code_root,
+    commit,
+    *,
+    data_root,
+    train_log_root,
+):
     tokens = [
         str(python),
         WRAPPER,
@@ -1503,6 +1512,10 @@ def build_training_command(python, group, config, code_root, commit):
         commit,
         "--group",
         group,
+        "--data-root",
+        str(data_root),
+        "--train-log-root",
+        str(train_log_root),
     ]
     return shlex.join(tokens)
 
@@ -1615,7 +1628,13 @@ def run_job(
     code_commit = TEMPLATE_COMMIT if group == "FULL" else args.commit
     fixed_python = Path(os.path.abspath(os.fspath(args.python)))
     command = build_training_command(
-        fixed_python, group, config, code_root, code_commit
+        fixed_python,
+        group,
+        config,
+        code_root,
+        code_commit,
+        data_root=getattr(args, "run_data_source", args.data_source),
+        train_log_root=warehouse_root / group / "train_log",
     )
     helper_args = [
         str(fixed_python),
