@@ -20,7 +20,7 @@
 | `V3-INNOVATION-001` | 6 | 已知来源与复跑 | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa/PARAMETER_MATRIX.md` |
 | `V5-TUNE-001` | 8 | 从 ATTEMPT-006 恢复的真实调参任务 | `experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-001` | 2 | 从 ATTEMPT-006 恢复的真实创新探针；其余见历史批次映射 | `experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md` |
-| `V5-ABLATION-001` | 12 | pre_run_gated；6 行 R3 失败/取消历史 + 6 行 R4 三个 seed 的 FULL/GLOBAL_ONLY 配对重跑 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` |
+| `V5-ABLATION-001` | 12 | pre_run_gated；6 行 R3 失败/取消历史 + 6 行 R4 已审核、可启动的三 seed FULL/GLOBAL_ONLY 配对重跑 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` |
 
 ## 历史迁移队列
 

@@ -10,8 +10,8 @@ attempt_id: ""
 subject_id: V5-ABLATION-001
 subject_type: campaign_task
 runner_scope: formal_runner
-formal_runner_allowed: false
-formal_evidence_allowed: false
+formal_runner_allowed: true
+formal_evidence_allowed: true
 github_write: experiment_branch_only
 research_write: none
 warehouse_write: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/ablation/V5-ABLATION-001
@@ -39,7 +39,7 @@ agents:
     memory_used: false
     repo_and_artifacts_are_authority: true
   transition_permissions:
-    start_runner: blocked_until_cuda_class_identity_fix_reviewed_and_frozen
+    start_runner: allowed_after_reviewed_controller_and_final_bundle_verify
     record_result: allowed_after_run_receipts
     promote: not_allowed_by_this_task
   agent_runtime_gate:
@@ -57,7 +57,7 @@ owner_monitor:
 evidence_routing:
   subject_id: V5-ABLATION-001
   subject_type: campaign_task
-  current_state: pre_run_gated
+  current_state: ready_to_run
   authority_refs:
     - EXPERIMENT.yaml
     - PARAMETER_MATRIX.csv
@@ -65,10 +65,10 @@ evidence_routing:
     - agent_runtime.yaml
     - quality_check.md
 hard_gates:
-  code_review: strict-3 rerun pending after cuda class identity fix
+  code_review: strict-3 pass
   agent_runtime: pass
   artifact_boundary: pass
-  pre_run_freeze_commit: pending
+  pre_run_freeze_commit: pass
 expected_outputs:
   github:
     - PARAMETER_MATRIX.csv
@@ -80,4 +80,4 @@ expected_outputs:
     - checkpoints
     - receipts
     - status
-blocked_reason: formal Runner blocked until CUDA class identity tensors are fixed, server-verified, reviewed, and assigned new R4 run IDs
+blocked_reason: ""

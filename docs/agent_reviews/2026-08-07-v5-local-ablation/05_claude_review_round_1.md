@@ -2,30 +2,29 @@ round: 1
 reviewer: independent_codex_fallback
 independent_codex_read_only: true
 fallback_reason: claude_code_unavailable
-reviewer_instance_id: /root/runtime_recovery_review@28185a0
+reviewer_instance_id: /root/runtime_recovery_review@0a2220f
 independent_context: true
 files_reviewed:
 - tools/run_v5_ablation_001_server_controller.py
-- tools/run_v5_ablation_001_training.py
-- train_GTPJ_CUB.py
-- train_V5_ABLATION_001_CUB.py
-- tests/test_v5_ablation_server_runner.py
-- tests/test_v5_ablation_server_linux_integration.py
+- workflow/gtpj_workflow.py
 - experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv
+- experiments/v5/ablation/ABLATION-001_local_branch_effect/SERVER_RECOVERY.md
+- tests/test_gtpj_workflow.py
+- tests/test_v5_ablation_server_runner.py
 commands_run:
-- python -m unittest tests.test_v5_ablation_server_runner tests.test_v5_ablation_server_linux_integration -v
-- python workflow/gtpj_workflow.py validate-experiment-base --path experiments/v5/ablation/ABLATION-001_local_branch_effect
-- git status --porcelain --untracked-files=all
-- git diff --check 50369c8b 28185a0
+- python -m unittest tests.test_v5_ablation_server_runner -v
+- python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.csv --require-ready --ready-job-id RUN-007 --ready-job-id RUN-008 --ready-job-id RUN-009 --ready-job-id RUN-010 --ready-job-id RUN-011 --ready-job-id RUN-012
+- git bundle verify .runtime/incoming/V5-ABLATION-001-0a2220f-review.bundle
+- git bundle list-heads .runtime/incoming/V5-ABLATION-001-0a2220f-review.bundle
 verdict: pass
 blocking_issues:
 non_blocking_issues:
-- TASK_START.yaml 与 SERVER_RECOVERY.md 个别旧说明仍写“受控链接”，最终冻结时应改为“目录文件描述符绑定”。
-- 端到端测试使用最小训练探针，首次 R3 仍要观察真实模型入口和 GPU。
+- 最终证据提交必须把 `reviewed_candidate_commit` 绑定到 `0a2220fd8895115128d5d85b465afa2eeaaff3ea`，并只能修改许可文档。
+- 正式启动要新建未跑测试的候选控制器 checkout，避免把审核副本中的忽略缓存带入启动目录。
 unsupported_claims:
-- 本轮只放行运行恢复，不代表六个训练已完成或已有精度结论。
+- 当前只允许开跑，不能声称六项训练已完成或局部分支已有精度贡献。
 missing_validation:
 
 # 第一轮结论
 
-精确候选 `28185a0f1f1c2bdc9b6239cbbc919165a84077df` 已关闭 `d847266` 的两个阻断：FULL 和 GLOBAL_ONLY 都使用候选提交，代码目录完全干净且没有 `data`/`train_log` 链接。R1、R2、R3 运行身份两两不重复，服务器尚未领取 R3；失败关闸、进程组清理和六个账本副本的生命周期未退化。结论为 `pass`。
+精确候选 `0a2220fd8895115128d5d85b465afa2eeaaff3ea` 通过。R3 两项失败收据和四项取消历史与服务器一致；R4 使用 `RUN-007…012` 和六个全新身份，尚未领取。正式入口在绑定 Python、校验最终包和领取身份前，先确认控制器来自被审核候选的干净 checkout。服务器 55 项控制器/Linux、7 项 CUDA、32 项 V5 测试全部通过。
