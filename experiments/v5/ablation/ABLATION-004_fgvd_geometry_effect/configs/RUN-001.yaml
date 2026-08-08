@@ -73,4 +73,3 @@ lr_stages:
   - lr: 1.0e-05
     epochs: 10
     eta_min: 1e-7
-
