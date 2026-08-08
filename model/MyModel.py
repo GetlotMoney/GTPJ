@@ -350,6 +350,7 @@ class GTPJ(nn.Module):
                 )
 
         self.pse_outer_ratio = float(config.pse_outer_ratio)
+        self.pse_enabled = not bool(getattr(config, "ablation_disable_pse", False))
         if seen_sentence_embeds is None:
             raise ValueError("V5 clean template requires seen_sentence_embeds.")
         if (
@@ -361,12 +362,13 @@ class GTPJ(nn.Module):
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
         )
-        self.pse_module = ProgressiveSemanticSelfAttention(
-            dim=self.dim_f,
-            heads=int(config.pse_heads),
-            dropout=float(config.pse_dropout),
-            inner_ratio=float(config.pse_inner_ratio),
-        )
+        if self.pse_enabled:
+            self.pse_module = ProgressiveSemanticSelfAttention(
+                dim=self.dim_f,
+                heads=int(config.pse_heads),
+                dropout=float(config.pse_dropout),
+                inner_ratio=float(config.pse_inner_ratio),
+            )
 
         tf_common_dim = int(config.tf_common_dim)
         tf_heads = int(config.tf_heads)
@@ -423,6 +425,8 @@ class GTPJ(nn.Module):
     def get_adapted_seen_text(self):
         sentence_embeds = self.seen_sentence_embeds
         base = sentence_embeds.mean(dim=1)
+        if not self.pse_enabled:
+            return F.normalize(base, dim=1)
         attn = self.pse_module(sentence_embeds).mean(dim=1)
         ratio = self.pse_outer_ratio
         adapted = ratio * attn + (1.0 - ratio) * base
