@@ -220,6 +220,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+| `tools/run_v5_seed_equivalence_server.py` | 仅供 `CONFIRM-002` 使用的服务器运行器：每次运行使用独立干净代码副本、只读数据和独立日志目录，并按波次调度两张 GPU。 |
 
 注意：
 

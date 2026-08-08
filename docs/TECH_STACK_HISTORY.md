@@ -17,6 +17,20 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 确认实验运行器 | `SYS-V5-CONFIRM-RUNNER-V1` | 审核中 | CONFIRM-002 使用每次运行独立干净代码副本、只读数据、独立输出目录和双 GPU 分波次调度。 |
+
+## 2026-08-08：SYS-V5-CONFIRM-RUNNER-V1（审核中）
+
+- 本次改的是哪个对象：V5 `CONFIRM-002` 的服务器启动与证据保存脚本。
+- 目标问题：通用启动器会先修改 Git 内的参数表，随后被训练入口的“代码必须干净”检查拦下；并行任务还可能共用输出目录。
+- 采用技术：每个 RUN 从同一个冻结 Git bundle 建立独立干净副本；正式数据只读挂载，日志目录按 RUN 分开；两张 GPU 按三波运行，任一硬失败后不再发下一波；每个任务独立保存启动单、结束单、日志哈希和制品清单。
+- 替换了什么：只替换本确认实验原计划使用的通用启动路径，不替换训练入口、模型、配置、数据或评估公式。
+- 实际可见效果：五个 `seed=5` 任务可用 GPU0/GPU1 依次按 `2+2+1` 完成，彼此不改代码、不改数据、不覆盖日志。
+- 选择原因：这是当前问题的最短安全闭环，既绕开参数表自修改冲突，也保留每次训练可回查的原始证据。
+- 已知限制：该脚本仅服务 `CONFIRM-002`；训练结果出来前不能声称精度已经恢复，也不会修改 V5 母版或 Tag。
+- 素材位置：`tools/run_v5_seed_equivalence_server.py`、`tests/test_v5_seed_equivalence_server.py`、`experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/RUN_PLAN.json`、`DATA_MANIFEST.json`。
+- 验证命令与结果：控制器专项 23/23、模型修复专项 10/10 通过；服务器固定 Python/CUDA 零步检查已通过，证据 SHA-256 为 `ca3cc6cdc4785f7b69e8dde76bd9abf0656c94fc531d3e4732462a086988c616`；最终审核和实际训练待完成。
+- 回退方式：回退本实验分支的运行器提交；冻结母版、历史 V5、旧实验和服务器数据均不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 

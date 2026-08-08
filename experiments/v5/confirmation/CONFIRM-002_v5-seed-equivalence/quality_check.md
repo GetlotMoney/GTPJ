@@ -30,8 +30,9 @@ review_reason: 核心初始化与训练轨迹发生变化
 - [x] `validate`、`validate-workflow-consistency`、`validate-framework-ledgers`、
   `validate-framework-templates`、`audit-boundary` 全部通过。
 - [x] 参数矩阵普通校验通过：5 行、30 列、编号唯一、重复引用有效。
-- [ ] 服务器实际 Python/PyTorch 下的 `512→768` 零步指纹。
-- [ ] 五行参数矩阵 `--require-ready`；当前故意保持 draft，防止提前开跑。
+- [x] 服务器固定 Python/PyTorch/CUDA 下的 `512→768` 零步指纹通过；证据 SHA-256 为 `ca3cc6cdc4785f7b69e8dde76bd9abf0656c94fc531d3e4732462a086988c616`。
+- [x] 五行参数矩阵已冻结；`changed_parameters={}` 与实际配置零差异一致。
+- [x] 专用服务器运行器专项测试 `23/23 PASS`；模型修复与零步探针专项测试 `10/10 PASS`。
 
 ## 三路独立审核
 
