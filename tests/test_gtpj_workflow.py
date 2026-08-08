@@ -8585,6 +8585,21 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("local main must contain local v1 tag", stderr)
 
+    def test_pre_run_experiment_files_do_not_fabricate_results(self) -> None:
+        base = {"README.md", "PARAMETER_MATRIX.csv", "PARAMETER_MATRIX.md"}
+        for status in ("planned", "pending", "pre_run", "ready_to_run", "frozen", "running"):
+            with self.subTest(status=status):
+                self.assertEqual(
+                    base,
+                    set(self.module.required_experiment_ledger_files(status)),
+                )
+        for status in ("completed", "failed"):
+            with self.subTest(status=status):
+                self.assertIn(
+                    "result.md",
+                    self.module.required_experiment_ledger_files(status),
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
