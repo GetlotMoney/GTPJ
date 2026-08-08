@@ -54,6 +54,7 @@ V5_CONFIG_KEYS = {
     "pse_dropout",
     "pse_inner_ratio",
     "pse_outer_ratio",
+    "ablation_disable_pse",
     "tf_common_dim",
     "tf_heads",
     "tf_dropout",
@@ -67,6 +68,7 @@ V5_CONFIG_KEYS = {
     "lambda_topo_pearson",
     "icsa_ratio",
     "icsa_hidden",
+    "ablation_disable_icsa",
     "lambda_bmdd",
     "msdn_temp",
     "sgmp_topk",
@@ -80,7 +82,7 @@ V5_CONFIG_KEYS = {
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Train the immutable V5 template on CUB GZSL.",
+        description="Train the V5 PSE-and-ICSA-off ablation on CUB GZSL.",
         allow_abbrev=False,
     )
     parser.add_argument(
@@ -118,6 +120,10 @@ def _load_config(path):
         raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
     if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
         raise ValueError("V5 固定使用 global + 0.2 * local。")
+    if values["ablation_disable_pse"] is not True:
+        raise ValueError("PSE+ICSA 联合消融必须设置 ablation_disable_pse=true。")
+    if values["ablation_disable_icsa"] is not True:
+        raise ValueError("PSE+ICSA 联合消融必须设置 ablation_disable_icsa=true。")
     _validate_lr_stages(values["lr_stages"])
     return SimpleNamespace(**values), values, config_path
 

@@ -361,12 +361,14 @@ class GTPJ(nn.Module):
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
         )
-        self.pse_module = ProgressiveSemanticSelfAttention(
-            dim=self.dim_f,
-            heads=int(config.pse_heads),
-            dropout=float(config.pse_dropout),
-            inner_ratio=float(config.pse_inner_ratio),
-        )
+        self.pse_enabled = not bool(getattr(config, "ablation_disable_pse", False))
+        if self.pse_enabled:
+            self.pse_module = ProgressiveSemanticSelfAttention(
+                dim=self.dim_f,
+                heads=int(config.pse_heads),
+                dropout=float(config.pse_dropout),
+                inner_ratio=float(config.pse_inner_ratio),
+            )
 
         tf_common_dim = int(config.tf_common_dim)
         tf_heads = int(config.tf_heads)
@@ -406,23 +408,27 @@ class GTPJ(nn.Module):
         self.fgvd_select_k = int(config.fgvd_select_k)
         if not 0 < self.fgvd_select_k < 576:
             raise ValueError("V5 clean template requires 0 < fgvd_select_k < 576.")
-        icsa_hidden = int(config.icsa_hidden)
-        self.icsa_module = nn.Sequential(
-            nn.Linear(self.dim_f, icsa_hidden),
-            nn.LayerNorm(icsa_hidden),
-            nn.GELU(),
-            nn.Linear(icsa_hidden, self.dim_f),
-        )
-        with torch.no_grad():
-            self.icsa_module[-1].weight.zero_()
-            self.icsa_module[-1].bias.zero_()
+        self.icsa_enabled = not bool(getattr(config, "ablation_disable_icsa", False))
         self.icsa_ratio = float(config.icsa_ratio)
-        if self.icsa_ratio <= 0:
+        if self.icsa_enabled and self.icsa_ratio <= 0:
             raise ValueError("V5 clean template requires icsa_ratio > 0.")
+        if self.icsa_enabled:
+            icsa_hidden = int(config.icsa_hidden)
+            self.icsa_module = nn.Sequential(
+                nn.Linear(self.dim_f, icsa_hidden),
+                nn.LayerNorm(icsa_hidden),
+                nn.GELU(),
+                nn.Linear(icsa_hidden, self.dim_f),
+            )
+            with torch.no_grad():
+                self.icsa_module[-1].weight.zero_()
+                self.icsa_module[-1].bias.zero_()
 
     def get_adapted_seen_text(self):
         sentence_embeds = self.seen_sentence_embeds
         base = sentence_embeds.mean(dim=1)
+        if not self.pse_enabled:
+            return F.normalize(base, dim=1)
         attn = self.pse_module(sentence_embeds).mean(dim=1)
         ratio = self.pse_outer_ratio
         adapted = ratio * attn + (1.0 - ratio) * base
@@ -568,13 +574,14 @@ class GTPJ(nn.Module):
         logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
         all_text = self._make_all_text(patches.device, patches.dtype)
         vis_n = F.normalize(cls_token, dim=1)
-        pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
         all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()
-        seen_idx = self.seenclass.to(patches.device)
-        all_text_cond[:, seen_idx, :] = (
-            all_text[seen_idx].unsqueeze(0)
-            + self.icsa_ratio * pi_x.unsqueeze(1)
-        )
+        if self.icsa_enabled:
+            pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
+            seen_idx = self.seenclass.to(patches.device)
+            all_text_cond[:, seen_idx, :] = (
+                all_text[seen_idx].unsqueeze(0)
+                + self.icsa_ratio * pi_x.unsqueeze(1)
+            )
         text_n_cond = F.normalize(all_text_cond, dim=-1)
         global_logits = (vis_n.unsqueeze(1) * text_n_cond).sum(dim=-1) * logit_scale
 
