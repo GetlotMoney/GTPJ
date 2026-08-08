@@ -8589,17 +8589,26 @@ decision:
         required_files = getattr(self.module, "required_experiment_ledger_files", None)
         self.assertTrue(callable(required_files), "缺少按实验状态选择台账文件的 helper")
         base = {"README.md", "PARAMETER_MATRIX.csv", "PARAMETER_MATRIX.md"}
-        for status in ("planned", "pending", "pre_run", "ready_to_run", "frozen", "running"):
+        pre_result_statuses = {
+            "planned",
+            "pending",
+            "pre_run",
+            "pre_run_gated",
+            "ready_to_run",
+            "frozen",
+            "running",
+        }
+        for status in sorted(pre_result_statuses):
             with self.subTest(status=status):
                 self.assertEqual(
                     base,
                     set(required_files(status)),
                 )
-        for status in ("completed", "failed"):
+        for status in sorted(self.module.FRAMEWORK_INDEX_STATUSES - pre_result_statuses):
             with self.subTest(status=status):
-                self.assertIn(
-                    "result.md",
-                    required_files(status),
+                self.assertEqual(
+                    base | {"result.md"},
+                    set(required_files(status)),
                 )
 
 
