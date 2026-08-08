@@ -6,10 +6,15 @@ import importlib
 import importlib.util
 import csv
 import hashlib
+import inspect
+import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 import torch
 import torch.nn as nn
@@ -34,7 +39,6 @@ EXPERIMENT_DIR = (
     / "ablation"
     / "ABLATION-008_clip_global_local_factorial"
 )
-CODE_COMMIT = "afef64489cf2dfe26be3574b362ec2fa97703995"
 
 
 def make_config(**overrides):
@@ -129,6 +133,21 @@ class _ZeroIcsa(nn.Module):
 
 
 class V5ScorePathModelTest(unittest.TestCase):
+    def test_class_ids_are_explicitly_detached_to_cpu_long(self):
+        source = inspect.getsource(importlib.import_module("model.V5ScorePathAblation")._validated_class_ids)
+        self.assertGreaterEqual(source.count(".detach().cpu().long()"), 2)
+        seen, unseen, _, text, _, _ = fixture_inputs()
+        model = FrozenClipScorer(
+            make_config(score_path="frozen_clip"),
+            seen.float().requires_grad_(True),
+            unseen.float().requires_grad_(True),
+            text[seen],
+            text[unseen],
+        )
+        self.assertEqual(torch.device("cpu"), model.seenclass.device)
+        self.assertEqual(torch.long, model.seenclass.dtype)
+        self.assertFalse(model.seenclass.requires_grad)
+
     def test_frozen_clip_is_manual_cosine_parameter_free_and_patch_independent(self):
         seen, unseen, sentences, text, features, _ = fixture_inputs()
         model = FrozenClipScorer(
@@ -277,11 +296,181 @@ class V5ScorePathEntryTest(unittest.TestCase):
         module = self._load_entry()
         with self.assertRaises(SystemExit):
             module._parse_args(["--config", "x.yaml"])
+        parsed = module._parse_args(
+            [
+                "--config", "x.yaml",
+                "--data-root", "data",
+                "--data-manifest", "DATA_MANIFEST.json",
+                "--output-dir", "output",
+                "--expected-run-commit", "a" * 40,
+            ]
+        )
+        self.assertEqual("a" * 40, parsed.expected_run_commit)
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "already-there"
             output.mkdir()
             with self.assertRaisesRegex(FileExistsError, "output"):
                 module._reserve_output_dir(output)
+
+    def test_git_identity_is_anchored_to_entry_worktree_from_arbitrary_cwd(self):
+        module = self._load_entry()
+        expected = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        with tempfile.TemporaryDirectory() as temporary:
+            previous = Path.cwd()
+            try:
+                os.chdir(temporary)
+                self.assertEqual(expected, module._current_run_commit())
+                self.assertEqual(expected, module._require_expected_run_commit(expected))
+                with self.assertRaisesRegex(RuntimeError, "expected run commit"):
+                    module._require_expected_run_commit("0" * 40)
+            finally:
+                os.chdir(previous)
+        completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
+        with mock.patch.object(module.subprocess, "run", return_value=completed) as run:
+            module._require_clean_code_tree()
+        self.assertEqual(module.REPO_ROOT, run.call_args.kwargs["cwd"])
+
+    def test_cpu_class_axis_is_frozen_before_any_model_construction(self):
+        module = self._load_entry()
+        eval_source = inspect.getsource(module._eval_only_split)
+        train_source = inspect.getsource(module._run_training_path)
+        self.assertNotIn(".to(device)", eval_source)
+        self.assertNotIn("device", inspect.signature(module._eval_only_split).parameters)
+        self.assertIn('test_cache["unseen_labels"], "cpu",', train_source)
+
+    def test_manifest_verification_is_dependency_exact_and_detects_tampering(self):
+        module = self._load_entry()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            data_root = root / "data"
+            files = {}
+            for key in sorted(module.TRAINED_REQUIRED_DATA_KEYS):
+                relative = Path("payload") / f"{key}.bin"
+                path = data_root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                content = f"verified:{key}".encode("utf-8")
+                path.write_bytes(content)
+                files[key] = {
+                    "relative_path": relative.as_posix(),
+                    "size_bytes": len(content),
+                    "sha256": hashlib.sha256(content).hexdigest(),
+                }
+            manifest_path = root / "DATA_MANIFEST.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": module.DATA_MANIFEST_SCHEMA,
+                        "dataset": "CUB",
+                        "files": files,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            for key in module.TRAINED_REQUIRED_DATA_KEYS - module.FROZEN_REQUIRED_DATA_KEYS:
+                (data_root / files[key]["relative_path"]).unlink()
+            frozen = module._verify_data_manifest(manifest_path, data_root, "frozen_clip")
+            self.assertEqual(
+                module.FROZEN_REQUIRED_DATA_KEYS, set(frozen["fingerprints"])
+            )
+            self.assertEqual(
+                hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                frozen["manifest_sha256"],
+            )
+            self.assertTrue(all(path.is_absolute() for path in frozen["paths"].values()))
+            with self.assertRaises(FileNotFoundError):
+                module._verify_data_manifest(manifest_path, data_root, "full")
+
+            victim = next(iter(module.FROZEN_REQUIRED_DATA_KEYS))
+            (data_root / files[victim]["relative_path"]).write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "fingerprint"):
+                module._verify_data_manifest(manifest_path, data_root, "frozen_clip")
+
+    def test_frozen_cls_only_evaluator_does_not_require_patch_cache(self):
+        module = self._load_entry()
+        config = make_config(score_path="frozen_clip", num_class=2, dim_f_clip=2)
+        seen = torch.tensor([0])
+        unseen = torch.tensor([1])
+        model = FrozenClipScorer(
+            config,
+            seen,
+            unseen,
+            torch.tensor([[1.0, 0.0]]),
+            torch.tensor([[0.0, 1.0]]),
+        )
+        cache = {
+            "seen_cls": torch.tensor([[1.0, 0.0]]),
+            "seen_labels": torch.tensor([0]),
+            "unseen_cls": torch.tensor([[0.0, 1.0]]),
+            "unseen_labels": torch.tensor([1]),
+        }
+        self.assertEqual(
+            (1.0, 1.0, 1.0, 1.0),
+            module._evaluate_frozen_cls_only(
+                model, "cpu", cache, seen, unseen, torch, batch_size=1
+            ),
+        )
+
+    def test_metrics_are_finite_parseable_and_written_atomically(self):
+        module = self._load_entry()
+        from workflow.gtpj_workflow import parse_training_log_text
+
+        for invalid in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    module._metric_dict((0.1, 0.2, invalid, 0.3), epoch=1)
+
+        metrics = module._metric_dict((0.61, 0.52, 0.56, 0.73), epoch=3)
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            log = module._logger(output)
+            module._log_best_results(log, metrics)
+            parsed = parse_training_log_text(
+                (output / "training.log").read_text(encoding="utf-8"), "unit-test"
+            )
+            self.assertEqual(
+                {"U": "52.00", "S": "61.00", "H": "56.00", "ZS": "73.00", "best_epoch": "3"},
+                parsed,
+            )
+            with mock.patch.object(module.os, "replace", wraps=os.replace) as replace:
+                module._write_metrics(output, metrics, {"run_commit": "a" * 40})
+            self.assertEqual(1, replace.call_count)
+            payload = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual("fraction_0_to_1", payload["metric_unit"])
+            self.assertFalse((output / "metrics.json.tmp").exists())
+
+            checkpoint = output / "best_model.pth"
+            with mock.patch.object(module.os, "replace", wraps=os.replace) as replace:
+                module._save_best_model_atomic(torch, {"weight": torch.tensor([1.0])}, checkpoint)
+            self.assertEqual(1, replace.call_count)
+            self.assertTrue(checkpoint.is_file())
+            self.assertFalse((output / "best_model.pth.tmp").exists())
+
+    def test_runtime_metadata_uses_run_commit_and_both_executable_hashes(self):
+        module = self._load_entry()
+        hashes = module._executable_source_sha256()
+        self.assertEqual(
+            {"model/V5ScorePathAblation.py", "train_V5_ABLATION_008_CUB.py"},
+            set(hashes),
+        )
+        for relative, digest in hashes.items():
+            self.assertEqual(
+                hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), digest
+            )
+        main_source = inspect.getsource(module.main)
+        self.assertIn('"run_commit"', main_source)
+        self.assertNotIn('"code_commit"', main_source)
+        self.assertIn('"data_manifest_sha256"', main_source)
+        self.assertIn('"verified_input_fingerprints"', main_source)
+        self.assertIn('"seenclass_ids"', main_source)
+        self.assertIn('"unseenclass_ids"', main_source)
 
     def test_frozen_dispatch_never_calls_training_or_optimizer_path(self):
         module = self._load_entry()
@@ -404,10 +593,25 @@ class V5ScorePathLedgerContractTest(unittest.TestCase):
 
     def test_matrix_binds_code_and_actual_config_hashes(self):
         rows = self._rows()
+        code_refs = {row["code_ref"] for row in rows}
+        self.assertEqual(1, len(code_refs))
+        code_ref = next(iter(code_refs))
+        self.assertRegex(code_ref, r"^[0-9a-f]{40}$")
+        implementation = (EXPERIMENT_DIR / "implementation.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(f"`{code_ref}`", implementation)
+        ancestry = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", code_ref, "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, ancestry.returncode, ancestry.stderr)
         for row in rows:
             config_path = EXPERIMENT_DIR / row["config_snapshot_ref"]
             digest = hashlib.sha256(config_path.read_bytes()).hexdigest()
-            self.assertEqual(CODE_COMMIT, row["code_ref"])
+            self.assertEqual(code_ref, row["code_ref"])
             self.assertEqual(digest, row["config_fingerprint"])
             self.assertEqual("V5-ABLATION-008", row["work_item_id"])
 

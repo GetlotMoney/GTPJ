@@ -24,8 +24,8 @@ VALID_SCORE_PATHS = frozenset({"frozen_clip", "global", "local", "full"})
 
 def _validated_class_ids(config, seenclass, unseenclass):
     nclass = int(config.num_class)
-    seen_ids = torch.as_tensor(seenclass, dtype=torch.long)
-    unseen_ids = torch.as_tensor(unseenclass, dtype=torch.long)
+    seen_ids = torch.as_tensor(seenclass).detach().cpu().long()
+    unseen_ids = torch.as_tensor(unseenclass).detach().cpu().long()
     if seen_ids.dim() != 1 or unseen_ids.dim() != 1:
         raise ValueError("seenclass and unseenclass must be one-dimensional global ids.")
     if seen_ids.unique().numel() != seen_ids.numel():

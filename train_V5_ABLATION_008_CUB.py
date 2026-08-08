@@ -7,15 +7,42 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
+import os
 from pathlib import Path
 import shutil
 import subprocess
 from types import SimpleNamespace
 
 
+REPO_ROOT = Path(__file__).resolve().parent
+MODEL_SOURCE_PATH = REPO_ROOT / "model" / "V5ScorePathAblation.py"
+ENTRY_SOURCE_PATH = Path(__file__).resolve()
 MODEL_TEMPLATE_ID = "model/v5-template-v1"
 VALID_SCORE_PATHS = {"frozen_clip", "global", "local", "full"}
+DATA_MANIFEST_SCHEMA = "gtpj.v5_ablation_008.data_manifest.v1"
+FROZEN_REQUIRED_DATA_KEYS = frozenset(
+    {
+        "xlsa17_res101",
+        "xlsa17_att_splits",
+        "gpt55_sentences",
+        "test_seen_cls",
+        "test_seen_labels",
+        "test_unseen_cls",
+        "test_unseen_labels",
+    }
+)
+TRAINED_REQUIRED_DATA_KEYS = FROZEN_REQUIRED_DATA_KEYS | frozenset(
+    {
+        "train_cls",
+        "train_patches",
+        "train_labels",
+        "test_seen_patches",
+        "test_unseen_patches",
+    }
+)
 V5_TEMPLATE_CONFIG_KEYS = {
     "dataset", "num_class", "dim_f_clip", "device", "batch_size",
     "random_seed", "text_source", "pse_heads", "pse_dropout",
@@ -36,7 +63,9 @@ def _parse_args(argv=None):
     )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--data-manifest", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--expected-run-commit", required=True)
     return parser.parse_args(argv)
 
 
@@ -50,16 +79,34 @@ def _reserve_output_dir(path):
 
 def _require_clean_code_tree():
     result = subprocess.run(
-        ["git", "status", "--porcelain"], check=True, capture_output=True, text=True
+        ["git", "status", "--porcelain"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     if result.stdout.strip():
         raise RuntimeError("正式运行要求完整 git status --porcelain 为空。")
 
 
-def _current_code_commit():
+def _current_run_commit():
     return subprocess.run(
-        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
+
+
+def _require_expected_run_commit(expected_run_commit):
+    current = _current_run_commit()
+    expected = str(expected_run_commit).strip()
+    if current != expected:
+        raise RuntimeError(
+            f"current HEAD {current} does not match expected run commit {expected}."
+        )
+    return current
 
 
 def _validate_lr_stages(stages):
@@ -106,16 +153,92 @@ def _require_cuda(config, torch_module):
         raise RuntimeError("CUDA 不可用，拒绝静默退回 CPU。")
 
 
-def _paths(data_root):
-    root = Path(data_root).resolve()
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _executable_source_sha256():
     return {
-        "cache": root / "cache",
-        "res101": root / "xlsa17" / "data" / "CUB" / "res101.mat",
-        "split": root / "xlsa17" / "data" / "CUB" / "att_splits.mat",
-        "train_cls": root / "cache" / "CUB_train_features.pt",
-        "train_patches": root / "cache" / "CUB_train_patch_features.pt",
-        "train_labels": root / "cache" / "CUB_train_labels.pt",
-        "sentences": root / "cache" / "CUB_gpt55_sentence_embeds.pt",
+        "model/V5ScorePathAblation.py": _sha256_file(MODEL_SOURCE_PATH),
+        "train_V5_ABLATION_008_CUB.py": _sha256_file(ENTRY_SOURCE_PATH),
+    }
+
+
+def _required_data_keys(score_path):
+    if score_path not in VALID_SCORE_PATHS:
+        raise ValueError(f"unknown score_path: {score_path}")
+    return (
+        FROZEN_REQUIRED_DATA_KEYS
+        if score_path == "frozen_clip"
+        else TRAINED_REQUIRED_DATA_KEYS
+    )
+
+
+def _verify_data_manifest(manifest_path, data_root, score_path):
+    manifest_file = Path(manifest_path).resolve()
+    if not manifest_file.is_file():
+        raise FileNotFoundError(f"data manifest does not exist: {manifest_file}")
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid data manifest JSON: {manifest_file}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("data manifest root must be an object.")
+    if manifest.get("schema_version") != DATA_MANIFEST_SCHEMA:
+        raise ValueError(
+            f"data manifest schema must be {DATA_MANIFEST_SCHEMA}."
+        )
+    if manifest.get("dataset") != "CUB":
+        raise ValueError("data manifest dataset must be CUB.")
+    records = manifest.get("files")
+    if not isinstance(records, dict):
+        raise ValueError("data manifest files must be an object.")
+
+    root = Path(data_root).resolve()
+    paths = {}
+    fingerprints = {}
+    for key in sorted(_required_data_keys(score_path)):
+        record = records.get(key)
+        if not isinstance(record, dict):
+            raise ValueError(f"data manifest is missing file record: {key}")
+        relative_value = record.get("relative_path")
+        if not isinstance(relative_value, str) or not relative_value.strip():
+            raise ValueError(f"data manifest relative_path is invalid: {key}")
+        relative = Path(relative_value)
+        if relative.is_absolute():
+            raise ValueError(f"data manifest relative_path must be relative: {key}")
+        path = (root / relative).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"data manifest relative_path escapes data root: {key}") from exc
+        if not path.is_file():
+            raise FileNotFoundError(f"required data file does not exist: {path}")
+        actual_size = path.stat().st_size
+        expected_size = record.get("size_bytes")
+        expected_sha256 = record.get("sha256")
+        actual_sha256 = _sha256_file(path)
+        if (
+            not isinstance(expected_size, int)
+            or actual_size != expected_size
+            or not isinstance(expected_sha256, str)
+            or actual_sha256 != expected_sha256.lower()
+        ):
+            raise ValueError(f"data fingerprint mismatch: {key}")
+        paths[key] = path
+        fingerprints[key] = {
+            "relative_path": relative.as_posix(),
+            "size_bytes": actual_size,
+            "sha256": actual_sha256,
+        }
+    return {
+        "manifest_sha256": _sha256_file(manifest_file),
+        "paths": paths,
+        "fingerprints": fingerprints,
     }
 
 
@@ -128,6 +251,39 @@ def _load_sentences(path, expected_classes, expected_dim, torch_module):
             f"GPT-5.5 句子缓存必须是 [{expected_classes}, M, {expected_dim}]。"
         )
     return value
+
+
+def _load_test_cache(paths, expected_dim, include_patches, torch_module):
+    cache = {}
+    for split in ("seen", "unseen"):
+        cls = torch_module.load(
+            paths[f"test_{split}_cls"], map_location="cpu", weights_only=True
+        )
+        labels = torch_module.load(
+            paths[f"test_{split}_labels"], map_location="cpu", weights_only=True
+        ).long()
+        if cls.dim() != 2 or cls.size(1) != expected_dim:
+            raise ValueError(f"test_{split} CLS must have shape [N, {expected_dim}].")
+        if labels.dim() != 1 or cls.size(0) != labels.size(0):
+            raise ValueError(f"test_{split} CLS and labels do not align.")
+        cache[f"{split}_cls"] = cls
+        cache[f"{split}_labels"] = labels
+        if include_patches:
+            patches = torch_module.load(
+                paths[f"test_{split}_patches"],
+                map_location="cpu",
+                weights_only=True,
+            )
+            if (
+                patches.dim() != 3
+                or tuple(patches.shape[1:]) != (576, expected_dim)
+                or patches.size(0) != cls.size(0)
+            ):
+                raise ValueError(
+                    f"test_{split} patches must have shape [N, 576, {expected_dim}]."
+                )
+            cache[f"{split}_patches"] = patches
+    return cache
 
 
 def _load_training_cache(paths, expected_dim, torch_module):
@@ -151,38 +307,126 @@ def _load_training_cache(paths, expected_dim, torch_module):
     return cls, patches, labels
 
 
-def _eval_only_split(paths, test_cache, device, torch_module, scipy_io):
+def _eval_only_split(paths, test_cache, torch_module, scipy_io):
     """冻结路径不读 train label cache，只核对 xlsa17 的两个测试划分。"""
-    res101 = scipy_io.loadmat(paths["res101"])
-    splits = scipy_io.loadmat(paths["split"])
+    res101 = scipy_io.loadmat(paths["xlsa17_res101"])
+    splits = scipy_io.loadmat(paths["xlsa17_att_splits"])
     labels = torch_module.from_numpy(res101["labels"].astype(int).squeeze() - 1).long()
     seen_indices = torch_module.from_numpy(splits["test_seen_loc"].squeeze() - 1).long()
     unseen_indices = torch_module.from_numpy(
         splits["test_unseen_loc"].squeeze() - 1
     ).long()
-    if not torch_module.equal(labels[seen_indices], test_cache["seen_labels"].long()):
+    if not torch_module.equal(
+        labels[seen_indices], test_cache["seen_labels"].detach().cpu().long()
+    ):
         raise ValueError("test_seen cache labels 与 xlsa17 不一致。")
-    if not torch_module.equal(labels[unseen_indices], test_cache["unseen_labels"].long()):
+    if not torch_module.equal(
+        labels[unseen_indices], test_cache["unseen_labels"].detach().cpu().long()
+    ):
         raise ValueError("test_unseen cache labels 与 xlsa17 不一致。")
     seen = torch_module.unique(labels[seen_indices], sorted=True)
     unseen = torch_module.unique(labels[unseen_indices], sorted=True)
-    return seen.to(device), unseen.to(device)
+    return seen.detach().cpu().long(), unseen.detach().cpu().long()
+
+
+def _per_class_accuracy(labels, predictions, classes, torch_module):
+    labels = labels.detach().cpu().long()
+    predictions = predictions.detach().cpu().long()
+    values = []
+    for class_id in classes.detach().cpu().long():
+        mask = labels == class_id
+        if not mask.any():
+            raise ValueError(f"evaluation cache has no samples for class {int(class_id)}.")
+        values.append((predictions[mask] == labels[mask]).float().mean())
+    return float(torch_module.stack(values).mean().item())
+
+
+def _frozen_cls_logits(model, cls_features, device, torch_module, batch_size):
+    logits = []
+    model.eval()
+    with torch_module.inference_mode():
+        for start in range(0, cls_features.size(0), batch_size):
+            cls_batch = cls_features[start : start + batch_size].to(device).float()
+            zero_patches = torch_module.zeros(
+                cls_batch.size(0),
+                576,
+                cls_batch.size(1),
+                device=cls_batch.device,
+                dtype=cls_batch.dtype,
+            )
+            features = torch_module.cat([cls_batch.unsqueeze(1), zero_patches], dim=1)
+            logits.append(model(features, is_train=False)["clip_S_pp"].detach().cpu())
+    if not logits:
+        raise ValueError("frozen evaluation cache must not be empty.")
+    return torch_module.cat(logits, dim=0)
+
+
+def _evaluate_frozen_cls_only(
+    model,
+    device,
+    cache,
+    seenclasses,
+    unseenclasses,
+    torch_module,
+    batch_size=64,
+):
+    seenclasses = torch_module.as_tensor(seenclasses).detach().cpu().long()
+    unseenclasses = torch_module.as_tensor(unseenclasses).detach().cpu().long()
+    seen_logits = _frozen_cls_logits(
+        model, cache["seen_cls"], device, torch_module, batch_size
+    )
+    unseen_logits = _frozen_cls_logits(
+        model, cache["unseen_cls"], device, torch_module, batch_size
+    )
+    seen_prediction = seen_logits.argmax(dim=1)
+    unseen_prediction = unseen_logits.argmax(dim=1)
+    unseen_only_prediction = unseenclasses[
+        unseen_logits[:, unseenclasses].argmax(dim=1)
+    ]
+    seen_accuracy = _per_class_accuracy(
+        cache["seen_labels"], seen_prediction, seenclasses, torch_module
+    )
+    unseen_accuracy = _per_class_accuracy(
+        cache["unseen_labels"], unseen_prediction, unseenclasses, torch_module
+    )
+    zsl_accuracy = _per_class_accuracy(
+        cache["unseen_labels"], unseen_only_prediction, unseenclasses, torch_module
+    )
+    denominator = seen_accuracy + unseen_accuracy
+    harmonic = (
+        2.0 * seen_accuracy * unseen_accuracy / denominator if denominator else 0.0
+    )
+    return seen_accuracy, unseen_accuracy, harmonic, zsl_accuracy
 
 
 def _metric_dict(values, *, epoch):
     seen, unseen, harmonic, zsl = values
-    return {
+    metrics = {
         "U": float(unseen), "S": float(seen), "H": float(harmonic),
         "ZS": float(zsl), "epoch": int(epoch),
     }
+    if not all(math.isfinite(metrics[name]) for name in ("U", "S", "H", "ZS")):
+        raise ValueError("all evaluation metrics must be finite.")
+    return metrics
 
 
 def _write_metrics(output_dir, metrics, metadata):
     payload = dict(metadata)
+    payload["metric_unit"] = "fraction_0_to_1"
     payload["metrics"] = metrics
-    (output_dir / "metrics.json").write_text(
+    target = output_dir / "metrics.json"
+    temporary = output_dir / "metrics.json.tmp"
+    temporary.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    os.replace(temporary, target)
+
+
+def _save_best_model_atomic(torch_module, state_dict, target):
+    target = Path(target)
+    temporary = target.with_name(target.name + ".tmp")
+    torch_module.save(state_dict, temporary)
+    os.replace(temporary, target)
 
 
 def _logger(output_dir):
@@ -197,30 +441,48 @@ def _logger(output_dir):
     return log
 
 
+def _log_best_results(log, metrics):
+    log(f"Best Results @ Epoch {metrics['epoch']}")
+    log(f"GZSL-U: {metrics['U'] * 100:.2f}%")
+    log(f"GZSL-S: {metrics['S'] * 100:.2f}%")
+    log(f"GZSL-H: {metrics['H'] * 100:.2f}%")
+    log(f"ZSL: {metrics['ZS'] * 100:.2f}%")
+
+
 def _run_frozen_path(config, values, data_root, output_dir, runtime):
     torch = runtime.torch
-    paths = _paths(data_root)
+    paths = runtime.data_paths
     sentences = _load_sentences(
-        paths["sentences"], int(config.num_class), int(config.dim_f_clip), torch
+        paths["gpt55_sentences"],
+        int(config.num_class),
+        int(config.dim_f_clip),
+        torch,
     )
-    test_cache = runtime.load_v5_test_cache(paths["cache"])
+    test_cache = _load_test_cache(
+        paths,
+        int(config.dim_f_clip),
+        include_patches=False,
+        torch_module=torch,
+    )
     seen, unseen = _eval_only_split(
-        paths, test_cache, config.device, torch, runtime.scipy_io
+        paths, test_cache, torch, runtime.scipy_io
     )
+    runtime.seenclass_ids = [int(value) for value in seen.tolist()]
+    runtime.unseenclass_ids = [int(value) for value in unseen.tolist()]
     text = sentences.mean(dim=1)
     model = runtime.build_score_path_model(
         "frozen_clip", config, seen, unseen, text[seen.cpu()], text[unseen.cpu()],
         sentences[seen.cpu()], initialization_seed=int(config.random_seed),
     ).to(config.device)
-    with torch.inference_mode():
-        values_out = runtime.evaluate_cached_v5(
-            model, config.device, test_cache, seen, unseen
-        )
+    values_out = _evaluate_frozen_cls_only(
+        model, config.device, test_cache, seen, unseen, torch
+    )
     metrics = _metric_dict(values_out, epoch=0)
     runtime.log(
         f"冻结评估：S={metrics['S']*100:.2f}% U={metrics['U']*100:.2f}% "
         f"H={metrics['H']*100:.2f}% ZS={metrics['ZS']*100:.2f}%"
     )
+    _log_best_results(runtime.log, metrics)
     return metrics
 
 
@@ -241,18 +503,31 @@ def _stage_for_epoch(epoch, boundaries):
 
 def _run_training_path(config, values, data_root, output_dir, runtime):
     torch = runtime.torch
-    paths = _paths(data_root)
+    paths = runtime.data_paths
     train_cls, train_patches, train_labels = _load_training_cache(
         paths, int(config.dim_f_clip), torch
     )
     sentences = _load_sentences(
-        paths["sentences"], int(config.num_class), int(config.dim_f_clip), torch
+        paths["gpt55_sentences"],
+        int(config.num_class),
+        int(config.dim_f_clip),
+        torch,
     )
-    test_cache = runtime.load_v5_test_cache(paths["cache"])
+    test_cache = _load_test_cache(
+        paths,
+        int(config.dim_f_clip),
+        include_patches=True,
+        torch_module=torch,
+    )
     seen, unseen = runtime.load_v5_cub_split(
-        paths["res101"], paths["split"], train_labels,
-        test_cache["seen_labels"], test_cache["unseen_labels"], config.device,
+        paths["xlsa17_res101"],
+        paths["xlsa17_att_splits"],
+        train_labels,
+        test_cache["seen_labels"],
+        test_cache["unseen_labels"], "cpu",
     )
+    runtime.seenclass_ids = [int(value) for value in seen.tolist()]
+    runtime.unseenclass_ids = [int(value) for value in unseen.tolist()]
     runtime.configure_reproducibility(
         int(config.random_seed), strict_determinism=False, deterministic_warn_only=True
     )
@@ -297,9 +572,14 @@ def _run_training_path(config, values, data_root, output_dir, runtime):
             )
             output = model(features, is_train=True)
             losses = model.compute_loss(dict(output, batch_label=labels))
+            loss_value = float(losses["loss"].detach().item())
+            if not math.isfinite(loss_value):
+                raise FloatingPointError(
+                    f"non-finite training loss at epoch={epoch}, step={step + 1}."
+                )
             losses["loss"].backward()
             optimizer.step()
-            epoch_loss += float(losses["loss"].item())
+            epoch_loss += loss_value
         scheduler.step()
         evaluated = runtime.evaluate_cached_v5(
             model, config.device, test_cache, seen, unseen
@@ -312,7 +592,12 @@ def _run_training_path(config, values, data_root, output_dir, runtime):
         )
         if metrics["H"] > best_h:
             best_h, best = metrics["H"], metrics
-            torch.save(model.state_dict(), output_dir / "best_model.pth")
+            _save_best_model_atomic(
+                torch, model.state_dict(), output_dir / "best_model.pth"
+            )
+    if best is None:
+        raise RuntimeError("training finished without a finite best result.")
+    _log_best_results(runtime.log, best)
     return best
 
 
@@ -336,7 +621,7 @@ def _load_runtime(log):
     from model.V5ScorePathAblation import build_score_path_model
     from tools.reproducibility import configure_reproducibility
     from tools.v5_cub_data import load_v5_cub_split
-    from tools.v5_evaluation import evaluate_cached_v5, load_v5_test_cache
+    from tools.v5_evaluation import evaluate_cached_v5
     from tools.v5_runtime import sha256_file
 
     return SimpleNamespace(
@@ -345,7 +630,6 @@ def _load_runtime(log):
         configure_reproducibility=configure_reproducibility,
         load_v5_cub_split=load_v5_cub_split,
         evaluate_cached_v5=evaluate_cached_v5,
-        load_v5_test_cache=load_v5_test_cache,
         sha256_file=sha256_file, log=log,
     )
 
@@ -356,10 +640,17 @@ def main(argv=None):
     if output_candidate.exists():
         raise FileExistsError(f"output directory already exists: {output_candidate}")
     _require_clean_code_tree()
-    code_commit = _current_code_commit()
+    run_commit = _require_expected_run_commit(args.expected_run_commit)
+    executable_source_sha256 = _executable_source_sha256()
     runtime = _load_runtime(lambda message: None)
     config, values, config_path = _load_config(args.config, runtime.yaml)
     _require_cuda(config, runtime.torch)
+    data_identity = _verify_data_manifest(
+        args.data_manifest, args.data_root, config.score_path
+    )
+    runtime.data_paths = data_identity["paths"]
+    runtime.data_manifest_sha256 = data_identity["manifest_sha256"]
+    runtime.verified_input_fingerprints = data_identity["fingerprints"]
     output_dir = _reserve_output_dir(output_candidate)
     runtime.log = _logger(output_dir)
     shutil.copy2(config_path, output_dir / "config.yaml")
@@ -367,15 +658,20 @@ def main(argv=None):
         int(config.random_seed), strict_determinism=False, deterministic_warn_only=True
     )
     runtime.log(f"模板：{MODEL_TEMPLATE_ID}")
-    runtime.log(f"代码 commit：{code_commit}")
+    runtime.log(f"运行 commit：{run_commit}")
     runtime.log(f"score_path：{config.score_path}")
     metrics = _dispatch_score_path(
         config, values, args.data_root, output_dir, runtime=runtime
     )
     metadata = {
         "template_id": MODEL_TEMPLATE_ID,
-        "code_commit": code_commit,
+        "run_commit": run_commit,
+        "executable_source_sha256": executable_source_sha256,
         "config_sha256": runtime.sha256_file(config_path),
+        "data_manifest_sha256": runtime.data_manifest_sha256,
+        "verified_input_fingerprints": runtime.verified_input_fingerprints,
+        "seenclass_ids": runtime.seenclass_ids,
+        "unseenclass_ids": runtime.unseenclass_ids,
         "score_path": config.score_path,
         "random_seed": int(config.random_seed),
         "evaluation_only": config.score_path == "frozen_clip",
