@@ -7,21 +7,16 @@
 - 物理 GPU：`0`
 - 进程可见卡：`CUDA_VISIBLE_DEVICES=0`
 - 配置内设备：`cuda:0`（进程只看见这一张卡）
-- 运行顺序：`RUN-001`（seed 5）→ `RUN-002`（seed 17）→ `RUN-003`（seed 29）
+- 运行顺序：`RUN-001`（seed 5 第1次）→ `RUN-002`（seed 5 第2次）→ `RUN-003`（seed 17 第1次）→ `RUN-004`（seed 17 第2次）
 
-## 唯一正式入口
+## 启动方式
 
-每个 RUN 必须在冻结提交后，从干净工作树通过 `prepare-run-start-receipt` 启动。把 `<FREEZE_COMMIT>` 替换成当次冻结提交，不能手工绕开该入口运行训练。
+冻结提交完成且工作树干净后，在服务器对应工作树中直接使用现有训练入口。下面展示 `RUN-001` 的命令形状：
 
 ```powershell
 $env:CUDA_VISIBLE_DEVICES = '0'
-conda run -n dvsr_gpu python workflow/gtpj_workflow.py prepare-run-start-receipt `
-  --path experiments/v5/ablation/ABLATION-002_pse_effect/PARAMETER_MATRIX.csv `
-  --config experiments/v5/ablation/ABLATION-002_pse_effect/configs/RUN-001.yaml `
-  --job-id RUN-001 --run-id V5-ABLATION-002-RUN-001 `
-  --pre-run-freeze-commit <FREEZE_COMMIT> `
-  --command "python train_GTPJ_CUB.py --config experiments/v5/ablation/ABLATION-002_pse_effect/configs/RUN-001.yaml" `
-  --receipt <warehouse-run-start-receipt> --log <warehouse-train-log>
+conda run -n dvsr_gpu python train_GTPJ_CUB.py `
+  --config experiments/v5/ablation/ABLATION-002_pse_effect/configs/RUN-001.yaml
 ```
 
-`RUN-002` 和 `RUN-003` 只替换 `--config`、`--job-id`、`--run-id` 和外部日志路径；不改其它参数。
+`RUN-002`、`RUN-003` 和 `RUN-004` 只替换 `--config`。四个 RUN 必须各用一个独立 Warehouse 输出目录，并分别保存 `training.log`、最终指标和需要保留的最佳模型，不能覆盖前一次运行。

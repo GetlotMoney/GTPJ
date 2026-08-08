@@ -28,6 +28,8 @@ preserved_subsystem:
   - MPP
   - negative_semantic
 formal_evidence: true
-workflow_mode: server_detached_role_only
+not_confirmation_evidence: true
+workflow_mode: direct_server_run
 review_tier: strict-3
 implementation_status: strict3_fixes_applied_pending_recheck
+campaign_preparation_review: machine_check_only

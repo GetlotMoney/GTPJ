@@ -1,6 +1,7 @@
 """PSE-off 消融分支的最小行为检查。"""
 
 import ast
+import csv
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -14,6 +15,9 @@ from model.MyModel import GTPJ
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT_CONFIG = ROOT / "experiments" / "v5" / "ablation" / "ABLATION-002_pse_effect" / "config.yaml"
+EXPERIMENT_DIR = EXPERIMENT_CONFIG.parent
+CONFIG_DIR = EXPERIMENT_DIR / "configs"
+MATRIX = EXPERIMENT_DIR / "PARAMETER_MATRIX.csv"
 TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
 
 
@@ -62,13 +66,48 @@ def _training_config_keys():
     raise AssertionError("V5_CONFIG_KEYS not found")
 
 
+def _config_values(path):
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return {
+        key: value["value"] if isinstance(value, dict) and "value" in value else value
+        for key, value in raw.items()
+    }
+
+
+def _matrix_rows():
+    with MATRIX.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 class PseAblationTest(unittest.TestCase):
+    def test_four_runs_use_two_seeds_and_two_exact_repeats(self):
+        rows = _matrix_rows()
+        self.assertEqual([f"RUN-{index:03d}" for index in range(1, 5)], [row["job_id"] for row in rows])
+        self.assertEqual(
+            [(5, 1), (5, 2), (17, 1), (17, 2)],
+            [
+                (int(row["seed"]), 2 if row["repeat_of"] else 1)
+                for row in rows
+            ],
+        )
+        self.assertEqual("RUN-001", rows[1]["repeat_of"])
+        self.assertEqual("RUN-003", rows[3]["repeat_of"])
+
+        config_paths = sorted(CONFIG_DIR.glob("RUN-*.yaml"))
+        self.assertEqual([f"RUN-{index:03d}.yaml" for index in range(1, 5)], [path.name for path in config_paths])
+        values = [_config_values(path) for path in config_paths]
+        self.assertEqual([5, 5, 17, 17], [value["random_seed"] for value in values])
+        for value in values:
+            self.assertTrue(value["ablation_disable_pse"])
+            self.assertEqual(set(value), _training_config_keys())
+        without_seed = [{key: value for key, value in item.items() if key != "random_seed"} for item in values]
+        self.assertTrue(all(item == without_seed[0] for item in without_seed[1:]))
+        for repeat_index, row in zip((1, 2, 1, 2), rows):
+            self.assertIn(f"第{repeat_index}次", row["name"])
+            self.assertIn(f"第{repeat_index}次", row["purpose"])
+
     def test_experiment_config_is_accepted_by_branch_schema(self):
-        raw = yaml.safe_load(EXPERIMENT_CONFIG.read_text(encoding="utf-8"))
-        values = {
-            key: value["value"] if isinstance(value, dict) and "value" in value else value
-            for key, value in raw.items()
-        }
+        values = _config_values(EXPERIMENT_CONFIG)
         self.assertTrue(values["ablation_disable_pse"])
         self.assertEqual(set(values), _training_config_keys())
 
