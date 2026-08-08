@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ-v5 Framework Diagram</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f9fc;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #5b6775;
+      --line: #9aa8b6;
+      --blue: #dcecff;
+      --green: #ddf7ec;
+      --orange: #fff0d8;
+      --red: #ffe2e0;
+      --violet: #eee5ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    main {
+      width: min(1320px, calc(100vw - 48px));
+      margin: 28px auto 48px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 32px;
+      letter-spacing: 0;
+    }
+    .sub {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1.2fr 1.2fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .lane {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .node {
+      border: 1px solid #ccd6e0;
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px 14px 12px;
+      box-shadow: 0 8px 22px rgba(28, 42, 56, 0.08);
+      min-height: 92px;
+    }
+    .node h2 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .blue { background: var(--blue); }
+    .green { background: var(--green); }
+    .orange { background: var(--orange); }
+    .red { background: var(--red); }
+    .violet { background: var(--violet); }
+    .arrow {
+      color: var(--line);
+      font-weight: 700;
+      text-align: center;
+      font-size: 24px;
+      line-height: 1;
+    }
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .note {
+      border-left: 5px solid #577590;
+      background: #fff;
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 6px 18px rgba(28, 42, 56, 0.06);
+    }
+    .note h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+    @media (max-width: 980px) {
+      main { width: min(760px, calc(100vw - 28px)); }
+      .grid, .notes { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); margin: -3px 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>GTPJ-v5 框架图</h1>
+    <p class="sub">
+      v5 激活 TRIAL-003：把 <code>all_text_cond [B,C,768]</code> 直接送入 BVSA，本图是版本级主线视图；trial 级细节仍以
+      <code>experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text/framework_diagram.md</code> 为准。
+    </p>
+
+    <section class="grid" aria-label="GTPJ-v5 framework flow">
+      <div class="lane">
+        <div class="node blue">
+          <h2>输入</h2>
+          <p>图像 batch，GPT 类别文本描述，CUB 类别集合。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node blue">
+          <h2>Frozen CLIP</h2>
+          <p><code>clip_features [B,577,768]</code>，拆成 CLS token 和 patch tokens。</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="node green">
+          <h2>PSE / CLIP-A-self</h2>
+          <p>生成 <code>all_text [C,768]</code>；v5 使用 <code>pse_outer_ratio=0.65</code>。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node green">
+          <h2>ICSA</h2>
+          <p>用图像 CLS token 注入条件语义，得到 <code>all_text_cond [B,C,768]</code>。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node green">
+          <h2>全局分数</h2>
+          <p><code>S_global [B,C]</code>，由图像全局特征和条件文本原型计算。</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="node orange">
+          <h2>FGVD</h2>
+          <p>选择 K=32 个局部 patch 并编码为几何感知视觉记忆。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node orange">
+          <h2>BVSA</h2>
+          <p>v5 关键变化：BVSA 接收 <code>all_text_cond</code>，而不是共享 <code>all_text</code>。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node orange">
+          <h2>局部分数</h2>
+          <p>V2S / S2V 解码器生成 <code>S_local [B,C]</code>。</p>
+        </div>
+      </div>
+
+      <div class="lane">
+        <div class="node violet">
+          <h2>融合 logits</h2>
+          <p><code>S_final = S_global + 0.2 * S_local</code>，最终形状 <code>[B,C]</code>。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node violet">
+          <h2>GZSL 评估</h2>
+          <p>U / S / H / ZS；seen/unseen split、label mapping、class order 不变。</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="node red">
+          <h2>辅助训练</h2>
+          <p>SGMP 读取 FGVD memory 和 conditional text，产生 <code>L_mpp</code> / <code>L_neg</code>。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes" aria-label="Important framework notes">
+      <div class="note">
+        <h3>关键差异</h3>
+        <p><code>bvsa_text_mode=conditional</code> 让 ICSA 影响 BVSA local branch；关闭到 <code>adapted</code> 时回到共享文本路径。</p>
+      </div>
+      <div class="note">
+        <h3>训练轮数</h3>
+        <p><code>epochs=30</code> 是历史字段；有效计划来自 <code>lr_stages</code>，即 20 + 20 + 10 = 50 轮。</p>
+      </div>
+      <div class="note">
+        <h3>证据边界</h3>
+        <p>v5 是 owner-activated mainline；repeat mean H=74.44，不能说成强于 v3/CONFIRM-001 的 confirmed baseline。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
