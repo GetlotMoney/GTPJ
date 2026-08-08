@@ -6,9 +6,10 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 关闭 ICSA seed 5 | ablation | frozen | {"ablation_disable_icsa": true} | 5 |  |  | 验证 ICSA 对 seed 5 的独立影响 |  |  |  |
-| RUN-002 | 关闭 ICSA seed 17 | ablation | frozen | {"ablation_disable_icsa": true} | 17 |  |  | 验证 ICSA 对 seed 17 的独立影响 |  |  |  |
-| RUN-003 | 关闭 ICSA seed 29 | ablation | frozen | {"ablation_disable_icsa": true} | 29 |  |  | 验证 ICSA 对 seed 29 的独立影响 |  |  |  |
+| RUN-001 | 关闭 ICSA seed 5 第1次 | ablation | frozen | {"ablation_disable_icsa": true} | 5 |  |  | 种子 5 第1次：验证关闭 ICSA 的影响 |  |  |  |
+| RUN-002 | 关闭 ICSA seed 5 第2次 | ablation | frozen | {"ablation_disable_icsa": true} | 5 | RUN-001 |  | 种子 5 第2次：排除单次训练偶然性 |  |  |  |
+| RUN-003 | 关闭 ICSA seed 17 第1次 | ablation | frozen | {"ablation_disable_icsa": true} | 17 |  |  | 种子 17 第1次：验证关闭 ICSA 的影响 |  |  |  |
+| RUN-004 | 关闭 ICSA seed 17 第2次 | ablation | frozen | {"ablation_disable_icsa": true} | 17 | RUN-003 |  | 种子 17 第2次：排除单次训练偶然性 |  |  |  |
 
 ## 查重说明
 

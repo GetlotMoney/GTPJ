@@ -9,7 +9,7 @@ device:
 batch_size:
   value: 64
 random_seed:
-  value: 17
+  value: 5
 text_source:
   value: gpt55
 pse_heads:
