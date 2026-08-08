@@ -4,6 +4,11 @@
 `WORKFLOW_ROUTER.md`、`TASK_START_CARD.md`、agent、artifact、quality 和 promotion
 规则仍然有效，由 Coordinator 自动展开。
 
+新框架和新实验的结构以 `FRAMEWORK_EXPERIMENT_STANDARD.md` 为准：新模块先建立
+`Vx-INNOVATION-xxx` 候选，冻结候选后再做候选内部调参、消融和确认；旧 `module trial` 不再是新入口。
+本发布中的旧 helper 若仍输出 `trial` 路径，只能当历史兼容提示，不能据此创建新实验。
+当前发布版 helper 的 `new-experiment` 还带有“分支必须包含 main”的旧限制，不能正确创建从冻结模板或冻结候选开始的正式实验；在独立 helper 升级审核通过前，它只能用于历史兼容和只读检查。
+
 只想预览某句口令会怎样展开时，可以运行只读 helper：
 
 ```bash
@@ -20,11 +25,11 @@ python workflow/gtpj_workflow.py repro-status --version v3
 | `查状态` | 只读检查仓库、当前分支、active baseline 复现状态、队列和阻塞项，不改文件。 |
 | `复现` | 默认先判定当前 active baseline 是否已复现；未要求正式确认时走最快 `quick_local` 或准备路径。 |
 | `调参` | 默认基于当前 active baseline 生成最多 3 个候选；执行前再确认具体参数和成本。 |
-| `消融` | 默认判断是 version-level ablation 还是 trial-internal narrow ablation，并先检查接口门。 |
-| `开新模块` | 默认基于当前 active baseline，从该版本 selected ready idea 队列自动选一个新 module trial，不 push。 |
+| `消融` | 默认判断是版本级消融还是某个冻结候选内部的窄消融，并先检查接口门。 |
+| `开新模块` | 默认基于当前 active baseline，从该版本 selected ready idea 队列建立新的 `Vx-INNOVATION-xxx` 候选，不 push。 |
 | `开下一个新模块` | 明确按当前版本 selected 队列继续推进下一个 ready idea。 |
-| `试这个：<一句话想法>` | 把一句话想法路由为 local heuristic idea、idea inbox 或可开 trial 的候选。 |
-| `继续上一个` | 不新开 idea，继续当前 trial 或 attempt；先确认当前 trial 状态和下一步最小动作。 |
+| `试这个：<一句话想法>` | 把一句话想法路由为 local heuristic idea、idea inbox 或可开正式创新候选的想法。 |
+| `继续上一个` | 不新开 idea，继续当前创新候选或实验；旧 trial/attempt 只读回查。 |
 | `别问，给我三个候选` | 只读 `idea_tree` / Research，列 3 个可开候选，不改代码。 |
 | `升版本` | 检查 promotion gate；只有证据完整且记录明确时才进入 promotion。 |
 | `切版本` | 只在 owner 明确要求时执行 activate-version；set-current-version 只切 idea_tree 视图。 |
@@ -57,13 +62,12 @@ mini 启动卡的 `gates` 必须包含 `baseline_repro_status`。未确认版本
 3. 找 selected 且无 blocker 的最高优先级 idea。
 4. 检查 idea_id、source/ref/status、version_scores、hypothesis、scope、risk 是否齐全。
 5. 输出 mini 启动卡，说明能不能开工和下一步最小动作。
-6. 如果能开工，创建 dev/vX-idea-xxxx-trial-001-slug 分支和 trial 目录。
-7. 进入 Review 0-3、实现、attempt、Warehouse artifact、GitHub 账本闭环。
+6. 如果能开工，从所属框架的冻结模板创建 `Vx-INNOVATION-xxx` 分支和实验记录，先实现并冻结完整候选提交。
+7. 进入代码审查、候选内部调参/消融/确认、Warehouse artifact 和 GitHub 账本闭环；不允许创建 `dev/...` 或新的 trial 目录。
 8. 不 push，除非 owner 明确说提交推送。
 ```
 
-当前 active mainline 是 `GTPJ-v3 / tag v3` 时，`开新模块` 默认基于 `v3`。未来 active
-baseline 改变后，默认跟随新的 active baseline。
+`开新模块` 默认基于 `docs/PROJECT_STATUS.md` 和所属框架 `TEMPLATE.yaml` 所登记的当前研究框架；不能从旧示例中的 `v3`、旧 `dev/...` 或旧 trial 直接继续。
 
 ## 4. Ready Idea 条件
 
@@ -84,7 +88,7 @@ risk: not empty
 如果没有 ready idea，Coordinator 只能问一个最小问题，例如：
 
 ```text
-当前 v3 没有可直接开工的 selected idea。要我先列 3 个候选，还是把你的想法登记成 local heuristic idea？
+当前框架没有可直接开工的 selected idea。要我先列 3 个候选，还是把你的想法登记成 local heuristic idea？
 ```
 
 ## 5. Owner 不需要说的内部词
@@ -94,8 +98,8 @@ risk: not empty
 ```text
 基于 v3
 允许改代码
-module trial
-innovation workflow
+创新候选
+候选内部验证
 real_multi_agent
 Review 0-3
 artifact boundary

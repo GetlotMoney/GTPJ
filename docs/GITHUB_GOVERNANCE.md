@@ -274,7 +274,7 @@ experiments/v2/ 继续保留在 main，既是 v2 的正式记录，也是 V3 的
 
 ```text
 1. 读取来源正式框架的 `TEMPLATE.yaml`，创建 `EXPERIMENT.yaml`，从准确母版 commit 开 `exp/vX/innovation/...` 分支。
-2. 在该创新实验中完成调参表、结果和确认，不复制来源框架目录；候选阶段没有正式 Tag。
+2. 在该创新实验中先冻结完整候选提交，并记录候选编号、状态、冻结 commit、分支和配置；候选自己的调参、内部消融和确认都从该同一冻结候选提交独立分叉，不复制来源框架目录，也不让子实验互相作为代码起点；候选阶段没有正式 Tag。
 3. 创新成功后，在明确 code_commit 上创建新正式 Tag，并登记来源实验。
 4. 回到当前 main，开 promote 分支，只处理新的同级正式框架登记。
 5. 在 promote 分支中保留当前 main 的账本层。
@@ -362,9 +362,10 @@ trial/v1/idea-0003/trial-001
 trial/v2/idea-0003/trial-002
 ```
 
-`trial/...` tag 是 module trial 级代码快照，不是 attempt 级结果标签。不要为
-`ATTEMPT-xxx`、best attempt、单次 H 值或调参结果创建 git tag；这些证据由
-trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。
+`trial/...` tag 是旧 module trial 的历史代码快照，不是 attempt 级结果标签，也不是新创新的入口。不要为
+`ATTEMPT-xxx`、best attempt、单次 H 值或调参结果创建 git tag；这些历史证据由
+trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。新创新只使用正式框架下的
+`Vx-INNOVATION-xxx` 和候选冻结提交，不新建 `trial/...` tag。
 
 ## 命名怎么看
 
@@ -405,32 +406,27 @@ trial/v1/idea-0003/trial-001
 - `idea-0003`：对应的创意。
 - `trial-001`：对应的实现尝试。
 
-分支名里的 `v1` 是来源版本，不是最终版本号。这个 trial 如果成功，可以被提升成
-下一个正式 baseline，例如 `v2` 或 `v3`。
+分支名里的 `v1` 是来源版本，不是最终版本号。这段只解释历史：旧 trial 可作为来源证据回查，但不能直接提升为新的正式 baseline。任何新的正式框架都必须先作为 `Vx-INNOVATION-xxx` 候选，完成冻结、内部验证和晋级硬门。
 
 ## 合并和删除
 
 普通实验分支：
 
 - `exp/...` 分支承载目标框架下的 tune、ablation、innovation、confirmation 四类实验。
-- 所有新实验都从 `TEMPLATE.yaml` 登记的准确母版 commit 独立开出；分支名为
+- 普通版本级实验，以及创新候选的第一次实现，都从 `TEMPLATE.yaml` 登记的准确母版 commit 独立开出；分支名为
   `exp/vX/<type>/<experiment-id>-<slug>`，`EXPERIMENT.yaml` 固定母版编号、Tag 和 commit。
-- 实验分支不得并回母版，也不得作为另一个实验的代码起点。
+- 改过代码的创新先是候选框架快照，不是新正式框架。候选自身的消融、调参和确认都从同一 `candidate_freeze_commit` 独立开出，并记录 `parent_innovation_id`、`candidate_id`、候选冻结 commit、候选冻结配置和最初母版身份。
+- 候选内部子实验不得互相作为代码起点；候选代码实质变化时必须冻结新的候选修订号，并重新完成受影响验证。
+- 实验分支不得并回母版；候选完整对照、候选自身调参结论、必要内部消融和完整版本确认有任何一项缺失时，晋级状态必须是 `blocked`。调参结论可以是沿用冻结参数的书面理由，但必要消融范围必须在训练前冻结。全部通过后，才可建立新的平级正式框架。
 - 结果写回该框架的四类账本和总览；治理索引同步回 `main`。
 - 实验记录入账后，可以删除这个 `exp/...` 临时分支。
 
-成功的模块 trial：
+历史模块 trial 的回查：
 
-- 成功标准不是只看一次 `H` 上涨，而是指标有效、代码干净、实验口径一致。
-- 成功 trial 可以确定为新的同级正式 `FRAMEWORK-VX`，但必须先写清 `derived_from_framework` 和 `promoted_from_experiment`。
-- 如果新 `vX` 的来源框架不是当前 `main` 代码，提升时必须从当前 `main` 开 promote 分支，
-  只切换代码层，不能删除或回退全局账本层。
+- 历史成功 trial 只证明当时出现过候选结果；它不能跳过当前的候选冻结、内部消融、参数结论和确认，直接确定新的 `FRAMEWORK-VX`。
+- 如果旧 trial 值得重新研究，先在所属正式框架下登记新的 `Vx-INNOVATION-xxx`，冻结新的候选提交后按当前规范重做必要验证。
 - `experiments/v1/`、`experiments/v2/` 等历史记录目录必须继续保留在 `main`。
-- 成功 trial 的轻量证据目录、artifact 指针、quality_check、result 和 code.diff 必须回流到当前 `main` 账本；raw logs、checkpoint 和 generated figures 留在 Warehouse。
-- 在包含正式版本代码和版本材料的明确 commit 上打新的 baseline tag，例如 `v2` 或 `v3`；
-  这个 commit 不必是当前 `main` commit。
-- `main` 代码是否切到新 baseline，必须由 owner 明确执行 `activate-version` 决定。
-- 新 baseline tag 打好后，可以删除对应 `dev/...` 分支。
+- 历史 trial 的轻量证据目录、artifact 指针、quality_check、result 和 code.diff 可以回流到当前 `main` 账本；raw logs、checkpoint 和 generated figures 留在 Warehouse。
 
 Promotion 硬门：
 
@@ -448,9 +444,9 @@ Promotion 硬门：
 - `experiments/vX/VERSION.md`、`experiments/VERSION_TREE.md`、`EXPERIMENT_REGISTRY.md`
   都已经更新。
 
-只有同时满足上面条件，实验或 trial 才能提升为正式 `vX`。
+只有同时满足上面条件的完整创新候选，才可以提升为正式 `vX`；历史 trial 不构成独立晋级通道。
 
-失败的模块 trial：
+失败的历史模块 trial：
 
 - 失败代码不合并进 `main`。
 - 先打永久快照 tag，例如 `trial/v1/idea-0003/trial-001`。
@@ -494,7 +490,7 @@ GitHub 远端应设置保护规则：
 | 创意树使用说明 | `idea_tree/README.md` | 改创意树目录用法、登记流程、人类阅读规则时更新。 |
 | 机器可读格式 | `idea_tree/schema.json` | 改 `idea_tree.json` 字段结构时更新。 |
 | 代码接口契约 | `docs/workflow/protocols/code_interface_contract.md` | 改新增模块的开关、输入输出、shape、loss、eval 约束时更新。 |
-| 创新代码审查 | `docs/workflow/protocols/innovation_code_review_protocol.md` | 改 idea/创新/module trial 落成代码、多 agents 多轮审查、临时 agents 或 review 轮次规则时更新。 |
+| 创新代码审查 | `docs/workflow/protocols/innovation_code_review_protocol.md` | 改 idea/创新/候选实现落成代码、多 agents 多轮审查、临时 agents 或 review 轮次规则时更新。 |
 | Git 规则 | `docs/workflow/protocols/git_policy.md` | 改 `main`、`dev/...`、`exp/...`、tag、push 规则时更新。 |
 | 普通实验协议 | `docs/workflow/protocols/experiment_protocol.md` | 改 tune、ablation、confirmation 流程、历史版本临时分支、调参表或消融接口检查时更新。 |
 | 自动 promotion | `docs/workflow/protocols/promotion.md` | 改 `promotion_decision: promote`、硬门、本地 tag、版本材料、账本回流、main active code 或不自动 push 边界时更新。 |

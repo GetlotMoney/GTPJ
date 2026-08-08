@@ -8,6 +8,9 @@
 
 默认范围：本 Router 只服务“跑实验、做创新、复现、消融、调参、debug 和实验结果记账”。
 
+框架与实验结构以 `FRAMEWORK_EXPERIMENT_STANDARD.md` 为准：新方法必须先进入所属正式框架的
+`Vx-INNOVATION-xxx`，冻结为候选后再做候选内部验证；旧 `module trial`、`TRIAL / ATTEMPT` 仅供历史回查。
+
 Owner 不需要说“开启动卡”或自己判断任务类型。默认使用 `QUICK_START.md` 的人话入口。
 Owner 可以只说：
 
@@ -38,11 +41,11 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 | `查状态` | read-only status | 只读检查仓库、active baseline 复现状态、队列和阻塞项。 |
 | `复现` | confirmation | 默认先查当前 active baseline 是否已复现；未要求正式证据时优先 `quick_local` 或准备路径。 |
 | `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
-| `消融` | ablation | 判断 version-level 或 trial-internal，并先检查接口门。 |
-| `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
-| `开下一个新模块` | innovation / module trial | 明确继续当前版本 selected 队列的下一个 ready idea。 |
-| `试这个：...` | local heuristic idea 或 innovation / module trial | 先判断能否成为 idea / trial，不能直接跳过 source 和 interface gate。 |
-| `继续上一个` | trial-internal attempt 或当前任务续跑 | 不新开 idea，继续当前 trial/attempt 的下一步最小动作。 |
+| `消融` | ablation | 判断版本级消融或候选内部消融，并先检查接口门。 |
+| `开新模块` | innovation candidate | 基于当前 active baseline，从 selected ready idea 队列建立 `Vx-INNOVATION-xxx` 候选，不 push。 |
+| `开下一个新模块` | innovation candidate | 明确继续当前版本 selected 队列的下一个候选，不创建旧 trial。 |
+| `试这个：...` | local heuristic idea 或 innovation candidate | 先判断能否成为 idea / 正式创新候选，不能直接跳过 source 和 interface gate。 |
+| `继续上一个` | candidate-internal study 或当前任务续跑 | 不新开 idea，继续当前候选或实验的下一步最小动作。 |
 | `别问，给我三个候选` | read-only idea selection | 只读列候选，不改代码、不建 trial。 |
 | `升版本` | promotion | 检查 promotion gate，不把单次 H 提升直接当 baseline。 |
 | `切版本` | set-current-version 或 activate-version | 默认只解释差异；activate-version 必须 owner 明确授权。 |
@@ -60,7 +63,7 @@ Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、
 3. 复现状态硬门：先判断 `baseline_repro_status`，不能把未确认 `best_observed_H` 当 confirmed baseline。
 4. 硬门：`code_interface_contract.md`、`quality_gate.md`、`promotion.md`。
 5. 本文件的路由判断。
-6. 具体协议：`idea_tree_protocol.md`、`experiment_protocol.md`、`module_trial_protocol.md` 等。
+6. 具体协议：`FRAMEWORK_EXPERIMENT_STANDARD.md`、`idea_tree_protocol.md`、`experiment_protocol.md` 等；旧 `module_trial_protocol.md` 仅作历史回查。
 7. `IMPLEMENTATION_STATUS.md` 的已落地/按需创建状态。
 
 Router 只负责决定走哪条路；证据是否有效，由接口硬门、质量门和 promotion gate 决定。
@@ -92,8 +95,8 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
-实验是为了调/查/确认某个 module trial 内部模块 -> experiments/module_trials/.../attempts/ATTEMPT-xxx，不另进 idea_tree。
-实验是为了证明一个新方法值得存在 -> idea_tree + module_trials。
+实验是为了调/查/确认某个冻结候选内部模块 -> experiments/vX 的相应 tune/ablation/confirmation 账本，并在 `EXPERIMENT.yaml` 关联候选。
+实验是为了证明一个新方法值得存在 -> idea_tree + Vx-INNOVATION-xxx + 候选冻结与验证。
 ```
 
 不要因为一次实验有“想法”两个字就写入创意树。只有可复用的新机制、新模块、新方法，或者可能成为新 baseline 的设计，才进入 `idea_tree/`。
@@ -107,10 +110,10 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 | 调正式 baseline 的参数、seed、epoch、loss weight | tune | 否 | `experiments/vX/tune/` | Warehouse logs/runs | `experiment_protocol.md` | Coordinator、Runner、Log Analyst、Quality Checker |
 | 对正式 baseline 做关掉/旁路/替换已有模块看贡献 | ablation | 否 | `experiments/vX/ablation/` | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Implementer、Interface Checker、Runner、Quality Checker |
 | 复现 baseline 或确认某个版本级结果 | confirmation | 否 | `experiments/vX/confirmation/` | Warehouse logs/runs | `experiment_protocol.md` | Runner、Log Analyst、Quality Checker |
-| 调某个 module trial 的参数、头数、ratio、dropout、seed | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
-| 对某个 module trial 做窄消融或 clean confirmation | innovation / module trial；subtype: trial-internal attempt | 已有 idea | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` | Warehouse logs/runs | `module_trial_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 调某个冻结候选的参数、头数、ratio、dropout、seed | candidate-internal tune | 已有 idea | `experiments/vX/tune/`，并在 `EXPERIMENT.yaml` 关联候选 | Warehouse logs/runs | `FRAMEWORK_EXPERIMENT_STANDARD.md`, `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 对某个冻结候选做窄消融或完整版本确认 | candidate-internal ablation / confirmation | 已有 idea | `experiments/vX/ablation/` 或 `confirmation/`，并在 `EXPERIMENT.yaml` 关联候选 | Warehouse logs/runs | `FRAMEWORK_EXPERIMENT_STANDARD.md`, `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
 | debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，转为对应实验目录 | 可写临时本地输出；长期证据进 Warehouse | `experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality |
-| 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | innovation / module trial | 是 | `idea_tree/` + `experiments/module_trials/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `module_trial_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；强制 `real_multi_agent` 多轮审查 |
+| 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | innovation candidate | 是 | `idea_tree/` + `experiments/vX/innovation/` | Research 长推理，Warehouse 运行证据 | `FRAMEWORK_EXPERIMENT_STANDARD.md`, `idea_tree_protocol.md`, `experiment_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；强制 `real_multi_agent` 多轮审查 |
 | 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`VERSION_TREE.md` | Warehouse 证据引用 | `promotion.md`, `quality_gate.md`, `versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
 | 只切换创意树当前视图 | set-current-version | 使用已有 idea_tree | `idea_tree/idea_tree.json`、`idea_tree/versions/vX.md` | 不写 | `idea_tree_protocol.md` | 不切 main active code |
 | 切换 main 当前运行代码到某版本 | activate-version | 否 | `config/GTPJ_*.yaml` 等 active code/config | 不写 | `versioning.md`, `git_policy.md` | 必须 owner 明确要求 |
@@ -172,12 +175,12 @@ status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-gr
 - 版本级 tune 参数搜索。
 - 版本级 ablation 问题本身。
 - 版本级 confirmation 复现实验。
-- 已有 module trial 内部的 param_tune、窄 ablation、confirmation/rerun。
+- 已有冻结候选内部的 param_tune、窄 ablation、confirmation/rerun。
 - debug/smoke test。
 - 只为了排查环境、日志、cache 或数据路径。
 
-版本级调参或消融中如果发现了可复用新机制，先把原 version-level 实验记入 `experiments/vX/...`，再单独创建新的 idea。不要把一次普通实验硬改成 module trial。
-module trial 内部 attempt 如果超出原实现假设，形成新的 forward 路径、新 loss 机制或新接口语义，则新开 `TRIAL-002`，不要继续写入原 `TRIAL-001`。
+版本级调参或消融中如果发现了可复用新机制，先把原 version-level 实验记入 `experiments/vX/...`，再单独创建新的 idea。不要把一次普通实验硬改成候选创新。
+候选内部验证如果超出原实现假设，形成新的 forward 路径、新 loss 机制或新接口语义，则冻结新的候选修订号，例如 `CANDIDATE-001-R2`，不要继续沿用 `CANDIDATE-001-R1` 的证据。
 
 ## 5. 来源不是论文时怎么写
 
@@ -216,8 +219,8 @@ source_ref: paper:<paper_id> + observation:<experiment_id>
 | 完整论文、长笔记、长推理、完整创意树 | `GTPJ_Research` |
 | GitHub 轻量 idea id、评分、状态、linked trials | `idea_tree/` |
 | 版本级普通实验配置、manifest、result、quality_check | `experiments/vX/...` |
-| 模块 trial 根证据 | `experiments/module_trials/.../TRIAL-xxx/` |
-| 模块 trial 内部调参、窄消融、confirmation/rerun | `experiments/module_trials/.../TRIAL-xxx/ATTEMPTS.md` + `attempts/ATTEMPT-xxx/` |
+| 候选根证据 | `experiments/vX/innovation/Vx-INNOVATION-xxx/` |
+| 候选内部调参、窄消融、confirmation/rerun | `experiments/vX/tune/`、`ablation/`、`confirmation/`，并在 `EXPERIMENT.yaml` 关联候选 |
 | raw logs、checkpoint、generated figures、failure cases | `GTPJ_Warehouse` |
 | 运行中状态 | `.gtpj_runtime/`，不进 Git |
 | 本机真实路径 | `.gtpj/local_paths.yaml`，不提交 |
@@ -230,8 +233,8 @@ GitHub 和本地不是机械“每次同时写”，而是按任务类型成对�
 |---|---|---|---|
 | 读论文、提取创新点 | `GTPJ_Research/papers/`、`source_reviews/`、`ideas/` | GitHub `idea_tree/sources/`、`idea_tree/ideas/` 轻量索引 | GitHub 有 `research://` 或本地路径指针 |
 | 用户提出新机制 | `GTPJ_Research/ideas/` 长版动机/机制/风险 | GitHub `idea_tree/inbox.md` 或正式 `IDEA.md` | `source_status` 和 owner 接受理由可追溯 |
-| module trial 运行 | Warehouse raw artifacts | GitHub `manifest/result/quality/ATTEMPTS` | GitHub artifact URI/hash/size 可反查 Warehouse |
-| trial 改变 idea 结论 | Research `decision_history.md`、`experiment_plan.md` | GitHub `idea_tree.json`、`IDEA.md`、版本视图 | 人类版和机器版状态一致 |
+| 候选创新运行 | Warehouse raw artifacts | GitHub `manifest/result/quality` 和候选关联字段 | GitHub artifact URI/hash/size 可反查 Warehouse |
+| 候选验证改变 idea 结论 | Research `decision_history.md`、`experiment_plan.md` | GitHub `idea_tree.json`、`IDEA.md`、版本视图 | 人类版和机器版状态一致 |
 | version-level tune/ablation/confirmation | Warehouse + GitHub `experiments/vX/...` | 通常不写 Research | 若产生新机制，再另走 idea discovery |
 
 如果某个结论影响后续实验选择、promotion、版本适配分或论文叙述，不能只留在聊天里。
@@ -255,7 +258,7 @@ Paper intake 的细化流程见 `docs/workflow/paper_intake.md`。论文是否�
 | tune | Coordinator、Reader/Planner、Runner、Log Analyst、Quality Checker、Result Analyst |
 | ablation | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Quality Checker、Result Analyst |
 | confirmation | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
-| innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Quality Checker、Result Analyst、Reviewer |
+| innovation candidate | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Quality Checker、Result Analyst、Reviewer |
 | promotion | Coordinator、Quality Checker、Interface Checker、Result Analyst、Reviewer |
 | debug / smoke | Coordinator；必要时 Implementer 或 Runner，但结果默认无效 |
 
@@ -275,9 +278,9 @@ Runner 串行。多个 agents 可以并行读文档、审查和分析，但同�
 - 用户没有明确要求 push、发布、删除远端或改写历史。
 - 当前任务会写 raw logs、checkpoint 或 generated figures 到 GitHub。
 - 任务需要有效实验结果，但缺少 split、label mapping、class order、logits shape 或 metric semantics。
-- module trial 没有 idea_id。
-- idea 的 `source_status` 是 `unknown` 或 `unverified`，却要开 trial。
-- idea / 创新 / module trial 将改代码，但没有遵守 `innovation_code_review_protocol.md` 的
+- 新候选没有 idea_id、`candidate_id` 或冻结提交。
+- idea 的 `source_status` 是 `unknown` 或 `unverified`，却要开创新候选。
+- idea / 创新 / 候选将改代码，但没有遵守 `innovation_code_review_protocol.md` 的
   Review 0-3 多轮审查。
 - 创新代码改动的 task-start card 没有写 `agents.activation_mode: real_multi_agent`
   或没有列出 `required_real_agents`。

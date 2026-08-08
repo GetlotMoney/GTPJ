@@ -5,11 +5,16 @@
 当前阶段已经强制执行核心 workflow。任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、
 agent 凭证和 promotion gate 都是正式规则，不是未来参考。
 
+框架和实验的结构以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 为唯一准则：新代码先是
+`Vx-INNOVATION-xxx` 下的候选框架，候选完成自身验证后才能晋级为新的平级正式框架。旧
+`module_trials`、`TRIAL`、`ATTEMPT` 和 `dev/...` 只用于历史回查，不能作为新实验入口。
+
 owner 日常不需要直接阅读完整协议森林。默认先看：
 
 ```text
 docs/workflow/QUICK_START.md
 docs/workflow/TASK_START_MINI.md
+docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 ```
 
 `QUICK_START.md` 是人话入口，支持 `查状态`、`复现`、`调参`、`消融`、`开新模块`、
@@ -24,6 +29,7 @@ docs/workflow/TASK_START_MINI.md
 当前主规范是：
 
 ```text
+docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 docs/workflow/QUICK_START.md
 docs/workflow/TASK_START_MINI.md
 docs/workflow/GTPJ_WORKFLOW_SPEC.md
@@ -80,14 +86,14 @@ docs/workflow/issues/README.md
 实验执行中的具体问题、解决方案和预防规则放在 `docs/workflow/issues/`。新对话只需要先读
 `issues/README.md` 和最近日期的问题文档，不需要每次全量读取所有历史问题。
 
-GTPJ workflow 使用“版本优先”的实验结构。
+GTPJ workflow 使用“正式框架平级、候选先验证再晋级”的实验结构。
 
 ```text
 idea_tree
-  -> module_trials
-  -> promoted baseline vX
-  -> version-level tune / ablation / confirmation 放在 experiments/vX 下
-  -> trial-internal param_tune / narrow ablation / confirmation 放在 module_trials/.../attempts/ 下
+  -> Vx-INNOVATION-xxx
+  -> CANDIDATE-xxx-Ry（冻结候选提交）
+  -> 候选内部 tune / ablation / confirmation
+  -> 通过晋级硬门后成为平级 FRAMEWORK-VY
 ```
 
 可以保留的核心规则：
