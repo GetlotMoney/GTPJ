@@ -44,3 +44,4 @@ Project: GTPJ
 |---|---|---|---|---|---|
 | `CONFIRM-001_v1_seed5` | `v1` | `confirmation` | keep | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | H=73.77, delta_H=-0.16; Warehouse artifacts registered. |
 | `CONFIRM-001_local_v3_054_min3` | `v3` | `confirmation` | confirmed_config | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Server min3 H=74.46/74.42/74.47, confirmed_H=74.47, H_mean=74.45; confirmed config under v3. Historical `v4` tag is config-only, not a formal framework version. |
+| `CONFIRM-001_v5-code-equivalence` | `v5` | `confirmation` | planned | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence` | 由结构 helper 创建；正式待跑以 `experiments/v5/confirmation/INDEX.md` 行为准。 |

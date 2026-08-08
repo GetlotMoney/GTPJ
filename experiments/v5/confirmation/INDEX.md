@@ -2,4 +2,4 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| - | none | v5 现有五次复跑属于版本激活证据，尚未单独登记为新的确认实验项 | - | `trial003-main100-091..095` | - | - |
+| `V5-CONFIRM-001` | pre_run | 老 V5 与今天模板同配置对跑，并诊断复跑动态路由 75.11 | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/PARAMETER_MATRIX.md` | `trial003-main100-069; ATTEMPT-017/DR-095` | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence` | - |

@@ -17,7 +17,8 @@ def sha256_file(path):
 
 
 def input_record(path, tensor=None):
-    resolved = Path(path).resolve()
+    source = Path(path)
+    resolved = source if str(source).startswith("/proc/self/fd/") else source.resolve()
     record = {
         "path": str(resolved),
         "sha256": sha256_file(resolved),

@@ -1,0 +1,57 @@
+task_id: V5-CONFIRM-001
+date: 2026-08-08
+owner_request: 三组各跑五次，对比老V5、今天代码，并复跑75.11；服务器两张GPU
+router:
+  task_type: confirmation
+  enters_idea_tree: false
+  github_writes: 本确认实验参数表、轻量结果和证据索引
+  local_writes: 服务器Warehouse原始日志、模型、收据和逐任务清单
+  coupled_update_order: Warehouse先写原始证据，Git后写结果摘要
+version:
+  base_version: v5
+  base_template_id: MODEL-V5-TEMPLATE-V1
+  base_template_tag: model/v5-template-v1
+  base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+  template_ledger: experiments/v5/TEMPLATE.yaml
+  experiment_binding: experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/EXPERIMENT.yaml
+  suggested_branch: exp/v5/confirmation/confirm-001-v5-code-equivalence
+inputs:
+  dataset: CUB xlsa17 standard GZSL
+  seed: 5
+  formal_config: configs/CURRENT-V5.yaml
+  historical_v5_config: configs/V5-069.yaml
+  diagnostic_config: configs/DR-095.yaml
+experiment_planning:
+  evidence_summary: 老V5历史五次均值74.44；今天代码三种子均值74.11；DR-095历史单次75.11但后续五次未还原
+  candidate_decision: 用同服务器、同有效参数对跑；新旧配置映射由测试逐项验证
+  budget: 三组各五次，共十五次
+  stop_condition: owner要求全部五次执行；只在安全停止或硬失败时中止
+workflow_mode: server_frozen_runner
+agents:
+  activation_mode: role_only
+  agent_instance_mode: role_only
+  formal_runtime_backend: server_detached_role_only
+  thread_creation_allowed: false
+  owner_monitor_mode: true
+  owner_visible_reporting: true
+  report_channel: current_conversation
+  report_interval_minutes: 15
+  agent_activity_stream: AGENT_ACTIVITY.md
+  required_roles: [Coordinator, Runner Monitor, Evidence Quality Checker, Result Comparator]
+  gpu_lock_required: true
+hard_gates:
+  baseline_repro_status: owner_activated_provisional
+  template_binding: required
+  parameter_matrix: required
+  data_identity: required
+  code_identity: required
+  server_gpu_preflight: required
+  independent_review: required before launch
+expected_outputs:
+  github: 参数表、结果、质量检查、证据清单哈希
+  warehouse: 十五套独立日志、收据与最多每组三个最佳模型
+stop_if:
+  - 代码或配置哈希不一致
+  - 数据划分、类别顺序、标签或指标口径不清楚
+  - 两张GPU不可用或已有未知训练占用
+  - 独立审核存在未关闭阻断

@@ -1,0 +1,14 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-CONFIRM-001
+framework_id: FRAMEWORK-V5
+kind: confirmation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: legacy V5 source 4b259379d99c1a791442ea9e2fac0bb22b2411a9; ATTEMPT-017 DR-095 source a884fea429a302fecc42ba8cddf9e6e66f5d07c8
+template_binding_status: ready
+experiment_branch: exp/v5/confirmation/confirm-001-v5-code-equivalence
+legacy_ref: trial003-main100-069; ATTEMPT-017/DR-095
+status: pre_run

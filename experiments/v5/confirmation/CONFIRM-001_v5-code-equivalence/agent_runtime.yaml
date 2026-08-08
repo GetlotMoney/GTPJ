@@ -1,0 +1,35 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: V5-CONFIRM-001
+subject_type: confirmation
+formal_evidence: true
+activation_mode: role_only
+agent_instance_mode: role_only
+lifecycle: workflow_scoped
+workflow_mode: server_frozen_runner
+formal_runtime_backend: server_detached_role_only
+ui_visibility: current_owner_thread_only
+thread_creation_allowed: false
+single_agent_execution: false
+runner_start_allowed: false
+formal_runner_allowed: false
+formal_evidence_allowed: false
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+detached_server_status_file: status.json
+stop_mechanism: STOP file or SIGTERM
+recovery_handoff: MONITOR_HANDOFF.md
+sequential_role_preflight:
+  runner_monitor: pending
+  evidence_quality_checker: pending
+  result_comparator: pending_after_run
+authority_refs:
+  task_start_card: TASK_START.yaml
+  parameter_matrix: PARAMETER_MATRIX.csv
+  diagnostic_matrix: evidence/DIAGNOSTIC_MATRIX.csv
+  run_plan: RUN_PLAN.json
+  experiment_binding: EXPERIMENT.yaml
