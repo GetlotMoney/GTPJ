@@ -91,6 +91,9 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
         self.assertIn("--die-with-parent", command)
         self.assertIn("--tmpfs", command)
         self.assertIn("/tmp", command)
+        dev_index = command.index("/dev")
+        self.assertEqual("--dev-bind", command[dev_index - 1])
+        self.assertEqual("/dev", command[dev_index + 1])
         data_index = command.index("/trusted/data")
         self.assertEqual("--ro-bind", command[data_index - 1])
         self.assertEqual("/runtime/code/data", command[data_index + 1])
@@ -289,7 +292,7 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             "first_three_batches_equal": True,
             "dead_parameter_names_present": False,
             "config_matches_expected_sha256": True,
-            "candidate_model_matches_git_blob": True,
+            "candidate_model_matches_head": True,
         }
         self.assertEqual(payload, module.validate_formal_probe_payload(payload, commit))
         payload["git_head"] = "2" * 40
@@ -656,7 +659,7 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             "first_three_batches_equal": True,
             "dead_parameter_names_present": False,
             "config_matches_expected_sha256": True,
-            "candidate_model_matches_git_blob": True,
+            "candidate_model_matches_head": True,
         }
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary)

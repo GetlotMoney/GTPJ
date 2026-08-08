@@ -270,7 +270,7 @@ def validate_bwrap_isolation(python: Path, data_source: Path, runtime_root: Path
             "(log/'ok').write_text('ok',encoding='utf-8')"
         )
         command = [
-            str(bwrap), "--die-with-parent", "--ro-bind", "/", "/", "--dev", "/dev",
+            str(bwrap), "--die-with-parent", "--ro-bind", "/", "/", "--dev-bind", "/dev", "/dev",
             "--proc", "/proc", "--tmpfs", "/tmp", "--ro-bind", str(data_source), str(data_mount),
             "--bind", str(log_mount), str(log_mount), str(python), "-B", "-c", script,
         ]
@@ -560,7 +560,8 @@ def build_training_command(
         "--ro-bind",
         "/",
         "/",
-        "--dev",
+        "--dev-bind",
+        "/dev",
         "/dev",
         "--proc",
         "/proc",
@@ -665,7 +666,7 @@ def validate_formal_probe_payload(payload: dict[str, Any], commit: str) -> dict[
         "post_model_cuda_rng_equal",
         "first_three_batches_equal",
         "config_matches_expected_sha256",
-        "candidate_model_matches_git_blob",
+        "candidate_model_matches_head",
     ]
     failures = [key for key in required_true if payload.get(key) is not True]
     if payload.get("status") != "PASS":
