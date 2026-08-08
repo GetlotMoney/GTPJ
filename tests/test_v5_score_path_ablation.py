@@ -39,7 +39,7 @@ EXPERIMENT_DIR = (
     / "ablation"
     / "ABLATION-008_clip_global_local_factorial"
 )
-CODE_COMMIT = "8f71fa45839f8f2df8bc1bbb78be478246f24b71"
+CODE_COMMIT = "403ddaa2238672ef87f6ce34945df90b568d907e"
 
 
 def make_config(**overrides):

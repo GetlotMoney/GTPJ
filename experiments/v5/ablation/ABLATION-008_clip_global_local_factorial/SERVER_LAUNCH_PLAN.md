@@ -10,4 +10,4 @@
 
 只能由冻结后的 `CAMP-20260809-v5-ablation100` 统一控制器正式启动，禁止手工正式启动。每个 RUN 使用独立且不存在的外部输出目录，保存 `training.log`、`metrics.json`；训练路径另保存 `best_model.pth`，冻结路径不产生 checkpoint。
 
-控制器启动每个 RUN 时必须同时传入本目录的 `DATA_MANIFEST.json` 和服务器实际数据根目录，并把启动时 clean 工作树的完整 HEAD 作为 `--expected-run-commit`。该 HEAD 是结果里的 `run_commit`；参数表中的 `code_ref` 固定为最后修改可执行代码的 E 提交 `8f71fa45839f8f2df8bc1bbb78be478246f24b71`，两者不得混写。
+控制器启动每个 RUN 时必须同时传入本目录的 `DATA_MANIFEST.json` 和服务器实际数据根目录，并把启动时 clean 工作树的完整 HEAD 作为 `--expected-run-commit`。该 HEAD 是结果里的 `run_commit`；参数表中的 `code_ref` 固定为最后修改可执行代码的 G 提交 `403ddaa2238672ef87f6ce34945df90b568d907e`，两者不得混写。
