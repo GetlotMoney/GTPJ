@@ -39,6 +39,7 @@ EXPERIMENT_DIR = (
     / "ablation"
     / "ABLATION-008_clip_global_local_factorial"
 )
+CODE_COMMIT = "8f71fa45839f8f2df8bc1bbb78be478246f24b71"
 
 
 def make_config(**overrides):
@@ -594,13 +595,17 @@ class V5ScorePathLedgerContractTest(unittest.TestCase):
     def test_matrix_binds_code_and_actual_config_hashes(self):
         rows = self._rows()
         code_refs = {row["code_ref"] for row in rows}
-        self.assertEqual(1, len(code_refs))
-        code_ref = next(iter(code_refs))
+        self.assertEqual({CODE_COMMIT}, code_refs)
+        code_ref = CODE_COMMIT
         self.assertRegex(code_ref, r"^[0-9a-f]{40}$")
         implementation = (EXPERIMENT_DIR / "implementation.md").read_text(
             encoding="utf-8"
         )
         self.assertIn(f"`{code_ref}`", implementation)
+        matrix_view = (EXPERIMENT_DIR / "PARAMETER_MATRIX.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(f"16 行 `code_ref` 均为 `{code_ref}`", matrix_view)
         ancestry = subprocess.run(
             ["git", "merge-base", "--is-ancestor", code_ref, "HEAD"],
             cwd=ROOT,
