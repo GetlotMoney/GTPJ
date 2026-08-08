@@ -1,5 +1,7 @@
 # GTPJ Workflow Helper
 
+> 2026-08-08 起，默认实验入口改为 `SYS-WORKFLOW-V6` 五步短流程。本文后续的 `agent_runtime.yaml`、`prepare-run-start-receipt`、多层审核和旧动态批次命令只作历史兼容或按需工具，不再是普通实验与论文实验的默认门槛。新实验优先使用：唯一实验提交、配置与参数表、一次 clean/data/GPU 检查、直接训练到独立 RUN 目录、结果回填。
+
 `workflow/gtpj_workflow.py` 是 GTPJ 的结构辅助入口。它不训练模型、不 push、不改远端、不自动发布；它只负责创建标准目录、写轻量账本、检查 GitHub 边界和验证基础治理状态。
 
 当前主规范：

@@ -19,6 +19,21 @@
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
+| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；取消专用控制器、三路审核、多层收据、二次冻结等固定门槛。 |
+
+## 2026-08-08：SYS-WORKFLOW-V6（已完成）
+
+- 本次改的是哪个对象：实验从计划到服务器训练再到结果回填的执行流程。
+- 目标问题：一次约一小时的训练，曾因专用控制器、双 GPU 锁、三波调度、Git bundle、永久编号、多层收据、制品哈希、三路审核和二次冻结，额外消耗约两小时准备与审核时间。
+- 采用技术：五步短流程——唯一实验提交、配置与参数表、一次开跑检查、直接训练到独立 RUN 目录、一次结果回填；审核按真实影响选择 0 或 1 次，发现阻断后才升级。
+- 替换了什么：替换 `SYS-WORKFLOW-V5` 默认的多 agents/runtime/receipt/strict-3 执行门；旧工具和旧证据原地保留，只作历史兼容或确有风险时按需启用。
+- 实际可见效果：参数实验准备上限 10 分钟；涉及代码或评估改动上限 30 分钟。正式论文实验也不再自动增加文件层级或审核轮数。
+- 选择原因：可复现的核心来自准确代码、配置、数据、种子、评估口径和完整结果；其余行政式步骤没有按比例提高科学可信度。
+- 已知限制：旧 helper 和旧测试仍保留兼容入口，看到旧命令不代表新实验必须执行；后续只在真实重复问题出现时再做代码级瘦身，不先重构整套 helper。
+- 素材位置：`AGENTS.md`、`docs/workflow/START_HERE.md`、`docs/workflow/WORKFLOW_KERNEL.md`、`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`、`docs/workflow/playbooks/confirmation.md`。
+- 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；本次是文档规范收缩，不运行训练或全量测试。
+- 回退方式：回退本次文档修改即可恢复旧默认门；不会改模型、训练代码、历史实验、分支、Tag、日志或 checkpoint。
+
 
 ## 2026-08-08：DOC-GTPJ-CODE-TUTORIAL-V1（已完成）
 

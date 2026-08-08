@@ -1,5 +1,7 @@
 # Agent Runtime Hard Gate
 
+> 当前状态：历史兼容，可选，不再是 `SYS-WORKFLOW-V6` 的默认开跑门。普通实验和论文实验不需要为了正式性创建命名线程或 `agent_runtime.yaml`。只有 owner 明确要求多智能体实时监控，或当前任务确有多人并行协作风险时才启用本文件；其余情况使用“唯一提交 + 参数表 + 一次开跑检查 + 独立 RUN 目录”的短流程。
+
 本文件是 GTPJ workflow-v2 的正式 Runner 启动闸机。它解决一个具体问题：正式实验不能由 Coordinator 单窗口代办所有角色，也不能再依赖旧 UI 临时 agent 面板。
 
 ## 1. 核心规则

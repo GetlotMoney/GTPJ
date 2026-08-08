@@ -2,6 +2,18 @@
 
 用于复现或确认一个结果。
 
+## 当前短流程
+
+确认实验与调参、消融使用同一套五步流程，不再额外搭一套发布系统：
+
+1. 在 `EXPERIMENT.yaml` 写清要复现的准确 code commit、config、seed、data/split 和评估口径。
+2. 在一张 `PARAMETER_MATRIX.csv` 中预先列完全部 repeat。
+3. 做一次 clean/data/GPU/输出目录检查后，直接从同一提交运行。
+4. 每个 repeat 写入独立 `RUN-xxx` 目录，保留完整日志、U/S/H/ZS、best epoch 和需要的最佳模型。
+5. 全部跑完后统一报告逐次值与 mean/min/max/range；失败也保留，不悄悄追加次数。
+
+默认不用专用控制器、Git bundle、多层收据、永久 claim、固定三波调度、三路审核或第二次冻结。改了模型/训练/数据/评估时做 1 次独立审核；只重复现有提交时做开跑检查即可。下面旧角色和 agent runtime 内容仅用于回查历史 confirmation。
+
 正式入口固定为 `experiments/vX/confirmation/INDEX.md`，人看编号为 `VX-CONFIRM-xxx`。
 每次 exact repeat 都是同一参数矩阵中的一行 `RUN-xxx`。确认实验本身不注册正式框架；
 只有它确认的是创新且 promotion 被接纳时，才由该创新生成新的框架节点。
