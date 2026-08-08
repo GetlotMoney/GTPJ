@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import ast
+import csv
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -19,6 +22,10 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_COMMIT = "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
 TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
 TEMPLATE_CONFIG = ROOT / "config" / "GTPJ_cub_gzsl.yaml"
+EXPERIMENT_DIR = (
+    ROOT / "experiments" / "v5" / "tune" / "TUNE-002_local_fusion_weight"
+)
+CODE_COMMIT = "c81102bfe19b68e33dbca9b6b71a778fda4cb449"
 
 
 def make_config(**overrides):
@@ -269,6 +276,182 @@ class V5LocalWeightTrainingEntryTest(unittest.TestCase):
         final_argument = calls[0].args[-1]
         self.assertIsInstance(final_argument, ast.Constant)
         self.assertEqual("cpu", final_argument.value)
+
+
+class V5LocalWeightLedgerContractTest(unittest.TestCase):
+    SETTINGS = (
+        ("LW-005", range(1, 5), 0.05),
+        ("LW-010", range(5, 9), 0.10),
+        ("LW-030", range(9, 13), 0.30),
+        ("LW-040", range(13, 17), 0.40),
+    )
+
+    def _rows(self):
+        with (EXPERIMENT_DIR / "PARAMETER_MATRIX.csv").open(
+            newline="", encoding="utf-8"
+        ) as stream:
+            return list(csv.DictReader(stream))
+
+    def _config(self, run_number):
+        path = EXPERIMENT_DIR / "configs" / f"RUN-{run_number:03d}.yaml"
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return {
+            key: value["value"] if isinstance(value, dict) and "value" in value else value
+            for key, value in raw.items()
+        }
+
+    def test_pre_run_directory_has_only_required_evidence_files(self):
+        self.assertTrue(EXPERIMENT_DIR.is_dir())
+        required = {
+            "DATA_MANIFEST.json",
+            "EXPERIMENT.yaml",
+            "README.md",
+            "implementation.md",
+            "SERVER_LAUNCH_PLAN.md",
+            "config.yaml",
+            "PARAMETER_MATRIX.csv",
+            "PARAMETER_MATRIX.md",
+        }
+        self.assertTrue(required.issubset({path.name for path in EXPERIMENT_DIR.iterdir()}))
+        self.assertTrue((EXPERIMENT_DIR / "evidence" / "README.md").is_file())
+        config_names = sorted(path.name for path in (EXPERIMENT_DIR / "configs").glob("*.yaml"))
+        self.assertEqual(
+            [f"RUN-{index:03d}.yaml" for index in range(1, 17)], config_names
+        )
+        for fabricated in (
+            "manifest.yaml",
+            "result.yaml",
+            "result.md",
+            "quality_check.md",
+            "agent_summary.md",
+            "AGENT_ACTIVITY.md",
+        ):
+            self.assertFalse((EXPERIMENT_DIR / fabricated).exists(), fabricated)
+
+    def test_matrix_has_exactly_sixteen_frozen_rows_in_fixed_setting_order(self):
+        rows = self._rows()
+        self.assertEqual(16, len(rows))
+        self.assertEqual(
+            [f"RUN-{index:03d}" for index in range(1, 17)],
+            [row["job_id"] for row in rows],
+        )
+        for group, indices, local_weight in self.SETTINGS:
+            selected = [rows[index - 1] for index in indices]
+            self.assertEqual([5, 5, 17, 17], [int(row["seed"]) for row in selected])
+            self.assertEqual([group] * 4, [row["group"] for row in selected])
+            self.assertEqual(["frozen"] * 4, [row["status"] for row in selected])
+            expected_names = [
+                f"{group}-seed-5-repeat-1",
+                f"{group}-seed-5-repeat-2",
+                f"{group}-seed-17-repeat-1",
+                f"{group}-seed-17-repeat-2",
+            ]
+            self.assertEqual(expected_names, [row["name"] for row in selected])
+            for row in selected:
+                self.assertEqual(
+                    {"local_weight": local_weight}, json.loads(row["changed_parameters"])
+                )
+
+    def test_repeat_links_never_cross_weight_or_seed(self):
+        rows = self._rows()
+        by_id = {row["job_id"]: row for row in rows}
+        for row in rows:
+            repeat_number = int(row["name"].rsplit("-", 1)[-1])
+            if repeat_number == 1:
+                self.assertEqual("", row["repeat_of"])
+                continue
+            self.assertIn(row["repeat_of"], by_id)
+            source = by_id[row["repeat_of"]]
+            self.assertEqual(row["group"], source["group"])
+            self.assertEqual(row["seed"], source["seed"])
+            self.assertTrue(source["name"].endswith("-1"))
+
+    def test_each_run_config_only_changes_local_weight_and_seed(self):
+        template_raw = yaml.safe_load(TEMPLATE_CONFIG.read_text(encoding="utf-8"))
+        template = {
+            key: value["value"] if isinstance(value, dict) and "value" in value else value
+            for key, value in template_raw.items()
+        }
+        for group, indices, local_weight in self.SETTINGS:
+            for offset, run_number in enumerate(indices):
+                with self.subTest(group=group, run=run_number):
+                    candidate = self._config(run_number)
+                    self.assertEqual(set(template), set(candidate))
+                    self.assertEqual(local_weight, candidate.pop("local_weight"))
+                    expected_seed = (5, 5, 17, 17)[offset]
+                    self.assertEqual(expected_seed, candidate.pop("random_seed"))
+                    expected = dict(template)
+                    expected.pop("local_weight")
+                    expected.pop("random_seed")
+                    self.assertEqual(expected, candidate)
+
+    def test_matrix_binds_a_commit_and_actual_config_hashes(self):
+        base_hash = hashlib.sha256(TEMPLATE_CONFIG.read_bytes()).hexdigest()
+        rows = self._rows()
+        for row in rows:
+            config_path = EXPERIMENT_DIR / row["config_snapshot_ref"]
+            self.assertEqual(
+                hashlib.sha256(config_path.read_bytes()).hexdigest(),
+                row["config_fingerprint"],
+            )
+            self.assertEqual(base_hash, row["base_config_sha256"])
+            self.assertEqual(CODE_COMMIT, row["code_ref"])
+            self.assertEqual("V5-TUNE-002", row["work_item_id"])
+            self.assertEqual("tune", row["job_kind"])
+            self.assertEqual("v5", row["base_version"])
+            for result_key in (
+                "run_id",
+                "run_start_receipt_ref",
+                "run_start_receipt_sha256",
+                "run_command_sha256",
+                "run_log_sha256",
+                "run_exit_code",
+                "U",
+                "S",
+                "H",
+                "ZS",
+                "best_epoch",
+                "decision",
+                "artifact_ref",
+                "artifact_manifest_sha256",
+            ):
+                self.assertEqual("", row[result_key], (row["job_id"], result_key))
+
+    def test_formal_campaign_gpu_and_review_boundaries_are_frozen(self):
+        experiment = yaml.safe_load(
+            (EXPERIMENT_DIR / "EXPERIMENT.yaml").read_text(encoding="utf-8")
+        )
+        self.assertEqual("2f5fa5e631ef82658d4bac587cdfd17f3534cb35", experiment["base_template_commit"])
+        self.assertEqual("pre_run_gated", experiment["status"])
+        self.assertIs(experiment["formal_evidence"], True)
+        self.assertIs(experiment["not_confirmation_evidence"], True)
+        self.assertEqual("server_detached_role_only", experiment["workflow_mode"])
+        self.assertEqual("strict-3", experiment["review_tier"])
+        self.assertEqual("review_pending", experiment["implementation_status"])
+        launch = (EXPERIMENT_DIR / "SERVER_LAUNCH_PLAN.md").read_text(encoding="utf-8")
+        self.assertIn("GPU 0", launch)
+        self.assertIn("CAMP-20260809-v5-ablation100", launch)
+        self.assertIn("禁止手工正式启动", launch)
+
+    def test_data_manifest_and_yaml_encoding_contract_are_explicit(self):
+        manifest = json.loads(
+            (EXPERIMENT_DIR / "DATA_MANIFEST.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("CUB", manifest["dataset"])
+        self.assertEqual(
+            "sorted_seen_and_unseen_ids_from_xlsa17",
+            manifest["class_order_contract"],
+        )
+        yaml_paths = [EXPERIMENT_DIR / "EXPERIMENT.yaml", EXPERIMENT_DIR / "config.yaml"]
+        yaml_paths.extend(sorted((EXPERIMENT_DIR / "configs").glob("*.yaml")))
+        self.assertEqual(18, len(yaml_paths))
+        for path in yaml_paths:
+            payload = path.read_bytes()
+            payload.decode("utf-8")
+            self.assertFalse(payload.startswith(b"\xef\xbb\xbf"), path)
+            self.assertNotIn(b"\r\n", payload, path)
+            self.assertTrue(payload.endswith(b"\n"), path)
+            self.assertFalse(payload.endswith(b"\n\n"), path)
 
     def test_log_identity_contains_score_mode_and_local_weight(self):
         source = TRAINING_SOURCE.read_text(encoding="utf-8")
