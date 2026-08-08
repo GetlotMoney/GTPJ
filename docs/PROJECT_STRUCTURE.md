@@ -85,7 +85,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
-| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
+| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；V5-TUNE-002 分支仅接受冻结的 `local_weight` 四值，并在 CPU 上构造类别身份。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 
@@ -200,7 +200,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | GTPJ 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/MyModel.py` | V5 GTPJ 主模型实现；局部融合权重须为 `[0,1]` 内有限数，并按 `global + local_weight * local` 融合。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：
@@ -209,6 +209,12 @@ idea_tree/                 # 创意来源、评分、排序
 - idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/protocols/innovation_code_review_protocol.md`。
 - 开关关闭时必须回到选定 base version 行为。
 - 不得静默改变 logits shape、class order、loss 语义或 eval 语义。
+
+## `tests/`
+
+| 路径 | 用途 |
+|---|---|
+| `tests/test_v5_local_weight_tune.py` | V5-TUNE-002 的权重融合、母版 `.2` 数值等价、正式入口白名单与 16-run 账本契约测试。 |
 
 ## `tools/`
 

@@ -145,7 +145,7 @@ def _check_v5_model_source_has_only_the_fixed_canonical_path() -> None:
         assert token in source, token
 
     assert re.search(
-        r"final_logits\s*=\s*global_logits\s*\+\s*0\.2\s*\*\s*local_logits",
+        r"final_logits\s*=\s*global_logits\s*\+\s*self\.local_weight\s*\*\s*local_logits",
         source,
     )
 

@@ -75,9 +75,12 @@ class V5CanonicalMathPathTest(unittest.TestCase):
         torch.testing.assert_close(out["final_logits"], expected)
         self.assertEqual(model.local_weight, 0.2)
 
-    def test_noncanonical_local_weight_is_rejected(self):
-        with self.assertRaisesRegex(ValueError, "local_weight=0.2"):
-            make_model(make_config(local_weight=0.3))
+    def test_in_range_local_weight_is_accepted(self):
+        try:
+            model = make_model(make_config(local_weight=0.3))
+        except ValueError as error:
+            self.fail(f"模型应接受范围内局部融合权重：{error}")
+        self.assertEqual(model.local_weight, 0.3)
 
     def test_known_noncanonical_route_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "use_sgmp=True"):

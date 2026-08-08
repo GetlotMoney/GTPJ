@@ -76,6 +76,7 @@ V5_CONFIG_KEYS = {
     "sgmp_neg_margin",
     "lr_stages",
 }
+FORMAL_LOCAL_WEIGHTS = {0.05, 0.10, 0.30, 0.40}
 
 
 def _parse_args():
@@ -116,10 +117,17 @@ def _load_config(path):
         raise ValueError("V5 干净母版只接受 dataset='CUB'。")
     if values["text_source"] != "gpt55":
         raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
-    if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
-        raise ValueError("V5 固定使用 global + 0.2 * local。")
+    local_weight = float(values["local_weight"])
+    if local_weight not in FORMAL_LOCAL_WEIGHTS:
+        raise ValueError(
+            "V5-TUNE-002 正式入口要求 local_weight 属于 "
+            f"{sorted(FORMAL_LOCAL_WEIGHTS)}，实际为 {values['local_weight']!r}。"
+        )
+    if values["score_mode"] != "add":
+        raise ValueError("V5-TUNE-002 正式入口要求 score_mode='add'。")
     _validate_lr_stages(values["lr_stages"])
-    return SimpleNamespace(**values), values, config_path
+    score_identity = f"{values['score_mode']}-local_weight-{local_weight:.2f}"
+    return SimpleNamespace(**values, score_identity=score_identity), values, config_path
 
 
 def _validate_lr_stages(stages):
@@ -231,7 +239,7 @@ code_commit = _current_code_commit()
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_dir = Path("./train_log/CUB")
 log_dir.mkdir(parents=True, exist_ok=True)
-log_path = log_dir / f"training_log_CUB_{current_time}.txt"
+log_path = log_dir / f"training_log_CUB_{config.score_identity}_{current_time}.txt"
 
 
 def print_log(message):
@@ -258,6 +266,7 @@ print_log(f"配置：{config_path}")
 print_log(f"配置 SHA-256：{config_hash}")
 print_log(f"代码 commit：{code_commit}")
 print_log(f"随机种子：{seed}")
+print_log(f"计分身份：{config.score_identity}")
 print_log(f"局部分支融合：global + {config.local_weight} * local")
 print_log(f"PyTorch/CUDA：{repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
 print_log("=" * 60)
@@ -283,7 +292,7 @@ seenclasses, unseenclasses = load_v5_cub_split(
     train_labels,
     test_cache["seen_labels"],
     test_cache["unseen_labels"],
-    config.device,
+    "cpu",
 )
 input_tensors = {
     "train_cls": train_cls,

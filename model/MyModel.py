@@ -9,7 +9,7 @@ This file intentionally keeps only the active V5 template path used by
 - Bidirectional Visual-Semantic Alignment (BVSA)
 - Image-Conditioned Semantic Adapter (ICSA)
 - Semantic-Guided Masked Prediction (SGMP)
-- fixed add scoring: S_final = S_global + 0.2 * S_local
+- weighted add scoring: S_final = S_global + local_weight * S_local
 - CE, consistency, topology, BMDD, MPP, and negative semantic losses
 
 Interface contract:
@@ -372,12 +372,12 @@ class GTPJ(nn.Module):
         tf_heads = int(config.tf_heads)
         tf_dropout = float(config.tf_dropout)
         weight_s2v = float(config.weight_s2v)
-        if float(config.local_weight) != 0.2:
+        self.local_weight = float(config.local_weight)
+        if not np.isfinite(self.local_weight) or not 0.0 <= self.local_weight <= 1.0:
             raise ValueError(
-                "V5 clean template fixes local_weight=0.2; "
+                "V5 local_weight must be a finite number in [0, 1]; "
                 f"got {config.local_weight!r}."
             )
-        self.local_weight = 0.2
         if str(config.score_mode) != "add":
             raise ValueError("V5 clean template requires score_mode='add'.")
 
@@ -584,7 +584,7 @@ class GTPJ(nn.Module):
             fgvd_select_k=self.fgvd_select_k,
         )
         local_logits = bvsa_out["local_score"]
-        final_logits = global_logits + 0.2 * local_logits
+        final_logits = global_logits + self.local_weight * local_logits
 
         if is_train:
             logits = final_logits[:, self.seenclass.to(final_logits.device)]
