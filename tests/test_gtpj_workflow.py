@@ -2603,6 +2603,37 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(any("must have 7 columns" in error for error in errors))
 
+    def test_pre_run_experiment_ledgers_do_not_require_fabricated_results(self) -> None:
+        self.assertTrue(
+            hasattr(self.module, "required_experiment_ledger_files"),
+            "workflow helper must choose ledger files from the experiment status",
+        )
+        base_files = ("README.md", "PARAMETER_MATRIX.csv", "PARAMETER_MATRIX.md")
+        pre_run_statuses = {
+            "planned",
+            "pending",
+            "pre_run",
+            "pre_run_gated",
+            "ready_to_run",
+            "running",
+        }
+        for status in pre_run_statuses:
+            self.assertEqual(
+                base_files,
+                self.module.required_experiment_ledger_files(status),
+                status,
+            )
+        for status in self.module.FRAMEWORK_INDEX_STATUSES - pre_run_statuses:
+            self.assertEqual(
+                (*base_files, "result.md"),
+                self.module.required_experiment_ledger_files(status),
+                status,
+            )
+        self.assertEqual(
+            (*base_files, "result.md"),
+            self.module.required_experiment_ledger_files("unknown-status"),
+        )
+
     def test_collect_formal_pending_uses_the_status_column_only(self) -> None:
         self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
         self._write(
