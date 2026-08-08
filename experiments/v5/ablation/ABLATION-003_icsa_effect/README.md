@@ -9,7 +9,7 @@ branch_source: exact_template_commit
 code_branch: exp/v5/ablation/ablation-003-icsa-effect
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: STANDARD
-code_snapshot_commit: bd854dfb44aa4e4c12c0f93b325bc6106ee31325
+code_snapshot_commit: 2cbf9664900065955221eb66ba42c562e0bd4c4b
 pre_run_freeze_commit: pending
 run_commit: captured_at_launch_from_pre_run_freeze_commit
 dirty_state: clean_required_before_formal_launch
