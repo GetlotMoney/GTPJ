@@ -4306,6 +4306,23 @@ def validate_experiment_binding(
     return [f"{row['experiment_id']}: {item}" for item in errors]
 
 
+def required_experiment_ledger_files(status: str) -> tuple[str, ...]:
+    """运行前不伪造结果；只有终态实验才要求 result.md。"""
+    required = ["README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD]
+    pre_result_statuses = {
+        "planned",
+        "pending",
+        "pre_run",
+        "pre_run_gated",
+        "ready_to_run",
+        "frozen",
+        "running",
+    }
+    if str(status).strip().lower() not in pre_result_statuses:
+        required.append("result.md")
+    return tuple(required)
+
+
 def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
     errors.extend(validate_framework_templates())
@@ -4412,7 +4429,7 @@ def validate_framework_ledgers() -> list[str]:
                     errors.append(
                         f"{experiment_id}: parameter matrix must be exactly {rel(expected_matrix)}"
                     )
-                for required_name in ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD, "result.md"):
+                for required_name in required_experiment_ledger_files(row["status"]):
                     if not (directory / required_name).exists():
                         errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
                 if not (directory / "evidence").is_dir():
