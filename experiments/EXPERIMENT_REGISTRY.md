@@ -27,7 +27,7 @@ Project: GTPJ
 | `V5-ABLATION-001` | `FRAMEWORK-V5` | ablation | completed | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | `三种子 FULL/GLOBAL_ONLY 配对完成；平均 H 差值 +0.08，训练后 strict-3 已通过` |
 | `V5-TUNE-001` | `FRAMEWORK-V5` | tune | completed | `experiments/v5/tune/TUNE-001_dynamic_routing_search` | `ATTEMPT-006 / DR-003..010，8 个真实任务` |
 | `V5-INNOVATION-001` | `FRAMEWORK-V5` | innovation | candidate | `experiments/v5/innovation/INNOVATION-001_dynamic_routing` | `ATTEMPT-006 / DR-001..002 已逐任务恢复；其余见 LEGACY_ATTEMPT_MAP.md` |
-| `V5-INNOVATION-002` | `FRAMEWORK-V5` | innovation | planned | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion` | `IDEA-0004；第一阶段同 seed 三次配对，过门后才运行 seed 17/29` |
+| `V5-INNOVATION-002` | `FRAMEWORK-V5` | innovation | rejected | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion` | `IDEA-0004；Stage 1 六轮完成，scale 平均 H 下降 3.03，seed 17/29 按停止门未启动` |
 
 以下 Module Trials 表仅为旧编号回查，不再是人类主入口。
 

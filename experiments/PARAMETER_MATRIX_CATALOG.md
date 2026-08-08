@@ -20,7 +20,7 @@
 | `V3-INNOVATION-001` | 6 | 已知来源与复跑 | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa/PARAMETER_MATRIX.md` |
 | `V5-TUNE-001` | 8 | 从 ATTEMPT-006 恢复的真实调参任务 | `experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-001` | 2 | 从 ATTEMPT-006 恢复的真实创新探针；其余见历史批次映射 | `experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md` |
-| `V5-INNOVATION-002` | 10 | 第一阶段 6 行同 seed 配对重复；第二阶段 4 行受 Stage 1 门控制，当前未启动 | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-002` | 10 | 第一阶段 6 行已完成；scale 平均 H 下降 3.03，第二阶段 4 行按 Stage 1 停止门跳过且未启动 | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion/PARAMETER_MATRIX.md` |
 | `V5-ABLATION-001` | 16 | 6 行 R3 失败/取消历史 + 6 行 R4 历史 + 4 行 R5 补跑；三种子 FULL/GLOBAL_ONLY 配对已完成并通过 strict-3 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` |
 
 ## 历史迁移队列

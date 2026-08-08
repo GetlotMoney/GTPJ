@@ -58,6 +58,62 @@ INNOVATION_002_REPEAT_OF = {
     "RUN-005": "RUN-001",
     "RUN-006": "RUN-002",
 }
+INNOVATION_002_STAGE1_RESULTS = {
+    "RUN-001": {
+        "U": "72.19575643539429",
+        "S": "76.2011170387268",
+        "H": "74.14438265496587",
+        "ZS": "81.24353289604187",
+        "best_epoch": "36",
+        "run_log_sha256": "46b7c8de9558c366b945d7276da350798b1443d74fed31cbf0dbd1d6f3ee91b9",
+        "decision": "legacy_reference",
+    },
+    "RUN-002": {
+        "U": "64.62149024009705",
+        "S": "78.66111993789673",
+        "H": "70.95346445779093",
+        "ZS": "81.11051917076111",
+        "best_epoch": "24",
+        "run_log_sha256": "01aa86390eb0a2b6a6aa5a368696e8c8305fb4e6613db0b1e99e83d2008a7b34",
+        "decision": "reject_scale_consistent_beta_0_05",
+    },
+    "RUN-003": {
+        "U": "72.2668468952179",
+        "S": "76.24410390853882",
+        "H": "74.2022181394866",
+        "ZS": "81.31462335586548",
+        "best_epoch": "36",
+        "run_log_sha256": "a752889bccd70e5f723f2c14bfb1855053777d037e9211c5f96c82e78f1cfffc",
+        "decision": "legacy_reference",
+    },
+    "RUN-004": {
+        "U": "65.6937837600708",
+        "S": "77.91569828987122",
+        "H": "71.28466674908928",
+        "ZS": "81.2190294265747",
+        "best_epoch": "25",
+        "run_log_sha256": "9fea59af5085d2879323d96fb8370a285285fe3f38fa03ee2b64b9cfa81be693",
+        "decision": "reject_scale_consistent_beta_0_05",
+    },
+    "RUN-005": {
+        "U": "72.67022132873535",
+        "S": "75.46863555908203",
+        "H": "74.04299674877775",
+        "ZS": "81.25234246253967",
+        "best_epoch": "31",
+        "run_log_sha256": "5bbf11134c76ac41bac3ab4c25f2fa109663bad0a32b21aa4229f790672b4a43",
+        "decision": "legacy_reference",
+    },
+    "RUN-006": {
+        "U": "65.51402807235718",
+        "S": "77.64369249343872",
+        "H": "71.06499083042776",
+        "ZS": "80.30341267585754",
+        "best_epoch": "23",
+        "run_log_sha256": "f5c86594330e112bf0619130e02790a75a6e2277e51a0d54554756aff8ce11c9",
+        "decision": "reject_scale_consistent_beta_0_05",
+    },
+}
 PARAMETER_MATRIX_COLUMNS = [
     "job_id",
     "work_item_id",
@@ -739,7 +795,7 @@ class V5Innovation002ExperimentPlanTest(unittest.TestCase):
 
             self.assertEqual(row["work_item_id"], "V5-INNOVATION-002")
             self.assertEqual(row["job_kind"], "innovation")
-            self.assertEqual(row["status"], "planned")
+            self.assertEqual(row["status"], "skipped" if stage_two else "completed")
             self.assertEqual(row["group"], "stage2" if stage_two else "stage1")
             self.assertEqual(row["base_version"], "v5")
             self.assertEqual(row["base_config_sha256"], CANONICAL_V5_SHA256)
@@ -761,26 +817,43 @@ class V5Innovation002ExperimentPlanTest(unittest.TestCase):
             )
             self.assertTrue(row["name"])
             self.assertTrue(row["purpose"])
-            self.assertEqual(
-                row["decision"],
-                "blocked_by_stage1_gate" if stage_two else "",
-            )
-            for field in (
-                "run_id",
-                "run_start_receipt_ref",
-                "run_start_receipt_sha256",
-                "run_command_sha256",
-                "run_log_sha256",
-                "run_exit_code",
-                "U",
-                "S",
-                "H",
-                "ZS",
-                "best_epoch",
-                "artifact_ref",
-                "artifact_manifest_sha256",
-            ):
-                self.assertEqual(row[field], "", (run_id, field))
+            if stage_two:
+                self.assertEqual(row["decision"], "stage1_gate_failed_not_started")
+                for field in (
+                    "run_id",
+                    "run_start_receipt_ref",
+                    "run_start_receipt_sha256",
+                    "run_command_sha256",
+                    "run_log_sha256",
+                    "run_exit_code",
+                    "U",
+                    "S",
+                    "H",
+                    "ZS",
+                    "best_epoch",
+                    "artifact_ref",
+                    "artifact_manifest_sha256",
+                ):
+                    self.assertEqual(row[field], "", (run_id, field))
+            else:
+                expected = INNOVATION_002_STAGE1_RESULTS[run_id]
+                self.assertEqual(row["run_id"], run_id)
+                self.assertEqual(row["run_log_sha256"], expected["run_log_sha256"])
+                self.assertEqual(row["run_exit_code"], "0")
+                for field in ("U", "S", "H", "ZS", "best_epoch", "decision"):
+                    self.assertEqual(row[field], expected[field], (run_id, field))
+                self.assertEqual(
+                    row["artifact_ref"],
+                    ".runtime/runs/v5/innovation/"
+                    f"V5-INNOVATION-002_scale_consistent_fusion/{run_id}/metrics.json",
+                )
+                for field in (
+                    "run_start_receipt_ref",
+                    "run_start_receipt_sha256",
+                    "run_command_sha256",
+                    "artifact_manifest_sha256",
+                ):
+                    self.assertEqual(row[field], "", (run_id, field))
 
         rows_by_id = {row["job_id"]: row for row in rows}
         for repeated, source in INNOVATION_002_REPEAT_OF.items():
@@ -793,7 +866,10 @@ class V5Innovation002ExperimentPlanTest(unittest.TestCase):
         text = INNOVATION_002_MATRIX_MD.read_text(encoding="utf-8")
         self.assertIn("# 参数矩阵：INNOVATION-002_scale_consistent_fusion", text)
         self.assertIn("同目录的 `PARAMETER_MATRIX.csv`", text)
-        self.assertIn("来源：V5-INNOVATION-002 预注册十行计划", text)
+        self.assertIn(
+            "来源：V5-INNOVATION-002：Stage 1 六行完成；Stage 2 因门未通过未启动",
+            text,
+        )
         table_run_ids = [
             line.split("|")[1].strip()
             for line in text.splitlines()
@@ -808,7 +884,8 @@ class V5Innovation002ExperimentPlanTest(unittest.TestCase):
         }
         for run_id, (mode, seed) in INNOVATION_002_RUN_SPECS.items():
             line = lines_by_run[run_id]
-            self.assertIn("| innovation | planned |", line)
+            expected_status = "skipped" if run_id not in INNOVATION_002_STAGE1_RESULTS else "completed"
+            self.assertIn(f"| innovation | {expected_status} |", line)
             self.assertIn(
                 json.dumps(
                     {"fusion_beta": 0.05, "fusion_mode": mode},
@@ -820,8 +897,10 @@ class V5Innovation002ExperimentPlanTest(unittest.TestCase):
             self.assertIn(f"| {seed} |", line)
         for repeated, source in INNOVATION_002_REPEAT_OF.items():
             self.assertIn(f"| {source} |", lines_by_run[repeated])
+        for run_id, result in INNOVATION_002_STAGE1_RESULTS.items():
+            self.assertIn(f"| {result['H']} | {result['decision']} |", lines_by_run[run_id])
         self.assertEqual(
-            sum("blocked_by_stage1_gate" in line for line in table_lines), 4
+            sum("stage1_gate_failed_not_started" in line for line in table_lines), 4
         )
 
 

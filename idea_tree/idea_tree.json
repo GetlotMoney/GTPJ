@@ -297,7 +297,7 @@
       "idea_id": "IDEA-0004",
       "idea_dir": "idea_tree/ideas/IDEA-0004_scale_consistent_fusion/",
       "title": "Scale-Consistent Local Fusion",
-      "status": "selected",
+      "status": "rejected",
       "source_type": "observation",
       "source_ref": "model/v5-template-v1:model/MyModel.py score-scale audit",
       "source_status": "local_heuristic",
@@ -307,9 +307,11 @@
         "v5": {
           "score": 0,
           "applicability": "direct",
-          "stage": "selected",
-          "rationale": "V5 的全局余弦分数乘了 logit_scale，局部余弦分数没有乘同一尺度，却直接用固定 0.2 相加；已完成的 V5-ABLATION-001 又显示局部分支对 H 的平均增益很小，因此先做一次只改最终融合尺度的可证伪实验。",
-          "blockers": []
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-002 已完成 Stage 1：三组配对 H 全部下降，平均 ΔH=-3.0288；固定 beta=0.05 的直接尺度一致融合不再作为 V5 论文主线。",
+          "blockers": [
+            "V5-INNOVATION-002 Stage 1 未通过；除非提出不依赖 test 调参的新机制，否则不重开同一路线。"
+          ]
         }
       },
       "base_versions": [
@@ -330,7 +332,7 @@
       "implementation_scope": "只在实验分支增加 fusion_mode 和 fusion_beta，并让 scale_consistent 路径使用 global_logits + 0.05 * logit_scale * local_logits；legacy 路径原样保留，不改数据划分、类别顺序、损失、优化器、评估口径或继承模块。",
       "risk": "放大局部分数可能同时放大噪声，logit_scale 在训练中变化也可能造成不稳定；seed 5 的三次重复只能先检查运行重复性，必须通过预先写死的门槛后才运行 seed 17 和 29。",
       "compatibility": "fusion_mode=legacy 时继续执行原公式 global_logits + 0.2 * local_logits；旧配置未提供新字段时也默认走 legacy。",
-      "transfer_notes": "只有配对结果通过预先写死的门槛，才考虑把尺度一致融合迁移到后续框架；不能把 PSE、ICSA、FAE、BVSA、FGVD 或 SGMP 说成本 idea 的新创意。",
+      "transfer_notes": "当前 beta=0.05 的直接尺度一致融合已被 Stage 1 否决，不迁移到后续框架；该失败只约束此公式，不能把 PSE、ICSA、FAE、BVSA、FGVD 或 SGMP 说成本 idea 的新创意。",
       "priority": 0,
       "linked_trials": [],
       "linked_versions": [
@@ -349,6 +351,11 @@
           "type": "completed_ablation",
           "ref": "main@4f29e99bb1a940afa66bb66f8150c379c2d0af7f:experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md",
           "note": "V5-ABLATION-001 已完成并复核：三个同 seed 的局部分支 H 差值为 +0.25/-0.09/+0.09，均值 +0.08，说明需要先检验分数量级假设，不能直接把局部分支写成稳定贡献。"
+        },
+        {
+          "type": "experiment_result",
+          "ref": "experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion/result.md",
+          "note": "Stage 1 六轮正常完成；legacy 平均 H=74.1299，scale-consistent 平均 H=71.1010，三组配对 ΔH 全为负，平均 ΔH=-3.0288。候选被否决，Stage 2 未启动。"
         }
       ]
     }

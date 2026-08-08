@@ -11,6 +11,10 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-002-scale-consistent-fusion
 legacy_ref: none
-status: planned
+status: rejected
 idea_id: IDEA-0004
 not_confirmation_evidence: true
+run_commit: f6335558b73b1ce4d3ef8174add18b9bb8bf96d2
+stage1_gate_status: failed
+stage2_status: stage1_gate_failed_not_started
+innovation_outcome: rejected
