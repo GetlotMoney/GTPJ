@@ -14710,6 +14710,7 @@ def validate_parameter_matrix_rows(
     expected_job_ids: set[str] | None = None,
     require_ready: bool = False,
     require_recordable: bool = False,
+    allow_unfrozen_drafts: bool = False,
     matrix_path: Path | None = None,
 ) -> list[str]:
     errors: list[str] = []
@@ -14748,7 +14749,8 @@ def validate_parameter_matrix_rows(
             errors.append(f"line {line_number} is missing seed")
         fingerprint = row.get("config_fingerprint", "")
         if not fingerprint:
-            errors.append(f"line {line_number} is missing config_fingerprint")
+            if not (allow_unfrozen_drafts and row.get("status") == "draft"):
+                errors.append(f"line {line_number} is missing config_fingerprint")
         elif fingerprint.startswith("pending_after_top_rank:"):
             if not row.get("repeat_of", ""):
                 errors.append(f"line {line_number} is a pending repeat without repeat_of")
@@ -16085,7 +16087,11 @@ def freeze_parameter_matrix_locked(
     # Freeze one row at a time.  A 50-job matrix is intentionally allowed to
     # contain other drafts while its remaining config snapshots are prepared;
     # validate-parameter-matrix --require-ready is the later all-rows gate.
-    errors = validate_parameter_matrix_rows(rows, matrix_path=matrix_path)
+    errors = validate_parameter_matrix_rows(
+        rows,
+        allow_unfrozen_drafts=True,
+        matrix_path=matrix_path,
+    )
     if not row.get("seed", "").strip():
         errors.append(f"{row['job_id']} has no seed; fill it before freezing")
     if not row.get("config_snapshot_ref", "").strip():
