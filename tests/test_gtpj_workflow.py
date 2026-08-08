@@ -4238,7 +4238,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
                     "config_snapshot_ref": "",
                     "seed": seed,
                     "changed_parameters": "{}",
-                    "config_fingerprint": "pending-freeze-" + job_id,
+                    "config_fingerprint": "",
                     "repeat_of": "",
                     "duplicate_resolution": "unique",
                     "purpose": "test",
