@@ -66,6 +66,27 @@ class V5CodeEquivalenceServerTests(unittest.TestCase):
         self.assertEqual(1, controller.run_one.call_count)
         self.assertTrue(controller.stop_requested.is_set())
 
+    def test_two_gpu_wave_does_not_dispatch_a_second_wave_after_failure(self) -> None:
+        controller = object.__new__(MODULE.Controller)
+        controller.stop_requested = threading.Event()
+        controller.stop_path = Path("Z:/path-that-does-not-exist/STOP")
+        calls: list[str] = []
+
+        def fake_worker(gpu: int, jobs: list[dict]) -> None:
+            calls.append(str(jobs[0]["job_id"]))
+            if gpu == 0:
+                controller.stop_requested.set()
+
+        controller.worker = fake_worker
+        controller.run_waves(
+            {
+                0: [{"job_id": "GPU0-W1"}, {"job_id": "GPU0-W2"}],
+                1: [{"job_id": "GPU1-W1"}, {"job_id": "GPU1-W2"}],
+            }
+        )
+        self.assertNotIn("GPU0-W2", calls)
+        self.assertNotIn("GPU1-W2", calls)
+
     def test_early_failure_still_produces_artifact_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             controller = object.__new__(MODULE.Controller)

@@ -892,6 +892,9 @@ class Controller:
                             pass
                 time.sleep(1)
             return_code = int(process.returncode)
+            if return_code != 0:
+                # 进程失败一经观察到就先关总闸，后续日志与收据处理不能扩大启动窗口。
+                self.stop_requested.set()
             log_handle.write(f"GTPJ_PROCESS_FINISH return_code={return_code}\n")
             log_handle.flush()
             os.fsync(log_handle.fileno())
@@ -906,6 +909,8 @@ class Controller:
             except LaunchError as exc:
                 parse_error = str(exc)
         evidence_return_code = 0 if return_code == 0 and parse_error is None else (90 if parse_error else return_code)
+        if evidence_return_code != 0:
+            self.stop_requested.set()
         finish_receipt = {
             "schema_version": "gtpj.v5_confirmation_001.finish_receipt.v1",
             "experiment_id": EXPERIMENT_ID,
@@ -1010,6 +1015,24 @@ class Controller:
                 self.results.append(result)
             self.write_status("running")
 
+    def run_waves(self, jobs_by_gpu: dict[int, list[dict[str, Any]]]) -> None:
+        """两张卡按波次推进；任一波失败后，不再发下一波任务。"""
+        wave_count = max(len(jobs_by_gpu[0]), len(jobs_by_gpu[1]))
+        for wave_index in range(wave_count):
+            if self.should_stop():
+                break
+            threads = [
+                threading.Thread(target=self.worker, args=(gpu, [jobs[wave_index]]), daemon=False)
+                for gpu, jobs in jobs_by_gpu.items()
+                if wave_index < len(jobs)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            if self.should_stop():
+                break
+
     def run(self) -> int:
         self.claim_path = claim_execution_identity(
             self.execution_id,
@@ -1037,14 +1060,7 @@ class Controller:
             for gpu in (0, 1)
         }
         self.write_status("running")
-        threads = [
-            threading.Thread(target=self.worker, args=(gpu, jobs_by_gpu[gpu]), daemon=False)
-            for gpu in (0, 1)
-        ]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+        self.run_waves(jobs_by_gpu)
         retention_failed = False
         try:
             apply_checkpoint_retention(self.results)
