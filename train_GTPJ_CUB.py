@@ -60,6 +60,7 @@ V5_CONFIG_KEYS = {
     "weight_s2v",
     "local_weight",
     "fgvd_select_k",
+    "ablation_disable_fgvd_geometry",
     "score_mode",
     "lambda_consist",
     "consist_temp",
@@ -118,6 +119,8 @@ def _load_config(path):
         raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
     if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
         raise ValueError("V5 固定使用 global + 0.2 * local。")
+    if values["ablation_disable_fgvd_geometry"] is not True:
+        raise ValueError("FGVD 几何消融入口要求 ablation_disable_fgvd_geometry=true。")
     _validate_lr_stages(values["lr_stages"])
     return SimpleNamespace(**values), values, config_path
 

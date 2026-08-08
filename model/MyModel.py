@@ -187,9 +187,11 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
         weight_s2v=0.5,
         grid_size=(24, 24),
         dim_g=64,
+        disable_fgvd_geometry=False,
     ):
         super().__init__()
         self.weight_s2v = weight_s2v
+        self.disable_fgvd_geometry = bool(disable_fgvd_geometry)
         self.embed_cv = nn.Linear(dim_f, dim_com)
         self.embed_text = nn.Linear(dim_f, dim_com)
         self.box_emb = BoxRelationalEmbedding(grid_size=grid_size, dim_g=dim_g)
@@ -234,8 +236,11 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
         patches = torch.gather(patches, dim=1, index=idx_exp)
 
         vis = self.embed_cv(patches)
-        geometry_emb = self.geometry_for_indices(topk_indices)
-        memory = self.fgvd_encoder(vis, geometry_emb)
+        if self.disable_fgvd_geometry:
+            memory = vis
+        else:
+            geometry_emb = self.geometry_for_indices(topk_indices)
+            memory = self.fgvd_encoder(vis, geometry_emb)
 
         txt_com = self.embed_text(text)
         if txt_com.dim() == 2:
@@ -389,6 +394,11 @@ class GTPJ(nn.Module):
             weight_s2v=weight_s2v,
             grid_size=(24, 24),
             dim_g=64,
+            disable_fgvd_geometry=(
+                bool(config.ablation_disable_fgvd_geometry)
+                if hasattr(config, "ablation_disable_fgvd_geometry")
+                else False
+            ),
         )
 
         self.sgmp_topk = int(config.sgmp_topk)
