@@ -12,6 +12,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from typing import Any
@@ -25,11 +26,14 @@ SERVER_PYTHON = Path("/data/lby/.conda/envs/dvsr_gpu/bin/python")
 SERVER_DATA_SOURCE = Path("/data/lby/projects/cv_project/GTPJ/data")
 SERVER_RUNTIME_ROOT = Path("/data/lby/projects/cv_project/GTPJ/.runtime/confirmation")
 SERVER_WAREHOUSE_ROOT = Path("/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/confirmation")
+SERVER_CLAIM_ROOT = SERVER_WAREHOUSE_ROOT / ".gtpj_execution_claims"
+SERVER_GPU_LOCK_ROOT = Path("/data/lby/projects/cv_project/GTPJ/.runtime/gpu_locks")
 LEGACY_V5_COMMIT = "4b259379d99c1a791442ea9e2fac0bb22b2411a9"
-DYNAMIC_7511_COMMIT = "a884fea429a302fecc42ba8cddf9e6e66f5d07c8"
+DYNAMIC_7511_COMMIT = "d505e992492eb6fe7272edf0f0dc1d15a5932434"
 V5_CONFIG_SHA256 = "a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca"
 CURRENT_V5_CONFIG_SHA256 = "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"
-DR095_CONFIG_SHA256 = "aec5ed6aa4c9ec872cd39383af5796b8daefde93d109c387b12df9363ca6953e"
+DR095_SOURCE_CONFIG_SHA256 = "aec5ed6aa4c9ec872cd39383af5796b8daefde93d109c387b12df9363ca6953e"
+DR095_CONFIG_SHA256 = "f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218"
 CURRENT_TRAINING_BLOBS = {
     "model/MyModel.py": "e382fc803fc23d7781a310d5db2da16a412c9992",
     "train_GTPJ_CUB.py": "c09bf8a7368fd1e065a0ec13f40dc1f5e2d24ff7",
@@ -57,6 +61,7 @@ GROUP_SPECS = {
         "code_commit": DYNAMIC_7511_COMMIT,
         "config_ref": "experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/configs/DR-095.yaml",
         "config_sha256": DR095_CONFIG_SHA256,
+        "accepted_checkout_sha256": [DR095_CONFIG_SHA256, DR095_SOURCE_CONFIG_SHA256],
         "restore_target_H": 75.11,
         "formal_evidence": False,
         "execution_mode": "legacy_relative_roots",
@@ -124,6 +129,112 @@ def atomic_json(path: Path, payload: dict[str, Any]) -> None:
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(temporary, path)
+
+
+def exclusive_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n", closefd=False) as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        os.close(descriptor)
+
+
+def verify_server_gpu_preflight() -> dict[str, Any]:
+    inventory = subprocess.run(
+        ["nvidia-smi", "--query-gpu=index", "--format=csv,noheader,nounits"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    ).stdout.splitlines()
+    indexes = {line.strip() for line in inventory if line.strip()}
+    if not {"0", "1"}.issubset(indexes):
+        raise LaunchError("服务器必须能看到 GPU 0 和 GPU 1。")
+    applications = subprocess.run(
+        ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader,nounits"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    ).stdout.splitlines()
+    active = sorted({line.strip() for line in applications if line.strip().isdigit()})
+    if active:
+        raise LaunchError("两张 GPU 仍有计算进程，拒绝抢占：" + ", ".join(active))
+    return {"gpu_indexes": sorted(indexes), "active_compute_pids": []}
+
+
+def acquire_gpu_locks() -> list[Any]:
+    import fcntl
+
+    SERVER_GPU_LOCK_ROOT.mkdir(parents=True, exist_ok=True)
+    handles: list[Any] = []
+    try:
+        for gpu in (0, 1):
+            handle = (SERVER_GPU_LOCK_ROOT / f"gpu-{gpu}.lock").open("a+", encoding="utf-8")
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BaseException:
+                handle.close()
+                raise
+            handles.append(handle)
+    except BaseException:
+        release_gpu_locks(handles)
+        raise LaunchError("GPU 0/1 已被另一项受控实验锁定。")
+    return handles
+
+
+def release_gpu_locks(handles: list[Any]) -> None:
+    try:
+        import fcntl
+    except ImportError:
+        fcntl = None
+    for handle in reversed(handles):
+        try:
+            if fcntl is not None:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+
+
+def claim_execution_identity(execution_id: str, commit: str, run_ids: list[str]) -> Path:
+    import fcntl
+
+    SERVER_CLAIM_ROOT.mkdir(parents=True, exist_ok=True)
+    lock_path = SERVER_CLAIM_ROOT / ".claims.lock"
+    with lock_path.open("a+", encoding="utf-8") as lock_handle:
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+        try:
+            used_run_ids: set[str] = set()
+            for path in SERVER_CLAIM_ROOT.glob("*.json"):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if payload.get("execution_id") == execution_id:
+                    raise LaunchError("本次 execution_id 已经领取，拒绝重复运行。")
+                used_run_ids.update(str(value) for value in payload.get("run_ids", []))
+            duplicates = sorted(set(run_ids) & used_run_ids)
+            if duplicates:
+                raise LaunchError("run_id 已经领取，拒绝重复运行：" + ", ".join(duplicates))
+            path = SERVER_CLAIM_ROOT / f"{execution_id}.json"
+            exclusive_json(
+                path,
+                {
+                    "schema_version": "gtpj.v5_confirmation_001.execution_claim.v1",
+                    "experiment_id": EXPERIMENT_ID,
+                    "execution_id": execution_id,
+                    "commit": commit,
+                    "run_ids": run_ids,
+                    "claimed_at_unix": time.time(),
+                },
+            )
+            return path
+        finally:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
 
 
 def git(cwd: Path, *args: str, check: bool = True) -> str:
@@ -254,6 +365,40 @@ def validate_bundle(bundle: Path, repo_root: Path, commit: str) -> None:
     expected = f"{commit} refs/heads/{EXPERIMENT_BRANCH}"
     if expected not in heads:
         raise LaunchError("bundle 中的确认实验分支没有精确指向冻结提交。")
+    required_commits = {
+        commit,
+        *(
+            commit if spec["code_commit"] == "launcher_commit" else str(spec["code_commit"])
+            for spec in GROUP_SPECS.values()
+        ),
+    }
+    with tempfile.TemporaryDirectory(prefix="gtpj-v5-confirm-bundle-") as temporary:
+        git_dir = Path(temporary) / "probe.git"
+        init = subprocess.run(
+            ["git", "init", "--bare", "--quiet", str(git_dir)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if init.returncode != 0:
+            raise LaunchError(init.stderr.strip() or "无法建立 bundle 隔离检查目录。")
+        unpack = subprocess.run(
+            ["git", f"--git-dir={git_dir}", "bundle", "unbundle", str(bundle)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if unpack.returncode != 0:
+            raise LaunchError(unpack.stderr.strip() or "无法在隔离目录解包 bundle。")
+        for required_commit in sorted(required_commits):
+            present = subprocess.run(
+                ["git", f"--git-dir={git_dir}", "cat-file", "-e", f"{required_commit}^{{commit}}"],
+                capture_output=True,
+            )
+            if present.returncode != 0:
+                raise LaunchError(f"bundle 缺少任务代码提交：{required_commit}")
 
 
 def validate_config(repo_root: Path, spec: dict[str, Any]) -> Path:
@@ -264,7 +409,8 @@ def validate_config(repo_root: Path, spec: dict[str, Any]) -> Path:
         raise LaunchError("配置路径逃离冻结代码目录。") from exc
     if not path.is_file() or path.is_symlink():
         raise LaunchError(f"冻结配置不存在或是软链接：{path}")
-    if sha256_file(path) != spec["config_sha256"]:
+    accepted_hashes = set(spec.get("accepted_checkout_sha256", [spec["config_sha256"]]))
+    if sha256_file(path) not in accepted_hashes:
         raise LaunchError(f"冻结配置哈希不匹配：{path}")
     return path
 
@@ -446,6 +592,154 @@ def command_for_job(
     return command
 
 
+def wrap_legacy_command_read_only(
+    command: list[str], *, code_root: Path, job_root: Path, data_source: Path
+) -> list[str]:
+    """让旧入口继续使用 ./data，同时把正式数据以只读方式放进隔离环境。"""
+    return [
+        "/usr/bin/bwrap",
+        "--die-with-parent",
+        "--ro-bind",
+        "/",
+        "/",
+        "--dev-bind",
+        "/dev",
+        "/dev",
+        "--proc",
+        "/proc",
+        "--ro-bind",
+        str(data_source),
+        str(code_root / "data"),
+        "--bind",
+        str(job_root / "train_log"),
+        str(code_root / "train_log"),
+        "--chdir",
+        str(code_root),
+        *command,
+    ]
+
+
+def validate_legacy_data_isolation(data_source: Path, runtime_root: Path) -> None:
+    bwrap = Path("/usr/bin/bwrap")
+    if not bwrap.is_file():
+        raise LaunchError("旧代码只读隔离需要 /usr/bin/bwrap。")
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".v5-confirm-bwrap-", dir=runtime_root) as temporary:
+        root = Path(temporary)
+        bound_data = root / "data"
+        writable_log = root / "train_log"
+        bound_data.mkdir()
+        writable_log.mkdir()
+        probe_name = f".gtpj-write-probe-{os.getpid()}"
+        if (data_source / probe_name).exists():
+            raise LaunchError("只读隔离探针名称已存在。")
+        script = (
+            "from pathlib import Path; "
+            f"root=Path({str(bound_data)!r}); "
+            "assert (root/'cache/CUB_train_labels.pt').is_file(); "
+            f"target=root/{probe_name!r}; "
+            "\ntry:\n target.write_text('forbidden', encoding='utf-8')\n"
+            "except OSError:\n pass\n"
+            "else:\n raise SystemExit('read-only data accepted a write')\n"
+            f"Path({str(writable_log / 'ok')!r}).write_text('ok', encoding='utf-8')"
+        )
+        result = subprocess.run(
+            [
+                str(bwrap),
+                "--die-with-parent",
+                "--ro-bind",
+                "/",
+                "/",
+                "--dev-bind",
+                "/dev",
+                "/dev",
+                "--proc",
+                "/proc",
+                "--ro-bind",
+                str(data_source),
+                str(bound_data),
+                "--bind",
+                str(writable_log),
+                str(writable_log),
+                str(SERVER_PYTHON),
+                "-c",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode != 0 or not (writable_log / "ok").is_file():
+            raise LaunchError(result.stderr.strip() or result.stdout.strip() or "旧代码只读数据隔离失败。")
+        if (data_source / probe_name).exists():
+            raise LaunchError("只读隔离探针污染了正式数据源。")
+
+
+def validate_launch_gate(repo_root: Path, commit: str) -> None:
+    gate = repo_root / EXPERIMENT_DIR / "agent_runtime.yaml"
+    task_start = repo_root / EXPERIMENT_DIR / "TASK_START.yaml"
+    gate_text = gate.read_text(encoding="utf-8")
+    task_text = task_start.read_text(encoding="utf-8")
+    required_gate_lines = {
+        "runner_start_allowed: true",
+        "formal_runner_allowed: true",
+        "formal_evidence_allowed: true",
+    }
+    missing = sorted(line for line in required_gate_lines if line not in gate_text)
+    if missing:
+        raise LaunchError("开跑门尚未通过：" + ", ".join(missing))
+    if "review_decision: pass" not in task_text:
+        raise LaunchError("TASK_START 尚未登记独立审核通过。")
+    reviewed_match = re.search(r"(?m)^reviewed_candidate_commit: ([0-9a-f]{40})$", gate_text)
+    if not reviewed_match:
+        raise LaunchError("agent_runtime 没有绑定准确的审核候选提交。")
+    reviewed_commit = reviewed_match.group(1)
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", reviewed_commit, commit],
+        cwd=repo_root,
+    )
+    if ancestry.returncode != 0:
+        raise LaunchError("审核候选不是开跑提交的祖先。")
+    allowed_exact = {
+        (EXPERIMENT_DIR / "agent_runtime.yaml").as_posix(),
+        (EXPERIMENT_DIR / "TASK_START.yaml").as_posix(),
+        (EXPERIMENT_DIR / "AGENT_ACTIVITY.md").as_posix(),
+        (EXPERIMENT_DIR / "MONITOR_HANDOFF.md").as_posix(),
+    }
+    allowed_prefixes = {
+        (EXPERIMENT_DIR / "agent_outputs").as_posix() + "/",
+        (EXPERIMENT_DIR / "reviews").as_posix() + "/",
+    }
+    changed = git(repo_root, "diff", "--name-only", reviewed_commit, commit).splitlines()
+    forbidden = sorted(
+        path
+        for path in changed
+        if path not in allowed_exact and not any(path.startswith(prefix) for prefix in allowed_prefixes)
+    )
+    if forbidden:
+        raise LaunchError("审核后出现不允许的代码或参数变化：" + ", ".join(forbidden))
+    for filename in ("runner_monitor.md", "interface_checker.md", "evidence_quality_checker.md"):
+        output = repo_root / EXPERIMENT_DIR / "agent_outputs" / filename
+        text = output.read_text(encoding="utf-8")
+        if reviewed_commit not in text or "PASS" not in text:
+            raise LaunchError(f"独立审核输出没有准确绑定候选或通过结论：{filename}")
+    for command in (
+        ["validate-agent-runtime", "--path", str(gate)],
+        ["multi-agent-preflight", "--path", str(gate)],
+    ):
+        result = subprocess.run(
+            [str(SERVER_PYTHON), str(repo_root / "workflow/gtpj_workflow.py"), *command],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode != 0:
+            raise LaunchError(result.stderr.strip() or result.stdout.strip() or "开跑门校验失败。")
+
+
 class Controller:
     def __init__(self, args: argparse.Namespace, repo_root: Path, plan: dict[str, Any]):
         self.args = args
@@ -463,6 +757,8 @@ class Controller:
         self.status_lock = threading.Lock()
         self.results: list[dict[str, Any]] = []
         self.running: dict[int, subprocess.Popen[Any]] = {}
+        self.launch_lock = threading.Lock()
+        self.claim_path: Path | None = None
 
     def status_payload(self, state: str) -> dict[str, Any]:
         return {
@@ -473,6 +769,7 @@ class Controller:
             "launcher_commit": self.commit,
             "updated_at_unix": time.time(),
             "stop_file": self.stop_path.as_posix(),
+            "execution_claim": self.claim_path.as_posix() if self.claim_path else None,
             "results": sorted(self.results, key=lambda item: item["job_id"]),
         }
 
@@ -517,9 +814,9 @@ class Controller:
         if sha256_file(config_copy) != spec["config_sha256"]:
             raise LaunchError(f"{job_id} 配置复制后哈希变化。")
         if spec["execution_mode"] == "legacy_relative_roots":
-            os.symlink(self.args.data_source.resolve(), code_root / "data", target_is_directory=True)
-            os.symlink((job_root / "train_log").resolve(), code_root / "train_log", target_is_directory=True)
-        command = command_for_job(
+            (code_root / "data").mkdir()
+            (code_root / "train_log").mkdir()
+        training_command = command_for_job(
             python=self.args.python,
             code_root=code_root,
             config=config_copy,
@@ -527,6 +824,14 @@ class Controller:
             data_source=self.args.data_source.resolve(),
             execution_mode=str(spec["execution_mode"]),
         )
+        command = training_command
+        if spec["execution_mode"] == "legacy_relative_roots":
+            command = wrap_legacy_command_read_only(
+                training_command,
+                code_root=code_root,
+                job_root=job_root,
+                data_source=self.args.data_source.resolve(),
+            )
         command_sha = hashlib.sha256(
             json.dumps(command, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         ).hexdigest()
@@ -544,6 +849,7 @@ class Controller:
             "code_commit": code_commit,
             "config_sha256": spec["config_sha256"],
             "command": command,
+            "training_command": training_command,
             "command_sha256": command_sha,
             "bundle_sha256": sha256_file(self.args.bundle),
             "data_manifest_sha256": sha256_file(self.args.data_manifest),
@@ -558,16 +864,19 @@ class Controller:
         with log_path.open("w", encoding="utf-8", newline="\n") as log_handle:
             log_handle.write("GTPJ_PROCESS_START " + json.dumps(start_receipt, ensure_ascii=False, sort_keys=True) + "\n")
             log_handle.flush()
-            process = subprocess.Popen(
-                command,
-                cwd=code_root,
-                env=environment,
-                stdout=log_handle,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-            )
-            with self.status_lock:
-                self.running[gpu] = process
+            with self.launch_lock:
+                if self.should_stop():
+                    raise LaunchError(f"{job_id} 在进程启动前收到停止或硬失败信号。")
+                process = subprocess.Popen(
+                    command,
+                    cwd=code_root,
+                    env=environment,
+                    stdout=log_handle,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                )
+                with self.status_lock:
+                    self.running[gpu] = process
             while process.poll() is None:
                 if self.should_stop():
                     try:
@@ -640,6 +949,43 @@ class Controller:
             )
         return result
 
+    def persist_early_failure(self, job: dict[str, Any], error: BaseException) -> dict[str, Any]:
+        job_id = str(job["job_id"])
+        group = str(job["group"])
+        job_root = self.warehouse_execution / job_id
+        (job_root / "logs").mkdir(parents=True, exist_ok=True)
+        (job_root / "receipts").mkdir(parents=True, exist_ok=True)
+        (job_root / "train_log").mkdir(parents=True, exist_ok=True)
+        error_text = f"{type(error).__name__}: {error}"
+        failure_log = job_root / "logs" / "training.log"
+        if not failure_log.exists():
+            failure_log.write_text("GTPJ_PRELAUNCH_FAILURE " + error_text + "\n", encoding="utf-8")
+        finish = {
+            "schema_version": "gtpj.v5_confirmation_001.finish_receipt.v1",
+            "experiment_id": EXPERIMENT_ID,
+            "execution_id": self.execution_id,
+            "job_id": job_id,
+            "run_id": str(job["run_id"]),
+            "group": group,
+            "process_return_code": None,
+            "evidence_return_code": 99,
+            "error": error_text,
+            "finished_at_unix": time.time(),
+        }
+        atomic_json(job_root / "receipts" / "finish.json", finish)
+        return {
+            "job_id": job_id,
+            "run_id": str(job["run_id"]),
+            "group": group,
+            "gpu": int(job["gpu"]),
+            "attempt": int(job["attempt"]),
+            "formal_evidence": bool(GROUP_SPECS[group]["formal_evidence"]),
+            "return_code": 99,
+            "error": error_text,
+            "job_root": job_root.as_posix(),
+            "training_log_sha256": sha256_file(failure_log),
+        }
+
     def worker(self, gpu: int, jobs: list[dict[str, Any]]) -> None:
         for job in jobs:
             if self.should_stop():
@@ -647,21 +993,34 @@ class Controller:
             try:
                 result = self.run_one(job)
             except BaseException as exc:
-                result = {
-                    "job_id": str(job["job_id"]),
-                    "group": str(job["group"]),
-                    "gpu": gpu,
-                    "attempt": int(job["attempt"]),
-                    "formal_evidence": bool(GROUP_SPECS[str(job["group"])]["formal_evidence"]),
-                    "return_code": 99,
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
+                result = self.persist_early_failure(job, exc)
             with self.status_lock:
                 self.results.append(result)
+            if int(result.get("return_code", 99)) != 0:
+                with self.launch_lock:
+                    self.stop_requested.set()
             self.write_status("running")
 
     def run(self) -> int:
-        self.prepare()
+        self.claim_path = claim_execution_identity(
+            self.execution_id,
+            self.commit,
+            [str(job["run_id"]) for job in self.plan["jobs"]],
+        )
+        try:
+            self.prepare()
+        except BaseException as exc:
+            exclusive_json(
+                self.claim_path.with_suffix(".failure.json"),
+                {
+                    "schema_version": "gtpj.v5_confirmation_001.controller_failure.v1",
+                    "execution_claim": self.claim_path.as_posix(),
+                    "failure_stage": "prepare",
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "failed_at_unix": time.time(),
+                },
+            )
+            raise
         signal.signal(signal.SIGTERM, self.request_stop)
         signal.signal(signal.SIGINT, self.request_stop)
         jobs_by_gpu = {
@@ -677,9 +1036,11 @@ class Controller:
             thread.start()
         for thread in threads:
             thread.join()
+        retention_failed = False
         try:
             apply_checkpoint_retention(self.results)
         except BaseException as exc:
+            retention_failed = True
             with self.status_lock:
                 self.results.append(
                     {
@@ -689,15 +1050,17 @@ class Controller:
                         "error": f"{type(exc).__name__}: {exc}",
                     }
                 )
-            self.write_status("partial_failed")
-            return 1
         for result in self.results:
             if result.get("job_root"):
                 atomic_json(Path(result["job_root"]) / "result.json", result)
                 manifest = write_manifest(Path(result["job_root"]), result)
                 result["artifact_manifest"] = manifest.as_posix()
                 result["artifact_manifest_sha256"] = sha256_file(manifest)
-        completed = len(self.results) == 15 and all(item.get("return_code") == 0 for item in self.results)
+        completed = (
+            not retention_failed
+            and len(self.results) == 15
+            and all(item.get("return_code") == 0 for item in self.results)
+        )
         final_state = "completed" if completed else ("stopped" if self.should_stop() else "partial_failed")
         self.write_status(final_state)
         return 0 if completed else 1
@@ -725,14 +1088,22 @@ def main() -> int:
         raise LaunchError("--data-manifest 必须指向冻结提交中的数据清单。")
     validate_checkout(repo_root, commit)
     validate_bundle(args.bundle.resolve(), repo_root, commit)
+    validate_launch_gate(repo_root, commit)
     plan = validate_plan(args.plan.resolve())
     for spec in GROUP_SPECS.values():
         validate_config(repo_root, spec)
     validate_data_manifest(args.data_manifest.resolve(), args.data_source)
+    validate_legacy_data_isolation(args.data_source.resolve(), args.runtime_root.resolve())
+    gpu_preflight = verify_server_gpu_preflight()
     if args.validate_only:
-        print("validate-only-ok")
+        print("validate-only-ok " + json.dumps(gpu_preflight, ensure_ascii=False, sort_keys=True))
         return 0
-    return Controller(args, repo_root, plan).run()
+    gpu_locks = acquire_gpu_locks()
+    try:
+        verify_server_gpu_preflight()
+        return Controller(args, repo_root, plan).run()
+    finally:
+        release_gpu_locks(gpu_locks)
 
 
 if __name__ == "__main__":
