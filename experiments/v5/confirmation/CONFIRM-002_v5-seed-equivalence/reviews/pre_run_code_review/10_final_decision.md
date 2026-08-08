@@ -1,0 +1,10 @@
+ai_cross_review_status: pass
+owner_participation: not_required
+rounds_completed: 3
+claude_code_read_only: false
+independent_codex_fallback_read_only: true
+codex_fixes_or_rebuttals_recorded: true
+machine_gates_passed: true
+unresolved_blocking_issues: 0
+reviewed_commit: 2a099cc9571ea0d25fd3278d141168cb788ae0da
+

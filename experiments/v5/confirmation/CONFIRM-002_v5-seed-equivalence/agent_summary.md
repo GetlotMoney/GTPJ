@@ -1,5 +1,19 @@
 # Agent 工作摘要
 
+## 服务器开跑审核
+
+```text
+reviewed_controller_commit: 2a099cc9571ea0d25fd3278d141168cb788ae0da
+review_round_reason: 控制器影响GPU、数据只读边界和原始证据，因此本次历史流程完成三路独立审核；后续普通实验默认改走一轮短流程
+review_1: /root/r5_recovery_audit PASS
+review_2: /root/scientific_semantics_review PASS
+review_3: /root/release_reliability_review PASS
+machine_validation: full 313/313 at initial freeze; final runner 27/27; scientific 10/10; server CUDA probe PASS
+final_decision: pre_run_allowed
+memory_used: conversation context only
+verified_against_current_repo: true
+```
+
 ```text
 experiment_id: V5-CONFIRM-002
 run_id: pending

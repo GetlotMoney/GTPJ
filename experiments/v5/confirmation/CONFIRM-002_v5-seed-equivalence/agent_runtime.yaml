@@ -1,0 +1,55 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: V5-CONFIRM-002
+subject_type: confirmation
+formal_evidence: true
+activation_mode: role_only
+agent_instance_mode: role_only
+lifecycle: workflow_scoped
+workflow_mode: server_frozen_runner
+formal_runtime_backend: server_detached_role_only
+ui_visibility: current_owner_thread_only
+tool_support_real_multi_agent_available: false
+thread_management_tool: not_used
+thread_archive_policy: not_applicable_no_named_threads
+archive_completed_threads_on_stage_end: false
+archived_threads_record: agent_outputs/archived_threads.md
+thread_creation_allowed: false
+single_agent_execution: true
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+reviewed_candidate_commit: 2a099cc9571ea0d25fd3278d141168cb788ae0da
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+detached_server_status_file: status.json
+stop_mechanism: STOP file or SIGTERM
+recovery_handoff: MONITOR_HANDOFF.md
+sequential_role_preflight:
+  role_plan_recorded: true
+  independent_outputs_present: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+  server_detached_ready: true
+  stop_mechanism_ready: true
+  cleanup_not_required: true
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+pre_run_required_checks:
+  runner_monitor: pass
+  interface_checker: pass
+  evidence_quality_checker: pass
+authority_refs:
+  task_start_card: TASK_START.yaml
+  parameter_matrix: PARAMETER_MATRIX.csv
+  run_plan: RUN_PLAN.json
+  data_manifest: DATA_MANIFEST.json
+  experiment_binding: EXPERIMENT.yaml
+  review_binding: reviews/pre_run_code_review/REVIEW_BINDING.json
+
