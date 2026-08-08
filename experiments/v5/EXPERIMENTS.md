@@ -7,7 +7,7 @@
 | 调参 | 1 | `tune/INDEX.md` |
 | 消融 | 1 | `ablation/INDEX.md` |
 | 创新 | 1 | `innovation/INDEX.md` |
-| 确认 | 0 | `confirmation/INDEX.md` |
+| 确认 | 1 | `confirmation/INDEX.md` |
 
 ## 调参实验
 
@@ -31,4 +31,4 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| - | none | 暂无 | - | - | - | - |
+| `V5-CONFIRM-002` | planned | 不恢复无用层时，能否让干净 V5 的同 seed 初始化与老 V5 完全对齐并复现约 74.4 H | `experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/PARAMETER_MATRIX.md` | `v5@4b259379d99c1a791442ea9e2fac0bb22b2411a9` | `experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence` | - |

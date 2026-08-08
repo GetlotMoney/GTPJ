@@ -1,0 +1,52 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "CONFIRM-002"
+  name: "CONFIRM-002_v5-seed-equivalence"
+  kind: "confirmation"
+  status: "planned"
+  evidence_mode: "formal"
+  attempt_id: "attempt-001"
+  repeat_type: "same_seed_repeat"
+  diagnostic_subtype: "code_repair"
+  not_confirmation_evidence: "true"
+  max_attempts: "5"
+  early_stop_on_best_hit: "false"
+  created_or_recorded_at: "2026-08-08T12:49:50+00:00"
+version:
+  base_version: "v5"
+  base_code_tag: "v5"
+  code_branch: "exp/v5/confirmation/confirm-002-v5-seed-equivalence"
+  code_commit: "pending_pre_run_freeze"
+  git_dirty: "pending_pre_run_freeze"
+reproducibility:
+  config_file: "experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/config.yaml"
+  config_sha256: "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"
+  pre_run_freeze_commit: ""
+  command: ""
+  run_start_receipt_sha256: ""
+  run_start_receipt_ref: ""
+  seed: "5"
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: ""
+  uri: ""
+  title: ""
+  hypothesis: "不恢复历史无用参数，只恢复其随机初始化消耗，可以让干净 V5 与老 V5 的同 seed 活跃初值和批次顺序完全对齐。"
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "false"

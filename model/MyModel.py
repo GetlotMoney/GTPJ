@@ -175,6 +175,17 @@ class GeometryDecoupledEncoderLayer(nn.Module):
         return self.ln(x + self.dropout(self.ffn(x)))
 
 
+def _consume_historical_v5_projection_initialization(dim_com, dim_f):
+    """还原老 V5 在这里消耗的随机数，但不把两个无用层注册进模型。"""
+    # 老 V5 曾在 BVSA 后面创建两个从未参加 forward 的全连接层。
+    # 它们虽然不参与计算，却会消耗随机初始化序列，进而改变后面的
+    # SGMP、ICSA 初始权重和训练批次顺序。这里临时创建后立即丢弃，
+    # 只恢复同 seed 的历史起点；模型参数、优化器和 checkpoint 都不会包含它们。
+    historical_visual_projection = nn.Linear(dim_com, dim_f)
+    historical_text_projection = nn.Linear(dim_com, dim_f)
+    del historical_visual_projection, historical_text_projection
+
+
 class BidirectionalVisualSemanticAlignment(nn.Module):
     """Bidirectional Visual-Semantic Alignment (BVSA)."""
 
@@ -211,6 +222,10 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
+
+        # 必须放在老 V5 原来的准确位置，才能让后续模块拿到相同随机序列。
+        _consume_historical_v5_projection_initialization(dim_com, dim_f)
+
     def geometry_for_indices(self, token_indices):
         K = token_indices.size(1)
         full = self.box_emb.geometry_embedding

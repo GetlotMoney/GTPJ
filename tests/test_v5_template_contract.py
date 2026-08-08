@@ -419,6 +419,71 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
         _assert_close(clean_gradient, historical_gradient)
 
 
+def _check_v5_same_seed_initialization_matches_historical_tag() -> None:
+    """同一个 seed 下，干净 V5 的活跃状态和后续批次顺序必须与老 V5 一致。"""
+    historical_model_class = _load_historical_v5_model_class()
+    config = _parity_config()
+    torch.manual_seed(20260808)
+    seen = torch.tensor([0, 2, 3, 5])
+    unseen = torch.tensor([1, 4])
+    seen_text = torch.randn(4, 16)
+    unseen_text = torch.randn(2, 16)
+    seen_sentences = torch.randn(4, 3, 16)
+
+    torch.manual_seed(17)
+    historical_model = historical_model_class(
+        config,
+        seen,
+        unseen,
+        seen_text,
+        unseen_text,
+        seen_sentence_embeds=seen_sentences,
+    )
+    historical_post_model_rng = torch.get_rng_state().clone()
+
+    torch.manual_seed(17)
+    clean_model = GTPJ(
+        config,
+        seen,
+        unseen,
+        seen_text,
+        unseen_text,
+        seen_sentence_embeds=seen_sentences,
+    )
+    clean_post_model_rng = torch.get_rng_state().clone()
+
+    converted_state, _ = convert_state_dict(
+        historical_model.state_dict(), clean_model.state_dict()
+    )
+    assert set(converted_state) == set(clean_model.state_dict())
+    mismatched = [
+        key
+        for key, value in clean_model.state_dict().items()
+        if not torch.equal(value, converted_state[key])
+    ]
+    assert mismatched == [], f"同 seed 活跃状态未对齐：{mismatched}"
+    assert torch.equal(clean_post_model_rng, historical_post_model_rng)
+
+    def first_three_batches(rng_state: torch.Tensor) -> list[torch.Tensor]:
+        generator = torch.Generator(device="cpu")
+        generator.set_state(rng_state)
+        return [
+            torch.randperm(7057, generator=generator)[:64]
+            for _ in range(3)
+        ]
+
+    clean_batches = first_three_batches(clean_post_model_rng)
+    historical_batches = first_three_batches(historical_post_model_rng)
+    for clean_batch, historical_batch in zip(clean_batches, historical_batches):
+        assert torch.equal(clean_batch, historical_batch)
+
+    clean_parameter_names = set(dict(clean_model.named_parameters()))
+    clean_state_names = set(clean_model.state_dict())
+    for dead_name in ("proj_visual", "proj_text"):
+        assert all(dead_name not in name for name in clean_parameter_names)
+        assert all(dead_name not in name for name in clean_state_names)
+
+
 class V5TemplateContractTest(unittest.TestCase):
     def test_v5_config_contains_only_canonical_keys(self) -> None:
         _check_v5_config_contains_only_canonical_keys()
@@ -434,6 +499,9 @@ class V5TemplateContractTest(unittest.TestCase):
 
     def test_v5_clean_path_parity_with_historical_tag(self) -> None:
         _check_v5_clean_path_parity_with_historical_tag()
+
+    def test_v5_same_seed_initialization_matches_historical_tag(self) -> None:
+        _check_v5_same_seed_initialization_matches_historical_tag()
 
     def test_v5_evaluation_semantics(self) -> None:
         _check_v5_evaluation_semantics()
