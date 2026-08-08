@@ -47,6 +47,9 @@ hard_gates:
   code_identity: required
   server_gpu_preflight: required
   independent_review: required before launch
+reviewed_candidate_commit: e612bd011d258163dd36074913c246883a4f4c44
+review_decision: pass
+review_round_reason: 训练入口、双GPU调度、历史代码和正式结论都受影响，因此采用三路独立审核
 expected_outputs:
   github: 参数表、结果、质量检查、证据清单哈希
   warehouse: 十五套独立日志、收据与最多每组三个最佳模型
