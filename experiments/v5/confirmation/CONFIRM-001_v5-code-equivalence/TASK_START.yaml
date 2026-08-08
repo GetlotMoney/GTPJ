@@ -47,8 +47,8 @@ hard_gates:
   code_identity: required
   server_gpu_preflight: required
   independent_review: required before launch
-reviewed_candidate_commit: pending_r2_candidate
-review_decision: pending_r2_review
+reviewed_candidate_commit: 5e99a20fa2c284391d09bb9d34f35238eacf8df9
+review_decision: pass
 review_round_reason: 训练入口、双GPU调度、历史代码和正式结论都受影响，因此采用三路独立审核
 expected_outputs:
   github: 参数表、结果、质量检查、证据清单哈希

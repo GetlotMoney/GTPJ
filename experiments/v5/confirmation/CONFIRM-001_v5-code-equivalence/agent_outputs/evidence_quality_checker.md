@@ -1,8 +1,7 @@
 # evidence_quality_checker 证据与恢复检查
 
-- reviewed_candidate_commit: `e612bd011d258163dd36074913c246883a4f4c44`
+- reviewed_candidate_commit: `5e99a20fa2c284391d09bb9d34f35238eacf8df9`
 - reviewer: `/root/release_reliability_review`
 - decision: **PASS**
-- 结论：固定服务器路径、审核门、审核后改动白名单、GPU 空闲检查与锁、永久任务领取、STOP/硬失败总闸、失败结果和 artifact manifest 均已闭环。
-- 机器证据：独立 detached clone 工作树干净，18/18 定向测试和 Python 编译通过；错误旧 bundle 会拒绝，最终提交必须重新封包。
-
+- 结论：R2 的 15 个新身份与服务器永久保存的 R1 身份交集为零；R1 两个实际启动任务的日志和证据清单与历史表完全一致，其余 13 项正确保留为取消。
+- 机器证据：独立 detached clone 干净；18/18 定向测试、Python 编译、参数表及工作流检查通过；服务器实测私有 `/tmp` 可写且正式数据仍只读。

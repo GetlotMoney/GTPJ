@@ -1,8 +1,7 @@
 # runner_monitor 开跑检查
 
-- reviewed_candidate_commit: `e612bd011d258163dd36074913c246883a4f4c44`
+- reviewed_candidate_commit: `5e99a20fa2c284391d09bb9d34f35238eacf8df9`
 - reviewer: `/root/r5_recovery_audit`
 - decision: **PASS**
-- 结论：代码包必须包含三组提交，旧代码数据只读隔离真实可用；两张卡按波次推进，任一失败后不再派下一波；早期失败也能留下结果、收据和证据清单。
-- 机器证据：专项测试 18/18 通过，Python 编译通过；服务器 bwrap 写入拒绝、正式数据无探针残留、GPU 0/1 空闲。
-
+- 结论：R2 与 R1 的 15 个运行编号完全不重，旧数据继续只读；新增私有 `/tmp` 解决旧代码临时文件失败，任一硬失败仍会停止下一波。
+- 机器证据：R1 服务器原件与封存表哈希一致；R2 执行目录尚不存在；专项测试 18/18、Python 编译及服务器私有临时目录探针通过，GPU 0/1 空闲。

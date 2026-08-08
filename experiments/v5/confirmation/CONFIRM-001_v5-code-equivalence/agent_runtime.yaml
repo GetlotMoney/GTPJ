@@ -15,10 +15,10 @@ archive_completed_threads_on_stage_end: false
 archived_threads_record: agent_outputs/archived_threads.md
 thread_creation_allowed: false
 single_agent_execution: true
-runner_start_allowed: false
-formal_runner_allowed: false
-formal_evidence_allowed: false
-reviewed_candidate_commit: e612bd011d258163dd36074913c246883a4f4c44
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+reviewed_candidate_commit: 5e99a20fa2c284391d09bb9d34f35238eacf8df9
 owner_monitor_mode: true
 owner_role: monitor
 owner_visible_reporting: true
@@ -32,9 +32,9 @@ recovery_handoff: MONITOR_HANDOFF.md
 sequential_role_preflight:
   role_plan_recorded: true
   independent_outputs_present: true
-  pre_run_allow_checks_passed: false
-  agent_runtime_validated: false
-  server_detached_ready: false
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+  server_detached_ready: true
   stop_mechanism_ready: true
   cleanup_not_required: true
 agent_output_refs:
@@ -42,9 +42,9 @@ agent_output_refs:
   interface_checker: agent_outputs/interface_checker.md
   evidence_quality_checker: agent_outputs/evidence_quality_checker.md
 pre_run_required_checks:
-  runner_monitor: pending_r2_review
-  interface_checker: pending_r2_review
-  evidence_quality_checker: pending_r2_review
+  runner_monitor: pass
+  interface_checker: pass
+  evidence_quality_checker: pass
 authority_refs:
   task_start_card: TASK_START.yaml
   parameter_matrix: PARAMETER_MATRIX.csv
