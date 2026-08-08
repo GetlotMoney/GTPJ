@@ -40,6 +40,7 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             "validate_plan",
             "validate_bundle",
             "validate_data_manifest",
+            "require_tracked_runtime_file",
             "build_training_command",
             "parse_metrics",
             "run_waves",
@@ -74,6 +75,32 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             except NotImplementedError:
                 self.fail("validate_plan 尚未实现")
         self.assertEqual(payload, actual)
+
+    def test_plan_and_data_manifest_must_come_from_the_final_checkout(self) -> None:
+        module = load_controller_module()
+        manifest_relative = module.EXPERIMENT_DIR / "DATA_MANIFEST.json"
+        plan_relative = module.EXPERIMENT_DIR / "RUN_PLAN.json"
+        self.assertEqual(
+            REPO_ROOT / manifest_relative,
+            module.require_tracked_runtime_file(
+                REPO_ROOT,
+                REPO_ROOT / manifest_relative,
+                manifest_relative,
+            ),
+        )
+        self.assertEqual(
+            REPO_ROOT / plan_relative,
+            module.require_tracked_runtime_file(
+                REPO_ROOT,
+                REPO_ROOT / plan_relative,
+                plan_relative,
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            external = Path(temporary) / "DATA_MANIFEST.json"
+            external.write_bytes((REPO_ROOT / manifest_relative).read_bytes())
+            with self.assertRaises(module.LaunchError):
+                module.require_tracked_runtime_file(REPO_ROOT, external, manifest_relative)
 
     def test_training_command_uses_read_only_data_and_private_train_log(self) -> None:
         module = load_controller_module()

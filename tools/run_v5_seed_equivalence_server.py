@@ -123,6 +123,21 @@ def require_commit(value: str, label: str) -> str:
     return value
 
 
+def require_tracked_runtime_file(
+    repo_root: Path, supplied_path: Path, relative_path: Path
+) -> Path:
+    """运行计划和数据清单只能取自最终冻结提交，不能由外部文件替换。"""
+
+    expected = (repo_root / relative_path).resolve(strict=True)
+    supplied = supplied_path.resolve(strict=True)
+    if supplied != expected:
+        raise LaunchError(f"运行身份文件必须来自最终 checkout：{relative_path.as_posix()}")
+    relative = relative_path.as_posix()
+    if _git(repo_root, "hash-object", relative) != _git(repo_root, "rev-parse", f"HEAD:{relative}"):
+        raise LaunchError(f"运行身份文件与最终 Git blob 不一致：{relative}")
+    return expected
+
+
 def verify_post_review_boundary(repo_root: Path, reviewed_commit: str, final_commit: str) -> None:
     """最终冻结只能补审核/启动记录，不能重写已审核代码和实验身份。"""
 
@@ -1335,7 +1350,13 @@ def main() -> int:
     controller_repo = Path(__file__).resolve().parents[1]
     verify_reviewed_controller_checkout(controller_repo, reviewed_commit, CONTROLLER_RELATIVE)
     validate_final_checkout(repo_root, final_commit, reviewed_commit)
-    plan = validate_plan(args.plan.resolve(strict=True))
+    plan_path = require_tracked_runtime_file(repo_root, args.plan, EXPERIMENT_DIR / "RUN_PLAN.json")
+    data_manifest_path = require_tracked_runtime_file(
+        repo_root,
+        args.data_manifest,
+        EXPERIMENT_DIR / "DATA_MANIFEST.json",
+    )
+    plan = validate_plan(plan_path)
     validate_matrix(repo_root / EXPERIMENT_DIR / "PARAMETER_MATRIX.csv", plan, CONFIG_SHA256)
     if sha256_file(repo_root / EXPERIMENT_DIR / "config.yaml") != CONFIG_SHA256:
         raise LaunchError("最终冻结配置哈希不匹配。")
@@ -1352,7 +1373,7 @@ def main() -> int:
         ],
         expected_sha256=args.bundle_sha256,
     )
-    validate_data_manifest(args.data_manifest.resolve(strict=True), args.data_source)
+    validate_data_manifest(data_manifest_path, args.data_source)
     validate_launch_gate(repo_root, args.review_pack.resolve(strict=True), reviewed_commit)
     verify_server_gpu_preflight()
     locks = acquire_gpu_locks(SERVER_GPU_LOCK_ROOT, (0, 1))
