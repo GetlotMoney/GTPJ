@@ -66,6 +66,28 @@ class V5CodeEquivalenceServerTests(unittest.TestCase):
         self.assertEqual(1, controller.run_one.call_count)
         self.assertTrue(controller.stop_requested.is_set())
 
+    def test_early_failure_still_produces_artifact_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            controller = object.__new__(MODULE.Controller)
+            controller.warehouse_execution = Path(temporary)
+            controller.execution_id = "V5-CONFIRM-001-test"
+            controller.commit = "1" * 40
+            job = {
+                "job_id": "RUN-001",
+                "run_id": "V5CONF001-CURRENT-001",
+                "group": "CURRENT_TEMPLATE",
+                "gpu": 0,
+                "attempt": 1,
+            }
+            result = controller.persist_early_failure(job, RuntimeError("probe failure"))
+            job_root = Path(result["job_root"])
+            MODULE.atomic_json(job_root / "result.json", result)
+            manifest = MODULE.write_manifest(job_root, result)
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual("1" * 40, payload["code_commit"])
+            self.assertEqual(MODULE.CURRENT_V5_CONFIG_SHA256, payload["config_sha256"])
+            self.assertEqual(99, payload["return_code"])
+
     def test_bundle_missing_legacy_commit_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary) / "repo"

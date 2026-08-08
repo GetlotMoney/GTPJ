@@ -952,6 +952,8 @@ class Controller:
     def persist_early_failure(self, job: dict[str, Any], error: BaseException) -> dict[str, Any]:
         job_id = str(job["job_id"])
         group = str(job["group"])
+        spec = GROUP_SPECS[group]
+        code_commit = self.commit if spec["code_commit"] == "launcher_commit" else str(spec["code_commit"])
         job_root = self.warehouse_execution / job_id
         (job_root / "logs").mkdir(parents=True, exist_ok=True)
         (job_root / "receipts").mkdir(parents=True, exist_ok=True)
@@ -967,6 +969,8 @@ class Controller:
             "job_id": job_id,
             "run_id": str(job["run_id"]),
             "group": group,
+            "code_commit": code_commit,
+            "config_sha256": str(spec["config_sha256"]),
             "process_return_code": None,
             "evidence_return_code": 99,
             "error": error_text,
@@ -980,6 +984,8 @@ class Controller:
             "gpu": int(job["gpu"]),
             "attempt": int(job["attempt"]),
             "formal_evidence": bool(GROUP_SPECS[group]["formal_evidence"]),
+            "code_commit": code_commit,
+            "config_sha256": str(spec["config_sha256"]),
             "return_code": 99,
             "error": error_text,
             "job_root": job_root.as_posix(),
