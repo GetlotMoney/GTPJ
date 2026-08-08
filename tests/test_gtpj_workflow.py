@@ -2603,6 +2603,20 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertTrue(any("must have 7 columns" in error for error in errors))
 
+    def test_pending_framework_experiment_does_not_require_result_file(self) -> None:
+        self.assertNotIn(
+            "result.md",
+            self.module.framework_experiment_required_files("planned"),
+        )
+        self.assertNotIn(
+            "result.md",
+            self.module.framework_experiment_required_files("running"),
+        )
+        self.assertIn(
+            "result.md",
+            self.module.framework_experiment_required_files("completed"),
+        )
+
     def test_collect_formal_pending_uses_the_status_column_only(self) -> None:
         self._write("experiments/v1/framework.yaml", "framework_id: FRAMEWORK-V1\n")
         self._write(
