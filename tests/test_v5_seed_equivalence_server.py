@@ -41,6 +41,7 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             "validate_bundle",
             "validate_data_manifest",
             "require_tracked_runtime_file",
+            "validate_runtime_argument_paths",
             "build_training_command",
             "parse_metrics",
             "run_waves",
@@ -101,6 +102,45 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
             external.write_bytes((REPO_ROOT / manifest_relative).read_bytes())
             with self.assertRaises(module.LaunchError):
                 module.require_tracked_runtime_file(REPO_ROOT, external, manifest_relative)
+
+    def test_review_pack_and_probe_evidence_use_fixed_final_paths(self) -> None:
+        module = load_controller_module()
+        commit = "1" * 40
+        with tempfile.TemporaryDirectory() as temporary:
+            runtime_root = Path(temporary)
+            review_pack = REPO_ROOT / module.EXPERIMENT_DIR / "reviews" / "pre_run_code_review"
+            probe = (
+                runtime_root
+                / "CONFIRM-002"
+                / "evidence"
+                / f"server-formal-probe-{commit[:12]}.json"
+            )
+            self.assertEqual(
+                (review_pack.resolve(), probe.resolve()),
+                module.validate_runtime_argument_paths(
+                    repo_root=REPO_ROOT,
+                    runtime_root=runtime_root,
+                    review_pack=review_pack,
+                    probe_evidence=probe,
+                    final_commit=commit,
+                ),
+            )
+            with self.assertRaises(module.LaunchError):
+                module.validate_runtime_argument_paths(
+                    repo_root=REPO_ROOT,
+                    runtime_root=runtime_root,
+                    review_pack=runtime_root / "external-review",
+                    probe_evidence=probe,
+                    final_commit=commit,
+                )
+            with self.assertRaises(module.LaunchError):
+                module.validate_runtime_argument_paths(
+                    repo_root=REPO_ROOT,
+                    runtime_root=runtime_root,
+                    review_pack=review_pack,
+                    probe_evidence=runtime_root / "external-probe.json",
+                    final_commit=commit,
+                )
 
     def test_training_command_uses_read_only_data_and_private_train_log(self) -> None:
         module = load_controller_module()
@@ -518,6 +558,95 @@ class V5SeedEquivalenceServerTest(unittest.TestCase):
         self.assertEqual(hashlib.sha256((json.dumps(start, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")).hexdigest(), finish["start_receipt_sha256"])
         self.assertIn("best_model", manifest["artifacts"])
         self.assertIn("full_checkpoint", manifest["artifacts"])
+
+    def test_preexisting_stop_writes_no_start_receipt(self) -> None:
+        module = load_controller_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            job_root = root / "warehouse" / "RUN-001"
+            code_root = root / "code" / "RUN-001"
+            for path in (job_root / "logs", job_root / "receipts", job_root / "train_log", code_root):
+                path.mkdir(parents=True, exist_ok=True)
+            controller = object.__new__(module.Controller)
+            controller.execution_id = "V5-CONFIRM-002-test"
+            controller.commit = "1" * 40
+            controller.reviewed_controller_commit = "2" * 40
+            controller.config_sha256 = "3" * 64
+            controller.bundle_sha256 = "4" * 64
+            controller.data_manifest_sha256 = "5" * 64
+            controller.probe_sha256 = "6" * 64
+            controller.environment_evidence = {}
+            controller.stop_requested = __import__("threading").Event()
+            controller.stop_requested.set()
+            controller.stop_path = root / "STOP"
+            controller.running = {}
+            controller.status_lock = __import__("threading").Lock()
+            controller.launch_lock = __import__("threading").Lock()
+            launch_spec = {
+                "argv": [sys.executable, "-c", "print('unused')"],
+                "cwd": str(code_root),
+                "env_delta": {"CUDA_VISIBLE_DEVICES": "0"},
+                "command_sha256": "7" * 64,
+                "launch_identity_sha256": "8" * 64,
+            }
+            with self.assertRaises(module.LaunchError):
+                controller.execute_prepared_job(
+                    {"job_id": "RUN-001", "run_id": "V5CONF002-R1-RUN-001", "gpu": 0, "attempt": 1, "seed": 5},
+                    job_root,
+                    code_root,
+                    launch_spec,
+                )
+            self.assertFalse((job_root / "receipts" / "start.json").exists())
+
+    def test_nonzero_process_closes_launch_gate_under_the_launch_lock(self) -> None:
+        module = load_controller_module()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            job_root = root / "warehouse" / "RUN-001"
+            code_root = root / "code" / "RUN-001"
+            for path in (job_root / "logs", job_root / "receipts", job_root / "train_log", code_root):
+                path.mkdir(parents=True, exist_ok=True)
+            controller = object.__new__(module.Controller)
+            controller.execution_id = "V5-CONFIRM-002-test"
+            controller.commit = "1" * 40
+            controller.reviewed_controller_commit = "2" * 40
+            controller.config_sha256 = "3" * 64
+            controller.bundle_sha256 = "4" * 64
+            controller.data_manifest_sha256 = "5" * 64
+            controller.probe_sha256 = "6" * 64
+            controller.environment_evidence = {}
+            controller.stop_path = root / "STOP"
+            controller.running = {}
+            controller.status_lock = __import__("threading").Lock()
+            controller.launch_lock = __import__("threading").Lock()
+
+            class LockAwareStop:
+                stopped = False
+                set_under_lock = False
+
+                def is_set(self):
+                    return self.stopped
+
+                def set(self):
+                    self.set_under_lock = controller.launch_lock.locked()
+                    self.stopped = True
+
+            controller.stop_requested = LockAwareStop()
+            launch_spec = {
+                "argv": [sys.executable, "-c", "raise SystemExit(7)"],
+                "cwd": str(code_root),
+                "env_delta": {"CUDA_VISIBLE_DEVICES": "0"},
+                "command_sha256": "7" * 64,
+                "launch_identity_sha256": "8" * 64,
+            }
+            result = controller.execute_prepared_job(
+                {"job_id": "RUN-001", "run_id": "V5CONF002-R1-RUN-001", "gpu": 0, "attempt": 1, "seed": 5},
+                job_root,
+                code_root,
+                launch_spec,
+            )
+            self.assertEqual(7, result["return_code"])
+            self.assertTrue(controller.stop_requested.set_under_lock)
 
     def test_frozen_matrix_matches_plan_and_declares_no_config_change(self) -> None:
         module = load_controller_module()

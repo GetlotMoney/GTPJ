@@ -138,6 +138,31 @@ def require_tracked_runtime_file(
     return expected
 
 
+def validate_runtime_argument_paths(
+    *,
+    repo_root: Path,
+    runtime_root: Path,
+    review_pack: Path,
+    probe_evidence: Path,
+    final_commit: str,
+) -> tuple[Path, Path]:
+    """审核包固定在最终 checkout，探针证据固定在本实验运行目录。"""
+
+    final = require_commit(final_commit, "final_commit")
+    expected_review = (repo_root / EXPERIMENT_DIR / "reviews" / "pre_run_code_review").resolve()
+    expected_probe = (
+        runtime_root
+        / "CONFIRM-002"
+        / "evidence"
+        / f"server-formal-probe-{final[:12]}.json"
+    ).resolve()
+    if review_pack.resolve() != expected_review:
+        raise LaunchError("--review-pack 必须使用最终 checkout 内的固定审核目录。")
+    if probe_evidence.resolve() != expected_probe:
+        raise LaunchError("--probe-evidence 必须使用本实验固定运行证据路径。")
+    return expected_review, expected_probe
+
+
 def verify_post_review_boundary(repo_root: Path, reviewed_commit: str, final_commit: str) -> None:
     """最终冻结只能补审核/启动记录，不能重写已审核代码和实验身份。"""
 
@@ -1134,8 +1159,6 @@ class Controller:
             "started_at_unix": time.time(),
         }
         start_path = job_root / "receipts" / "start.json"
-        atomic_json(start_path, start_receipt)
-        start_sha = sha256_file(start_path)
         log_path = job_root / "logs" / "training.log"
         environment = os.environ.copy()
         environment.update({str(key): str(value) for key, value in launch_spec["env_delta"].items()})
@@ -1143,11 +1166,13 @@ class Controller:
         environment["PYTHONUTF8"] = "1"
         process: subprocess.Popen[Any] | None = None
         with log_path.open("w", encoding="utf-8", newline="\n") as log_handle:
-            log_handle.write(f"GTPJ_PROCESS_START start_receipt_sha256={start_sha}\n")
-            log_handle.flush()
             with self.launch_lock:
                 if self.should_stop():
                     raise LaunchError(f"{job['job_id']} 在进程启动前收到停止信号。")
+                atomic_json(start_path, start_receipt)
+                start_sha = sha256_file(start_path)
+                log_handle.write(f"GTPJ_PROCESS_START start_receipt_sha256={start_sha}\n")
+                log_handle.flush()
                 process = subprocess.Popen(
                     launch_spec["argv"],
                     cwd=code_root,
@@ -1164,7 +1189,8 @@ class Controller:
                 time.sleep(0.2)
             process_return_code = int(process.returncode)
             if process_return_code != 0:
-                self.stop_requested.set()
+                with self.launch_lock:
+                    self.stop_requested.set()
             log_handle.write(f"GTPJ_PROCESS_FINISH return_code={process_return_code}\n")
             log_handle.flush()
             os.fsync(log_handle.fileno())
@@ -1188,7 +1214,8 @@ class Controller:
             else (90 if process_return_code == 0 else process_return_code)
         )
         if evidence_return_code != 0:
-            self.stop_requested.set()
+            with self.launch_lock:
+                self.stop_requested.set()
         log_sha = sha256_file(log_path)
         finish = {
             "schema_version": "gtpj.v5_confirmation_002.finish_receipt.v1",
@@ -1350,6 +1377,13 @@ def main() -> int:
     controller_repo = Path(__file__).resolve().parents[1]
     verify_reviewed_controller_checkout(controller_repo, reviewed_commit, CONTROLLER_RELATIVE)
     validate_final_checkout(repo_root, final_commit, reviewed_commit)
+    review_pack, probe_evidence = validate_runtime_argument_paths(
+        repo_root=repo_root,
+        runtime_root=args.runtime_root,
+        review_pack=args.review_pack,
+        probe_evidence=args.probe_evidence,
+        final_commit=final_commit,
+    )
     plan_path = require_tracked_runtime_file(repo_root, args.plan, EXPERIMENT_DIR / "RUN_PLAN.json")
     data_manifest_path = require_tracked_runtime_file(
         repo_root,
@@ -1374,7 +1408,7 @@ def main() -> int:
         expected_sha256=args.bundle_sha256,
     )
     validate_data_manifest(data_manifest_path, args.data_source)
-    validate_launch_gate(repo_root, args.review_pack.resolve(strict=True), reviewed_commit)
+    validate_launch_gate(repo_root, review_pack.resolve(strict=True), reviewed_commit)
     verify_server_gpu_preflight()
     locks = acquire_gpu_locks(SERVER_GPU_LOCK_ROOT, (0, 1))
     try:
@@ -1385,14 +1419,14 @@ def main() -> int:
             python=args.python,
             repo_root=repo_root,
             commit=final_commit,
-            evidence_path=args.probe_evidence,
+            evidence_path=probe_evidence,
         )
         environment["gpu_preflight"] = gpu_evidence
         environment["formal_probe_status"] = probe_payload["status"]
         if args.validate_only:
             print(json.dumps({"status": "PASS", "final_commit": final_commit}, ensure_ascii=False))
             return 0
-        controller = Controller(args, repo_root, plan, args.probe_evidence, environment)
+        controller = Controller(args, repo_root, plan, probe_evidence, environment)
         return controller.run()
     finally:
         release_gpu_locks(locks)
