@@ -44,6 +44,7 @@ class V5CodeEquivalenceServerTests(unittest.TestCase):
         )
         self.assertEqual("/usr/bin/bwrap", wrapped[0])
         self.assertIn("--ro-bind", wrapped)
+        self.assertIn("--tmpfs", wrapped)
         trusted_data = str(Path("/trusted-data"))
         data_index = wrapped.index(trusted_data)
         self.assertEqual(str(Path("/code") / "data"), wrapped[data_index + 1])

@@ -68,9 +68,9 @@ GROUP_SPECS = {
     },
 }
 EXPECTED_JOBS = {
-    *(f"DIAG-V5-{index:03d}" for index in range(1, 6)),
-    *(f"RUN-{index:03d}" for index in range(1, 6)),
-    *(f"DIAG-DR-{index:03d}" for index in range(1, 6)),
+    *(f"DIAG-V5-{index:03d}" for index in range(6, 11)),
+    *(f"RUN-{index:03d}" for index in range(6, 11)),
+    *(f"DIAG-DR-{index:03d}" for index in range(6, 11)),
 }
 REQUIRED_DATA_CONTRACT = {
     "dataset": "CUB",
@@ -607,6 +607,8 @@ def wrap_legacy_command_read_only(
         "/dev",
         "--proc",
         "/proc",
+        "--tmpfs",
+        "/tmp",
         "--ro-bind",
         str(data_source),
         str(code_root / "data"),
@@ -655,6 +657,8 @@ def validate_legacy_data_isolation(data_source: Path, runtime_root: Path) -> Non
                 "/dev",
                 "--proc",
                 "/proc",
+                "--tmpfs",
+                "/tmp",
                 "--ro-bind",
                 str(data_source),
                 str(bound_data),

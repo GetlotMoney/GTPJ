@@ -55,6 +55,7 @@ result_status: pre_run
 - 新旧配置映射：`CONFIG_EQUIVALENCE.md`。
 - 正式参数表：`PARAMETER_MATRIX.csv`。
 - 历史诊断表：`evidence/DIAGNOSTIC_MATRIX.csv`。
+- R1 失败批次：`evidence/FAILED_BATCH_R1.md`、`evidence/FORMAL_BATCH_R1.csv`、`evidence/DIAGNOSTIC_BATCH_R1.csv`。
 - 数据身份：`DATA_MANIFEST.json`。
 - 原始日志、模型和收据：服务器 `GTPJ_Warehouse/runs/v5/confirmation/`。
 - Git 只登记结果摘要、路径、SHA-256 和文件大小，不保存原始日志或模型。
@@ -63,4 +64,4 @@ result_status: pre_run
 
 ## 当前状态
 
-运行前冻结和审核中；尚无新指标，不能提前声称今天代码已还原老 V5。
+R1 第一波因隔离环境没有可写 `/tmp` 而安全停止，未产生任何指标；R2 已换用全新任务编号并增加私有内存临时目录，正在重新冻结审核。不能提前声称今天代码已还原老 V5。
