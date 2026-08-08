@@ -15,9 +15,13 @@ from model.MyModel import GTPJ
 ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT_CONFIG = ROOT / "experiments" / "v5" / "ablation" / "ABLATION-003_icsa_effect" / "config.yaml"
 EXPERIMENT_DIR = EXPERIMENT_CONFIG.parent
+EXPERIMENT_SPEC = EXPERIMENT_DIR / "EXPERIMENT.yaml"
 CONFIG_DIR = EXPERIMENT_DIR / "configs"
 MATRIX = EXPERIMENT_DIR / "PARAMETER_MATRIX.csv"
+README = EXPERIMENT_DIR / "README.md"
+SERVER_PLAN = EXPERIMENT_DIR / "SERVER_LAUNCH_PLAN.md"
 TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
+CAMPAIGN_ID = "CAMP-20260809-v5-ablation100"
 
 
 def _config(**overrides):
@@ -79,6 +83,17 @@ def _matrix_rows():
 
 
 class IcsaAblationTest(unittest.TestCase):
+    def test_formal_runs_are_bound_to_frozen_campaign_controller(self):
+        experiment = yaml.safe_load(EXPERIMENT_SPEC.read_text(encoding="utf-8"))
+        self.assertEqual("server_detached_role_only", experiment["workflow_mode"])
+        self.assertNotIn("campaign_preparation_review", experiment)
+        for path in (README, SERVER_PLAN):
+            text = path.read_text(encoding="utf-8")
+            self.assertIn(CAMPAIGN_ID, text)
+            self.assertTrue(
+                "不可手工正式启动" in text or "禁止手工正式启动" in text
+            )
+
     def test_four_runs_use_two_seeds_and_two_exact_repeats(self):
         rows = _matrix_rows()
         self.assertEqual([f"RUN-{index:03d}" for index in range(1, 5)], [row["job_id"] for row in rows])

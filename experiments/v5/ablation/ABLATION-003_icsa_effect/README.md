@@ -14,7 +14,9 @@ pre_run_freeze_commit: pending
 run_commit: captured_at_launch_from_pre_run_freeze_commit
 dirty_state: clean_required_before_formal_launch
 config: configs/RUN-001.yaml
-command: direct train_GTPJ_CUB.py entry (not launched yet)
+campaign: CAMP-20260809-v5-ablation100
+command: frozen campaign background controller only (pending implementation and freeze)
+launch_status: 控制器完成前不可手工正式启动
 seed: RUN-001=5/repeat-1, RUN-002=5/repeat-2, RUN-003=17/repeat-1, RUN-004=17/repeat-2
 python_env:
 torch_cuda:
@@ -77,7 +79,9 @@ baseline_rule: 只与本轮相同种子、相同重复编号的完整 V5 比较�
 - [x] 四份配置固定为 seed 5/17 各两次；除随机种子外训练参数完全一致。
 - [x] ICSA 固定使用物理 GPU 0；进程内保持逻辑 `cuda:0`。
 - [x] 四条参数表随本次 pre-run freeze commit 冻结并通过账本校验。
-- [ ] 在冻结提交后的干净工作树中，通过 `train_GTPJ_CUB.py` 正式启动。
+- [ ] `CAMP-20260809-v5-ablation100` 后台控制器已实现、审核并冻结；完成前不可手工正式启动。
+- [ ] 控制器从 frozen campaign map 读取本 RUN 的准确提交与配置，并在 GPU 0 串行调用训练入口。
+- [ ] 控制器为每个 RUN 写独立启动/结束 receipt、stdout/stderr 和 Warehouse 目录。
 - [ ] 训练完成后才创建并回填 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`。
 - [ ] 原始日志和 checkpoint 只写入 Warehouse，不写入 GitHub。
 
