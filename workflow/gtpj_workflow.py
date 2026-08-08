@@ -4306,6 +4306,14 @@ def validate_experiment_binding(
     return [f"{row['experiment_id']}: {item}" for item in errors]
 
 
+def framework_experiment_required_files(status: str) -> tuple[str, ...]:
+    """运行前只要求输入文件，完成后才要求结果文件。"""
+    required = ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD)
+    if status.strip().lower() in RESULT_OPTIONAL_EXPERIMENT_STATUSES:
+        return required
+    return (*required, "result.md")
+
+
 def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
     errors.extend(validate_framework_templates())
@@ -4412,7 +4420,7 @@ def validate_framework_ledgers() -> list[str]:
                     errors.append(
                         f"{experiment_id}: parameter matrix must be exactly {rel(expected_matrix)}"
                     )
-                for required_name in ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD, "result.md"):
+                for required_name in framework_experiment_required_files(row["status"]):
                     if not (directory / required_name).exists():
                         errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
                 if not (directory / "evidence").is_dir():
@@ -10813,6 +10821,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 FORMAL_PENDING_STATUSES = {"planned", "pending", "pre_run", "pre_run_gated", "ready_to_run"}
+RESULT_OPTIONAL_EXPERIMENT_STATUSES = FORMAL_PENDING_STATUSES | {"running"}
 
 
 def markdown_table_rows(text: str) -> list[list[str]]:
