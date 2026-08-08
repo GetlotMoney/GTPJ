@@ -123,8 +123,10 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
+| `docs/superpowers/plans/<日期>-<主题>.md` | 需要跨分支、占用 GPU 或影响正式结论的任务计划，记录已核实事实、最小方案、验收和回退。 |
 
 ## `docs/workflow/`
 
