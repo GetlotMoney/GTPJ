@@ -375,6 +375,14 @@ FRAMEWORK_INDEX_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
+EXPERIMENT_PRE_RESULT_STATUSES = {
+    "planned",
+    "pending",
+    "pre_run",
+    "pre_run_gated",
+    "ready_to_run",
+    "running",
+}
 LEGACY_ORIGIN_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
@@ -4412,7 +4420,7 @@ def validate_framework_ledgers() -> list[str]:
                     errors.append(
                         f"{experiment_id}: parameter matrix must be exactly {rel(expected_matrix)}"
                     )
-                for required_name in ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD, "result.md"):
+                for required_name in required_experiment_ledger_files(row["status"]):
                     if not (directory / required_name).exists():
                         errors.append(f"{experiment_id} missing {required_name} under {rel(directory)}")
                 if not (directory / "evidence").is_dir():
@@ -4499,6 +4507,14 @@ def validate_framework_ledgers() -> list[str]:
             continue
         errors.extend(framework_origin_evidence_errors(data, matches[0]))
     return errors
+
+
+def required_experiment_ledger_files(status: str) -> tuple[str, ...]:
+    """Require result.md only after an experiment leaves the pre-run lifecycle."""
+    base_files = ("README.md", PARAMETER_MATRIX_CSV, PARAMETER_MATRIX_MD)
+    if status.strip() in EXPERIMENT_PRE_RESULT_STATUSES:
+        return base_files
+    return (*base_files, "result.md")
 
 
 def cmd_refresh_framework_view(args: argparse.Namespace) -> int:
