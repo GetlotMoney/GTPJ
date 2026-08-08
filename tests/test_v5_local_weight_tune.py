@@ -25,7 +25,7 @@ TEMPLATE_CONFIG = ROOT / "config" / "GTPJ_cub_gzsl.yaml"
 EXPERIMENT_DIR = (
     ROOT / "experiments" / "v5" / "tune" / "TUNE-002_local_fusion_weight"
 )
-CODE_COMMIT = "c81102bfe19b68e33dbca9b6b71a778fda4cb449"
+CODE_COMMIT = "3af9bfa8247b7aa6bc4ba4b5aa6c69f35277cd28"
 
 
 def make_config(**overrides):
