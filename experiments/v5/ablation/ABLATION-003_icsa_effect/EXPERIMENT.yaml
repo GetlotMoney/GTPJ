@@ -11,7 +11,7 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-003-icsa-effect
 legacy_ref: none
-status: planned
+status: pre_run_gated
 research_question: 在不改变数据、评估、局部分支、损失项和其余 V5 配置的前提下，ICSA 是否带来稳定的 CUB GZSL 指标增益
 disabled_subsystem:
   - ICSA
@@ -30,4 +30,4 @@ preserved_subsystem:
 formal_evidence: true
 workflow_mode: server_detached_role_only
 review_tier: strict-3
-implementation_status: code_candidate_validated_pending_strict3
+implementation_status: strict3_fixes_applied_pending_recheck
