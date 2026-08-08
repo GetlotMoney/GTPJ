@@ -9,13 +9,16 @@ branch_source: exact_template_commit
 code_branch: exp/v5/ablation/ablation-002-pse-effect
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: STANDARD
-run_commit:
-dirty_state:
+code_snapshot_commit: 9ccf4245a90b038f59c238861377a5cbd41a7c68
+pre_run_freeze_commit: pending
+run_commit: captured_at_launch_from_pre_run_freeze_commit
+dirty_state: clean_required_before_formal_launch
 config: configs/RUN-001.yaml
-command:
-seed:
+command: prepare-run-start-receipt (not launched yet)
+seed: RUN-001=5, RUN-002=17, RUN-003=29
 python_env:
 torch_cuda:
+physical_gpu_assignment: GPU 0 via CUDA_VISIBLE_DEVICES=0; process uses logical cuda:0
 dataset_split:
 cache_fingerprint:
 log_artifact_id:
@@ -44,7 +47,7 @@ restore_target_H:
 near_miss_tolerance_H:
 near_miss_not_restored:
 confirmation_status: pending
-status: planned
+status: pre_run_gated
 ```
 
 ## 问题
@@ -69,15 +72,13 @@ baseline_reuse_reason: 母版提交、原始 V5 配置、数据清单、评估�
 
 ## 运行前检查
 
-- [ ] 实验分支从 `framework/v5` 切出，并按 `exp/v5/<type>/<experiment-id>-<slug>` 命名。
-- [ ] `base_code_tag: v5` 和 `branch_source` 已记录。
-- [ ] 配置复制自 `experiments/v5/config.yaml`。
-- [ ] 只改变声明过的变量或开关。
-- [ ] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
-- [ ] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
-- [ ] `manifest.yaml` 中的 artifact URI、hash、size 能对应外部资产。
-- [ ] `agent_summary.md` 已记录参与 agents、检查范围、发现和结论。
-- [ ] `quality_check.md` 已创建；实验完成后再填写 decision。
+- [x] 分支直接从 `model/v5-template-v1` 对应提交复制，未继承旧实验代码。
+- [x] 三份配置只改变 `ablation_disable_pse=true` 和各自的随机种子。
+- [x] PSE 固定使用物理 GPU 0；进程内保持逻辑 `cuda:0`。
+- [ ] 三条参数表已冻结并通过账本校验。
+- [ ] 在冻结提交后的干净工作树中，通过 `prepare-run-start-receipt` 正式启动。
+- [ ] 训练完成后才创建并回填 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`。
+- [ ] 原始日志和 checkpoint 只写入 Warehouse，不写入 GitHub。
 
 ## 变量
 
