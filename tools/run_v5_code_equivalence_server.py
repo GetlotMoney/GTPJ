@@ -708,15 +708,15 @@ def main() -> int:
     if sys.platform != "linux" and not args.validate_only:
         raise LaunchError("真实训练控制器只允许在 Linux 服务器运行。")
     commit = require_commit(args.commit, "--commit")
-    if args.python.resolve() != SERVER_PYTHON:
+    if args.python.resolve() != SERVER_PYTHON.resolve():
         raise LaunchError(f"--python 必须是固定环境：{SERVER_PYTHON}")
     if not args.python.is_file():
         raise LaunchError("固定服务器 Python 不存在。")
-    if args.data_source.resolve() != SERVER_DATA_SOURCE:
+    if args.data_source.resolve() != SERVER_DATA_SOURCE.resolve():
         raise LaunchError(f"--data-source 必须是固定数据根：{SERVER_DATA_SOURCE}")
-    if args.runtime_root.resolve() != SERVER_RUNTIME_ROOT:
+    if args.runtime_root.resolve() != SERVER_RUNTIME_ROOT.resolve():
         raise LaunchError(f"--runtime-root 必须是固定运行根：{SERVER_RUNTIME_ROOT}")
-    if args.warehouse_root.resolve() != SERVER_WAREHOUSE_ROOT:
+    if args.warehouse_root.resolve() != SERVER_WAREHOUSE_ROOT.resolve():
         raise LaunchError(f"--warehouse-root 必须是固定 Warehouse 根：{SERVER_WAREHOUSE_ROOT}")
     repo_root = Path.cwd().resolve()
     if args.plan.resolve() != (repo_root / EXPERIMENT_DIR / "RUN_PLAN.json").resolve():

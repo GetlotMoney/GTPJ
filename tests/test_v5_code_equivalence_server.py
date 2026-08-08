@@ -25,6 +25,13 @@ SPEC.loader.exec_module(MODULE)
 
 
 class V5CodeEquivalenceServerTests(unittest.TestCase):
+    def test_fixed_server_paths_compare_resolved_targets(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("args.python.resolve() != SERVER_PYTHON.resolve()", source)
+        self.assertIn("args.data_source.resolve() != SERVER_DATA_SOURCE.resolve()", source)
+        self.assertIn("args.runtime_root.resolve() != SERVER_RUNTIME_ROOT.resolve()", source)
+        self.assertIn("args.warehouse_root.resolve() != SERVER_WAREHOUSE_ROOT.resolve()", source)
+
     def _write_plan(self, directory: Path, payload: dict) -> Path:
         path = directory / "plan.json"
         path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
