@@ -9,7 +9,7 @@ branch_source: exact_template_commit
 code_branch: exp/v5/ablation/ablation-002-pse-effect
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: STANDARD
-code_snapshot_commit: 9ccf4245a90b038f59c238861377a5cbd41a7c68
+code_snapshot_commit: 47956175d994df33e2ea6047acea0cc60b27e4d9
 pre_run_freeze_commit: pending
 run_commit: captured_at_launch_from_pre_run_freeze_commit
 dirty_state: clean_required_before_formal_launch

@@ -6,7 +6,9 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 请填写本次具体参数组合 | ablation | draft | {} |  |  |  | 开跑前填写要改的参数、目的和随机种子 |  |  |  |
+| RUN-001 | 关闭 PSE seed 5 | ablation | frozen | {"ablation_disable_pse": true} | 5 |  |  | 验证 PSE 对 seed 5 的独立影响 |  |  |  |
+| RUN-002 | 关闭 PSE seed 17 | ablation | frozen | {"ablation_disable_pse": true} | 17 |  |  | 验证 PSE 对 seed 17 的独立影响 |  |  |  |
+| RUN-003 | 关闭 PSE seed 29 | ablation | frozen | {"ablation_disable_pse": true} | 29 |  |  | 验证 PSE 对 seed 29 的独立影响 |  |  |  |
 
 ## 查重说明
 
