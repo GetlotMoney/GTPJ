@@ -279,6 +279,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
+| `experiments/v5/ablation/ABLATION-007_topology_loss_effect/` | `V5-ABLATION-007`，V5 Topology 纯配置消融；保存 4 个待跑 RUN 的冻结配置、参数表和服务器计划，不保存预跑结果。 |
 
 ### `experiments/templates/`
 
