@@ -992,13 +992,16 @@ class Controller:
                 break
             try:
                 result = self.run_one(job)
+                if int(result.get("return_code", 99)) != 0:
+                    with self.launch_lock:
+                        self.stop_requested.set()
             except BaseException as exc:
+                # 先在与进程启动共用的锁内关总闸，再做可能较慢的失败证据落盘。
+                with self.launch_lock:
+                    self.stop_requested.set()
                 result = self.persist_early_failure(job, exc)
             with self.status_lock:
                 self.results.append(result)
-            if int(result.get("return_code", 99)) != 0:
-                with self.launch_lock:
-                    self.stop_requested.set()
             self.write_status("running")
 
     def run(self) -> int:
