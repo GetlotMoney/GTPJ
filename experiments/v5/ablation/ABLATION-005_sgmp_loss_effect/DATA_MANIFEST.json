@@ -1,0 +1,15 @@
+{
+  "schema_version": "gtpj.data_manifest.v1",
+  "experiment_id": "V5-ABLATION-005",
+  "dataset": "CUB",
+  "base_version": "v5",
+  "base_template_id": "MODEL-V5-TEMPLATE-V1",
+  "base_template_commit": "2f5fa5e631ef82658d4bac587cdfd17f3534cb35",
+  "base_config": "experiments/v5/config.yaml",
+  "base_config_sha256": "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e",
+  "data_identity_status": "server_preflight_required",
+  "split_identity": "继承 MODEL-V5-TEMPLATE-V1 的 CUB 规范，启动前必须核对服务器数据与划分身份",
+  "cache_fingerprint": null,
+  "formal_evidence": true,
+  "not_confirmation_evidence": true
+}
