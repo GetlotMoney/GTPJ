@@ -43,7 +43,7 @@ def _config(**overrides):
         "lambda_consist": 0.05,
         "consist_temp": 2.0,
         "consist_dynamic_gamma": 0.1,
-        "lambda_topo_pearson": 0.1,
+        "lambda_topo_pearson": 0.0,
         "icsa_ratio": 0.008,
         "icsa_hidden": 8,
         "lambda_bmdd": 0.05,
@@ -83,7 +83,42 @@ def _matrix_rows():
         return list(csv.DictReader(handle))
 
 
+def _gradient_l1(module):
+    return sum(
+        parameter.grad.abs().sum().item()
+        for parameter in module.parameters()
+        if parameter.grad is not None
+    )
+
+
 class PseAblationTest(unittest.TestCase):
+    def test_pse_dependent_topology_is_off_and_remaining_paths_train(self):
+        config_paths = [EXPERIMENT_CONFIG, *sorted(CONFIG_DIR.glob("RUN-*.yaml"))]
+        for path in config_paths:
+            self.assertEqual(0.0, float(_config_values(path)["lambda_topo_pearson"]))
+
+        torch.manual_seed(23)
+        seen = torch.tensor([0, 2, 3, 5])
+        unseen = torch.tensor([1, 4])
+        model = GTPJ(
+            _config(),
+            seen,
+            unseen,
+            torch.randn(4, 16),
+            torch.randn(2, 16),
+            seen_sentence_embeds=torch.randn(4, 3, 16),
+        )
+        model.train()
+        outputs = model(torch.randn(2, 577, 16), is_train=True)
+        outputs["batch_label"] = torch.tensor([0, 2])
+        losses = model.compute_loss(outputs)
+        self.assertEqual(0.0, float(losses["loss_topo"].item()))
+        losses["loss"].backward()
+
+        self.assertGreater(_gradient_l1(model.icsa_module), 0.0)
+        self.assertGreater(_gradient_l1(model.bvsa_module), 0.0)
+        self.assertGreater(_gradient_l1(model.sgmp_predictor), 0.0)
+
     def test_formal_runs_are_bound_to_frozen_campaign_controller(self):
         experiment = yaml.safe_load(EXPERIMENT_SPEC.read_text(encoding="utf-8"))
         self.assertEqual("server_detached_role_only", experiment["workflow_mode"])
