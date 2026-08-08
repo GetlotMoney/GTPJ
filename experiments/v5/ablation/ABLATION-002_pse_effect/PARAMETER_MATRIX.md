@@ -6,10 +6,10 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 关闭 PSE seed 5 第1次 | ablation | frozen | {"ablation_disable_pse": true} | 5 |  |  | 种子 5 第1次：验证关闭 PSE 的影响 |  |  |  |
-| RUN-002 | 关闭 PSE seed 5 第2次 | ablation | frozen | {"ablation_disable_pse": true} | 5 | RUN-001 |  | 种子 5 第2次：排除单次训练偶然性 |  |  |  |
-| RUN-003 | 关闭 PSE seed 17 第1次 | ablation | frozen | {"ablation_disable_pse": true} | 17 |  |  | 种子 17 第1次：验证关闭 PSE 的影响 |  |  |  |
-| RUN-004 | 关闭 PSE seed 17 第2次 | ablation | frozen | {"ablation_disable_pse": true} | 17 | RUN-003 |  | 种子 17 第2次：排除单次训练偶然性 |  |  |  |
+| RUN-001 | 关闭 PSE 与依赖 topology seed 5 第1次 | ablation | frozen | {"ablation_disable_pse": true, "lambda_topo_pearson": 0.0} | 5 |  |  | 种子 5 第1次：验证关闭 PSE 及依赖 topology 的影响 |  |  |  |
+| RUN-002 | 关闭 PSE 与依赖 topology seed 5 第2次 | ablation | frozen | {"ablation_disable_pse": true, "lambda_topo_pearson": 0.0} | 5 | RUN-001 |  | 种子 5 第2次：排除单次训练偶然性 |  |  |  |
+| RUN-003 | 关闭 PSE 与依赖 topology seed 17 第1次 | ablation | frozen | {"ablation_disable_pse": true, "lambda_topo_pearson": 0.0} | 17 |  |  | 种子 17 第1次：验证关闭 PSE 及依赖 topology 的影响 |  |  |  |
+| RUN-004 | 关闭 PSE 与依赖 topology seed 17 第2次 | ablation | frozen | {"ablation_disable_pse": true, "lambda_topo_pearson": 0.0} | 17 | RUN-003 |  | 种子 17 第2次：排除单次训练偶然性 |  |  |  |
 
 ## 查重说明
 

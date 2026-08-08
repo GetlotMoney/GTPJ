@@ -56,7 +56,7 @@ status: pre_run_gated
 
 描述这个实验要回答的精确问题。
 
-本实验只回答：在完整 V5 中关闭 PSE 后，CUB GZSL 的 U、S、H、ZS 会怎样变化。
+本实验只回答：在完整 V5 中关闭 PSE，并同步关闭失去可训练文本输入的 topology loss 后，CUB GZSL 的 U、S、H、ZS 会怎样变化。
 
 ## 消融合同
 
@@ -64,7 +64,8 @@ status: pre_run_gated
 disabled_module: PSE（Progressive Semantic Enhancement）
 switch_key: ablation_disable_pse=true
 off_path: 不创建 PSE 模块；seen 文本直接使用归一化后的句向量平均
-unchanged: ICSA、FGVD、BVSA、SGMP、局部融合、全部损失、数据、类别顺序、评估和训练日程
+dependent_loss_off: lambda_topo_pearson=0；关闭 PSE 后 topology 只基于固定文本产生常数，无法提供训练梯度
+unchanged: ICSA、FGVD、BVSA、SGMP、局部融合、CE、consistency、BMDD、MPP、negative、数据、类别顺序、评估和训练日程
 paired_full_baseline:
   seed 5/repeat 1  -> V5-ABLATION-008 中同 seed、同 repeat 的 GL-FULL
   seed 5/repeat 2  -> V5-ABLATION-008 中同 seed、同 repeat 的 GL-FULL
@@ -76,7 +77,7 @@ baseline_rule: 只与本轮相同种子、相同重复编号的完整 V5 比较�
 ## 运行前检查
 
 - [x] 分支直接从 `model/v5-template-v1` 对应提交复制，未继承旧实验代码。
-- [x] 四份配置固定为 seed 5/17 各两次；除随机种子外训练参数完全一致。
+- [x] 四份配置固定关闭 PSE 和依赖它的 topology loss，seed 5/17 各两次；除随机种子外训练参数完全一致。
 - [x] PSE 固定使用物理 GPU 0；进程内保持逻辑 `cuda:0`。
 - [x] 四条参数表随本次 pre-run freeze commit 冻结并通过账本校验。
 - [ ] `CAMP-20260809-v5-ablation100` 后台控制器已实现、审核并冻结；完成前不可手工正式启动。
@@ -113,7 +114,7 @@ control_result:
 ablation_delta:
 ```
 
-本次唯一算法变量是 `ablation_disable_pse=true`；不是把权重设为 0，也不会保留一个仍参与前向或反向传播的 PSE 模块。
+本次消融边界是 `ablation_disable_pse=true` 与其依赖项 `lambda_topo_pearson=0`。PSE 被真正旁路；topology 同步关闭，避免把固定文本产生的无梯度常数混入损失。其余训练路径保持不变。
 
 ## 结果
 

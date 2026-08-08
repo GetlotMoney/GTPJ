@@ -15,7 +15,7 @@
 
 控制器必须：
 
-1. 只读取 frozen campaign map 中登记的分支、提交、配置路径和配置哈希；
+1. 只读取 frozen campaign map 中登记的分支、提交、配置路径和重算后的配置哈希；配置必须同时关闭 PSE 与其依赖的 topology loss；
 2. 在 GPU 0 上按上面的四个 RUN 顺序串行调用准确训练入口；
 3. 为每个 RUN 创建独立 Warehouse 目录，并写启动 receipt、结束 receipt、stdout 和 stderr；
 4. 保留失败状态，不覆盖任何已有 RUN 目录。

@@ -12,9 +12,10 @@ template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-002-pse-effect
 legacy_ref: none
 status: pre_run_gated
-research_question: 在不改变数据、评估、局部分支、损失项和其余 V5 配置的前提下，PSE 是否带来稳定的 CUB GZSL 指标增益
+research_question: 在关闭 PSE 及其依赖的 topology loss、保持其余 V5 路径不变时，CUB GZSL 指标如何变化
 disabled_subsystem:
   - PSE
+  - PSE-dependent topology
 preserved_subsystem:
   - ICSA
   - FGVD
@@ -23,7 +24,6 @@ preserved_subsystem:
   - local_fusion
   - CE
   - consistency
-  - topology
   - BMDD
   - MPP
   - negative_semantic

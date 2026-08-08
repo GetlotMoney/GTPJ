@@ -43,7 +43,7 @@ consist_temp:
 consist_dynamic_gamma:
   value: 0.1
 lambda_topo_pearson:
-  value: 0.1
+  value: 0.0
 icsa_ratio:
   value: 0.008
 icsa_hidden:
