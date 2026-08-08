@@ -240,8 +240,13 @@ class GlobalScoreModel(_PseIcsaScoreBase):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
 
     def forward(self, clip_features, is_train=False):
-        self._validate_features(clip_features)
-        cls_token = clip_features[:, 0, :]
+        if clip_features.dim() == 2:
+            if clip_features.size(1) != self.dim_f:
+                raise ValueError(f"GlobalScoreModel requires D={self.dim_f}.")
+            cls_token = clip_features
+        else:
+            self._validate_features(clip_features)
+            cls_token = clip_features[:, 0, :]
         conditioned = self._condition_text(cls_token)
         image = F.normalize(cls_token, dim=1)
         text = F.normalize(conditioned, dim=-1)

@@ -34,15 +34,20 @@ FROZEN_REQUIRED_DATA_KEYS = frozenset(
         "test_unseen_labels",
     }
 )
-TRAINED_REQUIRED_DATA_KEYS = FROZEN_REQUIRED_DATA_KEYS | frozenset(
+GLOBAL_REQUIRED_DATA_KEYS = FROZEN_REQUIRED_DATA_KEYS | frozenset(
     {
         "train_cls",
-        "train_patches",
         "train_labels",
+    }
+)
+PATCH_REQUIRED_DATA_KEYS = GLOBAL_REQUIRED_DATA_KEYS | frozenset(
+    {
+        "train_patches",
         "test_seen_patches",
         "test_unseen_patches",
     }
 )
+TRAINED_REQUIRED_DATA_KEYS = PATCH_REQUIRED_DATA_KEYS
 V5_TEMPLATE_CONFIG_KEYS = {
     "dataset", "num_class", "dim_f_clip", "device", "batch_size",
     "random_seed", "text_source", "pse_heads", "pse_dropout",
@@ -171,11 +176,11 @@ def _executable_source_sha256():
 def _required_data_keys(score_path):
     if score_path not in VALID_SCORE_PATHS:
         raise ValueError(f"unknown score_path: {score_path}")
-    return (
-        FROZEN_REQUIRED_DATA_KEYS
-        if score_path == "frozen_clip"
-        else TRAINED_REQUIRED_DATA_KEYS
-    )
+    if score_path == "frozen_clip":
+        return FROZEN_REQUIRED_DATA_KEYS
+    if score_path == "global":
+        return GLOBAL_REQUIRED_DATA_KEYS
+    return PATCH_REQUIRED_DATA_KEYS
 
 
 def _verify_data_manifest(manifest_path, data_root, score_path):
@@ -183,7 +188,8 @@ def _verify_data_manifest(manifest_path, data_root, score_path):
     if not manifest_file.is_file():
         raise FileNotFoundError(f"data manifest does not exist: {manifest_file}")
     try:
-        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        manifest_bytes = manifest_file.read_bytes()
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"invalid data manifest JSON: {manifest_file}") from exc
     if not isinstance(manifest, dict):
@@ -236,7 +242,7 @@ def _verify_data_manifest(manifest_path, data_root, score_path):
             "sha256": actual_sha256,
         }
     return {
-        "manifest_sha256": _sha256_file(manifest_file),
+        "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
         "paths": paths,
         "fingerprints": fingerprints,
     }
@@ -286,24 +292,30 @@ def _load_test_cache(paths, expected_dim, include_patches, torch_module):
     return cache
 
 
-def _load_training_cache(paths, expected_dim, torch_module):
-    required = [paths["train_cls"], paths["train_patches"], paths["train_labels"]]
+def _load_training_cache(paths, expected_dim, include_patches, torch_module):
+    required = [paths["train_cls"], paths["train_labels"]]
+    if include_patches:
+        required.append(paths["train_patches"])
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise FileNotFoundError("缺少训练缓存：" + ", ".join(missing))
     cls = torch_module.load(paths["train_cls"], map_location="cpu", weights_only=True)
-    patches = torch_module.load(
-        paths["train_patches"], map_location="cpu", weights_only=True
-    )
     labels = torch_module.load(
         paths["train_labels"], map_location="cpu", weights_only=True
     ).long()
     if cls.dim() != 2 or cls.size(1) != expected_dim:
         raise ValueError(f"训练 CLS 必须为 [N, {expected_dim}]。")
-    if patches.dim() != 3 or tuple(patches.shape[1:]) != (576, expected_dim):
-        raise ValueError(f"训练 patch 必须为 [N, 576, {expected_dim}]。")
-    if labels.dim() != 1 or not (len(cls) == len(patches) == len(labels)):
-        raise ValueError("训练 CLS、patch、label 数量不一致。")
+    if labels.dim() != 1 or len(cls) != len(labels):
+        raise ValueError("训练 CLS、label 数量不一致。")
+    patches = None
+    if include_patches:
+        patches = torch_module.load(
+            paths["train_patches"], map_location="cpu", weights_only=True
+        )
+        if patches.dim() != 3 or tuple(patches.shape[1:]) != (576, expected_dim):
+            raise ValueError(f"训练 patch 必须为 [N, 576, {expected_dim}]。")
+        if len(cls) != len(patches):
+            raise ValueError("训练 CLS、patch、label 数量不一致。")
     return cls, patches, labels
 
 
@@ -341,6 +353,12 @@ def _per_class_accuracy(labels, predictions, classes, torch_module):
     return float(torch_module.stack(values).mean().item())
 
 
+def _require_finite_logits(logits, torch_module):
+    if not bool(torch_module.isfinite(logits).all().item()):
+        raise FloatingPointError("score-path evaluation produced non-finite logits.")
+    return logits
+
+
 def _frozen_cls_logits(model, cls_features, device, torch_module, batch_size):
     logits = []
     model.eval()
@@ -355,29 +373,36 @@ def _frozen_cls_logits(model, cls_features, device, torch_module, batch_size):
                 dtype=cls_batch.dtype,
             )
             features = torch_module.cat([cls_batch.unsqueeze(1), zero_patches], dim=1)
-            logits.append(model(features, is_train=False)["clip_S_pp"].detach().cpu())
+            batch_logits = model(features, is_train=False)["clip_S_pp"]
+            _require_finite_logits(batch_logits, torch_module)
+            logits.append(batch_logits.detach().cpu())
     if not logits:
         raise ValueError("frozen evaluation cache must not be empty.")
     return torch_module.cat(logits, dim=0)
 
 
-def _evaluate_frozen_cls_only(
-    model,
-    device,
+def _global_cls_logits(model, cls_features, device, torch_module, batch_size):
+    logits = []
+    model.eval()
+    with torch_module.inference_mode():
+        for start in range(0, cls_features.size(0), batch_size):
+            cls_batch = cls_features[start : start + batch_size].to(device).float()
+            batch_logits = model(cls_batch, is_train=False)["clip_S_pp"]
+            _require_finite_logits(batch_logits, torch_module)
+            logits.append(batch_logits.detach().cpu())
+    if not logits:
+        raise ValueError("global evaluation cache must not be empty.")
+    return torch_module.cat(logits, dim=0)
+
+
+def _metrics_from_cls_logits(
+    seen_logits,
+    unseen_logits,
     cache,
     seenclasses,
     unseenclasses,
     torch_module,
-    batch_size=64,
 ):
-    seenclasses = torch_module.as_tensor(seenclasses).detach().cpu().long()
-    unseenclasses = torch_module.as_tensor(unseenclasses).detach().cpu().long()
-    seen_logits = _frozen_cls_logits(
-        model, cache["seen_cls"], device, torch_module, batch_size
-    )
-    unseen_logits = _frozen_cls_logits(
-        model, cache["unseen_cls"], device, torch_module, batch_size
-    )
     seen_prediction = seen_logits.argmax(dim=1)
     unseen_prediction = unseen_logits.argmax(dim=1)
     unseen_only_prediction = unseenclasses[
@@ -397,6 +422,87 @@ def _evaluate_frozen_cls_only(
         2.0 * seen_accuracy * unseen_accuracy / denominator if denominator else 0.0
     )
     return seen_accuracy, unseen_accuracy, harmonic, zsl_accuracy
+
+
+def _evaluate_frozen_cls_only(
+    model,
+    device,
+    cache,
+    seenclasses,
+    unseenclasses,
+    torch_module,
+    batch_size=64,
+):
+    seenclasses = torch_module.as_tensor(seenclasses).detach().cpu().long()
+    unseenclasses = torch_module.as_tensor(unseenclasses).detach().cpu().long()
+    seen_logits = _frozen_cls_logits(
+        model, cache["seen_cls"], device, torch_module, batch_size
+    )
+    unseen_logits = _frozen_cls_logits(
+        model, cache["unseen_cls"], device, torch_module, batch_size
+    )
+    return _metrics_from_cls_logits(
+        seen_logits,
+        unseen_logits,
+        cache,
+        seenclasses,
+        unseenclasses,
+        torch_module,
+    )
+
+
+def _evaluate_global_cls_only(
+    model,
+    device,
+    cache,
+    seenclasses,
+    unseenclasses,
+    torch_module,
+    batch_size=64,
+):
+    seenclasses = torch_module.as_tensor(seenclasses).detach().cpu().long()
+    unseenclasses = torch_module.as_tensor(unseenclasses).detach().cpu().long()
+    seen_logits = _global_cls_logits(
+        model, cache["seen_cls"], device, torch_module, batch_size
+    )
+    unseen_logits = _global_cls_logits(
+        model, cache["unseen_cls"], device, torch_module, batch_size
+    )
+    return _metrics_from_cls_logits(
+        seen_logits,
+        unseen_logits,
+        cache,
+        seenclasses,
+        unseenclasses,
+        torch_module,
+    )
+
+
+class _FiniteLogitsGuard:
+    def __init__(self, model, torch_module):
+        self._model = model
+        self._torch = torch_module
+
+    def __getattr__(self, name):
+        return getattr(self._model, name)
+
+    def eval(self):
+        self._model.eval()
+        return self
+
+    def __call__(self, *args, **kwargs):
+        output = self._model(*args, **kwargs)
+        _require_finite_logits(output["clip_S_pp"], self._torch)
+        return output
+
+
+def _evaluate_trained_with_finite_guard(
+    runtime, model, device, cache, seenclasses, unseenclasses
+):
+    guarded = _FiniteLogitsGuard(model, runtime.torch)
+    return runtime.evaluate_cached_v5(
+        guarded, device, cache, seenclasses, unseenclasses
+    )
 
 
 def _metric_dict(values, *, epoch):
@@ -504,8 +610,12 @@ def _stage_for_epoch(epoch, boundaries):
 def _run_training_path(config, values, data_root, output_dir, runtime):
     torch = runtime.torch
     paths = runtime.data_paths
+    include_patches = config.score_path in {"local", "full"}
     train_cls, train_patches, train_labels = _load_training_cache(
-        paths, int(config.dim_f_clip), torch
+        paths,
+        int(config.dim_f_clip),
+        include_patches=include_patches,
+        torch_module=torch,
     )
     sentences = _load_sentences(
         paths["gpt55_sentences"],
@@ -516,7 +626,7 @@ def _run_training_path(config, values, data_root, output_dir, runtime):
     test_cache = _load_test_cache(
         paths,
         int(config.dim_f_clip),
-        include_patches=True,
+        include_patches=include_patches,
         torch_module=torch,
     )
     seen, unseen = runtime.load_v5_cub_split(
@@ -566,10 +676,14 @@ def _run_training_path(config, values, data_root, output_dir, runtime):
             optimizer.zero_grad(set_to_none=True)
             indices = torch.randperm(len(train_labels))[: int(config.batch_size)]
             labels = train_labels[indices].to(config.device)
-            features = torch.cat(
-                [train_cls[indices].to(config.device).float().unsqueeze(1),
-                 train_patches[indices].to(config.device).float()], dim=1,
-            )
+            cls_features = train_cls[indices].to(config.device).float()
+            if include_patches:
+                features = torch.cat(
+                    [cls_features.unsqueeze(1),
+                     train_patches[indices].to(config.device).float()], dim=1,
+                )
+            else:
+                features = cls_features
             output = model(features, is_train=True)
             losses = model.compute_loss(dict(output, batch_label=labels))
             loss_value = float(losses["loss"].detach().item())
@@ -581,9 +695,14 @@ def _run_training_path(config, values, data_root, output_dir, runtime):
             optimizer.step()
             epoch_loss += loss_value
         scheduler.step()
-        evaluated = runtime.evaluate_cached_v5(
-            model, config.device, test_cache, seen, unseen
-        )
+        if config.score_path == "global":
+            evaluated = _evaluate_global_cls_only(
+                model, config.device, test_cache, seen, unseen, torch
+            )
+        else:
+            evaluated = _evaluate_trained_with_finite_guard(
+                runtime, model, config.device, test_cache, seen, unseen
+            )
         metrics = _metric_dict(evaluated, epoch=epoch)
         runtime.log(
             f"epoch {epoch}/{boundaries[-1]} loss={epoch_loss/per_epoch:.4f} "

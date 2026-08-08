@@ -186,6 +186,32 @@ class V5ScorePathModelTest(unittest.TestCase):
         losses["loss"].backward()
         self.assertEqual(0.0, float(features.grad[:, 1:, :].abs().sum()))
 
+    def test_global_cls_only_logits_equal_canonical_global_logits(self):
+        candidate = build("global", seed=23)
+        reference = canonical(seed=23)
+        _, _, _, _, features, _ = fixture_inputs()
+        candidate.eval()
+        reference.eval()
+        with torch.no_grad():
+            cls_only = candidate(features[:, 0, :], is_train=False)
+            padded = candidate(features, is_train=False)
+            canonical_logits = reference(features, is_train=False)["global_logits"]
+        torch.testing.assert_close(cls_only["global_logits"], padded["global_logits"])
+        torch.testing.assert_close(cls_only["global_logits"], canonical_logits)
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is unavailable")
+    def test_all_four_score_paths_have_a_real_cuda_forward_smoke(self):
+        _, _, _, _, features, _ = fixture_inputs()
+        features = features.to("cuda")
+        for path in ("frozen_clip", "global", "local", "full"):
+            with self.subTest(path=path):
+                model = build(path).to("cuda").eval()
+                model_input = features[:, 0, :] if path == "global" else features
+                with torch.inference_mode():
+                    logits = model(model_input, is_train=False)["clip_S_pp"]
+                self.assertEqual("cuda", logits.device.type)
+                self.assertTrue(bool(torch.isfinite(logits).all().item()))
+
     def test_local_path_has_no_global_score_and_uses_patches_and_icsa(self):
         model = build("local")
         self.assertIsInstance(model, LocalScoreModel)
@@ -375,7 +401,30 @@ class V5ScorePathEntryTest(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            for key in module.TRAINED_REQUIRED_DATA_KEYS - module.FROZEN_REQUIRED_DATA_KEYS:
+            for key in module.PATCH_REQUIRED_DATA_KEYS - module.GLOBAL_REQUIRED_DATA_KEYS:
+                (data_root / files[key]["relative_path"]).unlink()
+            manifest_read_count = 0
+            original_read_bytes = Path.read_bytes
+
+            def tracked_read_bytes(path):
+                nonlocal manifest_read_count
+                if Path(path).resolve() == manifest_path.resolve():
+                    manifest_read_count += 1
+                return original_read_bytes(path)
+
+            with mock.patch.object(Path, "read_bytes", tracked_read_bytes):
+                global_identity = module._verify_data_manifest(
+                    manifest_path, data_root, "global"
+                )
+            self.assertEqual(1, manifest_read_count)
+            self.assertEqual(
+                module.GLOBAL_REQUIRED_DATA_KEYS,
+                set(global_identity["fingerprints"]),
+            )
+            with self.assertRaises(FileNotFoundError):
+                module._verify_data_manifest(manifest_path, data_root, "full")
+
+            for key in module.GLOBAL_REQUIRED_DATA_KEYS - module.FROZEN_REQUIRED_DATA_KEYS:
                 (data_root / files[key]["relative_path"]).unlink()
             frozen = module._verify_data_manifest(manifest_path, data_root, "frozen_clip")
             self.assertEqual(
@@ -386,9 +435,6 @@ class V5ScorePathEntryTest(unittest.TestCase):
                 frozen["manifest_sha256"],
             )
             self.assertTrue(all(path.is_absolute() for path in frozen["paths"].values()))
-            with self.assertRaises(FileNotFoundError):
-                module._verify_data_manifest(manifest_path, data_root, "full")
-
             victim = next(iter(module.FROZEN_REQUIRED_DATA_KEYS))
             (data_root / files[victim]["relative_path"]).write_bytes(b"tampered")
             with self.assertRaisesRegex(ValueError, "fingerprint"):
@@ -418,6 +464,137 @@ class V5ScorePathEntryTest(unittest.TestCase):
                 model, "cpu", cache, seen, unseen, torch, batch_size=1
             ),
         )
+
+    def test_frozen_and_trained_evaluators_reject_nan_and_inf_logits(self):
+        module = self._load_entry()
+        from tools.v5_evaluation import evaluate_cached_v5
+
+        class NonFiniteModel(nn.Module):
+            nclass = 2
+
+            def __init__(self, invalid):
+                super().__init__()
+                self.invalid = invalid
+                self.register_buffer("seenclass", torch.tensor([0]))
+                self.register_buffer("unseenclass", torch.tensor([1]))
+
+            def forward(self, features, is_train=False):
+                logits = torch.zeros(features.size(0), 2, device=features.device)
+                logits[0, 0] = self.invalid
+                return {"clip_S_pp": logits}
+
+        cls_only_cache = {
+            "seen_cls": torch.tensor([[1.0, 0.0]]),
+            "seen_labels": torch.tensor([0]),
+            "unseen_cls": torch.tensor([[0.0, 1.0]]),
+            "unseen_labels": torch.tensor([1]),
+        }
+        patch_cache = dict(
+            cls_only_cache,
+            seen_patches=torch.zeros(1, 576, 2),
+            unseen_patches=torch.zeros(1, 576, 2),
+        )
+        seen = torch.tensor([0])
+        unseen = torch.tensor([1])
+        runtime = SimpleNamespace(evaluate_cached_v5=evaluate_cached_v5, torch=torch)
+        for invalid in (float("nan"), float("inf")):
+            with self.subTest(path="frozen", invalid=invalid):
+                with self.assertRaises(FloatingPointError):
+                    module._evaluate_frozen_cls_only(
+                        NonFiniteModel(invalid),
+                        "cpu",
+                        cls_only_cache,
+                        seen,
+                        unseen,
+                        torch,
+                        batch_size=1,
+                    )
+            with self.subTest(path="trained", invalid=invalid):
+                with self.assertRaises(FloatingPointError):
+                    module._evaluate_trained_with_finite_guard(
+                        runtime,
+                        NonFiniteModel(invalid),
+                        "cpu",
+                        patch_cache,
+                        seen,
+                        unseen,
+                    )
+
+    def test_global_runtime_requires_and_loads_only_cls_data(self):
+        module = self._load_entry()
+        expected = module.FROZEN_REQUIRED_DATA_KEYS | {
+            "train_cls",
+            "train_labels",
+        }
+        patch_keys = {
+            "train_patches",
+            "test_seen_patches",
+            "test_unseen_patches",
+        }
+        with self.subTest(check="manifest dependencies"):
+            self.assertEqual(expected, module._required_data_keys("global"))
+            self.assertTrue(module._required_data_keys("global").isdisjoint(patch_keys))
+            training_source = inspect.getsource(module._run_training_path)
+            self.assertIn(
+                'include_patches = config.score_path in {"local", "full"}',
+                training_source,
+            )
+            self.assertIn("include_patches=include_patches", training_source)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = {
+                "train_cls": root / "train_cls.pt",
+                "train_labels": root / "train_labels.pt",
+                "test_seen_cls": root / "test_seen_cls.pt",
+                "test_seen_labels": root / "test_seen_labels.pt",
+                "test_unseen_cls": root / "test_unseen_cls.pt",
+                "test_unseen_labels": root / "test_unseen_labels.pt",
+            }
+            torch.save(torch.tensor([[1.0, 0.0], [0.0, 1.0]]), paths["train_cls"])
+            torch.save(torch.tensor([0, 1]), paths["train_labels"])
+            for split, label in (("seen", 0), ("unseen", 1)):
+                torch.save(
+                    torch.tensor([[1.0, 0.0]]) if split == "seen" else torch.tensor([[0.0, 1.0]]),
+                    paths[f"test_{split}_cls"],
+                )
+                torch.save(torch.tensor([label]), paths[f"test_{split}_labels"])
+
+            with self.subTest(check="cache loading"):
+                train_cls, train_patches, train_labels = module._load_training_cache(
+                    paths, 2, include_patches=False, torch_module=torch
+                )
+                test_cache = module._load_test_cache(
+                    paths, 2, include_patches=False, torch_module=torch
+                )
+                self.assertEqual((2, 2), tuple(train_cls.shape))
+                self.assertIsNone(train_patches)
+                self.assertEqual((2,), tuple(train_labels.shape))
+                self.assertNotIn("seen_patches", test_cache)
+                self.assertNotIn("unseen_patches", test_cache)
+
+            with self.subTest(check="global cls-only evaluation"):
+                config = make_config(score_path="global", num_class=2, dim_f_clip=2)
+                model = GlobalScoreModel(
+                    config,
+                    torch.tensor([0]),
+                    torch.tensor([1]),
+                    torch.tensor([[1.0, 0.0]]),
+                    torch.tensor([[0.0, 1.0]]),
+                    torch.tensor([[[1.0, 0.0]], [[0.0, 1.0]]])[:1],
+                )
+                self.assertEqual(
+                    (1.0, 1.0, 1.0, 1.0),
+                    module._evaluate_global_cls_only(
+                        model,
+                        "cpu",
+                        test_cache,
+                        torch.tensor([0]),
+                        torch.tensor([1]),
+                        torch,
+                        batch_size=1,
+                    ),
+                )
 
     def test_metrics_are_finite_parseable_and_written_atomically(self):
         module = self._load_entry()
