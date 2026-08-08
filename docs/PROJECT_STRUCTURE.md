@@ -122,8 +122,11 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
+| `docs/TECH_STACK_HISTORY.md` | 系统、界面、数据、模型和文档版本的技术演进记录。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
+| `docs/diagrams/archive/` | 已停止作为当前入口的历史页面；页面必须标明快照日期并回链当前入口。 |
+| `docs/tutorial/00_README.md` | GTPJ 代码教程唯一入口，说明教程对应的源码范围、阅读顺序和正式母版边界。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 
 ## `docs/workflow/`

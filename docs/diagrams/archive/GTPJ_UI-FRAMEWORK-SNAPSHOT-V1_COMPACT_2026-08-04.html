@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ 框架历史快照｜UI-FRAMEWORK-SNAPSHOT-V1</title>
+  <style>
+    :root { --ink:#19283a; --muted:#597087; --line:#8aa2b7; --blue:#e8f3ff; --green:#eaf8f1; --orange:#fff2df; --purple:#f3edff; --red:#fff0ef; --panel:#ffffff; --bg:#f4f8fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:"Microsoft YaHei","Segoe UI",Arial,sans-serif; }
+    header { padding:28px max(24px,calc((100vw - 1560px)/2)); background:linear-gradient(125deg,#142d47,#244d6b); color:#fff; }
+    h1 { margin:0; font-size:30px; letter-spacing:-.4px; }
+    header p { margin:8px 0 0; color:#d6e8f5; }
+    main { max-width:1600px; margin:22px auto 36px; padding:0 18px; }
+    .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+    .chip { border-radius:12px; padding:13px 16px; border:1px solid #d9e3eb; background:var(--panel); }
+    .chip b { display:block; font-size:15px; margin-bottom:4px; }
+    .chip small { color:var(--muted); line-height:1.5; }
+    .stable { border-left:5px solid #32936f; } .active { border-left:5px solid #367ec5; } .research { border-left:5px solid #ce7a42; }
+    .canvas { overflow-x:auto; border-radius:16px; box-shadow:0 10px 30px rgba(25,55,82,.10); background:#fff; }
+    svg { min-width:1200px; width:100%; height:auto; display:block; }
+    .lane { fill:#f8fbfd; stroke:#d7e4ed; stroke-width:1.5; }
+    .lane-title { font-size:18px; font-weight:700; fill:#36546d; }
+    .node { stroke-width:2; rx:14; ry:14; }
+    .n-blue { fill:var(--blue); stroke:#5a9dd4; } .n-green { fill:var(--green); stroke:#4da77d; } .n-orange { fill:var(--orange); stroke:#d99343; } .n-purple { fill:var(--purple); stroke:#9371cd; } .n-red { fill:var(--red); stroke:#d36c62; }
+    .title { font-size:18px; font-weight:700; fill:var(--ink); }
+    .sub { font-size:14px; fill:#486276; }
+    .tiny { font-size:12px; fill:#60778b; }
+    .flow { stroke:#5d7e96; stroke-width:3; fill:none; marker-end:url(#arrow); }
+    .aux { stroke:#8a6fc1; stroke-width:2.5; fill:none; stroke-dasharray:8 6; marker-end:url(#arrowPurple); }
+    .lossline { stroke:#c66f5d; stroke-width:2.5; fill:none; marker-end:url(#arrowRed); }
+    .note { font-size:14px; fill:#405c70; }
+    .legend { fill:#f7fafc; stroke:#d9e4ec; stroke-width:1.3; rx:10; }
+    @media (max-width:760px) { .summary { grid-template-columns:1fr; } h1 { font-size:24px; } header { padding:22px 18px; } }
+  </style>
+</head>
+<body>
+  <aside style="padding:12px 18px;background:#fff4d8;border-bottom:2px solid #d99343;color:#5f461f;line-height:1.6;">
+    <strong>历史快照：</strong>本页保存 2026-08-04 当时的框架说明，不再作为当前入口。
+    当前正式框架、母版和四类实验状态请打开
+    <a href="../GTPJ_FRAMEWORK_REGISTRY_UI-V3.html">UI-FRAMEWORK-REGISTRY-V3</a>。
+  </aside>
+  <header>
+    <h1>GTPJ 框架图历史快照</h1>
+    <p>UI-FRAMEWORK-SNAPSHOT-V1｜记录日期 2026-08-04｜保留当时的 v5 路径、“稳定参考”和“高分线索”。</p>
+  </header>
+  <main>
+    <section class="summary" aria-label="当前结论">
+      <div class="chip stable"><b>最稳参考：v3</b><small>已确认 H=74.47。它是判断新结果是否真正变好的基准。</small></div>
+      <div class="chip active"><b>当前在用：v5</b><small>后续调参从 v5 配置出发；5 次固定复跑平均 H=74.44。</small></div>
+      <div class="chip research"><b>最高单次：动态路由</b><small>H=75.11，但 5 次原样复跑平均 H=74.58，尚不能升级为稳定框架。</small></div>
+    </section>
+
+    <div class="canvas">
+      <svg viewBox="0 0 1800 1190" role="img" aria-labelledby="diagram-title diagram-desc">
+        <title id="diagram-title">GTPJ v5 当前模型框架和动态路由试验位置</title>
+        <desc id="diagram-desc">从图像和类别文本输入，经 CLIP、PSE、ICSA、FGVD、BVSA、分数融合，输出分类分数；下方显示训练目标和动态路由的可消融位置。</desc>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#5d7e96"/></marker>
+          <marker id="arrowPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8a6fc1"/></marker>
+          <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c66f5d"/></marker>
+        </defs>
+
+        <rect class="lane" x="25" y="30" width="1750" height="575" rx="18"/>
+        <text class="lane-title" x="54" y="68">主路径：从输入到最终分类分数</text>
+
+        <rect class="node n-blue" x="65" y="150" width="185" height="95"/>
+        <text class="title" x="92" y="185">图像输入</text><text class="sub" x="92" y="210">[B（图片/样本数）, 3, H, W]</text>
+        <rect class="node n-orange" x="65" y="365" width="185" height="95"/>
+        <text class="title" x="92" y="400">类别文本输入</text><text class="sub" x="92" y="425">C 个类别的文字原型</text>
+
+        <rect class="node n-blue" x="305" y="145" width="205" height="105"/>
+        <text class="title" x="338" y="182">冻结的 CLIP</text><text class="sub" x="338" y="207">视觉编码器</text><text class="tiny" x="338" y="230">输出 CLS 与 577 个图像块特征</text>
+        <rect class="node n-orange" x="305" y="360" width="205" height="105"/>
+        <text class="title" x="337" y="397">PSE 文本适配</text><text class="sub" x="337" y="422">先调整已见类别文本</text><text class="tiny" x="337" y="445">输出 all_text [C（类别数）,768]</text>
+
+        <rect class="node n-green" x="570" y="105" width="215" height="100"/>
+        <text class="title" x="602" y="142">CLS 视觉特征</text><text class="sub" x="602" y="168">[B（样本数）,768]</text>
+        <rect class="node n-green" x="570" y="245" width="215" height="100"/>
+        <text class="title" x="602" y="282">图像块特征</text><text class="sub" x="602" y="308">[B（样本数）,577,768]</text>
+        <rect class="node n-purple" x="570" y="410" width="215" height="90"/>
+        <text class="title" x="602" y="446">共享文本原型</text><text class="sub" x="602" y="470">all_text</text>
+
+        <rect class="node n-green" x="850" y="225" width="205" height="110"/>
+        <text class="title" x="881" y="262">FGVD</text><text class="sub" x="881" y="287">挑出 K=32 个关键图像块</text><text class="tiny" x="881" y="310">再形成局部视觉记忆</text>
+        <rect class="node n-purple" x="850" y="410" width="205" height="105"/>
+        <text class="title" x="881" y="447">ICSA</text><text class="sub" x="881" y="472">用当前图像微调已见文本</text><text class="tiny" x="881" y="495">不改类别、划分和评测规则</text>
+
+        <rect class="node n-green" x="1115" y="225" width="205" height="110"/>
+        <text class="title" x="1145" y="262">局部视觉记忆</text><text class="sub" x="1145" y="287">[B（样本数）,K（关键块数）,512]</text>
+        <rect class="node n-purple" x="1115" y="410" width="205" height="105"/>
+        <text class="title" x="1145" y="447">条件文本</text><text class="sub" x="1145" y="472">all_text_cond</text><text class="tiny" x="1145" y="495">[B（样本数）,C（类别数）,768]</text>
+
+        <rect class="node n-blue" x="1115" y="70" width="205" height="100"/>
+        <text class="title" x="1145" y="107">全局分数</text><text class="sub" x="1145" y="132">CLS × 条件文本</text><text class="tiny" x="1145" y="154">S_global [B（样本数）,C（类别数）]</text>
+        <rect class="node n-blue" x="1380" y="225" width="205" height="110"/>
+        <text class="title" x="1410" y="262">BVSA 局部分支</text><text class="sub" x="1410" y="287">图像块记忆 × 条件文本</text><text class="tiny" x="1410" y="310">S_local [B（样本数）,C（类别数）]</text>
+        <rect class="node n-green" x="1640" y="225" width="110" height="110"/>
+        <text class="title" x="1661" y="262">融合</text><text class="tiny" x="1655" y="286">S_final</text><text class="tiny" x="1652" y="307">最终 logits</text>
+
+        <line class="flow" x1="250" y1="197" x2="305" y2="197"/>
+        <line class="flow" x1="510" y1="182" x2="570" y2="155"/>
+        <line class="flow" x1="510" y1="205" x2="570" y2="295"/>
+        <line class="flow" x1="250" y1="412" x2="305" y2="412"/>
+        <line class="flow" x1="510" y1="412" x2="570" y2="455"/>
+        <line class="flow" x1="785" y1="295" x2="850" y2="280"/>
+        <line class="flow" x1="785" y1="155" x2="850" y2="440"/>
+        <line class="flow" x1="785" y1="455" x2="850" y2="455"/>
+        <line class="flow" x1="1055" y1="280" x2="1115" y2="280"/>
+        <line class="flow" x1="1055" y1="455" x2="1115" y2="455"/>
+        <line class="flow" x1="785" y1="150" x2="1115" y2="120"/>
+        <line class="flow" x1="1217" y1="410" x2="1217" y2="170"/>
+        <line class="flow" x1="1320" y1="280" x2="1380" y2="280"/>
+        <line class="flow" x1="1320" y1="455" x2="1380" y2="315"/>
+        <line class="flow" x1="1320" y1="120" x2="1640" y2="255"/>
+        <line class="flow" x1="1585" y1="280" x2="1640" y2="300"/>
+
+        <rect x="55" y="635" width="1690" height="180" rx="18" fill="#faf8ff" stroke="#d8c9f2" stroke-width="1.5"/>
+        <text class="lane-title" x="82" y="675">研究分支：动态路由试验（不是当前稳定框架）</text>
+        <text class="note" x="82" y="705">它只给 v5 已有的数值“自动调节大小”，不改数据划分、类别顺序、分数计算或最终分数形状。</text>
+        <rect class="node n-purple" x="145" y="730" width="220" height="58"/><text class="title" x="181" y="765">PSE 门控</text><text class="tiny" x="262" y="765">文本残差强度</text>
+        <rect class="node n-purple" x="520" y="730" width="220" height="58"/><text class="title" x="552" y="765">ICSA 门控</text><text class="tiny" x="642" y="765">条件注入强度</text>
+        <rect class="node n-purple" x="895" y="730" width="250" height="58"/><text class="title" x="924" y="765">方向门控</text><text class="tiny" x="1024" y="765">BVSA 两条方向的混合</text>
+        <rect class="node n-purple" x="1305" y="730" width="250" height="58"/><text class="title" x="1333" y="765">局部门控</text><text class="tiny" x="1434" y="765">全局/局部分数混合</text>
+        <line class="aux" x1="255" y1="730" x2="670" y2="500"/>
+        <line class="aux" x1="630" y1="730" x2="950" y2="515"/>
+        <line class="aux" x1="1020" y1="730" x2="1475" y2="335"/>
+        <line class="aux" x1="1430" y1="730" x2="1685" y2="335"/>
+        <text class="tiny" x="1600" y="755">最高单次 H=75.11</text><text class="tiny" x="1600" y="778">5 次原样复跑未恢复</text>
+
+        <rect class="lane" x="25" y="845" width="1750" height="275" rx="18"/>
+        <text class="lane-title" x="54" y="883">训练与评测：各模块分别提供什么证据</text>
+        <rect class="node n-red" x="90" y="930" width="290" height="100"/>
+        <text class="title" x="120" y="965">分类训练目标</text><text class="sub" x="120" y="990">输入：最终 logits + 已见类别标签</text><text class="tiny" x="120" y="1013">保证训练时分类方向正确</text>
+        <rect class="node n-red" x="485" y="930" width="300" height="100"/>
+        <text class="title" x="515" y="965">全局/局部一致性目标</text><text class="sub" x="515" y="990">输入：S_global 与 S_local</text><text class="tiny" x="515" y="1013">约束两个分支不要互相打架</text>
+        <rect class="node n-red" x="895" y="930" width="330" height="100"/>
+        <text class="title" x="925" y="965">SGMP 辅助训练目标</text><text class="sub" x="925" y="990">输入：局部视觉记忆 + 条件文本</text><text class="tiny" x="925" y="1013">遮挡预测与负样本抑制</text>
+        <rect class="node n-green" x="1340" y="930" width="335" height="100"/>
+        <text class="title" x="1370" y="965">GZSL 评测输出</text><text class="sub" x="1370" y="990">输入：最终 logits；输出 U、S、H</text><text class="tiny" x="1370" y="1013">以及 ZS；类别划分和算法保持不变</text>
+        <polyline class="lossline" points="1695,335 1725,335 1725,905 1505,905 1505,930"/>
+        <polyline class="lossline" points="1585,280 1600,280 1600,885 635,885 635,930"/>
+        <polyline class="lossline" points="1217,335 1217,855 1060,855 1060,930"/>
+
+        <rect class="legend" x="60" y="1055" width="1680" height="45"/>
+        <text class="title" x="85" y="1084">图例 / 读图方式</text>
+        <line class="flow" x1="270" y1="1078" x2="330" y2="1078"/><text class="tiny" x="345" y="1083">实线：当前 v5 的数据流</text>
+        <line class="aux" x1="575" y1="1078" x2="635" y2="1078"/><text class="tiny" x="650" y="1083">虚线：仅在动态路由试验打开时使用</text>
+        <line class="lossline" x1="1040" y1="1078" x2="1100" y2="1078"/><text class="tiny" x="1115" y="1083">红线：训练目标读取的输入</text>
+        <text class="tiny" x="1460" y="1083">蓝/绿/橙/紫：图像、局部记忆、文本、条件适配</text>
+      </svg>
+    </div>
+  </main>
+</body>
+</html>
