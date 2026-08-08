@@ -6,7 +6,7 @@
 |---|---:|---|
 | 调参 | 1 | `tune/INDEX.md` |
 | 消融 | 1 | `ablation/INDEX.md` |
-| 创新 | 1 | `innovation/INDEX.md` |
+| 创新 | 2 | `innovation/INDEX.md` |
 | 确认 | 0 | `confirmation/INDEX.md` |
 
 ## 调参实验
@@ -19,13 +19,14 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| `V5-ABLATION-001` | planned | 局部分支以及局部权重对结果到底有多大作用 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` | `codex/attempt019-local-ablation#ATTEMPT-019` | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | - |
+| `V5-ABLATION-001` | completed | 完整 V5 与彻底移除 FGVD/BVSA/SGMP 及局部损失后的性能差多少；三种子平均 H 差值 `+0.08`，strict-3 已通过 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` | `codex/attempt019-local-ablation#ATTEMPT-019` | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | - |
 
 ## 创新实验
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
 | `V5-INNOVATION-001` | candidate | 动态残差路由是否值得成为新框架 | `experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md` | `IDEA-0003/TRIAL-001/ATTEMPT-001..018` | `experiments/v5/innovation/INNOVATION-001_dynamic_routing` | - |
+| `V5-INNOVATION-002` | planned | 对齐全局与局部分数的温度尺度后，局部分支是否产生稳定且有意义的增益 | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion` | - |
 
 ## 确认实验
 

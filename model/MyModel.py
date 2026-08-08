@@ -18,10 +18,43 @@ Interface contract:
 - is_train=False -> logits shape [B, num_class].
 """
 
+import math
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+LEGACY_FUSION_MODE = "legacy"
+SCALE_CONSISTENT_FUSION_MODE = "scale_consistent"
+FORMAL_SCALE_FUSION_BETA = 0.05
+
+
+def validate_fusion_settings(fusion_mode, fusion_beta):
+    if fusion_mode not in (LEGACY_FUSION_MODE, SCALE_CONSISTENT_FUSION_MODE):
+        raise ValueError(f"Unknown fusion_mode: {fusion_mode!r}.")
+    try:
+        beta = float(fusion_beta)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"fusion_beta must be a positive finite number: {fusion_beta!r}.") from error
+    if not math.isfinite(beta) or beta <= 0:
+        raise ValueError(f"fusion_beta must be a positive finite number: {fusion_beta!r}.")
+
+
+def fuse_global_local_logits(
+    global_logits,
+    local_logits,
+    *,
+    logit_scale,
+    fusion_mode=LEGACY_FUSION_MODE,
+    fusion_beta=FORMAL_SCALE_FUSION_BETA,
+):
+    validate_fusion_settings(fusion_mode, fusion_beta)
+    if fusion_mode == LEGACY_FUSION_MODE:
+        return global_logits + 0.2 * local_logits
+    if fusion_mode == SCALE_CONSISTENT_FUSION_MODE:
+        return global_logits + fusion_beta * logit_scale * local_logits
 
 
 def _gaussian_kernel_1d(length, sigma):
@@ -380,6 +413,13 @@ class GTPJ(nn.Module):
         self.local_weight = 0.2
         if str(config.score_mode) != "add":
             raise ValueError("V5 clean template requires score_mode='add'.")
+        self.fusion_mode = str(
+            getattr(config, "fusion_mode", LEGACY_FUSION_MODE)
+        )
+        self.fusion_beta = float(
+            getattr(config, "fusion_beta", FORMAL_SCALE_FUSION_BETA)
+        )
+        validate_fusion_settings(self.fusion_mode, self.fusion_beta)
 
         self.bvsa_module = BidirectionalVisualSemanticAlignment(
             dim_f=self.dim_f,
@@ -585,6 +625,14 @@ class GTPJ(nn.Module):
         )
         local_logits = bvsa_out["local_score"]
         final_logits = global_logits + 0.2 * local_logits
+        if self.fusion_mode == SCALE_CONSISTENT_FUSION_MODE:
+            final_logits = fuse_global_local_logits(
+                global_logits,
+                local_logits,
+                logit_scale=logit_scale,
+                fusion_mode=self.fusion_mode,
+                fusion_beta=self.fusion_beta,
+            )
 
         if is_train:
             logits = final_logits[:, self.seenclass.to(final_logits.device)]

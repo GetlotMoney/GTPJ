@@ -2,13 +2,31 @@ schema_version: gtpj.experiment.v1
 experiment_id: V5-ABLATION-001
 framework_id: FRAMEWORK-V5
 kind: ablation
-base_identity_kind: pending_clean_template
-base_template_id: none
-base_template_tag: none
-base_template_commit: none
-template_registry_commit: none
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 7da3c72a060510ad35dd66d839cbe22569b3d8cf
 historical_code_ref: codex/attempt019-local-ablation#ATTEMPT-019@954851b0d2dfd2d23f1efca10ba1bf142b3a6d68
-template_binding_status: blocked_pending_clean_template
-experiment_branch: none
+template_binding_status: ready
+experiment_branch: exp/v5/ablation/ablation-001-local-branch-effect
 legacy_ref: codex/attempt019-local-ablation#ATTEMPT-019
-status: planned
+status: completed
+result_review_status: strict_3_pass
+research_question: 彻底移除局部子系统后，V5 的 CUB GZSL 分类性能变化多大
+disabled_subsystem:
+  - FGVD
+  - BVSA
+  - SGMP
+  - local_fusion
+  - local_dependent_losses
+preserved_subsystem:
+  - PSE
+  - ICSA
+  - global_cosine_score
+  - CE
+  - topology
+formal_evidence: true
+workflow_mode: server_frozen_runner
+review_tier: strict-3
+implementation_status: formal_runs_completed_and_reviewed

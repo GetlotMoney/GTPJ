@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V5-INNOVATION-002 尺度一致融合框架图</title>
+  <style>
+    :root { color-scheme: light; --ink: #172033; --muted: #60708b; --line: #9aabc4; --base: #eef3fa; --legacy: #f7f1e4; --new: #e9f7ef; --accent: #16794b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 36px 22px 54px; color: var(--ink); background: #f8fafc; font: 16px/1.65 "Microsoft YaHei", "PingFang SC", sans-serif; }
+    main { max-width: 1180px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(25px, 4vw, 38px); }
+    .lead { margin: 0 0 28px; color: var(--muted); }
+    .flow { display: grid; grid-template-columns: 1fr 44px 1.15fr 44px 1.45fr 44px 1fr; gap: 10px; align-items: center; }
+    .node, .stack { border: 1px solid #cad5e4; border-radius: 14px; background: white; box-shadow: 0 8px 24px rgba(31, 49, 80, .07); }
+    .node { padding: 18px; text-align: center; }
+    .base { background: var(--base); }
+    .stack { padding: 12px; display: grid; gap: 10px; }
+    .arrow { color: var(--line); text-align: center; font-size: 31px; font-weight: 700; }
+    .choice { padding: 17px; }
+    .formula { padding: 16px; border-radius: 11px; border: 1px solid #d5deea; }
+    .formula strong { display: block; margin-bottom: 6px; }
+    .legacy { background: var(--legacy); }
+    .new { background: var(--new); border-color: #9bc9ad; }
+    .new strong { color: var(--accent); }
+    code { font-family: Consolas, "SFMono-Regular", monospace; font-size: .91em; overflow-wrap: anywhere; }
+    .note { margin-top: 28px; padding: 18px 20px; border-left: 4px solid var(--accent); background: white; border-radius: 0 12px 12px 0; }
+    .legend { margin-top: 20px; color: var(--muted); }
+    @media (max-width: 900px) {
+      .flow { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>V5-INNOVATION-002：尺度一致的局部融合</h1>
+  <p class="lead">只改最终融合公式；V5 特征路径、训练和评估口径保持不变。</p>
+  <section class="flow" aria-label="尺度一致融合流程图">
+    <div class="node base"><strong>图像与类别文本</strong><br>进入 V5 冻结母版特征路径</div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="stack base">
+      <div class="node"><strong>global_logits</strong><br>全局余弦 × logit_scale</div>
+      <div class="node"><strong>local_logits</strong><br>BVSA 局部余弦</div>
+      <div class="node"><strong>logit_scale</strong><br><code>clamp(exp(raw), max=100)</code></div>
+    </div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="stack choice">
+      <div class="node"><strong>fusion_mode 选择公式</strong></div>
+      <div class="formula legacy"><strong>legacy（原样保留）</strong><code>global + 0.2 × local</code></div>
+      <div class="formula new"><strong>scale_consistent（唯一新机制）</strong><code>global + 0.05 × logit_scale × local</code></div>
+    </div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="stack">
+      <div class="node"><strong>训练</strong><br>只取 seen 类列</div>
+      <div class="node"><strong>评估</strong><br>保留完整类别列</div>
+      <div class="node"><strong>输出</strong><br>U / S / H / ZS</div>
+    </div>
+  </section>
+  <div class="note"><strong>判断办法：</strong>先做 seed 5 的三组配对；Stage1 全部门槛通过后，才继续 seed 17 和 29。任何 RUN 目录都不允许覆盖。</div>
+  <p class="legend">继承模块：CLIP、PSE、ICSA、BVSA、FGVD、SGMP。它们不是本实验的新创意。</p>
+</main>
+</body>
+</html>

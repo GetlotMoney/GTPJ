@@ -292,6 +292,65 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0004",
+      "idea_dir": "idea_tree/ideas/IDEA-0004_scale_consistent_fusion/",
+      "title": "Scale-Consistent Local Fusion",
+      "status": "selected",
+      "source_type": "observation",
+      "source_ref": "model/v5-template-v1:model/MyModel.py score-scale audit",
+      "source_status": "local_heuristic",
+      "global_score": 0,
+      "core_summary": "让局部分数先乘上与全局分数相同的 CLIP 温度尺度，再做固定系数融合，检验旧融合是否因为量级不一致而压低了局部分支的作用。",
+      "version_scores": {
+        "v5": {
+          "score": 0,
+          "applicability": "direct",
+          "stage": "selected",
+          "rationale": "V5 的全局余弦分数乘了 logit_scale，局部余弦分数没有乘同一尺度，却直接用固定 0.2 相加；已完成的 V5-ABLATION-001 又显示局部分支对 H 的平均增益很小，因此先做一次只改最终融合尺度的可证伪实验。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "GTPJ-v5 global cosine score",
+        "BVSA local_score",
+        "CLIP logit_scale"
+      ],
+      "target_component": "model/MyModel.py final global/local logit fusion",
+      "hypothesis": "如果局部分支的微小消融增益主要来自全局分数与局部分数的量级不一致，那么把局部分数乘上同一个 logit_scale 后再以固定 beta=0.05 融合，应当在同 seed 配对实验中稳定提高 H；如果门槛未通过，就停止把这条融合路线当作当前论文主线。",
+      "expected_effect": {
+        "U": "希望不低于 legacy 均值 0.30 个百分点以上；具体方向必须由实验决定。",
+        "S": "希望不低于 legacy 均值 0.30 个百分点以上；具体方向必须由实验决定。",
+        "H": "第一阶段要求三组同 seed 配对差值都为正、平均至少提高 0.50，并且 scale-consistent 的最小 H 高于 legacy 的最大 H。"
+      },
+      "implementation_scope": "只在实验分支增加 fusion_mode 和 fusion_beta，并让 scale_consistent 路径使用 global_logits + 0.05 * logit_scale * local_logits；legacy 路径原样保留，不改数据划分、类别顺序、损失、优化器、评估口径或继承模块。",
+      "risk": "放大局部分数可能同时放大噪声，logit_scale 在训练中变化也可能造成不稳定；seed 5 的三次重复只能先检查运行重复性，必须通过预先写死的门槛后才运行 seed 17 和 29。",
+      "compatibility": "fusion_mode=legacy 时继续执行原公式 global_logits + 0.2 * local_logits；旧配置未提供新字段时也默认走 legacy。",
+      "transfer_notes": "只有配对结果通过预先写死的门槛，才考虑把尺度一致融合迁移到后续框架；不能把 PSE、ICSA、FAE、BVSA、FGVD 或 SGMP 说成本 idea 的新创意。",
+      "priority": 0,
+      "linked_trials": [],
+      "linked_versions": [
+        "v5"
+      ],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-002_scale_consistent_fusion"
+      ],
+      "evidence": [
+        {
+          "type": "frozen_code",
+          "ref": "model/v5-template-v1:model/MyModel.py",
+          "note": "冻结母版中 global_logits 乘了 clamp(exp(logit_scale), max=100)，local_logits 没有乘同一尺度，最终使用 global_logits + 0.2 * local_logits。"
+        },
+        {
+          "type": "completed_ablation",
+          "ref": "main@4f29e99bb1a940afa66bb66f8150c379c2d0af7f:experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md",
+          "note": "V5-ABLATION-001 已完成并复核：三个同 seed 的局部分支 H 差值为 +0.25/-0.09/+0.09，均值 +0.08，说明需要先检验分数量级假设，不能直接把局部分支写成稳定贡献。"
+        }
+      ]
     }
   ]
 }

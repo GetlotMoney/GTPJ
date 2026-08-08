@@ -86,6 +86,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
 | `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
+| `train_V5_INNOVATION_002_CUB.py` | V5 尺度一致融合创新的专用 CUB 入口；固定四个显式参数，在创建 RUN 前强制检查干净工作区、14 GiB 可用内存、非有限数和覆盖风险。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 
@@ -123,8 +124,10 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
+| `docs/superpowers/plans/<日期>-<主题>.md` | 需要跨分支、占用 GPU 或影响正式结论的任务计划，记录已核实事实、最小方案、验收和回退。 |
 
 ## `docs/workflow/`
 
@@ -220,6 +223,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+| `tools/v5_innovation_002_runtime.py` | 尺度一致融合创新的运行边界：锁定模式、beta、种子、RUN 编号与不可覆盖目录。 |
 
 注意：
 
