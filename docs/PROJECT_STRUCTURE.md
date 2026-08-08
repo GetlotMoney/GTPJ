@@ -279,6 +279,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
+| `experiments/v5/tune/TUNE-004_sgmp_topk/` | `V5-TUNE-004`，V5 SGMP top-k 纯配置调参；保存 4 个待跑 RUN 的冻结配置、参数表和服务器计划，不保存预跑结果。 |
 
 ### `experiments/templates/`
 
