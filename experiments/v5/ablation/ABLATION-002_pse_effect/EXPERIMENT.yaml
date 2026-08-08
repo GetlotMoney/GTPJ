@@ -29,7 +29,6 @@ preserved_subsystem:
   - negative_semantic
 formal_evidence: true
 not_confirmation_evidence: true
-workflow_mode: direct_server_run
+workflow_mode: server_detached_role_only
 review_tier: strict-3
 implementation_status: strict3_fixes_applied_pending_recheck
-campaign_preparation_review: machine_check_only
