@@ -25,6 +25,7 @@ Project: GTPJ
 | `V3-CONFIRM-001` | `FRAMEWORK-V3` | confirmation | completed | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | `RUN-20260629-1722` |
 | `V3-INNOVATION-001` | `FRAMEWORK-V3` | innovation | legacy_owner_activated | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa` | `TRIAL-003 -> FRAMEWORK-V5；历史 owner 激活` |
 | `V5-ABLATION-001` | `FRAMEWORK-V5` | ablation | planned | `experiments/v5/ablation/ABLATION-001_local_branch_effect` | `ATTEMPT-019 / DR-001..015` |
+| `V5-ABLATION-004` | `FRAMEWORK-V5` | ablation | pre_run_gated | `experiments/v5/ablation/ABLATION-004_fgvd_geometry_effect` | `FGVD 几何编码旁路，seed 5/17 各两次` |
 | `V5-TUNE-001` | `FRAMEWORK-V5` | tune | completed | `experiments/v5/tune/TUNE-001_dynamic_routing_search` | `ATTEMPT-006 / DR-003..010，8 个真实任务` |
 | `V5-INNOVATION-001` | `FRAMEWORK-V5` | innovation | candidate | `experiments/v5/innovation/INNOVATION-001_dynamic_routing` | `ATTEMPT-006 / DR-001..002 已逐任务恢复；其余见 LEGACY_ATTEMPT_MAP.md` |
 
