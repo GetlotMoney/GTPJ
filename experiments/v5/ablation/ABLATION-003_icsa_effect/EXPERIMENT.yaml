@@ -1,0 +1,33 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-003
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/ablation/ablation-003-icsa-effect
+legacy_ref: none
+status: planned
+research_question: 在不改变数据、评估、局部分支、损失项和其余 V5 配置的前提下，ICSA 是否带来稳定的 CUB GZSL 指标增益
+disabled_subsystem:
+  - ICSA
+preserved_subsystem:
+  - PSE
+  - FGVD
+  - BVSA
+  - SGMP
+  - local_fusion
+  - CE
+  - consistency
+  - topology
+  - BMDD
+  - MPP
+  - negative_semantic
+formal_evidence: true
+workflow_mode: server_detached_role_only
+review_tier: strict-3
+implementation_status: code_candidate_validated_pending_strict3
