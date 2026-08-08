@@ -1,95 +1,52 @@
 # GTPJ
 
-## Current Active Version
+## 先看这里
+
+`main` 是项目总账：记录正式框架、模板身份、实验参数和结果，不在这里直接改模型或启动训练。
+
+正式代码与实验起点分开保存：
 
 ```text
-name: GTPJ-v5
-code_tag: v5
-status: owner_activated_provisional
-best_observed_H: 74.54
-confirmed_H: 74.44
-source: TRIAL-003 main100 trial003-main100-069
-active_main_update: activated
-future_tuning_base: config/versions/v5.yaml
+正式框架历史代码：framework/v1、framework/v2、framework/v3、framework/v5
+V5 冻结模板：framework/v5-template-v1
+V5 冻结模板 Tag：model/v5-template-v1
+新实验分支：exp/v5/<tune|ablation|innovation|confirmation>/<实验名>
 ```
 
-`GTPJ-v5` is the active mainline selected by the owner on 2026-06-30. It activates the TRIAL-003 conditional BVSA text path, so `all_text_cond [B, C, 768]` enters BVSA, including the cross/local_score branch.
-
-The stronger confirmed reference remains `GTPJ-v4 / tag v4 / confirmed_H=74.45`. v5 is active for the next tuning round, but its frozen-repeat mean is `74.44`, so it is not a stronger confirmed-baseline claim over v4.
-
-## Versions
-
-| Version | Code tag | Status | Dataset | Note |
-|---|---|---|---|---|
-| `GTPJ-v1` | `v1` | confirmed | CUB GZSL | First formal baseline, seed=5, H=73.93. |
-| `GTPJ-v2` | `v2` | owner activated, needs confirmation | CUB GZSL | CLIP-A-self text prototype adapter, best_observed_H=74.29. |
-| `GTPJ-v3` | `v3` | owner accepted stochastic, needs confirmation | CUB GZSL | Strict conditional FAE-memory JEPA, best_observed_H=74.27. |
-| `GTPJ-v4` | `v4` | confirmed formal reference | CUB GZSL | min3-confirmed `local-v3-054`, confirmed_H=74.45, best_observed_H=74.47. |
-| `GTPJ-v5` | `v5` | owner activated provisional active mainline | CUB GZSL | TRIAL-003 conditional BVSA text, best_observed_H=74.54, repeat mean H=74.44. |
-
-Version tree:
-
-```text
-v1
-`-- v2 = parent v1 + IDEA-0001/TRIAL-001 CLIP-A-self / PSE
-    `-- v3 = parent v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA
-        `-- v4 = parent v3 + local-v3-054 min3-confirmed tuned config
-            `-- v5 = parent v4 + TRIAL-003 conditional BVSA text active mainline
-```
-
-`main` stores the current active code plus all historical governance ledgers. `v1` to `v5` are Git tags, not long-running branches.
-
-## Current Mainline Config
-
-```text
-config/GTPJ_cub_gzsl.yaml -> identical to config/versions/v5.yaml
-```
-
-Key v5 parameters:
-
-```text
-bvsa_text_mode: conditional
-sgmp_text_mode: conditional
-jepa_text_mode: conditional
-pse_outer_ratio: 0.65
-clip_a_self_outer_ratio: 0.65
-local_weight: 0.2
-```
-
-Default CUB run:
+新实验必须从冻结模板开始，而不是从 `main` 或另一项实验接着改：
 
 ```bash
-conda run -n dvsr_gpu python train_GTPJ_CUB.py --config config/versions/v5.yaml
+git fetch --tags origin
+git switch -c exp/v5/ablation/ABLATION-002_pse-effect model/v5-template-v1
 ```
 
-## Repository Layout
+## 当前正式框架
 
-```text
-model/                  model code
-tools/                  dataset, feature, and evaluation helpers
-config/versions/        frozen version configs
-experiments/            lightweight version and trial ledgers
-docs/                   governance, workflow, and project status
-workflow/               structural helper CLI
-idea_tree/              idea source and version applicability records
-```
+| 框架 | 历史来源 | 代码引用 | 状态 |
+|---|---|---|---|
+| `FRAMEWORK-V1` | 初始正式框架 | `framework/v1` / `v1` | 历史正式框架 |
+| `FRAMEWORK-V2` | 从 V1 演变 | `framework/v2` / `v2` | 历史正式框架 |
+| `FRAMEWORK-V3` | 从 V2 演变 | `framework/v3` / `v3` | 历史正式框架 |
+| `FRAMEWORK-V5` | 从 V3 演变 | `framework/v5` / `v5` | 当前研究框架 |
 
-Large datasets, raw logs, receipts, checkpoints, generated figures, and feature caches stay outside GitHub in Warehouse or local runtime storage.
+`v4` 只是历史配置 Tag，不是独立正式框架。
 
-## Governance Commands
+## V5 当前事实
 
-```bash
-python workflow/gtpj_workflow.py status
-python workflow/gtpj_workflow.py validate
-python workflow/gtpj_workflow.py audit-boundary
-python workflow/gtpj_workflow.py validate-remote
-```
+- 冻结模板：`MODEL-V5-TEMPLATE-V1`；
+- 模板提交：`2f5fa5e631ef82658d4bac587cdfd17f3534cb35`；
+- 当前模板 Tag：`model/v5-template-v1`；
+- V5 局部分支消融：完整 V5 的平均 H 为 `74.11`，去掉整套局部分支后为 `74.03`，平均差值 `+0.08`；不能把局部分支写成稳定的主性能增益。
 
-Priority docs:
+详细入口：
 
-- `docs/PROJECT_STATUS.md`
-- `experiments/v5/VERSION.md`
-- `experiments/VERSION_TREE.md`
-- `experiments/EXPERIMENT_REGISTRY.md`
-- `docs/workflow/README.md`
-- `docs/workflow/runbook.md`
+- [正式框架关系](experiments/FRAMEWORK_TREE.md)
+- [V5 身份与模板](experiments/v5/framework.yaml)
+- [V5 实验总览](experiments/v5/EXPERIMENTS.md)
+- [V5-ABLATION-001 结果](experiments/v5/ablation/ABLATION-001_local_branch_effect/result.md)
+
+## GitHub 边界
+
+GitHub 保存轻量、可追溯的内容：代码、配置、参数表、结果、数据身份和外部证据索引。
+
+原始日志、checkpoint、特征缓存、数据集和服务器运行目录不进入 GitHub；它们只保留在 Warehouse，并由参数表中的路径、哈希和运行编号回查。

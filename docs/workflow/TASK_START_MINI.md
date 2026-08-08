@@ -31,7 +31,7 @@ next_action:
 | `owner_phrase` | owner 的原始口令，例如 `开新模块`、`复现`、`试这个：...`。 |
 | `task_type` | Coordinator 路由后的任务类型。 |
 | `base_version` | 默认当前 active baseline；只有 owner 明确指定时才改历史版本。 |
-| `target` | 本次目标，例如 baseline、参数、idea、trial 或候选列表。 |
+| `target` | 本次目标，例如 baseline、参数、idea、创新候选或候选列表。 |
 | `writes` | 本次会写哪里；只读任务写 `none`。 |
 | `agent_mode` | `role_only` 或 `real_multi_agent`，附一句为什么。 |
 | `gates` | 本次真正相关的硬门，只列会影响开工的门。 |
@@ -60,13 +60,13 @@ stop_if
 
 ```yaml
 owner_phrase: 开新模块
-task_type: innovation / module trial
+task_type: innovation candidate
 base_version: current active baseline
 target: next selected ready idea
-writes: idea_tree + experiments/module_trials + Warehouse after run
+writes: idea_tree + experiments/vX/innovation + Warehouse after run
 agent_mode: real_multi_agent, because new module code changes require Review 0-3
-gates: source_status, interface_contract, innovation_code_review, artifact_boundary
-next_action: read active version idea view and select the highest-priority ready idea
+gates: source_status, interface_contract, innovation_code_review, candidate_freeze, artifact_boundary
+next_action: read active version idea view, select the highest-priority ready idea, then create and freeze Vx-INNOVATION candidate
 ```
 
 ### 复现
@@ -86,7 +86,7 @@ next_action: run repro-status, then decide quick_local vs formal confirmation ta
 
 ```yaml
 owner_phrase: 试这个：把 <机制> 接到 <位置>
-task_type: local heuristic idea or innovation / module trial
+task_type: local heuristic idea or innovation candidate
 base_version: current active baseline
 target: owner-supplied mechanism
 writes: Research/idea_tree only if owner asks to register; no code until ready

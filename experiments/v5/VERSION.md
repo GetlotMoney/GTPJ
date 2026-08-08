@@ -5,17 +5,21 @@ version: v5
 baseline_name: GTPJ-v5
 status: owner_activated_provisional
 code_tag: v5
-parent_version: v4
-parent_tag: v4
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
+source_tag: v3
+promoted_from_experiment: V3-INNOVATION-001
 change_type: combo
 based_on_trial: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text
-source_experiment: RUN-20260630-0002-trial003-main100-2gpu
+source_run: RUN-20260630-0002-trial003-main100-2gpu
 source_candidate: trial003-main100-069
 source_run_commit: 4b259379d99c1a791442ea9e2fac0bb22b2411a9
 implementation_source: dev/v3-idea-0002-trial-003-conditional-bvsa-text@4b259379d99c1a791442ea9e2fac0bb22b2411a9
 ledger_source: main owner activation on 2026-06-30
 code_source: TRIAL-003 conditional BVSA text implementation + trial003-main100-069 config
 config: experiments/v5/config.yaml
+framework_diagram: experiments/v5/framework_diagram.md
+module_glossary: experiments/v5/MODULES.md
 baseline_evidence: experiments/v5/baseline/
 evidence_level: confirmation_grade
 best_observed_H: 74.54
@@ -23,7 +27,7 @@ confirmed_H: 74.44
 confirmation_status: owner_activated_provisional
 active_main_update: activated
 owner_decision_date: 2026-06-30
-owner_decision: make the best TRIAL-003 conditional BVSA text candidate the active mainline for future tuning, while keeping v4 as the stronger confirmed reference.
+owner_decision: make the best TRIAL-003 conditional BVSA text candidate the active mainline for future tuning, while keeping v3/CONFIRM-001 local-v3-054 as the stronger confirmed reference.
 ```
 
 ## Current Modules
@@ -39,7 +43,7 @@ owner_decision: make the best TRIAL-003 conditional BVSA text candidate the acti
 
 ## Change From Base
 
-`GTPJ-v5` activates the TRIAL-003 code path and freezes the strongest observed same-config candidate from the 100-run batch:
+`GTPJ-v5` activates the TRIAL-003 code path and freezes the strongest observed same-config candidate from the 100-run batch. Its code parent is `v3`; the stronger confirmed config reference remains `v3/CONFIRM-001 local-v3-054`.
 
 - `bvsa_text_mode`: `adapted -> conditional`
 - BVSA cross/local score text input: `all_text -> all_text_cond`
@@ -60,32 +64,45 @@ The config still keeps ICSA, SGMP, and JEPA text modes conditional. No class ord
 evidence_level: confirmation_grade
 best_observed_H: 74.54
 confirmed_H: 74.44
-reference_v4_confirmed_H: 74.45
-delta_repeat_mean_vs_v4_confirmed_H: -0.01
-delta_best_observed_vs_v4_confirmed_H: +0.09
+reference_confirmed_config_H: 74.47
+reference_confirmed_config: v3/CONFIRM-001 local-v3-054
+delta_repeat_mean_vs_confirmed_config_H: -0.03
+delta_best_observed_vs_confirmed_config_H: +0.07
 confirmation_status: owner_activated_provisional
 ```
 
 ## Quality Notes
 
 - The best single observed run is `trial003-main100-095`, a frozen repeat of source config `trial003-main100-069`.
-- The 5 frozen repeats give mean `H=74.44`, which is effectively tied with but slightly below `GTPJ-v4 confirmed_H=74.45`.
-- Therefore `GTPJ-v5` is the active owner-selected mainline for future tuning, not a stronger confirmed baseline claim over `GTPJ-v4`.
+- The 5 frozen repeats give mean `H=74.44`, which is below `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`.
+- Therefore `GTPJ-v5` is the active owner-selected mainline for future tuning, not a stronger confirmed baseline claim over the confirmed v3 config.
 - Raw logs, receipts, checkpoints, and full runtime outputs remain in Warehouse.
 
-## Version Tree Position
+## 同级框架注册位置
 
 ```text
-parent_version: v4
-children: none yet
-notes: v5 = v4 governance parent + TRIAL-003 conditional BVSA text code + trial003-main100-069 tuned config.
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
+notes: V5 与 V3 同级；历史来源为 V3 + TRIAL-003 conditional BVSA text code + trial003-main100-069 tuned config，confirmed reference is v3/CONFIRM-001 local-v3-054.
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+html_view: framework_diagram.html
+module_glossary: MODULES.md
+source_trial_framework: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text/framework_diagram.md
+```
+
+The v5 framework diagram is the owner-facing active-version view. The TRIAL-003 diagram remains the trial-local implementation source.
 
 ## Version Flow
 
 ```mermaid
 flowchart TD
-  V4["GTPJ-v4 tag v4<br/>confirmed_H=74.45"] --> Trial["TRIAL-003 conditional BVSA text"]
+  V3["GTPJ-v3 tag v3"] --> Trial["TRIAL-003 conditional BVSA text"]
+  C1["v3 CONFIRM-001<br/>local-v3-054 confirmed config<br/>confirmed_H=74.47"] -. reference .-> Trial
   Trial --> Batch["RUN-20260630-0002<br/>100 jobs, 95 conditional ok, 4 adapted ok, 1 failed"]
   Batch --> Source["trial003-main100-069<br/>H=74.43<br/>pse_outer=0.65 local_weight=0.2"]
   Source --> R91["091 H=74.49"]
@@ -104,4 +121,5 @@ flowchart TD
 
 - `tune/`
 - `ablation/`
+- `innovation/`
 - `confirmation/`

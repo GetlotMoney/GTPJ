@@ -1,84 +1,33 @@
-# Project Status
+# 项目当前状态
 
-Date: 2026-06-30
+日期：2026-08-08
 
-## Current Active Mainline
+## 正式管理方式
 
-```text
-name: GTPJ-v5
-code_tag: v5
-status: owner_activated_provisional
-dataset: CUB GZSL
-baseline_evidence: experiments/v5/baseline/
-best_observed_H: 74.54
-confirmed_H: 74.44
-confirmation_status: owner_activated_provisional
-active_main_update: activated
-future_tuning_base: config/versions/v5.yaml
-```
+所有正式框架平级保存。`main` 管总账，冻结模板 Tag 管代码起点，实验必须从模板复制到自己的 `exp/...` 分支后再修改。
 
-`GTPJ-v5` is the owner-selected active mainline. It activates TRIAL-003 so that `all_text_cond` enters BVSA, including the cross/local_score branch, and freezes the best source configuration from the 100-run batch:
+当前 V5 模板：
 
 ```text
-source_run: RUN-20260630-0002-trial003-main100-2gpu
-source_candidate: trial003-main100-069
-pse_outer_ratio: 0.65
-clip_a_self_outer_ratio: 0.65
-local_weight: 0.2
+template_id: MODEL-V5-TEMPLATE-V1
+template_branch: framework/v5-template-v1
+template_tag: model/v5-template-v1
+template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 ```
 
-## Confirmed Reference
+## V5 局部分支消融
 
-```text
-name: GTPJ-v4
-code_tag: v4
-status: confirmed
-confirmed_H: 74.45
-best_observed_H: 74.47
-```
+`V5-ABLATION-001` 已完成完整 V5 与去掉整套局部分支的配对比较，两个组别均使用 seed 5、17、29。
 
-`GTPJ-v4` remains the stronger confirmed reference because its min3 mean is `74.45`, while the v5 frozen-repeat mean is `74.44`. `GTPJ-v5` is active because the owner explicitly selected it as the next mainline for tuning, not because it supersedes v4 as a stronger confirmed result.
+| 指标 | 完整 V5 | 去局部分支 | 差值（完整减去局部） |
+|---|---:|---:|---:|
+| U | 72.03 | 71.48 | +0.55 |
+| S | 76.32 | 76.77 | -0.45 |
+| H | 74.11 | 74.03 | +0.08 |
+| ZS | 81.28 | 81.27 | +0.01 |
 
-## Enabled Modules
+结论：局部分支会改变 U/S 平衡，但三个 seed 的 H 差值为 `+0.25/-0.09/+0.09`，方向不稳定，不能作为论文的稳定主性能贡献。完整版本训练约慢 `1.69 倍`，最佳模型约大 `6.16 倍`。
 
-- Frozen CLIP ViT-L/14@336px backbone
-- GPT text description prototypes
-- PSE / CLIP-A-self sentence-level text prototype adapter
-- FGVD geometry-aware visual memory
-- BVSA bidirectional visual-semantic alignment
-- ICSA conditional text adaptation
-- SGMP auxiliary training
-- Conditional BVSA text routing: `all_text_cond [B, C, 768] -> BVSA cross/local_score`
+## 这次 GitHub 发布的范围
 
-## Formal Result Status
-
-| Experiment | Dataset | Seed | U | S | H | ZS | Status |
-|---|---|---:|---:|---:|---:|---:|---|
-| `GTPJ-v1` | CUB GZSL | 5 | 72.36 | 75.57 | 73.93 | 81.62 | confirmed |
-| `GTPJ-v2` | CUB GZSL | 5 | 71.32 | 77.52 | 74.29 | 81.59 | owner activated, needs confirmation |
-| `GTPJ-v3` | CUB GZSL | 5 | 71.22 | 77.60 | 74.27 | 81.38 | owner accepted stochastic, needs confirmation |
-| `GTPJ-v4` | CUB GZSL | 5 | 71.54 | 77.61 | 74.45 | 81.30 | confirmed min3 formal reference |
-| `GTPJ-v5` | CUB GZSL | 5 | 72.00 | 77.07 | 74.44 | 81.56 | owner activated provisional active mainline |
-
-## Known Risks
-
-- `GTPJ-v5` has a best single repeat of `H=74.54`, but its 5-repeat mean is `H=74.44`, slightly below `GTPJ-v4 confirmed_H=74.45`.
-- Future manuscript-grade claims should cite whether a number is `confirmed_H`, repeat mean, or `best_observed_H`.
-- The next tuning round should start from `config/versions/v5.yaml` but still compare against `v4 confirmed_H=74.45`.
-
-## Warehouse Retention
-
-2026-06-29 checkpoint retention has been applied on `lab4090`:
-
-```text
-manifest: /data/lby/projects/cv_project/GTPJ_Warehouse/retention/model_best_retention_20260629_v4.json
-policy: keep Top-5 best model_best/best-model checkpoints by H
-kept: 5
-deleted: 199 training checkpoint files
-deleted_bytes: 31055128358
-excluded: logs, receipts, summaries, configs, manifests, registries, and data/cache feature tensors
-```
-
-## Next Steps
-
-Use `GTPJ-v5` as the active base for future tune, ablation, and confirmation work. Treat `GTPJ-v4 confirmed_H=74.45` as the reference that the next v5-derived candidate must beat by repeat evidence.
+本次只发布正式 V5 框架、冻结模板登记和 `V5-ABLATION-001` 的轻量结果账本。服务器正在运行的训练、原始日志、模型文件和实验控制器均不随本次发布改变。

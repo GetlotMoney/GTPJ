@@ -1,0 +1,17 @@
+schema_version: gtpj.framework.v2
+framework_id: FRAMEWORK-V5
+framework_version: v5
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V3
+promoted_from_experiment: V3-INNOVATION-001
+source_legacy_ref: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text#RUN-20260630-0002
+framework_branch: framework/v5
+framework_tag: v5
+framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
+governance_source_commit: 709df05f5d4711891ba90f2276290f51ff0cf480
+origin_status: legacy_owner_activated
+change_type: combo
+modules: ["PSE", "ICSA", "FGVD", "conditional BVSA", "SGMP", "local/global fusion"]
+inherits: ["FRAMEWORK-V3"]
+does_not_inherit: ["v4 as a framework", "stronger confirmed claim than v3 CONFIRM-001"]
+status: formal

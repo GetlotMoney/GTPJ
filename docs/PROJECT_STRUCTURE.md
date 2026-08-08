@@ -36,27 +36,33 @@ GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment 
 
 ```text
 idea_tree/                 # 创意来源、评分、排序
-  -> experiments/module_trials/
-                             # 模块创意被选中后，保存实现和证据
-  -> promoted baseline vX    # 成功 trial 才能提升为新版本
-  -> experiments/vX/         # 新版本自己的 tune / ablation / confirmation 记录
+  -> experiments/vX/innovation/
+                             # 创意被选中后，在所属正式框架内保存实现和证据，候选无 Tag
+  -> promoted FRAMEWORK-VY   # 创新确认并接纳后，注册新的同级正式框架并创建 Tag
+  -> experiments/vY/         # 新同级正式框架自己的四类实验记录
 ```
 
-注意两层实验位置：
-
-- version-level tune / ablation / confirmation 写入 `experiments/vX/`；
-- module trial 内部的 `param_tune`、narrow `ablation`、clean `confirmation` 写入该 trial 的
-  `ATTEMPTS.md` 和 `attempts/ATTEMPT-xxx/`，用于判断这个新模块本身是否值得保留。
+正式实验只有一层：tune、ablation、innovation、confirmation 都写入目标 `experiments/vX/`。
+旧 module trial 和 Attempt 目录保留为历史证据，通过 `legacy_ref` 回指，不再承担新实验主账本职责。
 
 版本规则：
 
 ```text
-一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录 = 一个父节点记录
+一个 FRAMEWORK-VX = 一份 framework.yaml + 一份 TEMPLATE.yaml + 一个只读母版 Tag/commit + 四类同级实验账本 + 一个历史来源指针
 ```
 
+从框架到一次运行固定分四层：
+
+| 层级 | 固定入口 | 用途 |
+|---|---|---|
+| 1. 框架 | `experiments/vX/framework.yaml` | 正式框架身份和历史来源。 |
+| 2. 母版 | `experiments/vX/TEMPLATE.yaml` | 不继续修改的代码底稿，登记母版编号、Tag 和准确代码 commit；它由后续管理提交记录。 |
+| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的代码起点，同时记录母版代码提交与管理登记提交。 |
+| 4. 运行 | 同一实验目录的 `PARAMETER_MATRIX.csv` | 一行一套参数、一个 seed 和一次真实运行。 |
+
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
-当前更强的 confirmed reference 是 `GTPJ-v4 / tag v4 / confirmed_H=74.45`。`main` 是唯一长期分支；
-`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支。
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理；旧 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 只作历史来源回查；
+`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
 
 代码层和实验层不要混淆：
 
@@ -74,7 +80,9 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和结构辅助命令。 |
 | `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
-| `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库。 |
+| `REPOSITORY_INDEX.json` | 新旧仓库机器可读索引；允许互相定位和只读参考，不提供自动同步或跨仓库写入授权。 |
+| `REPOSITORY_INDEX.md` | 新旧仓库索引的人话说明。 |
+| `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
 | `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
@@ -91,8 +99,8 @@ idea_tree/                 # 创意来源、评分、排序
 | `config/versions/v1.yaml` | `GTPJ-v1` 的固定 baseline 配置，是 v1 的权威配置源。 |
 | `config/versions/v2.yaml` | `GTPJ-v2` 的固定配置，是历史 owner-activated mainline code 的权威配置源。 |
 | `config/versions/v3.yaml` | `GTPJ-v3` 的固定配置，是当前 owner-accepted stochastic tag 的权威配置源。 |
-| `config/versions/v4.yaml` | `GTPJ-v4` 的 confirmed reference 配置，`confirmed_H=74.45`。 |
-| `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置，后续调参从这里开始。 |
+| `config/versions/v4.yaml` | 历史 config-only tag 的配置快照；正式引用应写 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。 |
+| `config/versions/v5.yaml` | `GTPJ-v5` 的 owner-activated active mainline 配置快照；后续实验可复制这里的参数，但代码必须从 `TEMPLATE.yaml` 登记的干净母版开始。 |
 | `config/GTPJ_cub_gzsl.yaml` | CUB 运行配置别名，当前内容应与 owner 明确选择的 active version 的 `config/versions/vX.yaml` 保持一致；现在对应 `v5`。 |
 | `config/GTPJ_awa2_gzsl.yaml` | AWA2 运行配置。 |
 | `config/GTPJ_sun_gzsl.yaml` | SUN 运行配置。 |
@@ -114,8 +122,11 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理版本树、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
+| `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
+| `docs/superpowers/plans/<日期>-<主题>.md` | 需要跨分支、占用 GPU 或影响正式结论的任务计划，记录已核实事实、最小方案、验收和回退。 |
 
 ## `docs/workflow/`
 
@@ -124,36 +135,36 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `docs/workflow/README.md` | workflow 入口，说明 owner 薄入口、核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
-| `docs/workflow/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
-| `docs/workflow/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
-| `docs/workflow/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
-| `docs/workflow/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
-| `docs/workflow/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
-| `docs/workflow/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
-| `docs/workflow/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
-| `docs/workflow/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
-| `docs/workflow/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
-| `docs/workflow/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
-| `docs/workflow/versioning.md` | baseline 版本命名、tag、实验目录、父节点、版本树和提升规则。 |
-| `docs/workflow/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
-| `docs/workflow/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
-| `docs/workflow/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
-| `docs/workflow/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
-| `docs/workflow/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
-| `docs/workflow/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
-| `docs/workflow/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
-| `docs/workflow/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
-| `docs/workflow/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
-| `docs/workflow/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
-| `docs/workflow/agent_report_policy.md` | agent 工作凭证保存规范，规定 `agent_summary.md`、长报告 Warehouse 引用和不保存完整聊天流水。 |
-| `docs/workflow/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
-| `docs/workflow/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
+| `docs/workflow/core/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
+| `docs/workflow/core/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
+| `docs/workflow/core/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
+| `docs/workflow/core/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
+| `docs/workflow/core/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
+| `docs/workflow/archive/reports/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
+| `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
+| `docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
+| `docs/workflow/archive/diagrams/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
+| `docs/workflow/protocols/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
+| `docs/workflow/protocols/versioning.md` | 正式框架命名、Tag、四类实验目录、历史来源和晋级规则。 |
+| `docs/workflow/protocols/idea_tree_protocol.md` | 创意树协议，规定 idea 节点、来源、评分、跨版本复用和排序方式。 |
+| `docs/workflow/protocols/paper_intake.md` | 论文投递、阅读状态、来源复核、候选 idea 提取和 GitHub 轻量创意同步流程。 |
+| `docs/workflow/protocols/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
+| `docs/workflow/protocols/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
+| `docs/workflow/protocols/innovation_code_review_protocol.md` | 创新代码多 agents 多轮审查协议，规定 idea/source intent、接口设计、code diff 和 post-run evidence 四轮 review。 |
+| `docs/workflow/protocols/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
+| `docs/workflow/reference/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
+| `docs/workflow/protocols/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
+| `docs/workflow/reference/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
+| `docs/workflow/reference/agent_contracts.md` | 长期 agent IO 契约、自我介绍、读写边界和失败条件。 |
+| `docs/workflow/protocols/agent_report_policy.md` | agent 工作凭证保存规范，规定 `agent_summary.md`、长报告 Warehouse 引用和不保存完整聊天流水。 |
+| `docs/workflow/protocols/promotion.md` | 自动 promotion 规范，规定 `promotion_decision: promote` 后的硬门、本地版本创建、账本回流、不自动切换 main active code 和不自动 push 边界。 |
+| `docs/workflow/protocols/agent_orchestration.md` | 长期 agent 角色、文件夹管理、四类实验编排、GPU 串行规则和本地 skill 同步规则。 |
 | `docs/workflow/agents/` | workflow agent 权威目录；`shared_roles/` 保存共享角色定义，`by_experiment/` 保存每类实验的 agents 编排。 |
 | `docs/workflow/agents/long_term_memory.md` | 长期 agent 记忆协议，规定 `profile.md`、`memory.md`、实例加载和记忆写回。 |
-| `docs/workflow/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
-| `docs/workflow/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
-| `docs/workflow/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
-| `docs/workflow/issues/` | 日期化实验问题知识库；新对话默认先读 `issues/README.md` 和最近日期文档，不全量读取历史问题。 |
+| `docs/workflow/protocols/progress_dashboard.md` | 本地只读网页看板协议，规定 `.gtpj_runtime/` 运行中状态、agent 进度、GPU/Runner 状态和证据完整性展示边界。 |
+| `docs/workflow/protocols/quality_gate.md` | 质量门规则，区分普通实验证据检查和 baseline promotion 强制门。 |
+| `docs/workflow/archive/runbooks/runbook.md` | 常见操作手册，包括确认 v1、运行调参、启动模块 trial 和提升版本。 |
+| `docs/workflow/archive/issues/` | 日期化实验问题知识库；新对话默认先读 `issues/README.md` 和最近日期文档，不全量读取历史问题。 |
 
 ## `workflow/`
 
@@ -165,7 +176,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
 | `workflow/codex/README.md` | Codex workflow 入口，说明 Codex 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
 | `workflow/openclaw/README.md` | OpenClaw workflow 入口，说明 OpenClaw 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
-| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/agent_orchestration.md` 为准。 |
+| `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/protocols/agent_orchestration.md` 为准。 |
 
 `workflow/gtpj_workflow.py` 的职责：
 
@@ -196,8 +207,8 @@ idea_tree/                 # 创意来源、评分、排序
 
 代码接口要求：
 
-- 新模块必须遵守 `docs/workflow/code_interface_contract.md`。
-- idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/innovation_code_review_protocol.md`。
+- 新模块必须遵守 `docs/workflow/protocols/code_interface_contract.md`。
+- idea / 创新 / module trial 落成代码改动时，还必须遵守 `docs/workflow/protocols/innovation_code_review_protocol.md`。
 - 开关关闭时必须回到选定 base version 行为。
 - 不得静默改变 logits shape、class order、loss 语义或 eval 语义。
 
@@ -215,7 +226,7 @@ idea_tree/                 # 创意来源、评分、排序
 注意：
 
 - `data/`、`data/cache/`、原始数据、特征缓存和 checkpoint 不纳入 Git。
-- 如果工具脚本改变评估语义，必须同步更新 `docs/workflow/code_interface_contract.md` 和本文件。
+- 如果工具脚本改变评估语义，必须同步更新 `docs/workflow/protocols/code_interface_contract.md` 和本文件。
 
 ## `idea_tree/`
 
@@ -239,11 +250,13 @@ idea_tree/                 # 创意来源、评分、排序
 
 ### `idea_tree/queues/`
 
-当前工作队列，从总索引派生，不是事实来源。
+当前工作队列，从总索引派生，不是全局创意事实来源。`queue_state.yaml` 是机器可读源，
+四个 Markdown 文件是给人读的派生视图。
 
 | 路径 | 用途 |
 |---|---|
-| `idea_tree/queues/01_selected_next.md` | 已选中的下一步模块 trial。 |
+| `idea_tree/queues/queue_state.yaml` | 当前待办和队列的机器源；用 `todo-status` 只读汇报，用 `refresh-todo` 刷新 Markdown。 |
+| `idea_tree/queues/01_selected_next.md` | 已选执行队列，记录已经明确选中的 module trial 候选。 |
 | `idea_tree/queues/02_module_candidates.md` | 当前候选模块列表。 |
 | `idea_tree/queues/03_ablation_questions.md` | 消融问题队列。 |
 | `idea_tree/queues/04_tuning_questions.md` | 调参问题队列。 |
@@ -263,8 +276,10 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
+| `experiments/FRAMEWORK_TREE.md` | 正式框架同级表、历史来源连线和当前实验全貌的人类入口；文件名为兼容保留，不表示上下级树。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
-| `experiments/VERSION_TREE.md` | 全局版本树账本，记录正式 baseline 的父节点、代码 tag、账本来源和 trial 来源。 |
+| `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
+| `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
 
 ### `experiments/templates/`
@@ -274,24 +289,26 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/templates/experiment_README_template.md` | 普通实验 README 模板，记录代码快照、环境、数据/cache、日志、attempt、失败阶段和 tune/ablation 专属字段。 |
+| `experiments/templates/FRAMEWORK_template.yaml` | 新正式框架机器身份模板。 |
+| `experiments/templates/FRAMEWORK_INDEX_template.md` | 框架四类实验统一索引模板。 |
 | `experiments/templates/agent_summary_template.md` | agent 工作凭证模板，记录参与 agents、检查范围、发现、结论和证据引用。 |
 | `experiments/templates/IDEA_template.md` | idea 文件模板。 |
 | `experiments/templates/implementation_template.md` | 模块实现记录模板，包含输入输出契约和最低验证项。 |
 | `experiments/templates/quality_check_template.md` | 质量检查模板，用于记录证据完整性，并在正式升版时执行 promotion gate。 |
-| `experiments/templates/TRIAL_README_template.md` | trial README 模板，包含结果记录和 promotion gate 字段。 |
-| `experiments/templates/TRIAL_ATTEMPTS_template.md` | module trial 内部多次 attempt 总表模板。 |
+| `experiments/templates/TRIAL_README_template.md` | 旧 trial 证据兼容模板，禁止作为新实验入口。 |
+| `experiments/templates/TRIAL_ATTEMPTS_template.md` | 旧 module trial 多次 attempt 的兼容总表模板。 |
 | `experiments/templates/VERSION_template.md` | 版本说明模板。 |
 
 ### `experiments/module_trials/`
 
-模块 trial 证据目录。这里不是权威创意库；权威创意在 `idea_tree/ideas/`。
+迁移前的模块 trial 历史证据目录。这里不是新实验入口，也不是权威创意库；权威创意在 `idea_tree/ideas/`。
 
 | 路径 | 用途 |
 |---|---|
 | `experiments/module_trials/INDEX.md` | 模块 trial 索引。 |
 | `experiments/module_trials/.gitkeep` | 保留空的模块 trial 目录；来源明确且开始实现后再新增 `IDEA-xxxx_slug/`。 |
 
-真正开始 trial 后，目录会增加：
+以下是历史 Trial 已有结构；新工作不得照此再造一层实验树：
 
 ```text
 experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
@@ -329,6 +346,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v1/baseline/quality_check.md` | `GTPJ-v1` baseline 轻量质量检查记录。 |
 | `experiments/v1/tune/INDEX.md` | v1 调参实验索引。 |
 | `experiments/v1/ablation/INDEX.md` | v1 消融实验索引。 |
+| `experiments/v1/innovation/INDEX.md` | v1 创新实验索引。 |
 | `experiments/v1/confirmation/INDEX.md` | v1 确认实验索引。 |
 
 ### `experiments/v2/`
@@ -337,7 +355,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 
 | 路径 | 用途 |
 |---|---|
-| `experiments/v2/VERSION.md` | v2 版本说明，记录父版本、来源 trial、启用模块、正式结果和已知风险。 |
+| `experiments/v2/VERSION.md` | v2 版本说明，记录来源框架、来源 trial、启用模块、正式结果和已知风险。 |
 | `experiments/v2/config.yaml` | v2 配置归档副本，应与 `config/versions/v2.yaml` 保持一致。 |
 | `experiments/v2/result.md` | v2 结果记录，保存 owner-activated mainline 指标、best_observed_H 和外部日志 artifact 证据。 |
 | `experiments/v2/baseline/README.md` | `GTPJ-v2` baseline 证据说明。 |
@@ -347,6 +365,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v2/baseline/quality_check.md` | `GTPJ-v2` 质量检查和 owner 主线化决策记录，标明 owner_activated_unconfirmed。 |
 | `experiments/v2/tune/INDEX.md` | v2 调参实验索引。 |
 | `experiments/v2/ablation/INDEX.md` | v2 消融实验索引。 |
+| `experiments/v2/innovation/INDEX.md` | v2 创新实验索引。 |
 | `experiments/v2/confirmation/INDEX.md` | v2 确认实验索引。 |
 
 ### `experiments/v3/`
@@ -355,7 +374,7 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 
 | 路径 | 用途 |
 |---|---|
-| `experiments/v3/VERSION.md` | v3 版本说明，记录父版本、来源 trial、owner stochastic 接受决策和已知确认风险。 |
+| `experiments/v3/VERSION.md` | v3 版本说明，记录来源框架、来源 trial、owner stochastic 接受决策和已知确认风险。 |
 | `experiments/v3/config.yaml` | v3 配置归档副本，应与 `config/versions/v3.yaml` 保持一致。 |
 | `experiments/v3/result.md` | v3 结果记录，保存 owner-accepted 指标、best_observed_H 和外部日志 artifact 证据。 |
 | `experiments/v3/baseline/README.md` | `GTPJ-v3` baseline 证据说明。 |
@@ -365,11 +384,24 @@ experiments/module_trials/IDEA-xxxx_slug/TRIAL-xxx_slug/
 | `experiments/v3/baseline/quality_check.md` | `GTPJ-v3` 质量检查和 owner stochastic 接受决策记录。 |
 | `experiments/v3/tune/INDEX.md` | v3 调参实验索引。 |
 | `experiments/v3/ablation/INDEX.md` | v3 消融实验索引。 |
+| `experiments/v3/innovation/INDEX.md` | v3 创新实验索引。 |
 | `experiments/v3/confirmation/INDEX.md` | v3 确认实验索引。 |
 
-这些 `experiments/vX/*` 索引用于 version-level 实验。某个 module trial 内部为了比较 heads、ratio、
-dropout、seed，或做窄消融、clean confirmation，应写入该 trial 的 `ATTEMPTS.md` 和
-`attempts/ATTEMPT-xxx/`。
+All formal version directories `experiments/vX/` must also include:
+
+| Path | Purpose |
+|---|---|
+| `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
+| `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
+| `experiments/vX/framework.yaml` | 同级正式框架的机器身份、历史来源框架、来源创新、分支、Tag 和 commit。 |
+| `experiments/vX/TEMPLATE.yaml` | 该框架的代码母版身份；`legacy_frozen` 只解释旧结果，`frozen` 才允许新实验起步。 |
+| `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
+| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
+
+每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
+
+这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
+dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框架对应类型，并用 `legacy_ref` 回查旧目录。
 
 ## 更新本文件的判断标准
 
