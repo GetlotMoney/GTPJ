@@ -395,6 +395,7 @@ All formal version directories `experiments/vX/` must also include:
 | `experiments/vX/TEMPLATE.yaml` | 该框架的代码母版身份；`legacy_frozen` 只解释旧结果，`frozen` 才允许新实验起步。 |
 | `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
 | `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
+| `experiments/v5/innovation/INNOVATION-003_confidence_local_gate/` | V5 低全局置信度局部增强候选；保存实验专属模型包装、import-safe 训练入口、三份相同配置、参数表和框架说明，不修改共享创新索引。 |
 
 每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
 

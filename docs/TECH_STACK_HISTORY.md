@@ -17,6 +17,20 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 低置信度门控实验 | `MODEL-V5-EXPERIMENT-GATE-V1` | 实现已完成，未训练 | 从冻结的 V5 V1 母版派生实验专属包装；低全局置信度时增强局部分支，canonical 模型与评估口径不变。 |
+
+## 2026-08-09：MODEL-V5-EXPERIMENT-GATE-V1（实现已完成，未训练）
+
+- 本次改的是哪个对象：`V5-INNOVATION-003` 的实验专属模型包装、训练入口和三份同配置运行草案。
+- 目标问题：固定局部分支权重无法区分“全局分支很犹豫”和“全局分支已经很确定”两种样本，可能在后者上引入不必要干扰。
+- 采用技术：训练时从 seen 类全局分数、评估时从完整 200 类全局分数取 top1-top2 margin；margin 在 gate 分支前 detach；使用正 slope 的单调 sigmoid gate，并以固定 `beta=0.05` 融合局部分数。
+- 替换了什么：不替换正式 V5 母版；只在本实验输出中替换母版固定 `global + 0.2 * local` 的最终融合结果。
+- 实际可见效果：代码可返回 gate mean/min/max，并保持原有辅助损失输入、类别轴和 U/S/H/ZS 评估入口；真实指标尚未产生。
+- 选择原因：一个标量 gate 就能直接检验“低置信度才需要更多局部证据”的假设，不新增控制器、标签规则或第二套评估。
+- 已知限制：尚未运行 CUDA 训练，无法判断指标是否改善；三份配置故意相同，不能用测试集修改 beta 或门控初值。
+- 素材位置：`experiments/v5/innovation/INNOVATION-003_confidence_local_gate/`。
+- 验证命令与结果：专项 TDD、canonical 回归、语法和差异检查在本次 pre-run 提交前执行；真实训练未启动。
+- 回退方式：撤销本实验目录、专项测试和本条登记；`model/MyModel.py`、canonical 训练入口与正式配置均未修改。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 
