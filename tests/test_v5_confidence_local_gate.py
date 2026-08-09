@@ -241,21 +241,73 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
         self.assertTrue(experiment_path.is_file(), "缺少 EXPERIMENT.yaml")
         self.assertTrue(matrix_path.is_file(), "缺少 PARAMETER_MATRIX.csv")
 
+        helper_path = ROOT / "workflow" / "gtpj_workflow.py"
+        helper_commands = (
+            (
+                "validate-experiment-base",
+                ["validate-experiment-base", "--path", str(EXPERIMENT_DIR)],
+            ),
+            (
+                "validate-parameter-matrix --require-ready",
+                [
+                    "validate-parameter-matrix",
+                    "--path",
+                    str(matrix_path),
+                    "--expected-jobs",
+                    "3",
+                    "--require-ready",
+                ],
+            ),
+        )
+        helper_failures = []
+        for label, arguments in helper_commands:
+            result = subprocess.run(
+                [sys.executable, str(helper_path), *arguments],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                helper_failures.append(
+                    f"{label} 失败（exit={result.returncode}）\n"
+                    f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+                )
+        self.assertFalse(helper_failures, "\n\n".join(helper_failures))
+
         experiment = yaml.safe_load(experiment_path.read_text(encoding="utf-8"))
         self.assertEqual(experiment["experiment_id"], "V5-INNOVATION-003")
         self.assertEqual(experiment["idea_id"], "IDEA-0005")
+        self.assertEqual(
+            experiment["idea_binding_status"], "blocked_pending_main_ledger_sync"
+        )
+        self.assertEqual(experiment["status"], "blocked_pending_idea_registration")
+        self.assertFalse(experiment["formal_run_allowed"])
         self.assertEqual(experiment["base_template_id"], "MODEL-V5-TEMPLATE-V1")
         self.assertEqual(experiment["base_template_tag"], "model/v5-template-v1")
         self.assertEqual(
             experiment["base_template_commit"],
             "2f5fa5e631ef82658d4bac587cdfd17f3534cb35",
         )
+        self.assertEqual(
+            experiment["template_registry_commit"],
+            "4f29e99bb1a940afa66bb66f8150c379c2d0af7f",
+        )
 
         with matrix_path.open("r", encoding="utf-8-sig", newline="") as stream:
             rows = list(csv.DictReader(stream))
         self.assertEqual([row["job_id"] for row in rows], ["RUN-001", "RUN-002", "RUN-003"])
         self.assertEqual({row["seed"] for row in rows}, {"5"})
-        self.assertEqual(len({row["config_fingerprint"] for row in rows}), 1)
+        self.assertEqual({row["status"] for row in rows}, {"frozen"})
+        self.assertEqual(
+            {row["base_config_sha256"] for row in rows},
+            {"def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"},
+        )
+        self.assertEqual({row["code_ref"] for row in rows}, {"model/v5-template-v1"})
+        self.assertEqual(
+            {row["config_fingerprint"] for row in rows},
+            {"cba09034a3b773b78d51cb3c28f35f0fee95ce7536f41be617b7bc04c98cf2ee"},
+        )
         self.assertEqual(rows[0]["repeat_of"], "")
         self.assertEqual(rows[1]["repeat_of"], "RUN-001")
         self.assertEqual(rows[2]["repeat_of"], "RUN-001")

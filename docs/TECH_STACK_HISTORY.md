@@ -17,7 +17,7 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
-| V5 低置信度门控实验 | `MODEL-V5-EXPERIMENT-GATE-V1` | 实现已完成，未训练 | 从冻结的 V5 V1 母版派生实验专属包装；低全局置信度时增强局部分支，canonical 模型与评估口径不变。 |
+| V5 低置信度门控实验 | `MODEL-V5-EXPERIMENT-GATE-V1` | 实现已完成，未训练；等待 IDEA-0005 主账本登记 | 从冻结的 V5 V1 母版派生实验专属包装；低全局置信度时增强局部分支，canonical 模型与评估口径不变。 |
 
 ## 2026-08-09：MODEL-V5-EXPERIMENT-GATE-V1（实现已完成，未训练）
 

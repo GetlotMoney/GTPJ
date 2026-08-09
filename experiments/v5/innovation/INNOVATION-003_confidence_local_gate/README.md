@@ -6,7 +6,7 @@
 
 ## 固定实验身份
 
-- 临时 `idea_id`：`IDEA-0005`，等待主代理统一登记共享 `idea_tree` 与索引。
+- 预留 `idea_id`：`IDEA-0005`。当前实验分支源自冻结母版，不能安全覆盖已经继续演进的主分支共享账本；主代理必须先在 main ledger-sync 工作树完成 `idea_tree` 与 V5 innovation 索引登记，再把登记结果安全同步回来。
 - 母版：`MODEL-V5-TEMPLATE-V1` / `model/v5-template-v1`。
 - 母版 commit：`2f5fa5e631ef82658d4bac587cdfd17f3534cb35`。
 - 分支：`exp/v5/innovation/innovation-003-confidence-local-gate`。
@@ -29,6 +29,7 @@ F:\Anaconda\envs\dvsr_gpu\python.exe experiments\v5\innovation\INNOVATION-003_co
 ## 当前边界
 
 - 本提交只准备代码、配置、参数表和测试，没有启动训练。
+- 唯一正式开跑阻断是 `IDEA-0005` 尚未完成主分支共享登记；`EXPERIMENT.yaml` 明确记录 `formal_run_allowed: false`，登记同步并复核前禁止启动正式训练。参数表中的 `frozen` 只表示三份参数已经固定，不代表这个共享登记门已经通过。
 - `beta=0.05` 固定，不能根据测试集成绩修改。
 - `gate_bias` 与有效 slope 可学习；初始化分别为 `-1.0` 和 `1.0`。
 - canonical `model/MyModel.py`、训练入口和正式配置不改。
