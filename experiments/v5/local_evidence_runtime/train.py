@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from types import SimpleNamespace
 import uuid
 
@@ -256,6 +257,17 @@ def _temporary_sibling(path):
     return path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
 
 
+def _replace_with_retry(source, target):
+    delays = (0.05, 0.1, 0.2, 0.4, 0.8)
+    for delay in delays:
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            time.sleep(delay)
+    os.replace(source, target)
+
+
 def atomic_write_text(path, text):
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -265,7 +277,7 @@ def atomic_write_text(path, text):
             stream.write(text)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, target)
+        _replace_with_retry(temporary, target)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -287,7 +299,7 @@ def atomic_torch_save(path, payload):
     temporary = _temporary_sibling(target)
     try:
         torch.save(payload, temporary)
-        os.replace(temporary, target)
+        _replace_with_retry(temporary, target)
     finally:
         temporary.unlink(missing_ok=True)
 

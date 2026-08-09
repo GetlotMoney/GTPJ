@@ -9,6 +9,7 @@
 | RUN-001 | 混淆难负类 seed 5 | innovation | frozen | {"ablation_disable_fgvd_geometry":true,"lambda_local_ce":0.1,"lambda_confusion_contrast":0.1,"confusion_topk":5,"confusion_margin":0.1} | 5 |  |  | seed 5 预注册初筛 |  |  |  |
 | RUN-002 | 混淆难负类 seed 17 | innovation | frozen | {"ablation_disable_fgvd_geometry":true,"lambda_local_ce":0.1,"lambda_confusion_contrast":0.1,"confusion_topk":5,"confusion_margin":0.1} | 17 |  |  | 多种子稳定性检查；不是复现确认 |  |  |  |
 | RUN-003 | 混淆难负类 seed 29 | innovation | frozen | {"ablation_disable_fgvd_geometry":true,"lambda_local_ce":0.1,"lambda_confusion_contrast":0.1,"confusion_topk":5,"confusion_margin":0.1} | 29 |  |  | 多种子稳定性检查；不是复现确认 |  |  |  |
+| RUN-004 | 混淆难负类 seed 17 基础设施重试 | innovation | frozen | {"ablation_disable_fgvd_geometry":true,"lambda_local_ce":0.1,"lambda_confusion_contrast":0.1,"confusion_topk":5,"confusion_margin":0.1} | 17 | RUN-002 |  | Windows 日志锁中断后的同配置重试 |  |  |  |
 
 ## 查重说明
 

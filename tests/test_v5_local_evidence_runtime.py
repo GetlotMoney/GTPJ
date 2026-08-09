@@ -159,6 +159,26 @@ class V5LocalEvidenceRuntimeTest(unittest.TestCase):
         self.assertEqual("input_manifests", path.parent.name)
         self.assertEqual(".runtime", path.parent.parent.name)
 
+    def test_atomic_write_retries_a_transient_windows_file_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "training.log"
+            real_replace = TRAINER.os.replace
+            attempts = 0
+
+            def flaky_replace(source, destination):
+                nonlocal attempts
+                attempts += 1
+                if attempts < 3:
+                    raise PermissionError(5, "transient Windows file lock")
+                return real_replace(source, destination)
+
+            with mock.patch.object(TRAINER.os, "replace", side_effect=flaky_replace):
+                TRAINER.atomic_write_text(target, "epoch 25\n")
+
+            self.assertEqual(3, attempts)
+            self.assertEqual("epoch 25\n", target.read_text(encoding="utf-8"))
+            self.assertEqual([], list(target.parent.glob(".training.log.*.tmp")))
+
     def test_branch_metrics_use_per_class_gzsl_and_unseen_only_zs(self):
         seen_scores = torch.tensor([[5.0, 1.0, 0.0, 0.0], [4.0, 3.0, 0.0, 0.0]])
         unseen_scores = torch.tensor([[0.0, 0.0, 5.0, 1.0], [4.0, 0.0, 2.0, 3.0]])
