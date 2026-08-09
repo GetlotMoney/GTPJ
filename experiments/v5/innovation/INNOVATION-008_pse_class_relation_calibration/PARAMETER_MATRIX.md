@@ -2,7 +2,7 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：由 new-experiment 生成；该草稿必须填写并通过校验后才能用于正式运行。
+来源：一行对应一个真实训练任务；完整日志、指标和模型保存在项目内 .runtime/runs/V5-INNOVATION-008/。
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
@@ -13,9 +13,9 @@
 | RUN-005 | E4 验证集选 gamma 的推理校准 | innovation | skipped | {"checkpoint_from":"RUN-003","gamma":null,"gamma_source":"class_disjoint_validation"} | 5 |  |  | 只用验证划分确定 gamma 后复用 E2 checkpoint 并同时报告原始与校准分数 |  | skipped_after_e1_h_drop |  |
 | RUN-006 | E0 CUDA 修复后重跑 | innovation | failed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-001 | RUN-006 | 修复类别编号设备校验后重新建立 E0 公平基线 |  | failed_after_epoch_50_eval_device_mismatch |  |
 | RUN-007 | E0 评估设备修复后重跑 | innovation | completed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-006 | RUN-007 | 修复最终评估类别索引设备后重新建立 E0 公平基线 | 73.69 | fair_baseline |  |
-| RUN-008 | R0 类不重叠验证基线 | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":false} | 5 |  | RUN-008 | 在不接触正式测试集的 100/50 类划分上建立旧 PSE 验证基线 |  | pending_validation |  |
-| RUN-009 | R1 未见类共享句子 PSE | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":true} | 5 |  | RUN-009 | 只验证未见类也经过同一旧句子 PSE 是否改善组间一致性 |  | pending_validation |  |
-| RUN-010 | R2 安全类别关系增强 | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"class_relation_safe","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  | RUN-010 | 在 R1 上增加限幅且从恒等映射开始的分组类别关系注意力 |  | pending_validation |  |
+| RUN-008 | R0 类不重叠验证基线 | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":false} | 5 |  | RUN-008 | 在不接触正式测试集的 100/50 类划分上建立旧 PSE 验证基线 | 69.91 | validation_baseline |  |
+| RUN-009 | R1 未见类共享句子 PSE | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":true} | 5 |  | RUN-009 | 只验证未见类也经过同一旧句子 PSE 是否改善组间一致性 | 61.27 | rejected_below_R0 |  |
+| RUN-010 | R2 安全类别关系增强 | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"class_relation_safe","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  | RUN-010 | 在 R1 上增加限幅且从恒等映射开始的分组类别关系注意力 | 58.14 | rejected_no_formal_test |  |
 
 ## 查重说明
 

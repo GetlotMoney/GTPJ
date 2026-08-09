@@ -4,7 +4,7 @@
 
 第一版已经按停止条件收口：公平基线 E0 为 `H=73.69`；E1 为 `H=66.92`，虽然 `U` 增加 7.50，但 `S` 下降 18.13。诊断确认，名义 `0.1` 的修正实际平均达到原型的 `2.94` 倍，而且只改变 seen 原型。
 
-2026-08-10 经 owner 批准后启动第二版。第二版不抹掉第一版失败记录，只测试三个更干净的问题：R0 验证基线、R1 未见类共享旧句子 PSE、R2 在 R1 上增加限幅且从恒等映射开始的类别关系注意力。训练校准和推理校准暂缓。
+2026-08-10 经 owner 批准后完成第二版。R0 验证基线为 `H=69.91`；R1 降至 `61.27`，R2 继续降至 `58.14`。R2 的最大修正范数为 `0.10000001`、最大旋转为 `5.73°`，说明限幅真实生效，但关系修正方向没有改善未见类。第二版未通过验证门，停止且不读取正式测试集。
 
 ```text
 experiment_id: V5-INNOVATION-008
@@ -14,8 +14,8 @@ base_template_tag: model/v5-template-v1
 base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 code_branch: exp/v5/innovation/innovation-008-pse-class-relation-calibration
 seed_first_pass: 5
-run_commit: pending_redesign_pre_run_commit
-status: redesigned_validation_pending
+run_commit: 9698e6846973d407a15dc1eb2ea262c30a90324a
+status: rejected_after_class_disjoint_validation
 ```
 
 ## 实验问题
@@ -42,11 +42,11 @@ status: redesigned_validation_pending
 
 | RUN | 组别 | 唯一变化 | 配置 | 状态 |
 |---|---|---|---|---|
-| RUN-008 | R0 | 旧句子 PSE 验证基线 | `configs/R0_validation_legacy.yaml` | planned |
-| RUN-009 | R1 | unseen 也经过同一个旧句子 PSE | `configs/R1_validation_shared_sentence_pse.yaml` | planned |
-| RUN-010 | R2 | R1 加限幅、零起点类别关系注意力 | `configs/R2_validation_safe_class_relation.yaml` | planned |
+| RUN-008 | R0 | 旧句子 PSE 验证基线 | `configs/R0_validation_legacy.yaml` | completed：H=69.91 |
+| RUN-009 | R1 | unseen 也经过同一个旧句子 PSE | `configs/R1_validation_shared_sentence_pse.yaml` | completed：H=61.27，否决 |
+| RUN-010 | R2 | R1 加限幅、零起点类别关系注意力 | `configs/R2_validation_safe_class_relation.yaml` | completed：H=58.14，否决 |
 
-R0、R1、R2 都会跑完；不会再用“seen-only 中间组失败”提前取消恰好用于修复不一致的下一组。只有验证集上的 R2 通过门槛，才会另行冻结正式测试配置。
+R0、R1、R2 均已跑完。R1、R2 都低于 R0，因此不冻结正式测试配置，不增加 seed，也不继续扫描残差比例。
 
 每个训练 RUN 使用独立输出目录，例如：
 
@@ -67,7 +67,7 @@ conda run -n dvsr_gpu python train_GTPJ_CUB.py `
 - 每个训练 RUN 固定训练完后只评估一次对应划分；R0–R2 只评验证划分，不按 H 挑 epoch，也不读取正式测试缓存。
 - 训练和验证按位置逐 batch 从同一份 patch 缓存取数，不复制整份大缓存。
 
-因此，E0 是本实验的新公平基线。历史 `confirmed_H=74.44` 来自旧的“逐 epoch 测试并选最佳”口径，只作背景参考，不能与新 E0 直接做等价比较。
+第二版内部只以 R0 为验证基线。第一版 E0 以及历史 `confirmed_H=74.44` 使用正式测试或旧的“逐 epoch 测试并选最佳”口径，只作背景参考，不能与 R0 直接比较绝对高低。
 
 ## 第一阶段判定
 
@@ -76,6 +76,8 @@ conda run -n dvsr_gpu python train_GTPJ_CUB.py `
 - 验证通过后，才冻结正式 R0/R2 的 seed 5；seed 5 通过再补 seed 17、29。
 - 正式三 seed 要求平均 H 至少提高 0.20，三次 H 都高于对应基线，且不能靠 S 明显下降换 U。
 - 自校准和 calibrated stacking 不属于本轮，避免掩盖原型表示问题。
+
+实际判定：R2 相对 R0 为 `ΔU=-15.96`、`ΔS=+4.16`、`ΔH=-11.76`、`ΔZS=-3.84`。虽然 S 上升，但 U 与 H 大幅下降，属于更强的 seen 偏置，未达到任何继续条件。
 
 ## 文件入口
 

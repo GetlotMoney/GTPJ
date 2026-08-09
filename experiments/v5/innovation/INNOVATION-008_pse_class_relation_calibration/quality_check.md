@@ -73,3 +73,22 @@ promotion_decision: not_applicable
 - [x] 独立 Reviewer 对最新按位置取数修复给出 `PASS`，确认指标、标签、类别轴和 test 边界未改变。
 
 以上检查通过并冻结 clean commit 后启动 RUN-008；这里的验证结果不能冒充正式测试或 promotion 证据。尚未做进程级内存峰值测量，R0 运行时继续观察；静态引用关系已确认只长期保留一份大缓存和当前 batch 的临时小副本。
+
+## 2026-08-10 第二版结果检查
+
+```text
+decision: PASS_REJECT_RESULT
+evidence_level: single_seed_class_disjoint_validation
+formal_test_started: false
+promotion_decision: not_applicable
+```
+
+- [x] RUN-008/009/010 均从 clean commit `9698e68` 启动并正常退出，输出目录互相独立。
+- [x] 三组均完成 50 epoch 后只评估一次同一验证划分。
+- [x] 三份指标均记录 `formal_test_cache_loaded: false` 和 `large_patch_cache_copies: 0`。
+- [x] R1 相对 R0：`ΔU=-12.36`、`ΔS=+3.75`、`ΔH=-8.64`、`ΔZS=-4.63`。
+- [x] R2 相对 R0：`ΔU=-15.96`、`ΔS=+4.16`、`ΔH=-11.76`、`ΔZS=-3.84`。
+- [x] R2 修正范数与旋转角没有越界，说明效果失败不是安全约束失效。
+- [x] 训练日志、指标和最终模型均存在，日志 SHA-256 已回填参数表。
+
+`PASS_REJECT_RESULT`：证据足以停止第二版；不启动正式测试、不增加 seed、不加入校准，也不支持 promotion。

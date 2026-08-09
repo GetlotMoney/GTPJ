@@ -15,7 +15,7 @@
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
-| PSE 类别关系实验 | `MODEL-PSE-CLASSREL-V2` | 已实现，待验证训练 | 保留旧句子 PSE，seen/unseen 同路，类别关系修正从零开始且每类范数不超过 0.1；第一版失败记录继续保留。 |
+| PSE 类别关系实验 | `MODEL-PSE-CLASSREL-V2` | 已放弃 | 保留旧句子 PSE、seen/unseen 同路且限幅后，R2 验证 H=58.14，低于 R0 的 69.91；未进入正式测试。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
 
@@ -32,18 +32,18 @@
 - 验证命令与结果：28 项单元测试通过，包含真实 CUDA 构造与 CUDA→CPU 评估边界；参数矩阵、框架账本、母版来源和仓库边界校验通过；独立只读审核最终 `PASS`；E0/E1 均完成 50 epoch 并一次性评估。
 - 回退方式：继续使用 E0 的 `pse_mode=legacy_sentence`、`pse_apply_unseen=false`、`lambda_self_calibration=0`、`gamma=0`；不接纳本实验类别关系模块。
 
-## 2026-08-10：MODEL-PSE-CLASSREL-V2（已实现，待验证训练）
+## 2026-08-10：MODEL-PSE-CLASSREL-V2（已放弃）
 
 - 本次改的是哪个对象：`V5-INNOVATION-008` 的 PSE 原型路径、类不重叠验证入口和 R0/R1/R2 配置；不修改正式 V5 母版或 Tag。
 - 目标问题：第一版名义 `0.1` 的关系修正实际平均达到原型的 `2.94` 倍，而且用类别注意力替换了旧句子 PSE、只改变 seen 原型，导致 S 大幅下降。
 - 采用技术：保留旧句子 PSE；R1 让 unseen 共享同一 PSE；R2 在两组基础原型上分别运行同一 `BoundedClassPrototypeRelationAdapter`。输出投影全零初始化，修正采用 `0.1 * relation / max(norm(relation), 1)` 硬限幅。
 - 替换了什么：第二版不再把类别关系模块当作旧 PSE 的替代品，也不再用 seen-only 类别关系作为停止门；训练校准和推理校准退出本轮。
-- 实际可见效果：代码级验证已证明 R2 初始输出与 R1 一致、修正范数不超过 0.1、旋转不超过约 5.75°、改变一个类别仍会影响其他类别；真实精度尚待 RUN-008–010。
+- 实际可见效果：R0/R1/R2 的验证 H 分别为 `69.91/61.27/58.14`。R2 最大修正范数 `0.10000001`、最大旋转 `5.73°`，限幅真实生效，但 U 比 R0 低 `15.96`，关系增强没有改善未见类。
 - 选择原因：先把已定位的尺度失控、原型处理不一致和对比混杂逐项拆开，避免再用校准掩盖表示问题。
-- 已知限制：共享 PSE 权重是在 pseudo-seen 类上训练后迁移到 pseudo-unseen 类；是否提高 H 只能由类不重叠验证和后续冻结测试回答。
+- 已知限制：共享 PSE 权重只在 pseudo-seen 类上训练，迁移到 pseudo-unseen 后显著伤害 U；本结果为单 seed 类不重叠验证，但下降幅度足以触发预设停止门，未做正式测试或多 seed。
 - 素材位置：`model/MyModel.py`、`tools/v5_cub_data.py`、`train_GTPJ_CUB.py`、`tests/test_v5_pse_class_relation_calibration.py`、`experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/`。
 - 验证命令与结果：专项 20 项、合计 35 项相关测试通过，其中包含真实 CUDA 前向、反向和最终评估；真实 xlsa17 得到 100/50 个互不重叠类别、3760 张训练图、942 张 seen 留出图和 2355 张 pseudo-unseen 图，图片索引零重叠。训练与验证改为按位置逐 batch 从唯一大缓存取数，避免额外复制约 5.8 GiB patch 缓存；新旧评估入口的 U/S/H/ZS 等价测试通过。
-- 回退方式：把配置恢复为 `pse_mode=legacy_sentence`、`pse_apply_unseen=false`，即可回到 R0；旧 E0/E1 commit、日志和 checkpoint 不改动。
+- 回退方式：保持正式 V5 不变；实验分支可用 `pse_mode=legacy_sentence`、`pse_apply_unseen=false` 回到 R0。旧 E0/E1 与本轮 R0/R1/R2 日志和 checkpoint 均未改动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 
