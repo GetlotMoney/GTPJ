@@ -14,8 +14,8 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-003-confidence-local-gate
 legacy_ref: IDEA-0005
-status: pre_run
+status: completed
 canonical_model_modified: false
 canonical_training_modified: false
 formal_run_allowed: true
-formal_training_started: false
+formal_training_started: true

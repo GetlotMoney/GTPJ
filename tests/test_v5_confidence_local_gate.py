@@ -263,14 +263,13 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
                 ["validate-experiment-base", "--path", str(EXPERIMENT_DIR)],
             ),
             (
-                "validate-parameter-matrix --require-ready",
+                "validate-parameter-matrix",
                 [
                     "validate-parameter-matrix",
                     "--path",
                     str(matrix_path),
                     "--expected-jobs",
                     "3",
-                    "--require-ready",
                 ],
             ),
         )
@@ -299,7 +298,8 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
             "6e42dfcff09a87c14aba807e4bb0fd7ab0d73350",
         )
         self.assertEqual(experiment["legacy_ref"], "IDEA-0005")
-        self.assertEqual(experiment["status"], "pre_run")
+        self.assertEqual(experiment["status"], "completed")
+        self.assertTrue(experiment["formal_training_started"])
         self.assertTrue(experiment["formal_run_allowed"])
         self.assertEqual(experiment["base_template_id"], "MODEL-V5-TEMPLATE-V1")
         self.assertEqual(experiment["base_template_tag"], "model/v5-template-v1")
@@ -316,7 +316,13 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
             rows = list(csv.DictReader(stream))
         self.assertEqual([row["job_id"] for row in rows], ["RUN-001", "RUN-002", "RUN-003"])
         self.assertEqual({row["seed"] for row in rows}, {"5"})
-        self.assertEqual({row["status"] for row in rows}, {"frozen"})
+        self.assertEqual({row["status"] for row in rows}, {"completed"})
+        self.assertEqual({row["run_exit_code"] for row in rows}, {"0"})
+        self.assertEqual({row["decision"] for row in rows}, {"reject"})
+        self.assertEqual(
+            [row["H"] for row in rows],
+            ["73.20367652523284", "73.50497581403644", "73.57355961856747"],
+        )
         self.assertEqual({row["base_version"] for row in rows}, {"v5"})
         self.assertEqual(
             {row["base_config_sha256"] for row in rows},
