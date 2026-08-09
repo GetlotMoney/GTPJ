@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V5-INNOVATION-003 低置信度局部增强</title>
+  <style>
+    body { margin: 0; font-family: "Microsoft YaHei", sans-serif; background: #f5f7fb; color: #172033; }
+    main { max-width: 1120px; margin: 36px auto; padding: 0 24px 48px; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .note { color: #59657a; margin-bottom: 28px; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 18px; align-items: stretch; }
+    .card { background: white; border: 1px solid #d9e0ec; border-radius: 14px; padding: 18px; box-shadow: 0 8px 24px rgba(38, 55, 88, .08); }
+    .card strong { display: block; margin-bottom: 8px; color: #234d9f; }
+    .gate { border-color: #7b6ce3; background: #f3f0ff; }
+    .final { border-color: #36a174; background: #eefbf5; }
+    .arrow { text-align: center; color: #7a879d; font-size: 22px; align-self: center; }
+    .formula { margin-top: 24px; padding: 18px; background: #172033; color: #f7f9ff; border-radius: 12px; font-family: Consolas, monospace; line-height: 1.8; }
+    .boundary { margin-top: 20px; padding: 16px 18px; border-left: 4px solid #d59b2d; background: #fff8e8; }
+    @media (max-width: 850px) { .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>V5-INNOVATION-003：低置信度局部增强</h1>
+  <p class="note">候选实验路径；正式 V5 母版、标签、划分、200 类轴和 U/S/H/ZS 评估均不改变。</p>
+  <section class="flow">
+    <div class="card"><strong>1. 母版输出</strong>同一次 forward 得到 global_logits、local_logits 与全部辅助损失输入。</div>
+    <div class="card"><strong>2. 置信度范围</strong>训练只看 seen 类；评估看完整 200 类。取 top1-top2 margin。</div>
+    <div class="card gate"><strong>3. 单调 gate</strong>margin 先 detach；有效 slope 恒为正，因此 margin 越大，gate 不增。</div>
+    <div class="card final"><strong>4. 最终融合</strong>只重算 final/logits/clip_S_pp；辅助张量原样保留。</div>
+  </section>
+  <div class="formula">gate = sigmoid(bias - softplus(slope_raw) × detach(margin))<br>final = global_logits + 0.05 × logit_scale × gate × local_logits</div>
+  <div class="boundary">训练输出仍只切 seen 类，评估输出仍是 200 类；gate 不读取标签，也不改变 standard GZSL 指标算法。</div>
+</main>
+</body>
+</html>

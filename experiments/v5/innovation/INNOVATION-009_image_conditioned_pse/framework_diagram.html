@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>V5-INNOVATION-009 图像条件 PSE</title>
+  <style>
+    body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#f6f7fb;color:#172033;margin:0;padding:32px}main{max-width:1100px;margin:auto}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:center}.box{background:white;border:1px solid #d9deea;border-radius:14px;padding:16px;box-shadow:0 6px 20px #23305212}.accent{border-color:#6d5dfc;background:#f1efff}.local{border-color:#35a57a;background:#ecfbf5}.arrow{text-align:center;font-size:24px;color:#687087}.wide{grid-column:span 2}.note{margin-top:22px;padding:16px;border-left:4px solid #6d5dfc;background:white}code{color:#5947dc}@media(max-width:800px){.flow{grid-template-columns:1fr}.wide{grid-column:auto}.arrow{transform:rotate(90deg)}}
+  </style>
+</head>
+<body><main>
+  <h1>V5-INNOVATION-009：图像条件 PSE</h1>
+  <p>紫色是全局选句路径，绿色是保持静态的原局部分支。</p>
+  <section class="flow">
+    <div class="box">200 类 × 8 句<br><code>[C,8,D]</code></div><div class="arrow">→</div><div class="box">共享 PSE<br>保留 8 句</div><div class="arrow">→</div><div class="box accent">CLS 逐类选句<br><code>[B,C,8]</code></div>
+    <div class="box">全局 CLS<br><code>[B,D]</code></div><div class="arrow">→</div><div class="box accent wide">图像条件类别原型<br><code>[B,C,D]</code> → global logits</div><div class="arrow">↘</div>
+    <div class="box">576 个局部块</div><div class="arrow">→</div><div class="box local">频域 Top-K=32</div><div class="arrow">→</div><div class="box local">原 BVSA + 均匀 PSE 原型<br>local logits</div>
+    <div class="box accent wide">global logits</div><div class="arrow">+</div><div class="box local">0.2 × local logits</div><div class="arrow">→</div><div class="box">final logits<br>U / S / H / ZS</div>
+  </section>
+  <div class="note"><strong>实验隔离点：</strong>条件原型只进入全局分支；局部分支始终读取静态均匀 PSE 原型，因此它回答的正是“只让全局图像选择 8 句话是否足够”。拓扑损失仍读取母版的 seen-PSE / unseen-raw 静态输入。</div>
+</main></body></html>

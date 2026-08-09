@@ -1,0 +1,24 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-TUNE-002
+framework_id: FRAMEWORK-V5
+kind: tune
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/tune/tune-002-local-fusion-weight
+legacy_ref: none
+status: pre_run_gated
+research_question: 局部分支融合权重在固定 V5 其余语义下怎样影响 CUB GZSL 结果
+local_weights: [0.05, 0.10, 0.30, 0.40]
+formal_evidence: true
+not_confirmation_evidence: true
+workflow_mode: server_detached_role_only
+review_tier: strict-3
+implementation_status: review_pending
+implementation_code_ref: 3af9bfa8247b7aa6bc4ba4b5aa6c69f35277cd28
+campaign_id: CAMP-20260809-v5-ablation100
+gpu_id: 0

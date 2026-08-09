@@ -1,0 +1,11 @@
+job_id,group,attempt,gpu,formal_evidence,code_commit,config_ref,config_sha256,seed,restore_target_H,near_miss_tolerance_H,status,U,S,H,ZS,best_epoch,decision,artifact_ref,artifact_manifest_sha256
+DIAG-V5-006,LEGACY_V5,1,0,false,4b259379d99c1a791442ea9e2fac0bb22b2411a9,configs/V5-069.yaml,a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca,5,74.44,0.20,frozen,,,,,,,,
+DIAG-V5-007,LEGACY_V5,2,1,false,4b259379d99c1a791442ea9e2fac0bb22b2411a9,configs/V5-069.yaml,a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca,5,74.44,0.20,frozen,,,,,,,,
+DIAG-V5-008,LEGACY_V5,3,0,false,4b259379d99c1a791442ea9e2fac0bb22b2411a9,configs/V5-069.yaml,a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca,5,74.44,0.20,frozen,,,,,,,,
+DIAG-V5-009,LEGACY_V5,4,1,false,4b259379d99c1a791442ea9e2fac0bb22b2411a9,configs/V5-069.yaml,a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca,5,74.44,0.20,frozen,,,,,,,,
+DIAG-V5-010,LEGACY_V5,5,0,false,4b259379d99c1a791442ea9e2fac0bb22b2411a9,configs/V5-069.yaml,a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca,5,74.44,0.20,frozen,,,,,,,,
+DIAG-DR-006,DYNAMIC_7511,1,0,false,d505e992492eb6fe7272edf0f0dc1d15a5932434,configs/DR-095.yaml,f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218,5,75.11,0.20,frozen,,,,,,,,
+DIAG-DR-007,DYNAMIC_7511,2,1,false,d505e992492eb6fe7272edf0f0dc1d15a5932434,configs/DR-095.yaml,f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218,5,75.11,0.20,frozen,,,,,,,,
+DIAG-DR-008,DYNAMIC_7511,3,0,false,d505e992492eb6fe7272edf0f0dc1d15a5932434,configs/DR-095.yaml,f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218,5,75.11,0.20,frozen,,,,,,,,
+DIAG-DR-009,DYNAMIC_7511,4,1,false,d505e992492eb6fe7272edf0f0dc1d15a5932434,configs/DR-095.yaml,f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218,5,75.11,0.20,frozen,,,,,,,,
+DIAG-DR-010,DYNAMIC_7511,5,0,false,d505e992492eb6fe7272edf0f0dc1d15a5932434,configs/DR-095.yaml,f4d95017cc884adb9a2549df4d88ee666e29c1e2b21e5395f5c4804a5eb83218,5,75.11,0.20,frozen,,,,,,,,

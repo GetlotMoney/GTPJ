@@ -1,0 +1,34 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-002
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/ablation/ablation-002-pse-effect
+legacy_ref: none
+status: pre_run_gated
+research_question: 在关闭 PSE 及其依赖的 topology loss、保持其余 V5 路径不变时，CUB GZSL 指标如何变化
+disabled_subsystem:
+  - PSE
+  - PSE-dependent topology
+preserved_subsystem:
+  - ICSA
+  - FGVD
+  - BVSA
+  - SGMP
+  - local_fusion
+  - CE
+  - consistency
+  - BMDD
+  - MPP
+  - negative_semantic
+formal_evidence: true
+not_confirmation_evidence: true
+workflow_mode: server_detached_role_only
+review_tier: strict-3
+implementation_status: strict3_fixes_applied_pending_recheck

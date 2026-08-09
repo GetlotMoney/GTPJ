@@ -1,0 +1,25 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-012
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/ablation/ablation-012-pse-attention-validation
+legacy_ref: none
+status: ready_to_run
+repeat_type: same_seed_repeat
+seeds:
+  - 5
+  - 17
+repeats_per_seed: 2
+planned_runs: 8
+not_confirmation_evidence: true
+research_question: PSE 的 Q/K 注意力是否真的提供了有效选择，以及其清零是否由 Adam 权重衰减造成
+baseline_reference: V5-ABLATION-008/GL-FULL/RUN-013..RUN-016
+training_started: false
+run_commit: recorded_from_git_head_at_launch

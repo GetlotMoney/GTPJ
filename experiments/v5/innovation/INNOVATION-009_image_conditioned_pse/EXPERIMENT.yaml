@@ -1,0 +1,24 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-009
+framework_id: FRAMEWORK-V5
+kind: innovation
+idea_id: IDEA-0011
+idea_binding_status: ready
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/innovation/innovation-009-image-conditioned-pse
+legacy_ref: none
+status: completed
+planned_runs: 2
+seed: 5
+formal_evidence: true
+not_confirmation_evidence: true
+formal_training_started: true
+research_question: 只让全局图像为每个候选类别选择8句话，是否已经足以提高GZSL的H
+comparison_reference: FRAMEWORK-V5 confirmed_H=74.44 and FRAMEWORK-V3 CONFIRM-001 confirmed_H=74.47
+only_method_change: image_conditioned_pse_sentence_selection

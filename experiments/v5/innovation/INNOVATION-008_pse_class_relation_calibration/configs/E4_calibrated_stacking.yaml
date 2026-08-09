@@ -1,0 +1,10 @@
+evaluation_only: true
+checkpoint_from: RUN-003
+checkpoint_config: configs/E2_shared_unseen_pse.yaml
+gamma: null
+gamma_source: class_disjoint_validation
+gamma_selection_metric: H
+gamma_tie_break: smallest_gamma
+test_tuning_allowed: false
+report_raw_metrics: true
+report_calibrated_metrics: true

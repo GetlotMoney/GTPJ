@@ -1,0 +1,15 @@
+{
+  "schema_version": "gtpj.v5_confirmation_002.run_plan.v1",
+  "experiment_id": "V5-CONFIRM-002",
+  "repeat_type": "same_seed_repeat",
+  "diagnostic_subtype": "code_repair",
+  "not_confirmation_evidence": true,
+  "early_stop": false,
+  "jobs": [
+    {"job_id": "RUN-001", "run_id": "V5CONF002-R1-RUN-001", "attempt": 1, "wave": 1, "gpu": 0, "seed": 5},
+    {"job_id": "RUN-002", "run_id": "V5CONF002-R1-RUN-002", "attempt": 2, "wave": 1, "gpu": 1, "seed": 5},
+    {"job_id": "RUN-003", "run_id": "V5CONF002-R1-RUN-003", "attempt": 3, "wave": 2, "gpu": 0, "seed": 5},
+    {"job_id": "RUN-004", "run_id": "V5CONF002-R1-RUN-004", "attempt": 4, "wave": 2, "gpu": 1, "seed": 5},
+    {"job_id": "RUN-005", "run_id": "V5CONF002-R1-RUN-005", "attempt": 5, "wave": 3, "gpu": 0, "seed": 5}
+  ]
+}
