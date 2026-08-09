@@ -220,6 +220,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+| `tools/v5_local_complementarity.py` | 对最新 V5 完整 checkpoint 做全局/局部/final 分支的事后互补性诊断；只推理，不训练或调参。 |
 
 注意：
 

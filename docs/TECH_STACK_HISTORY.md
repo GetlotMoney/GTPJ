@@ -17,6 +17,20 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 局部互补性诊断 | `SYS-V5-LOCAL-DIAG-V1` | 已完成 | 对同 seed 三份最新 V5 checkpoint 分别统计 global/local/final、oracle、救对/破坏、分数尺度与置信度分桶；测试标签仅用于事后解释。 |
+
+## 2026-08-09：SYS-V5-LOCAL-DIAG-V1（已完成）
+
+- 本次改的是哪个对象：最新 V5 完整模型的事后互补性诊断工具与运行前参数表。
+- 目标问题：只看“去掉局部分支后 H 变化多少”无法区分局部信息本身无用，还是局部分数尺度太小、只在少量低置信样本上有用。
+- 采用技术：从正式 full checkpoint 读取 `global_logits`、`local_logits`、`final_logits`，按原 per-class U/S/H/ZS 口径统计分支表现、理想二选一上限、救对/破坏、预测一致率、seen 偏置、分数尺度和全局 margin 四分位；同时锁定 Git、配置字节哈希、类别划分、十二项输入文件指纹和 checkpoint 哈希。
+- 替换了什么：没有替换训练或评估入口；新增一个只推理、只解释的实验专属工具。
+- 实际可见效果：同一份报告能直接回答局部分支是否提供独有正确样本、原固定融合是否把这些样本救回来，以及全局分数与局部分数是否存在明显量级差。
+- 选择原因：先用不改变训练的最小诊断把问题拆清，再判断是否保留局部分支或使用置信度门控，避免根据单次消融结果猜原因。
+- 已知限制：当前只完成代码、28 项测试和独立只读审核；三份真实 checkpoint 尚未产生，不能提前写科学结论；测试标签不得用于选择 gate 参数。
+- 素材位置：`tools/v5_local_complementarity.py`、`tests/test_v5_local_complementarity.py`、`experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/`。
+- 验证命令与结果：`dvsr_gpu` 环境下 28 项诊断与 canonical 回归测试通过，`py_compile`、CLI help、参数表和母版绑定校验通过；独立 reviewer 复审为 APPROVE，并完成 50 轮双线程原子写竞争测试，无覆盖和临时文件残留。
+- 回退方式：回退本实验的 pre-run commit；冻结母版、训练入口、历史 checkpoint 和旧结果均不改动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 
