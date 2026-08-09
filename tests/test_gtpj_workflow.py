@@ -4898,6 +4898,17 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertEqual("73.0", self.module.parse_training_log_text(captured, "no-newline test")["ZS"])
 
+    def test_parse_training_log_supports_v5_epoch_summaries(self) -> None:
+        metrics = self.module.parse_training_log_text(
+            "epoch 1: S=78.81% U=47.04% H=58.92% ZS=75.78% avg_loss=1.9773\n"
+            "epoch 2: S=81.00% U=40.00% H=53.55% ZS=74.00% avg_loss=1.5000\n",
+            "v5 epoch summary",
+        )
+        self.assertEqual(
+            {"U": "47.04", "S": "78.81", "H": "58.92", "ZS": "75.78", "best_epoch": "1"},
+            metrics,
+        )
+
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-901-legacy-summary")
         code, _stdout, stderr = self._run_main(
