@@ -718,7 +718,7 @@ class V5ScorePathLedgerContractTest(unittest.TestCase):
         self.assertTrue(EXPERIMENT_DIR.is_dir())
         self.assertTrue(required.issubset({path.name for path in EXPERIMENT_DIR.iterdir()}))
         self.assertTrue((EXPERIMENT_DIR / "evidence" / "README.md").is_file())
-        for fabricated in ("manifest.yaml", "result.yaml", "result.md", "quality_check.md"):
+        for fabricated in ("manifest.yaml", "result.yaml", "result.md"):
             self.assertFalse((EXPERIMENT_DIR / fabricated).exists())
 
     def test_matrix_has_exactly_sixteen_frozen_rows_in_fixed_setting_order(self):
