@@ -290,6 +290,7 @@ class GTPJ(nn.Module):
         seen_text_embeds,
         unseen_text_embeds,
         seen_sentence_embeds=None,
+        unseen_sentence_embeds=None,
     ):
         super().__init__()
         self.config = config
@@ -307,7 +308,12 @@ class GTPJ(nn.Module):
         if torch.isin(seen_ids, unseen_ids).any():
             raise ValueError("seenclass and unseenclass must not overlap.")
         combined_ids = torch.cat([seen_ids, unseen_ids]).sort().values
-        if not torch.equal(combined_ids, torch.arange(self.nclass, dtype=torch.long)):
+        expected_ids = torch.arange(
+            self.nclass,
+            dtype=torch.long,
+            device=combined_ids.device,
+        )
+        if not torch.equal(combined_ids, expected_ids):
             raise ValueError("seenclass and unseenclass must cover every global class exactly once.")
         if tuple(seen_text_embeds.shape) != (seen_ids.numel(), self.dim_f):
             raise ValueError("seen_text_embeds must have shape [C_seen, D].")
@@ -330,7 +336,6 @@ class GTPJ(nn.Module):
 
         fixed_route = {
             "use_pse_self_attention": True,
-            "pse_apply_unseen": False,
             "use_fgvd_geometry": True,
             "fgvd_select_sigma": 0.0,
             "fgvd_select_largest": True,
@@ -349,6 +354,7 @@ class GTPJ(nn.Module):
                     f"got {getattr(config, name)!r}."
                 )
 
+        self.pse_apply_unseen = bool(config.pse_apply_unseen)
         self.pse_outer_ratio = float(config.pse_outer_ratio)
         if seen_sentence_embeds is None:
             raise ValueError("V5 clean template requires seen_sentence_embeds.")
@@ -361,6 +367,20 @@ class GTPJ(nn.Module):
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
         )
+        if self.pse_apply_unseen:
+            if (
+                unseen_sentence_embeds is None
+                or unseen_sentence_embeds.dim() != 3
+                or unseen_sentence_embeds.size(0) != unseen_ids.numel()
+                or unseen_sentence_embeds.size(-1) != self.dim_f
+            ):
+                raise ValueError(
+                    "pse_apply_unseen=True requires unseen_sentence_embeds with "
+                    "shape [C_unseen, M, D]."
+                )
+            self.unseen_sentence_embeds = nn.Parameter(
+                F.normalize(unseen_sentence_embeds, dim=-1), requires_grad=False
+            )
         self.pse_module = ProgressiveSemanticSelfAttention(
             dim=self.dim_f,
             heads=int(config.pse_heads),
@@ -429,11 +449,22 @@ class GTPJ(nn.Module):
         return F.normalize(adapted, dim=1)
 
     def get_adapted_unseen_text(self):
-        return self.unseen_text_embeds
+        if not self.pse_apply_unseen:
+            return self.unseen_text_embeds
+        sentence_embeds = self.unseen_sentence_embeds
+        base = sentence_embeds.mean(dim=1)
+        attn = self.pse_module(sentence_embeds).mean(dim=1)
+        ratio = self.pse_outer_ratio
+        adapted = ratio * attn + (1.0 - ratio) * base
+        return F.normalize(adapted, dim=1)
 
-    def _make_all_text(self, device, dtype):
+    def _make_all_text(self, device, dtype, apply_unseen_pse=False):
         seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)
-        unseen_text = self.get_adapted_unseen_text().to(device=device, dtype=dtype)
+        if apply_unseen_pse:
+            unseen_text = self.get_adapted_unseen_text()
+        else:
+            unseen_text = self.unseen_text_embeds
+        unseen_text = unseen_text.to(device=device, dtype=dtype)
         all_text = torch.zeros(self.nclass, self.dim_f, device=device, dtype=dtype)
         all_text[self.seenclass.to(device)] = seen_text
         all_text[self.unseenclass.to(device)] = unseen_text
@@ -566,7 +597,11 @@ class GTPJ(nn.Module):
         patches = clip_features[:, 1:, :]
 
         logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
-        all_text = self._make_all_text(patches.device, patches.dtype)
+        all_text = self._make_all_text(
+            patches.device,
+            patches.dtype,
+            apply_unseen_pse=self.pse_apply_unseen and not is_train,
+        )
         vis_n = F.normalize(cls_token, dim=1)
         pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
         all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()

@@ -1,11 +1,20 @@
 """V5 正式训练的输入身份和断点续训工具。"""
 
 import hashlib
+import json
+import os
 from pathlib import Path
 import random
+import tempfile
 
 import numpy as np
 import torch
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_FINGERPRINT_MANIFEST = (
+    REPO_ROOT / ".runtime" / "data_fingerprints" / "v5_inputs.json"
+)
 
 
 def sha256_file(path):
@@ -16,13 +25,80 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-def input_record(path, tensor=None):
+def _file_identity(path):
     resolved = Path(path).resolve()
-    record = {
+    stat = resolved.stat()
+    return {
         "path": str(resolved),
-        "sha256": sha256_file(resolved),
-        "size_bytes": resolved.stat().st_size,
+        "file_id": f"{stat.st_dev}:{stat.st_ino}",
+        "size_bytes": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
     }
+
+
+def _load_fingerprint_manifest():
+    if not DATA_FINGERPRINT_MANIFEST.is_file():
+        return {"schema_version": 1, "files": {}}
+    try:
+        manifest = json.loads(DATA_FINGERPRINT_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schema_version": 1, "files": {}}
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema_version") != 1
+        or not isinstance(manifest.get("files"), dict)
+    ):
+        return {"schema_version": 1, "files": {}}
+    return manifest
+
+
+def _write_fingerprint_manifest(manifest):
+    directory = DATA_FINGERPRINT_MANIFEST.parent
+    directory.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=directory,
+        prefix="v5_inputs.",
+        suffix=".tmp",
+        delete=False,
+    ) as stream:
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+        temporary = Path(stream.name)
+    os.replace(temporary, DATA_FINGERPRINT_MANIFEST)
+
+
+def cached_data_sha256(path):
+    identity = _file_identity(path)
+    manifest = _load_fingerprint_manifest()
+    cached = manifest["files"].get(identity["path"])
+    identity_fields = ("path", "file_id", "size_bytes", "mtime_ns")
+    if isinstance(cached, dict) and "sha256" in cached and all(
+        cached.get(field) == identity[field] for field in identity_fields
+    ):
+        return cached["sha256"]
+
+    digest = sha256_file(identity["path"])
+    manifest["files"][identity["path"]] = {**identity, "sha256": digest}
+    _write_fingerprint_manifest(manifest)
+    return digest
+
+
+def data_fingerprint_manifest_record():
+    if not DATA_FINGERPRINT_MANIFEST.is_file():
+        return None
+    return {
+        "path": str(DATA_FINGERPRINT_MANIFEST.resolve()),
+        "sha256": sha256_file(DATA_FINGERPRINT_MANIFEST),
+    }
+
+
+def input_record(path, tensor=None):
+    record = _file_identity(path)
+    record["sha256"] = cached_data_sha256(record["path"])
     if tensor is not None:
         record["shape"] = list(tensor.shape)
         record["dtype"] = str(tensor.dtype)
@@ -40,7 +116,7 @@ def validate_stable_input_records(before, after):
     if set(before) != set(after):
         raise ValueError("输入清单在加载前后不一致。")
     for name in before:
-        for field in ("path", "sha256", "size_bytes"):
+        for field in ("path", "file_id", "size_bytes", "mtime_ns", "sha256"):
             if before[name][field] != after[name][field]:
                 raise RuntimeError(
                     f"输入 {name} 在加载期间发生变化，拒绝继续正式训练。"

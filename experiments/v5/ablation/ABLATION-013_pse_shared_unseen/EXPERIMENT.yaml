@@ -1,0 +1,29 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-013
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+experiment_branch: exp/v5/ablation/ablation-013-pse-shared-unseen
+status: ready_to_run
+repeat_type: same_seed_repeat
+seeds:
+  - 5
+  - 17
+repeats_per_seed: 2
+planned_runs: 8
+not_confirmation_evidence: true
+research_question: 同一个 PSE 是否应该在评估时同时处理已见类和未见类的七句文本
+baseline_group: PSE-SEEN-ONLY
+comparison_group: PSE-SHARED-UNSEEN
+only_changed_parameter: pse_apply_unseen
+protocol_boundary:
+  training_images: seen_only
+  training_labels: seen_only
+  pse_training_signal: seen_only
+  unseen_text_processing: evaluation_only
+  unseen_images_or_labels_used_for_training: false
+training_started: false
+run_commit: recorded_from_git_head_at_launch

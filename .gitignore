@@ -36,6 +36,7 @@ experiments/.agent-state/
 .gtpj_runtime/
 .gtpj/local_paths.yaml
 .gtpj/locks/
+.runtime/
 
 # GitHub is the lightweight control plane; raw experiment artifacts stay external.
 experiments/**/logs/*
