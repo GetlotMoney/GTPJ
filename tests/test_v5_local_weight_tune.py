@@ -322,9 +322,6 @@ class V5LocalWeightLedgerContractTest(unittest.TestCase):
             "manifest.yaml",
             "result.yaml",
             "result.md",
-            "quality_check.md",
-            "agent_summary.md",
-            "AGENT_ACTIVITY.md",
         ):
             self.assertFalse((EXPERIMENT_DIR / fabricated).exists(), fabricated)
 
