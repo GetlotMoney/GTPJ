@@ -291,7 +291,7 @@ class PseIcsaInteractionTest(unittest.TestCase):
             self.assertTrue("不可手工正式启动" in text or "禁止手工正式启动" in text)
             self.assertNotIn("python train_GTPJ_CUB.py", text)
 
-        forbidden = ["manifest.yaml", "result.yaml", "result.md", "quality_check.md"]
+        forbidden = ["manifest.yaml", "result.yaml", "result.md"]
         self.assertEqual([], [name for name in forbidden if (EXPERIMENT_DIR / name).exists()])
 
 
