@@ -7,7 +7,7 @@
 | 调参 | 1 | `tune/INDEX.md` |
 | 消融 | 1 | `ablation/INDEX.md` |
 | 创新 | 1 | `innovation/INDEX.md` |
-| 确认 | 0 | `confirmation/INDEX.md` |
+| 确认 | 1 | `confirmation/INDEX.md` |
 
 ## 调参实验
 
@@ -31,4 +31,4 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| - | none | 暂无 | - | - | - | - |
+| `V5-CONFIRM-003` | completed | 最新 V5 母版同 seed 三次运行的基线分布与局部分支互补性是什么 | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/PARAMETER_MATRIX.md` | `-` | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis` | - |

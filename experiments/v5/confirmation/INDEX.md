@@ -2,4 +2,4 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| - | none | v5 现有五次复跑属于版本激活证据，尚未单独登记为新的确认实验项 | - | `trial003-main100-091..095` | - | - |
+| `V5-CONFIRM-003` | completed | 最新 V5 母版同 seed 三次运行的基线分布与局部分支互补性是什么 | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/PARAMETER_MATRIX.md` | - | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis` | - |

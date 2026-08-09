@@ -11,7 +11,8 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/confirmation/confirm-003-current-local-diagnosis
 legacy_ref: none
-status: pre_run
+status: completed
+formal_training: true
 repeat_type: same_seed_repeat
 original_seed: 5
 repeat_count: 3

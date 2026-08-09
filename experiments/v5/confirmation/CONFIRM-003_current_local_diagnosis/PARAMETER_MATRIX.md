@@ -6,9 +6,9 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | current-full-seed5-repeat1 | confirmation | frozen | {} | 5 |  | V5CONF003-RUN-001 | 最新母版同seed三次基线与互补性诊断 |  |  |  |
-| RUN-002 | current-full-seed5-repeat2 | confirmation | frozen | {} | 5 | RUN-001 | V5CONF003-RUN-002 | 最新母版同seed三次基线与互补性诊断 |  |  |  |
-| RUN-003 | current-full-seed5-repeat3 | confirmation | frozen | {} | 5 | RUN-001 | V5CONF003-RUN-003 | 最新母版同seed三次基线与互补性诊断 |  |  |  |
+| RUN-001 | current-full-seed5-repeat1 | confirmation | completed | {} | 5 |  | V5CONF003-RUN-001 | 最新母版同seed三次基线与互补性诊断 | 74.22896736865874 | diagnostic_only | 49e09f79a4b3c53bdd51aca89a19028d2cca48ba4613fe95dceb6c2624581f3b |
+| RUN-002 | current-full-seed5-repeat2 | confirmation | completed | {} | 5 | RUN-001 | V5CONF003-RUN-002 | 最新母版同seed三次基线与互补性诊断 | 74.31970326733531 | diagnostic_only | 5ef51f9c0791574371df960880ce2770384cb6c82b490fa1e3f81d52f0d8203a |
+| RUN-003 | current-full-seed5-repeat3 | confirmation | completed | {} | 5 | RUN-001 | V5CONF003-RUN-003 | 最新母版同seed三次基线与互补性诊断 | 74.13619974910445 | diagnostic_only | 2be62a1af51c6da3cbb7b2f4107971edbf4568c72717b8a2e39caff69a2e54a9 |
 
 ## 查重说明
 
