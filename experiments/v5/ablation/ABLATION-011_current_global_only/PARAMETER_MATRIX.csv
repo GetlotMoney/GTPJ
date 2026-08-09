@@ -1,0 +1,4 @@
+run_id,status,seed,score_path,config,base_model,run_commit,run_dir
+RUN-001,planned,5,global_only,configs/RUN-001.yaml,MODEL-V5-TEMPLATE-V1@2f5fa5e,resolve_from_clean_HEAD_at_launch,pending
+RUN-002,planned,5,global_only,configs/RUN-002.yaml,MODEL-V5-TEMPLATE-V1@2f5fa5e,resolve_from_clean_HEAD_at_launch,pending
+RUN-003,planned,5,global_only,configs/RUN-003.yaml,MODEL-V5-TEMPLATE-V1@2f5fa5e,resolve_from_clean_HEAD_at_launch,pending

@@ -15,8 +15,22 @@
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
+| V5 global-only 消融 | `MODEL-V5-ABLATION-011-GLOBAL-ONLY-V1` | 已完成（未训练） | 基于 `MODEL-V5-TEMPLATE-V1@2f5fa5e` 的独立 CLS-only 路线；只保留 PSE、ICSA、全局 logits 与文本拓扑损失。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 已冻结 | Tag `model/v5-template-v1` 指向 `2f5fa5e`；固定保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和 0.2 融合路线。 |
+
+## 2026-08-09：MODEL-V5-ABLATION-011-GLOBAL-ONLY-V1（已完成，未训练）
+
+- 本次改的是哪个对象：V5 当前母版的 global-only 因果消融模型、独立训练入口和三行 seed=5 预运行草案；canonical 模型与训练入口未改。
+- 目标问题：只把最终融合权重改成零，仍会构造局部分支、读取局部块并计算局部损失，无法回答“完全拿掉局部系统后，全局路线本身表现如何”。
+- 采用技术：先构造同一随机状态的 canonical donor，再只复制 PSE、ICSA、文本参数和 `logit_scale` 到 CLS-only 模型；训练损失只含 CE 与文本拓扑，入口只读取 CLS、标签、xlsa17 划分和 gpt55 句子文本。
+- 替换了什么：本消融对象内移除 BVSA、FGVD、SGMP、局部分数、local consistency、BMDD、MPP 与 negative loss；不替换 `model/MyModel.py` 和 `train_GTPJ_CUB.py`。
+- 实际可见效果：global-only 对象没有 BVSA/SGMP 参数，不接受 577-token 输入；同一 donor 状态下，全局 logits 已在固定 CPU 样例上逐元素完全相等。入口要求显式 `--config`、`--data-root`、`--run-dir`、`--expected-run-commit`，并使用原子替换写四个固定输出文件。
+- 选择原因：独立文件能把消融边界写死，避免在 canonical 母版继续叠加开关；donor 状态复制消除了模块构造顺序造成的随机初始化差异。
+- 已知限制：尚未启动 CUDA 正式训练，也未验证真实 CUB 缓存与服务器文件系统上的完整 50 epoch；当前结论只覆盖代码语义和固定小样例等价性。
+- 素材位置：`model/V5GlobalOnly.py`、`train_V5_ABLATION_011_CUB.py`、`tests/test_v5_global_only_ablation.py`、`experiments/v5/ablation/ABLATION-011_current_global_only/`。
+- 验证命令与结果：`conda run -n dvsr_gpu python -m unittest tests.test_v5_global_only_ablation tests.test_v5_template_contract tests.test_v5_checkpoint_converter -v` 共 30 项通过；其中专项 12 项通过，canonical V5 合同与转换回归 18 项通过。未启动训练。
+- 回退方式：回退本消融的本地 pre-run commit；冻结母版 `2f5fa5e`、canonical 配置和历史实验不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 

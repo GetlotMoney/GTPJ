@@ -86,6 +86,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
 | `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
+| `train_V5_ABLATION_011_CUB.py` | V5-ABLATION-011 专属 global-only 入口；只读取 CUB CLS 与标签，要求显式配置、数据根目录、全新输出目录和准确运行 commit。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 
@@ -122,6 +123,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
+| `docs/TECH_STACK_HISTORY.md` | 技术、模型路线和工作流版本的追加式演进记录。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
@@ -201,6 +203,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `model/MyModel.py` | GTPJ 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/V5GlobalOnly.py` | V5-ABLATION-011 专属 global-only 模型；从 canonical donor 复制 PSE、ICSA、文本与全局打分状态，不保留 BVSA/SGMP 局部参数。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：

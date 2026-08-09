@@ -1,0 +1,12 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-011
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: frozen_model_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+experiment_branch: exp/v5/ablation/ablation-011-current-global-only
+status: planned
+score_path: global_only
+training_started: false
