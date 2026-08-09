@@ -367,7 +367,6 @@ class V5GlobalOnlyLedgerTest(unittest.TestCase):
                 str(EXPERIMENT_DIR / "PARAMETER_MATRIX.csv"),
                 "--expected-jobs",
                 "3",
-                "--require-ready",
             ],
             cwd=ROOT,
             text=True,
@@ -392,7 +391,7 @@ class V5GlobalOnlyLedgerTest(unittest.TestCase):
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
-    def test_three_seed_five_configs_are_identical_and_matrix_is_frozen(self):
+    def test_three_seed_five_configs_are_identical_and_matrix_is_completed(self):
         self.assertTrue(EXPERIMENT_DIR.is_dir(), "实验本地目录尚未创建")
         canonical = _unwrap_config(CANONICAL_CONFIG)
         configs = []
@@ -418,22 +417,29 @@ class V5GlobalOnlyLedgerTest(unittest.TestCase):
             [{"score_path": "global_only"}] * 3,
             [json.loads(row["changed_parameters"]) for row in rows],
         )
-        self.assertEqual(["frozen"] * 3, [row["status"] for row in rows])
+        self.assertEqual(["completed"] * 3, [row["status"] for row in rows])
         self.assertEqual(["", "RUN-001", "RUN-001"], [row["repeat_of"] for row in rows])
+        self.assertEqual(["0"] * 3, [row["run_exit_code"] for row in rows])
+        self.assertEqual(["74.11180679506354"] * 3, [row["H"] for row in rows])
+        self.assertEqual(["diagnostic_only"] * 3, [row["decision"] for row in rows])
+        self.assertTrue(all(row["artifact_ref"] for row in rows))
+        self.assertEqual([""] * 3, [row["artifact_manifest_sha256"] for row in rows])
 
-    def test_pre_run_contains_no_training_authorization_or_result_artifacts(self):
+    def test_post_run_ledger_contains_results_but_no_copied_training_artifacts(self):
         experiment = yaml.safe_load(
             (EXPERIMENT_DIR / "EXPERIMENT.yaml").read_text(encoding="utf-8")
         )
         self.assertIsNot(True, experiment.get("run_all_requested"))
-        self.assertIs(False, experiment["training_started"])
+        self.assertEqual("completed", experiment["status"])
+        self.assertIs(True, experiment["training_started"])
+        for name in ("result.md", "quality_check.md", "evidence/ARTIFACTS.md"):
+            self.assertTrue((EXPERIMENT_DIR / name).is_file(), name)
         for name in (
             "metrics.json",
             "model_best.pth",
             "checkpoint_last.pth",
             "training.log",
             "result.yaml",
-            "result.md",
         ):
             self.assertFalse((EXPERIMENT_DIR / name).exists(), name)
 

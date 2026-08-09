@@ -6,9 +6,9 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | current-global-only-seed5-repeat1 | ablation | frozen | {"score_path":"global_only"} | 5 |  | V5ABL011-RUN-001 | 当前 V5 global-only 同 seed 三次独立运行 |  |  |  |
-| RUN-002 | current-global-only-seed5-repeat2 | ablation | frozen | {"score_path":"global_only"} | 5 | RUN-001 | V5ABL011-RUN-002 | 当前 V5 global-only 同 seed 三次独立运行 |  |  |  |
-| RUN-003 | current-global-only-seed5-repeat3 | ablation | frozen | {"score_path":"global_only"} | 5 | RUN-001 | V5ABL011-RUN-003 | 当前 V5 global-only 同 seed 三次独立运行 |  |  |  |
+| RUN-001 | current-global-only-seed5-repeat1 | ablation | completed | {"score_path":"global_only"} | 5 |  | V5ABL011-RUN-001 | 当前 V5 global-only 同 seed 三次独立运行 | 74.11180679506354 | diagnostic_only |  |
+| RUN-002 | current-global-only-seed5-repeat2 | ablation | completed | {"score_path":"global_only"} | 5 | RUN-001 | V5ABL011-RUN-002 | 当前 V5 global-only 同 seed 三次独立运行 | 74.11180679506354 | diagnostic_only |  |
+| RUN-003 | current-global-only-seed5-repeat3 | ablation | completed | {"score_path":"global_only"} | 5 | RUN-001 | V5ABL011-RUN-003 | 当前 V5 global-only 同 seed 三次独立运行 | 74.11180679506354 | diagnostic_only |  |
 
 ## 查重说明
 

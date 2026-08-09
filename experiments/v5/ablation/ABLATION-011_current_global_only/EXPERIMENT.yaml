@@ -11,11 +11,14 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-011-current-global-only
 legacy_ref: none
-status: pre_run
+status: completed
 repeat_type: same_seed_repeat
 original_seed: 5
 repeat_count: 3
 not_confirmation_evidence: true
 research_question: 只保留当前 V5 全局分数路径时，性能相对完整母版如何变化
 score_path: global_only
-training_started: false
+training_started: true
+run_commit: 83bf7c090bdce18c6483a3ff58aeeb8313100664
+completed_runs: 3
+result_decision: diagnostic_only
