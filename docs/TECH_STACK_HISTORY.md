@@ -27,9 +27,9 @@
 - 替换了什么：没有替换训练或评估入口；新增一个只推理、只解释的实验专属工具。
 - 实际可见效果：同一份报告能直接回答局部分支是否提供独有正确样本、原固定融合是否把这些样本救回来，以及全局分数与局部分数是否存在明显量级差。
 - 选择原因：先用不改变训练的最小诊断把问题拆清，再判断是否保留局部分支或使用置信度门控，避免根据单次消融结果猜原因。
-- 已知限制：当前只完成代码、28 项测试和独立只读审核；三份真实 checkpoint 尚未产生，不能提前写科学结论；测试标签不得用于选择 gate 参数。
-- 素材位置：`tools/v5_local_complementarity.py`、`tests/test_v5_local_complementarity.py`、`experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/`。
-- 验证命令与结果：`dvsr_gpu` 环境下 28 项诊断与 canonical 回归测试通过，`py_compile`、CLI help、参数表和母版绑定校验通过；独立 reviewer 复审为 APPROVE，并完成 50 轮双线程原子写竞争测试，无覆盖和临时文件残留。
+- 已知限制：当前只完成代码、30 项测试和独立只读审核；三份真实 checkpoint 尚未产生，不能提前写科学结论；测试标签不得用于选择 gate 参数。
+- 素材位置：`tools/v5_local_complementarity.py`、`train_GTPJ_CUB.py`、`tests/test_v5_local_complementarity.py`、`experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/`。
+- 验证命令与结果：`dvsr_gpu` 环境下 30 项诊断、CUDA 构造与 canonical 回归测试通过，`py_compile`、CLI help、参数表和母版绑定校验通过；诊断工具独立 reviewer 复审为 APPROVE，并完成 50 轮双线程原子写竞争测试，无覆盖和临时文件残留。首次真实启动在 epoch 1 前暴露类别编号 CUDA/CPU 不一致，失败日志已保留；训练入口改为构造期保留 CPU 类别编号后，新增 AST、真实 CUDA 构造及额外 forward/loss/eval 小例均通过，独立 reviewer 结论为 APPROVE。
 - 回退方式：回退本实验的 pre-run commit；冻结母版、训练入口、历史 checkpoint 和旧结果均不改动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）

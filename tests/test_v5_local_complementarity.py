@@ -1,3 +1,4 @@
+import ast
 import copy
 import json
 import math
@@ -221,6 +222,43 @@ class LocalComplementarityTests(unittest.TestCase):
             broken[field] = value
             with self.subTest(field=field), self.assertRaises(ValueError):
                 validate_checkpoint_identity(broken, **arguments)
+
+    def test_canonical_trainer_keeps_split_ids_on_cpu_during_construction(self):
+        training_path = Path(__file__).resolve().parents[1] / "train_GTPJ_CUB.py"
+        tree = ast.parse(training_path.read_text(encoding="utf-8"))
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "load_v5_cub_split"
+        ]
+        self.assertEqual(len(calls), 1)
+        device_argument = calls[0].args[5]
+        self.assertIsInstance(device_argument, ast.Constant)
+        self.assertEqual(device_argument.value, "cpu")
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is required")
+    def test_cpu_split_ids_construct_with_cuda_text_then_move_as_one_model(self):
+        from model.MyModel import GTPJ
+        from tests.test_v5_template_contract import _parity_config
+
+        config = _parity_config()
+        seenclasses = torch.tensor([0, 1, 2, 3])
+        unseenclasses = torch.tensor([4, 5])
+        sentences = torch.randn(6, 3, 16, device="cuda:0")
+        text = sentences.mean(dim=1)
+        model = GTPJ(
+            config,
+            seenclasses,
+            unseenclasses,
+            seen_text_embeds=text[seenclasses],
+            unseen_text_embeds=text[unseenclasses],
+            seen_sentence_embeds=sentences[seenclasses],
+        ).to("cuda:0")
+
+        self.assertEqual(model.seenclass.device.type, "cuda")
+        self.assertEqual(model.unseenclass.device.type, "cuda")
 
 
 if __name__ == "__main__":
