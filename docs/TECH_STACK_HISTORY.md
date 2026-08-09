@@ -11,13 +11,26 @@
 
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
-| 工作流 | `SYS-WORKFLOW-V6` | 已完成 | 一个运行前提交、一张参数表、一次开跑检查、独立 RUN 目录和一次结果回填；只读母版与四类实验结构继续沿用。 |
+| 工作流 | `SYS-WORKFLOW-V6.1` | 已完成 | 沿用最短实验流程，并让结果回填同时识别旧版 Best Results 与 V5 每轮 U/S/H/ZS 摘要。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
 | 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1.1` | 已修复待重跑 | `V5-INNOVATION-009` 已让全局图像为每个候选类别选择 8 句话，并修复首次评估的 CPU/CUDA 索引设备错误；尚无完整训练结果。 |
+
+## 2026-08-10：SYS-WORKFLOW-V6.1（已完成）
+
+- 本次改的是哪个对象：训练结束后的参数表结果解析，不改模型、训练入口或评估公式。
+- 目标问题：V5 新训练入口按 `epoch ... S/U/H/ZS` 输出，旧 helper 只认 `Best Results`，导致成功训练无法自动封存。
+- 采用技术：保留旧格式解析，并从所有 V5 epoch 摘要中选择 H 最高的一轮回填完整指标和 `best_epoch`。
+- 替换了什么：只扩展日志读取格式，不替换启动、收据、哈希或参数表规则。
+- 实际可见效果：B 的成功训练可从既有日志恢复封存；A 完成后使用同一逻辑，不必重跑训练。
+- 选择原因：训练日志已经是 helper 捕获并绑定哈希的事实源，直接兼容其稳定格式是最小修复。
+- 已知限制：只接受字段完整且顺序明确的 `S/U/H/ZS` epoch 行；缺字段仍会停止。
+- 素材位置：`workflow/gtpj_workflow.py`、`tests/test_gtpj_workflow.py`。
+- 验证命令与结果：新 V5 格式与原无换行旧格式两项定向测试 2/2 通过。
+- 回退方式：回退本次 helper 提交；训练产物与原始日志不受影响，可人工按 JSON 入账。
 
 ## 2026-08-10：MODEL-V5-ICPSE-V1.1（已修复待重跑）
 

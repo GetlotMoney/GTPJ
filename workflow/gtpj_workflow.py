@@ -1283,6 +1283,24 @@ def parse_training_log_text(text: str, label: str) -> dict[str, str]:
     for name, pattern in patterns.items():
         matches = re.findall(pattern, metric_text)
         metrics[name] = matches[-1] if matches else ""
+    if not all(metrics.get(name) for name in (*METRIC_NAMES, "best_epoch")):
+        epoch_rows = re.findall(
+            r"(?m)^epoch\s+([0-9]+):\s+S=([0-9]+(?:\.[0-9]+)?)%\s+"
+            r"U=([0-9]+(?:\.[0-9]+)?)%\s+H=([0-9]+(?:\.[0-9]+)?)%\s+"
+            r"ZS=([0-9]+(?:\.[0-9]+)?)%",
+            text,
+        )
+        if epoch_rows:
+            epoch, seen, unseen, harmonic, zsl = max(
+                epoch_rows, key=lambda row: float(row[3])
+            )
+            metrics = {
+                "U": unseen,
+                "S": seen,
+                "H": harmonic,
+                "ZS": zsl,
+                "best_epoch": epoch,
+            }
     missing = [name for name in (*METRIC_NAMES, "best_epoch") if not metrics.get(name)]
     if missing:
         raise WorkflowError(
