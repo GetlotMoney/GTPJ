@@ -11,7 +11,8 @@
 | RUN-003 | E2 未见类共享 PSE | innovation | planned | {"pse_mode":"class_relation","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  |  | 验证共享权重分组处理未见类原型是否改善迁移 |  |  |  |
 | RUN-004 | E3 训练期概率下限校准 | innovation | planned | {"pse_mode":"class_relation","pse_apply_unseen":true,"lambda_self_calibration":0.1,"self_calibration_target":0.05} | 5 |  |  | 验证训练阶段能否减少已见类偏置且不把未见类加入交叉熵 |  |  |  |
 | RUN-005 | E4 验证集选 gamma 的推理校准 | innovation | planned | {"checkpoint_from":"RUN-003","gamma":null,"gamma_source":"class_disjoint_validation"} | 5 |  |  | 只用验证划分确定 gamma 后复用 E2 checkpoint 并同时报告原始与校准分数 |  |  |  |
-| RUN-006 | E0 CUDA 修复后重跑 | innovation | planned | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-001 |  | 修复类别编号设备校验后重新建立 E0 公平基线 |  |  |  |
+| RUN-006 | E0 CUDA 修复后重跑 | innovation | failed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-001 | RUN-006 | 修复类别编号设备校验后重新建立 E0 公平基线 |  | failed_after_epoch_50_eval_device_mismatch |  |
+| RUN-007 | E0 评估设备修复后重跑 | innovation | planned | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-006 |  | 修复最终评估类别索引设备后重新建立 E0 公平基线 |  |  |  |
 
 ## 查重说明
 

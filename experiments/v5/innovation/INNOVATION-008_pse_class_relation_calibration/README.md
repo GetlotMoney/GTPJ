@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-五组 seed 5 计划已经冻结到参数表。首次 E0 在首个 epoch 前暴露并修复了 CUDA 类别编号设备错误，失败证据保留为 `RUN-001`，原配置重跑登记为 `RUN-006`。E4 的 `gamma` 仍为空；在类不重叠验证划分准备好之前，E4 不得运行。
+五组 seed 5 计划已经冻结到参数表。`RUN-001` 在首个 epoch 前暴露 CUDA 类别编号设备错误；`RUN-006` 完成 50 个 epoch 后又暴露最终评估索引设备错误。两次失败证据均保留，修复后的原配置重跑登记为 `RUN-007`。E4 的 `gamma` 仍为空；在类不重叠验证划分准备好之前，E4 不得运行。
 
 ```text
 experiment_id: V5-INNOVATION-008
@@ -29,14 +29,15 @@ status: implementation_ready_for_review
 | RUN-003 | E2 未见类共享 PSE | `configs/E2_shared_unseen_pse.yaml` | planned |
 | RUN-004 | E3 训练期概率下限 | `configs/E3_training_self_calibration.yaml` | planned |
 | RUN-005 | E4 推理期 calibrated stacking | `configs/E4_calibrated_stacking.yaml` | 等待验证集 gamma |
-| RUN-006 | E0 CUDA 修复后重跑 | `config.yaml` | planned |
+| RUN-006 | E0 CUDA 修复后重跑 | `config.yaml` | failed：完成 50 epoch 后最终评估设备错误 |
+| RUN-007 | E0 评估设备修复后重跑 | `config.yaml` | planned |
 
 每个训练 RUN 使用独立输出目录，例如：
 
 ```powershell
 conda run -n dvsr_gpu python train_GTPJ_CUB.py `
   --config experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/config.yaml `
-  --output-dir D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-006
+  --output-dir D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007
 ```
 
 新运行若输出目录已存在会直接停止，避免覆盖旧结果。目录内至少产生 `training.log`、`checkpoint_last.pth`、`model_final.pth` 和 `metrics.yaml`。

@@ -334,6 +334,16 @@ class CalibratedStackingTest(unittest.TestCase):
         self.assertEqual(raw, (1.0, 0.5, 2.0 / 3.0, 1.0))
         self.assertEqual(shifted, (1.0, 1.0, 1.0, 1.0))
         self.assertEqual(raw[3], shifted[3])
+        if torch.cuda.is_available():
+            cuda_metrics = v5_evaluation.evaluate_cached_v5(
+                ControlledModel().cuda(),
+                "cuda",
+                cache,
+                torch.tensor([0, 2], device="cuda"),
+                torch.tensor([1, 3], device="cuda"),
+                batch_size=2,
+            )
+            self.assertEqual(cuda_metrics, raw)
 
     def test_gamma_is_selected_only_from_validation_labels(self) -> None:
         self.assertTrue(

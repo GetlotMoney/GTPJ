@@ -15,7 +15,7 @@ final_decision: pending_real_runs
 
 - 责任：读取现有 V5 代码和项目规则，完成 E0–E4 的最小实现、配置、测试和账本。
 - 写入范围：`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*`、实验目录、idea_tree 和必要项目文档。
-- 当前结论：首次 CUDA 启动在首个 epoch 前发现类别编号设备检查错误；修复后 CUDA 构造、合成前向、loss 和反向传播均通过，真实指标尚未产生。
+- 当前结论：首次 CUDA 启动在首个 epoch 前发现类别编号设备错误；第二次完成 50 epoch 后发现最终评估索引设备错误。两处均有真实 CUDA 回归测试并经独立复核通过；旧 checkpoint 的只读诊断评估已跑通，正式成功 RUN 尚待重跑。
 
 ## 只读方法核对
 
