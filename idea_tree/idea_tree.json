@@ -292,6 +292,46 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0006",
+      "idea_dir": "idea_tree/ideas/IDEA-0006_local_evidence_rescue/",
+      "title": "局部证据校准与全局候选纠错",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "V5-CONFIRM-003@8dd1b5ac10fdacc19aecfb0307c53077dd46bd66",
+      "source_status": "verified",
+      "global_score": 76.0,
+      "core_summary": "",
+      "version_scores": {
+        "v5": {
+          "score": 86.0,
+          "applicability": "needs_adaptation",
+          "stage": "candidate",
+          "rationale": "",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [],
+      "target_component": "",
+      "hypothesis": "",
+      "expected_effect": {
+        "U": "",
+        "S": "",
+        "H": ""
+      },
+      "implementation_scope": "",
+      "risk": "",
+      "compatibility": "",
+      "transfer_notes": "",
+      "priority": 0.86,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [],
+      "evidence": []
     }
   ]
 }

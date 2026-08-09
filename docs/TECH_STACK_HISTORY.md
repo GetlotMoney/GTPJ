@@ -15,8 +15,22 @@
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
+| 局部证据实验代码 | `MODEL-LOCAL-EVIDENCE-EXP-V1` | 计划中 | 从 V5 冻结母版独立分叉，验证 FGVD-off、三种局部监督和 top-k 有界重排；尚无训练结论。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+
+## 2026-08-09：MODEL-LOCAL-EVIDENCE-EXP-V1（计划中）
+
+- 本次改的是哪个对象：V5 实验分支里的局部分支训练损失、FGVD 几何旁路、裁剪 teacher 和 top-k 推理，不修改冻结母版 Tag。
+- 目标问题：当前局部分支单独 `H≈1.53`，完整模型相对 global-only 只提高约 `0.12 H`，需要判断是 FGVD 噪声、训练监督不足，还是整个局部路线应停止。
+- 采用技术：同一母版上依次验证 FGVD-off、local CE、全局混淆难负类排序、两视角真实 RandomResizedCrop CLS 蒸馏，以及只在 global top-5 内生效的最大 `0.25` 有界残差。
+- 替换了什么：实验入口替换每轮训练前后重复完整扫描大缓存的做法；首次 SHA-256 后，未变化文件复用路径、大小和修改时间命中的清单。
+- 实际可见效果：尚未训练；当前仅完成代码与专项测试。
+- 选择原因：先修复局部分类能力，再限制局部只纠正全局候选，比继续放大局部分数或重复失败的置信度 gate 更贴近现有诊断。
+- 已知限制：裁剪 teacher 只有两视角；初筛只有 seed 5；top-k 固定值不是经测试集搜索得到；最终价值必须等真实 U/S/H/ZS、rescue/harm 和多 seed 结果。
+- 素材位置：`model/MyModel.py`、`experiments/v5/local_evidence_runtime/`、`tools/v5_input_manifest_cache.py`、`tools/v5_topk_local_rerank.py`、`idea_tree/ideas/IDEA-0006_local_evidence_rescue/`。
+- 验证命令与结果：计划阶段专项测试已通过，待独立只读审核、真实 CUDA smoke 和 5 组运行后改为“已完成”或“已放弃”。
+- 回退方式：删除本实验分支/worktree 或回到 `model/v5-template-v1@2f5fa5e`；不会移动母版 Tag，也不会覆盖历史 RUN。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 

@@ -1,0 +1,4 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>V5 局部证据修复</title>
+<style>body{font-family:system-ui;margin:40px;background:#f6f7fb;color:#172033}.row{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.box{background:white;border:1px solid #ccd3df;border-radius:14px;padding:18px 22px;box-shadow:0 6px 18px #2233aa12}.arrow{font-size:26px;color:#64748b}.note{margin-top:28px;max-width:900px;line-height:1.7}</style></head>
+<body><h1>V5 局部证据修复</h1><div class="row"><div class="box">CLIP CLS + 576 patches</div><span class="arrow">→</span><div class="box">全局候选</div><span class="arrow">＋</span><div class="box">FGVD-off 局部证据<br>CE / 难负类 / 裁剪蒸馏</div><span class="arrow">→</span><div class="box">global top-5 内有界重排</div><span class="arrow">→</span><div class="box">U / S / H / ZS<br>rescue / harm</div></div><p class="note">核心限制：局部证据不能把 top-5 外类别提上来；标签只在预测完成后统计结果，不参与路由。</p></body></html>

@@ -403,6 +403,11 @@ dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框�
 
 ## 更新本文件的判断标准
 
+本轮新增的共享实验入口位于 `experiments/v5/local_evidence_runtime/`；
+`train.py` 负责四个训练方案，`rerank.py` 负责第五个只推理方案。
+输入哈希复用工具为 `tools/v5_input_manifest_cache.py`，top-k 纯函数为
+`tools/v5_topk_local_rerank.py`。这些文件只属于 V5 局部证据实验，不是新的正式母版入口。
+
 必须更新本文件的情况：
 
 - 新增、删除、移动、重命名稳定入口、目录类型、顶层目录或关键规范文件。

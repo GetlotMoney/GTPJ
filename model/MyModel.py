@@ -187,9 +187,11 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
         weight_s2v=0.5,
         grid_size=(24, 24),
         dim_g=64,
+        disable_fgvd_geometry=False,
     ):
         super().__init__()
         self.weight_s2v = weight_s2v
+        self.disable_fgvd_geometry = bool(disable_fgvd_geometry)
         self.embed_cv = nn.Linear(dim_f, dim_com)
         self.embed_text = nn.Linear(dim_f, dim_com)
         self.box_emb = BoxRelationalEmbedding(grid_size=grid_size, dim_g=dim_g)
@@ -234,8 +236,11 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
         patches = torch.gather(patches, dim=1, index=idx_exp)
 
         vis = self.embed_cv(patches)
-        geometry_emb = self.geometry_for_indices(topk_indices)
-        memory = self.fgvd_encoder(vis, geometry_emb)
+        if self.disable_fgvd_geometry:
+            memory = vis
+        else:
+            geometry_emb = self.geometry_for_indices(topk_indices)
+            memory = self.fgvd_encoder(vis, geometry_emb)
 
         txt_com = self.embed_text(text)
         if txt_com.dim() == 2:
@@ -389,6 +394,9 @@ class GTPJ(nn.Module):
             weight_s2v=weight_s2v,
             grid_size=(24, 24),
             dim_g=64,
+            disable_fgvd_geometry=bool(
+                getattr(config, "ablation_disable_fgvd_geometry", False)
+            ),
         )
 
         self.sgmp_topk = int(config.sgmp_topk)
@@ -551,6 +559,31 @@ class GTPJ(nn.Module):
         loss_neg = F.relu(neg_sim - pos_sim.detach() + self.sgmp_neg_margin).mean()
         return loss_mpp, loss_neg
 
+    def _global_logits_and_text_from_cls(self, cls_token):
+        if cls_token.dim() != 2 or cls_token.size(1) != self.dim_f:
+            raise ValueError(
+                "cls_token must have shape [B, D] with "
+                f"D={self.dim_f}; got {tuple(cls_token.shape)}."
+            )
+        logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
+        all_text = self._make_all_text(cls_token.device, cls_token.dtype)
+        vis_n = F.normalize(cls_token, dim=1)
+        pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
+        all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()
+        seen_idx = self.seenclass.to(cls_token.device)
+        all_text_cond[:, seen_idx, :] = (
+            all_text[seen_idx].unsqueeze(0)
+            + self.icsa_ratio * pi_x.unsqueeze(1)
+        )
+        text_n_cond = F.normalize(all_text_cond, dim=-1)
+        global_logits = (vis_n.unsqueeze(1) * text_n_cond).sum(dim=-1) * logit_scale
+        return global_logits, all_text_cond
+
+    def global_logits_from_cls(self, cls_token):
+        """Score full-class global logits from cached CLIP CLS tokens."""
+        global_logits, _ = self._global_logits_and_text_from_cls(cls_token)
+        return global_logits
+
     def forward(self, clip_features, is_train=False):
         if clip_features.dim() != 3 or clip_features.size(1) != 577:
             raise ValueError(
@@ -565,18 +598,7 @@ class GTPJ(nn.Module):
         cls_token = clip_features[:, 0, :]
         patches = clip_features[:, 1:, :]
 
-        logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
-        all_text = self._make_all_text(patches.device, patches.dtype)
-        vis_n = F.normalize(cls_token, dim=1)
-        pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
-        all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()
-        seen_idx = self.seenclass.to(patches.device)
-        all_text_cond[:, seen_idx, :] = (
-            all_text[seen_idx].unsqueeze(0)
-            + self.icsa_ratio * pi_x.unsqueeze(1)
-        )
-        text_n_cond = F.normalize(all_text_cond, dim=-1)
-        global_logits = (vis_n.unsqueeze(1) * text_n_cond).sum(dim=-1) * logit_scale
+        global_logits, all_text_cond = self._global_logits_and_text_from_cls(cls_token)
 
         bvsa_out = self.bvsa_module(
             patches,
@@ -631,13 +653,95 @@ class GTPJ(nn.Module):
 
         global_logits = in_package.get("global_logits")
         local_logits = in_package.get("local_logits")
+        seen_idx = self.seenclass.to(logits.device)
+        local_seen = None
+        if local_logits is not None:
+            local_seen = local_logits[:, seen_idx]
+
+        loss_local_ce = torch.tensor(0.0, device=logits.device)
+        lambda_local_ce = float(getattr(self.config, "lambda_local_ce", 0.0))
+        if lambda_local_ce > 0:
+            if local_seen is None:
+                raise ValueError("lambda_local_ce requires local_logits.")
+            loss_local_ce = F.cross_entropy(local_seen, seen_labels)
+            loss = loss + lambda_local_ce * loss_local_ce
+
+        loss_confusion_contrast = torch.tensor(0.0, device=logits.device)
+        lambda_confusion = float(
+            getattr(self.config, "lambda_confusion_contrast", 0.0)
+        )
+        if lambda_confusion > 0:
+            if global_logits is None or local_seen is None:
+                raise ValueError(
+                    "lambda_confusion_contrast requires global_logits and local_logits."
+                )
+            if seen_idx.numel() > 1:
+                global_seen = global_logits[:, seen_idx].detach().clone()
+                selector_labels = seen_labels.to(global_seen.device)
+                global_seen.scatter_(
+                    1, selector_labels.unsqueeze(1), float("-inf")
+                )
+                requested_topk = int(getattr(self.config, "confusion_topk", 1))
+                hard_negative_count = max(
+                    1, min(requested_topk, seen_idx.numel() - 1)
+                )
+                hard_negative_indices = torch.topk(
+                    global_seen, k=hard_negative_count, dim=1, largest=True
+                ).indices
+                local_true = local_seen.gather(1, seen_labels.unsqueeze(1))
+                local_negative = local_seen.gather(1, hard_negative_indices)
+                margin = float(getattr(self.config, "confusion_margin", 0.0))
+                loss_confusion_contrast = F.relu(
+                    margin - local_true + local_negative
+                ).mean()
+                loss = loss + lambda_confusion * loss_confusion_contrast
+
+        loss_crop_distill = torch.tensor(0.0, device=logits.device)
+        lambda_crop_distill = float(
+            getattr(self.config, "lambda_crop_distill", 0.0)
+        )
+        if lambda_crop_distill > 0:
+            teacher_logits = in_package.get("crop_teacher_logits")
+            if local_seen is None or teacher_logits is None:
+                raise ValueError(
+                    "lambda_crop_distill requires local_logits and crop_teacher_logits."
+                )
+            temperature = float(getattr(self.config, "crop_distill_temp", 1.0))
+            if temperature <= 0:
+                raise ValueError("crop_distill_temp must be positive.")
+            teacher_logits = teacher_logits.to(
+                device=local_seen.device, dtype=local_seen.dtype
+            )
+            if teacher_logits.dim() == 2:
+                teacher_seen = teacher_logits[:, seen_idx]
+                teacher_probability = F.softmax(
+                    teacher_seen / temperature, dim=-1
+                )
+            elif teacher_logits.dim() == 3:
+                teacher_seen = teacher_logits[:, :, seen_idx]
+                teacher_probability = F.softmax(
+                    teacher_seen / temperature, dim=-1
+                ).mean(dim=0)
+            else:
+                raise ValueError(
+                    "crop_teacher_logits must have shape [B, C] or [K, B, C]."
+                )
+            teacher_probability = teacher_probability.detach()
+            local_log_probability = F.log_softmax(
+                local_seen / temperature, dim=-1
+            )
+            loss_crop_distill = F.kl_div(
+                local_log_probability,
+                teacher_probability,
+                reduction="batchmean",
+            ) * (temperature * temperature)
+            loss = loss + lambda_crop_distill * loss_crop_distill
+
         loss_consist = torch.tensor(0.0, device=logits.device)
         lambda_consist = float(self.config.lambda_consist)
         if global_logits is not None and local_logits is not None and lambda_consist > 0:
             temperature = float(self.config.consist_temp)
-            seen_idx = self.seenclass.to(logits.device)
             global_seen = global_logits[:, seen_idx].detach()
-            local_seen = local_logits[:, seen_idx]
             global_probability = F.softmax(global_seen / temperature, dim=-1)
             local_log_probability = F.log_softmax(local_seen / temperature, dim=-1)
             loss_consist = F.kl_div(
@@ -697,4 +801,7 @@ class GTPJ(nn.Module):
             "loss_bmdd": loss_bmdd,
             "loss_mpp": loss_mpp,
             "loss_neg": loss_neg,
+            "loss_local_ce": loss_local_ce,
+            "loss_confusion_contrast": loss_confusion_contrast,
+            "loss_crop_distill": loss_crop_distill,
         }
