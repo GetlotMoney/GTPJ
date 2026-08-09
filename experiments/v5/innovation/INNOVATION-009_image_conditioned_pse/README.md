@@ -3,11 +3,14 @@
 ```yaml
 framework: FRAMEWORK-V5
 idea_id: IDEA-0011
-status: planned
+status: completed_not_keep
 base_template: MODEL-V5-TEMPLATE-V1
 branch: exp/v5/innovation/innovation-009-image-conditioned-pse
 parameter_matrix: PARAMETER_MATRIX.md
 promoted_framework: none
+successful_run: RUN-002
+run_commit: 28c644ea8ec7a4b34f660fe492bd1159ded385ec
+decision: reject
 ```
 
 ## 要回答的问题
@@ -47,4 +50,4 @@ flowchart LR
 
 ## 结论边界
 
-单次结果只能说明候选是否值得继续；若要判断稳定提升或 promotion，必须登记同配置独立进程复跑。
+`RUN-002` 最佳结果为 `U=47.92 / S=78.13 / H=59.41 / ZS=76.43`，低于 V5 五次重复均值 `H=74.44`，因此本实现不继续做稳定性复跑，也不进入 promotion。该结果仍只是 seed=5 的单次筛选证据，不能外推为一般性的“图像选句一定无效”。

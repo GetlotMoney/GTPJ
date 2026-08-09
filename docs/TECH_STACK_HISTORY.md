@@ -17,7 +17,7 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
-| 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1.1` | 已修复待重跑 | `V5-INNOVATION-009` 已让全局图像为每个候选类别选择 8 句话，并修复首次评估的 CPU/CUDA 索引设备错误；尚无完整训练结果。 |
+| 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1.1` | 已完成、不保留 | `V5-INNOVATION-009 RUN-002` 完成 50 epoch，最佳 `H=59.41`；权重和原型均接近均匀路径，低于 V5 重复均值，不进入复跑或 promotion。 |
 
 ## 2026-08-10：SYS-WORKFLOW-V6.1（已完成）
 
@@ -32,15 +32,15 @@
 - 验证命令与结果：新 V5 格式与原无换行旧格式两项定向测试 2/2 通过。
 - 回退方式：回退本次 helper 提交；训练产物与原始日志不受影响，可人工按 JSON 入账。
 
-## 2026-08-10：MODEL-V5-ICPSE-V1.1（已修复待重跑）
+## 2026-08-10：MODEL-V5-ICPSE-V1.1（已完成、不保留）
 
 - 本次改的是哪个对象：只改 `V5-INNOVATION-009` 的评估入口与回归测试，不改方法结构、训练参数或 V5 母版 Tag。
 - 目标问题：`RUN-001` 完成第 1 个 epoch 后，CPU logits 被 CUDA `unseenclasses` 索引，首次 ZS 评估退出。
 - 采用技术：在评估入口把 seen/unseen 全局类别编号统一到 CPU；新增“CUDA 类别编号 + CPU logits”真实回归测试。
 - 替换了什么：只替换类别编号所在设备，不改变类别顺序、argmax、U/S/H/ZS 公式或标签映射。
-- 实际可见效果：原 CPU 评估语义测试与新增 CUDA 跨设备回归测试均通过；`RUN-001` 失败记录保留，`RUN-002` 将用相同配置重跑。
+- 实际可见效果：原 CPU 评估语义测试与新增 CUDA 跨设备回归测试均通过；`RUN-001` 失败记录保留，`RUN-002` 用相同配置完成 50 epoch，最佳 `U/S/H/ZS=47.92/78.13/59.41/76.43`。
 - 选择原因：`_predict` 明确返回 CPU logits，因此让索引同在 CPU 是最小且与已验证修法一致的处理。
-- 已知限制：修复只证明评估可以继续，完整 50 epoch 指标仍需服务器 `RUN-002` 完成后确认。
+- 已知限制：只有 seed=5 单次结果，不能估计训练方差；因为 H 比 V5 重复均值低 15.03 个点，本候选不追加复跑。
 - 素材位置：`tools/v5_evaluation.py`、`tests/test_v5_template_contract.py`、`experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/`。
 - 验证命令与结果：`conda run -n dvsr_gpu python -m unittest -v tests.test_v5_template_contract.V5TemplateContractTest.test_v5_evaluation_semantics tests.test_v5_template_contract.V5TemplateContractTest.test_v5_evaluation_accepts_cuda_class_ids_with_cpu_logits`，2/2 通过；独立只读复核为 `PASS`。
 - 回退方式：回退本修复提交；`RUN-001` 失败日志与收据继续保留，不覆盖。
@@ -51,11 +51,11 @@
 - 目标问题：母版 ICSA 给多个已见类别加同一个图像偏移，既没有按候选类别选择 8 句话，也没有对未见类采用同一路径，因而不能直接回答“全局图像选句是否已经足够”。
 - 采用技术：PSE 为全部 200 类保留 8 个增强句子；全局 CLS 与每个候选类别的 8 句话计算 CLIP 尺度余弦并做 Softmax，得到 `[B,C,8]` 权重；用未逐句归一化的增强句子加权成图像条件原型；全局分数使用该原型，频域 Top-K 32、BVSA 局部分支和 SGMP 继续使用均匀 PSE 原型；最终仍为 `global + 0.2 × local`。
 - 替换了什么：只在独立实验分支替换 ICSA 的全局交互职责；不改母版，不改变 BVSA、频域 Top-K、损失语义或评估口径。
-- 实际可见效果：代码、配置、单行冻结参数表、框架图与诊断输出已完成；服务器 `RUN-001` 尚未完成，不能填写提升结论。
+- 实际可见效果：代码、配置、参数表、框架图、诊断和服务器正式运行均已完成；最佳 `H=59.41`，句权接近 `1/8`，条件原型与均匀原型 cosine 为 `0.994662`，本候选不保留。
 - 选择原因：把图像条件选择限制在全局分支，可以把“选句本身是否有效”与“局部区域是否也要参与”分开验证，并作为实验 B 的直接对照。
 - 已知限制：句子权重可能接近统一的 `1/8`；一次 seed=5 运行不能证明提升超过训练波动；若均匀 PSE 原型与母版不严格等价，会破坏对照，因此代码必须保留未逐句归一化的加权值路径。
 - 素材位置：`idea_tree/ideas/IDEA-0011_image_conditioned_pse/`、`experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/`。
-- 验证命令与结果：整套相关 unittest 46/46、严格历史 parity、Python 编译、仓库/账本/参数表/边界校验和真实尺寸 CUDA 前后向均已通过；独立只读审核结论为 `PASS`。真实全量训练仍待服务器 `RUN-001`。
+- 验证命令与结果：实现阶段相关 unittest 46/46、严格历史 parity、Python 编译、仓库/账本/参数表/边界校验和真实尺寸 CUDA 前后向均通过；评估修复后测试 47/47；服务器 `RUN-002` 50 epoch 退出码 0，独立证据复核为 `TRAINING_PASS`。
 - 回退方式：放弃实验分支 `exp/v5/innovation/innovation-009-image-conditioned-pse` 即可；`MODEL-V5-TEMPLATE-V1`、实验 B、历史 V5 结果和 Tag 均不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）

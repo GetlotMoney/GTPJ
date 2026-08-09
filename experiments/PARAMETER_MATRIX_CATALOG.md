@@ -20,7 +20,7 @@
 | `V3-INNOVATION-001` | 6 | 已知来源与复跑 | `experiments/v3/innovation/INNOVATION-001_conditional_bvsa/PARAMETER_MATRIX.md` |
 | `V5-TUNE-001` | 8 | 从 ATTEMPT-006 恢复的真实调参任务 | `experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-001` | 2 | 从 ATTEMPT-006 恢复的真实创新探针；其余见历史批次映射 | `experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md` |
-| `V5-INNOVATION-009` | 1 | planned；图像条件 PSE 单次最小正式闭环 | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-009` | 2 | RUN-001 评估失败；RUN-002 完成并以 H=59.41 淘汰 | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` |
 | `V5-ABLATION-001` | 15 | planned，未运行 | `experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md` |
 
 ## 历史迁移队列
