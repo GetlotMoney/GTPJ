@@ -65,13 +65,18 @@ REQUIRED_FILES = {
     "implementation.md",
     "config.yaml",
     "evidence/README.md",
+    "agent_runtime.yaml",
+    "agent_summary.md",
+    "quality_check.md",
+    "AGENT_ACTIVITY.md",
+    "agent_outputs/runner_monitor.md",
+    "agent_outputs/interface_checker.md",
+    "agent_outputs/evidence_quality_checker.md",
 }
 FORBIDDEN_FILES = {
     "manifest.yaml",
     "result.yaml",
     "result.md",
-    "quality_check.md",
-    "agent_summary.md",
     "training.log",
 }
 CANDIDATES = [
