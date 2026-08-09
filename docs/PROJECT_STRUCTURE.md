@@ -85,7 +85,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
-| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
+| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；读取 YAML config，要求每个 RUN 使用不存在的独立输出目录，使用可恢复的独立 batch RNG 和数据指纹清单，固定训练完成后只评估一次测试集。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 
@@ -200,7 +200,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | GTPJ 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/MyModel.py` | GTPJ 主模型实现；正式 V5 路径包含 PSE、FGVD、BVSA、ICSA、SGMP，本实验分支额外提供类别轴 PSE、未见原型共享权重和有界训练校准。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：
@@ -220,6 +220,9 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+| `tools/v5_evaluation.py` | V5 缓存评估与 calibrated stacking；支持只降低 seen logits，并强制 gamma 选择入口只接受 validation。 |
+| `tools/v5_runtime.py` | V5 输入身份、原子数据指纹清单、checkpoint RNG 和续训身份检查。 |
+| `tools/reproducibility.py` | Python、NumPy、PyTorch 可复现设置和独立 batch generator。 |
 
 注意：
 

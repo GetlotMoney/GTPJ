@@ -4,6 +4,7 @@
 不得复制 CLS 冒充局部特征，也不得悄悄切换到在线提取路线。
 """
 
+import math
 from pathlib import Path
 
 import torch
@@ -87,7 +88,93 @@ def _per_class_accuracy(labels, predictions, classes):
     return float(torch.stack(values).mean().item())
 
 
-def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_size=64):
+def apply_calibrated_stacking(logits, seenclasses, gamma):
+    """推理期统一降低已见类分数，不改原始 logits。"""
+    if logits.dim() != 2 or not logits.is_floating_point():
+        raise ValueError("logits must be a floating tensor with shape [N, C].")
+    seenclasses = torch.as_tensor(
+        seenclasses, dtype=torch.long, device=logits.device
+    )
+    if seenclasses.dim() != 1 or seenclasses.unique().numel() != seenclasses.numel():
+        raise ValueError("seenclasses must be one-dimensional and unique.")
+    if seenclasses.numel() and (
+        int(seenclasses.min()) < 0 or int(seenclasses.max()) >= logits.size(1)
+    ):
+        raise ValueError("seenclasses contains an out-of-range class id.")
+    gamma = float(gamma)
+    if not math.isfinite(gamma) or gamma < 0:
+        raise ValueError("gamma must be a finite non-negative number.")
+
+    adjusted = logits.clone()
+    adjusted[:, seenclasses] = adjusted[:, seenclasses] - gamma
+    return adjusted
+
+
+def select_calibrated_stacking_gamma(
+    *,
+    split_name,
+    seen_logits,
+    seen_labels,
+    unseen_logits,
+    unseen_labels,
+    seenclasses,
+    unseenclasses,
+    gamma_candidates,
+):
+    """只用类不重叠的验证划分选择使 H 最大的 gamma。"""
+    if split_name != "validation":
+        raise ValueError("gamma selection only accepts a validation split.")
+    seenclasses = torch.as_tensor(seenclasses, dtype=torch.long)
+    unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long)
+    seen_labels = torch.as_tensor(seen_labels, dtype=torch.long)
+    unseen_labels = torch.as_tensor(unseen_labels, dtype=torch.long)
+    if seen_logits.dim() != 2 or unseen_logits.dim() != 2:
+        raise ValueError("validation logits must have shape [N, C].")
+    if seen_logits.size(1) != unseen_logits.size(1):
+        raise ValueError("seen and unseen validation logits must share class columns.")
+    if len(seen_labels) != len(seen_logits) or len(unseen_labels) != len(unseen_logits):
+        raise ValueError("validation labels and logits have different sample counts.")
+    candidates = sorted({float(value) for value in gamma_candidates})
+    if not candidates:
+        raise ValueError("gamma_candidates must not be empty.")
+
+    rows = []
+    for gamma in candidates:
+        seen_prediction = apply_calibrated_stacking(
+            seen_logits, seenclasses, gamma
+        ).argmax(dim=1)
+        unseen_prediction = apply_calibrated_stacking(
+            unseen_logits, seenclasses, gamma
+        ).argmax(dim=1)
+        seen_accuracy = _per_class_accuracy(
+            seen_labels, seen_prediction, seenclasses
+        )
+        unseen_accuracy = _per_class_accuracy(
+            unseen_labels, unseen_prediction, unseenclasses
+        )
+        denominator = seen_accuracy + unseen_accuracy
+        harmonic = (
+            2.0 * seen_accuracy * unseen_accuracy / denominator
+            if denominator
+            else 0.0
+        )
+        rows.append(
+            {"gamma": gamma, "S": seen_accuracy, "U": unseen_accuracy, "H": harmonic}
+        )
+
+    best = min(rows, key=lambda row: (-row["H"], row["gamma"]))
+    return {**best, "candidates": rows, "selection_split": "validation"}
+
+
+def evaluate_cached_v5(
+    model,
+    device,
+    cache,
+    seenclasses,
+    unseenclasses,
+    batch_size=64,
+    calibrated_stacking_gamma=0.0,
+):
     seenclasses = torch.as_tensor(seenclasses, dtype=torch.long)
     unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long)
     if seenclasses.dim() != 1 or unseenclasses.dim() != 1:
@@ -128,8 +215,14 @@ def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_s
         model, cache["unseen_cls"], cache["unseen_patches"], device, batch_size
     )
 
-    seen_prediction = seen_logits.argmax(dim=1)
-    unseen_prediction = unseen_logits.argmax(dim=1)
+    calibrated_seen_logits = apply_calibrated_stacking(
+        seen_logits, seenclasses, calibrated_stacking_gamma
+    )
+    calibrated_unseen_logits = apply_calibrated_stacking(
+        unseen_logits, seenclasses, calibrated_stacking_gamma
+    )
+    seen_prediction = calibrated_seen_logits.argmax(dim=1)
+    unseen_prediction = calibrated_unseen_logits.argmax(dim=1)
     unseen_only_prediction = unseenclasses[
         unseen_logits[:, unseenclasses].argmax(dim=1)
     ]

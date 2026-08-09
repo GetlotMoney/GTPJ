@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PSE 类别关系增强：训练与推理边界</title>
+  <style>
+    :root { --ink:#243447; --muted:#667085; --line:#9aa9bc; --blue:#eaf2fb; --blue-line:#7aa7d8; --red:#fbe7e7; --red-line:#d98787; --green:#e9f5f2; --green-line:#6cae9e; --orange:#fcebdc; --orange-line:#d99b62; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:#f7f9fc; color:var(--ink); font:15px/1.45 "Microsoft YaHei", "Noto Sans SC", sans-serif; }
+    main { max-width:1480px; margin:28px auto; padding:0 24px 32px; }
+    h1 { margin:0 0 8px; font-size:26px; font-weight:700; }
+    .lead { margin:0 0 22px; color:var(--muted); }
+    .lane { position:relative; margin:18px 0; padding:54px 22px 28px; border:1px solid #d7dfeb; border-radius:16px; background:white; box-shadow:0 5px 18px rgba(42,61,82,.06); }
+    .lane h2 { position:absolute; top:0; left:0; right:0; margin:0; padding:13px 20px; border-radius:15px 15px 0 0; font-size:17px; background:#eef3f8; }
+    .flow { display:grid; grid-template-columns:repeat(6,minmax(150px,1fr)); gap:28px; align-items:stretch; }
+    .node { position:relative; display:flex; min-height:94px; padding:15px 14px; border:2px solid var(--blue-line); border-radius:11px; background:var(--blue); text-align:center; align-items:center; justify-content:center; flex-direction:column; }
+    .node strong { font-size:16px; }
+    .node small { margin-top:5px; color:var(--muted); }
+    .node:not(:last-child)::after { content:"→"; position:absolute; right:-24px; top:50%; transform:translateY(-50%); color:#708399; font-size:23px; font-weight:700; }
+    .loss { border-color:var(--red-line); background:var(--red); }
+    .shared { border-color:var(--green-line); background:var(--green); }
+    .decision { border-color:var(--orange-line); background:var(--orange); }
+    .note { margin:14px 0 0; padding:10px 14px; border-left:4px solid var(--green-line); background:#f3faf8; color:#365d54; }
+    .legend { display:flex; gap:18px; flex-wrap:wrap; margin-top:18px; color:var(--muted); }
+    .legend span::before { content:""; display:inline-block; width:14px; height:10px; margin-right:6px; border-radius:3px; vertical-align:middle; background:var(--blue); border:1px solid var(--blue-line); }
+    .legend .train::before { background:var(--red); border-color:var(--red-line); }
+    .legend .infer::before { background:var(--orange); border-color:var(--orange-line); }
+    @media (max-width:1050px) { .flow { grid-template-columns:1fr; gap:14px; } .node:not(:last-child)::after { content:"↓"; right:50%; top:auto; bottom:-19px; transform:translateX(50%); } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>PSE 类别关系增强：训练与推理边界</h1>
+  <p class="lead">核心区别：E3 参与反向传播；E4 复用 E2 checkpoint，只在验证集确定 gamma 后移动判决线。</p>
+
+  <section class="lane">
+    <h2>训练路径（E1–E3）</h2>
+    <div class="flow">
+      <div class="node"><strong>已见类图像特征</strong><small>只使用 seen labels</small></div>
+      <div class="node"><strong>独立批次采样</strong><small>batch RNG 与模型 RNG 分离</small></div>
+      <div class="node shared"><strong>共享 Class-PSE</strong><small>seen / unseen 分组运行</small></div>
+      <div class="node"><strong>全类别 logits</strong><small>CE 只切出 seen 列</small></div>
+      <div class="node loss"><strong>训练目标</strong><small>seen-only CE + E3 概率下限</small></div>
+      <div class="node loss"><strong>Adam 更新权重</strong><small>只有这条路径反向传播</small></div>
+    </div>
+    <p class="note">E3 固定 λ=0.1、未见类总概率下限 0.05；达到下限后新增损失归零。</p>
+  </section>
+
+  <section class="lane">
+    <h2>推理路径（E4）</h2>
+    <div class="flow">
+      <div class="node"><strong>固定测试特征</strong><small>不参与训练</small></div>
+      <div class="node shared"><strong>E2 checkpoint</strong><small>复用同一 Class-PSE 权重</small></div>
+      <div class="node"><strong>raw logits</strong><small>gamma=0 即原始 E2</small></div>
+      <div class="node decision"><strong>seen logits − gamma</strong><small>gamma 只来自类不重叠验证划分</small></div>
+      <div class="node"><strong>联合分类</strong><small>未见类内部排序不变</small></div>
+      <div class="node"><strong>成对报告</strong><small>原始与校准 U / S / H / ZS</small></div>
+    </div>
+    <p class="note">E4 无梯度、无权重更新，不能被写成 PSE 表示学习提升。</p>
+  </section>
+
+  <div class="legend"><span>共享模型路径</span><span class="train">训练期目标</span><span class="infer">推理期判决线</span></div>
+</main>
+</body>
+</html>

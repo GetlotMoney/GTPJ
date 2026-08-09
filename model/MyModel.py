@@ -18,6 +18,8 @@ Interface contract:
 - is_train=False -> logits shape [B, num_class].
 """
 
+import math
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -76,6 +78,34 @@ class ProgressiveSemanticSelfAttention(nn.Module):
         attn_out = self.dropout(self.proj(attn_out))
         mixed = self.inner_ratio * attn_out + (1.0 - self.inner_ratio) * x
         return self.layer_norm(2.0 * mixed)
+
+
+class ClassPrototypeRelationAdapter(nn.Module):
+    """在类别轴上建立原型关系，并用小残差保留原始语义。"""
+
+    def __init__(self, dim, heads=1, residual_ratio=0.1, dropout=0.0):
+        super().__init__()
+        self.residual_ratio = float(residual_ratio)
+        if not 0.0 < self.residual_ratio <= 1.0:
+            raise ValueError("residual_ratio 必须位于 (0, 1]。")
+        self.layer_norm = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=dim,
+            num_heads=int(heads),
+            dropout=float(dropout),
+            batch_first=True,
+        )
+
+    def forward(self, prototypes):
+        if prototypes.dim() != 2:
+            raise ValueError("类别原型必须是 [C, D]。")
+        base = F.normalize(prototypes, dim=-1)
+        tokens = self.layer_norm(base).unsqueeze(0)
+        relation, _ = self.attn(tokens, tokens, tokens, need_weights=False)
+        return F.normalize(
+            base + self.residual_ratio * relation.squeeze(0),
+            dim=-1,
+        )
 
 
 class BoxRelationalEmbedding(nn.Module):
@@ -330,7 +360,6 @@ class GTPJ(nn.Module):
 
         fixed_route = {
             "use_pse_self_attention": True,
-            "pse_apply_unseen": False,
             "use_fgvd_geometry": True,
             "fgvd_select_sigma": 0.0,
             "fgvd_select_largest": True,
@@ -350,6 +379,28 @@ class GTPJ(nn.Module):
                 )
 
         self.pse_outer_ratio = float(config.pse_outer_ratio)
+        self.pse_mode = str(getattr(config, "pse_mode", "legacy_sentence"))
+        if self.pse_mode not in {"legacy_sentence", "class_relation"}:
+            raise ValueError(
+                "pse_mode 只能是 'legacy_sentence' 或 'class_relation'。"
+            )
+        self.pse_apply_unseen = bool(getattr(config, "pse_apply_unseen", False))
+        if self.pse_apply_unseen and self.pse_mode != "class_relation":
+            raise ValueError("pse_apply_unseen 只允许用于 class_relation 模式。")
+        self.lambda_self_calibration = float(
+            getattr(config, "lambda_self_calibration", 0.0)
+        )
+        self.self_calibration_target = float(
+            getattr(config, "self_calibration_target", 0.05)
+        )
+        if self.lambda_self_calibration < 0:
+            raise ValueError("lambda_self_calibration must be non-negative.")
+        if not 0.0 < self.self_calibration_target < 1.0:
+            raise ValueError("self_calibration_target must be between 0 and 1.")
+        if self.lambda_self_calibration > 0 and not self.pse_apply_unseen:
+            raise ValueError(
+                "Training self-calibration requires unseen prototypes to use shared PSE."
+            )
         if seen_sentence_embeds is None:
             raise ValueError("V5 clean template requires seen_sentence_embeds.")
         if (
@@ -420,7 +471,21 @@ class GTPJ(nn.Module):
         if self.icsa_ratio <= 0:
             raise ValueError("V5 clean template requires icsa_ratio > 0.")
 
+        if self.pse_mode == "class_relation":
+            cpu_rng_state = torch.random.get_rng_state()
+            try:
+                self.class_pse_module = ClassPrototypeRelationAdapter(
+                    dim=self.dim_f,
+                    heads=int(config.pse_heads),
+                    residual_ratio=float(config.pse_class_residual_ratio),
+                    dropout=float(config.pse_class_dropout),
+                )
+            finally:
+                torch.random.set_rng_state(cpu_rng_state)
+
     def get_adapted_seen_text(self):
+        if self.pse_mode == "class_relation":
+            return self.class_pse_module(self.seen_text_embeds)
         sentence_embeds = self.seen_sentence_embeds
         base = sentence_embeds.mean(dim=1)
         attn = self.pse_module(sentence_embeds).mean(dim=1)
@@ -429,6 +494,8 @@ class GTPJ(nn.Module):
         return F.normalize(adapted, dim=1)
 
     def get_adapted_unseen_text(self):
+        if self.pse_mode == "class_relation" and self.pse_apply_unseen:
+            return self.class_pse_module(self.unseen_text_embeds)
         return self.unseen_text_embeds
 
     def _make_all_text(self, device, dtype):
@@ -618,6 +685,18 @@ class GTPJ(nn.Module):
             raise ValueError("Training labels must be global ids from seen classes.")
         return seen_labels
 
+    def self_calibration_loss(self, all_logits):
+        """Keep total unseen probability above a fixed floor during training."""
+        if all_logits.dim() != 2 or all_logits.size(1) != self.nclass:
+            raise ValueError("all_logits must have shape [B, num_class].")
+        log_probability = F.log_softmax(all_logits.float(), dim=-1)
+        unseen_idx = self.unseenclass.to(all_logits.device)
+        log_unseen_mass = torch.logsumexp(
+            log_probability.index_select(1, unseen_idx), dim=-1
+        )
+        log_floor = log_unseen_mass.new_tensor(math.log(self.self_calibration_target))
+        return F.relu(log_floor - log_unseen_mass).mean()
+
     def compute_loss(self, in_package):
         logits = in_package["logits"]
         labels = in_package["batch_label"]
@@ -628,6 +707,16 @@ class GTPJ(nn.Module):
 
         loss_ce = F.cross_entropy(logits, seen_labels)
         loss = loss_ce
+
+        loss_self_calibration = torch.tensor(0.0, device=logits.device)
+        if self.lambda_self_calibration > 0:
+            final_logits = in_package.get("final_logits")
+            if final_logits is None:
+                raise ValueError(
+                    "final_logits is required when training self-calibration is enabled."
+                )
+            loss_self_calibration = self.self_calibration_loss(final_logits)
+            loss = loss + self.lambda_self_calibration * loss_self_calibration
 
         global_logits = in_package.get("global_logits")
         local_logits = in_package.get("local_logits")
@@ -692,6 +781,7 @@ class GTPJ(nn.Module):
         return {
             "loss": loss,
             "loss_ce": loss_ce,
+            "loss_self_calibration": loss_self_calibration,
             "loss_consist": loss_consist,
             "loss_topo": loss_topo,
             "loss_bmdd": loss_bmdd,

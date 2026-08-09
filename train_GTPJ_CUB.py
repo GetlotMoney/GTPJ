@@ -5,7 +5,6 @@
 """
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
@@ -15,14 +14,16 @@ import torch.optim as optim
 import yaml
 
 from model.MyModel import GTPJ
-from tools.reproducibility import configure_reproducibility
+from tools.reproducibility import configure_reproducibility, make_batch_generator
 from tools.v5_cub_data import load_v5_cub_split
 from tools.v5_runtime import (
     capture_rng_state,
+    data_fingerprint_manifest_record,
     input_fingerprints,
     input_record,
     restore_rng_state,
     sha256_file,
+    validate_resume_output_directory,
     validate_resume_identity,
     validate_stable_input_records,
 )
@@ -77,6 +78,15 @@ V5_CONFIG_KEYS = {
     "lr_stages",
 }
 
+V5_EXPERIMENT_CONFIG_DEFAULTS = {
+    "pse_mode": "legacy_sentence",
+    "pse_apply_unseen": False,
+    "pse_class_residual_ratio": 0.1,
+    "pse_class_dropout": 0.0,
+    "lambda_self_calibration": 0.0,
+    "self_calibration_target": 0.05,
+}
+
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -94,6 +104,12 @@ def _parse_args():
         default=None,
         help="同一 V5 母版产生的完整 checkpoint；不支持 auto、重启或微调猜测。",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="本次 RUN 的唯一输出目录；新运行要求目录尚不存在。",
+    )
     return parser.parse_args()
 
 
@@ -109,9 +125,11 @@ def _load_config(path):
         for key, value in raw.items()
     }
     missing = sorted(V5_CONFIG_KEYS - set(values))
-    extra = sorted(set(values) - V5_CONFIG_KEYS)
+    allowed = V5_CONFIG_KEYS | set(V5_EXPERIMENT_CONFIG_DEFAULTS)
+    extra = sorted(set(values) - allowed)
     if missing or extra:
         raise ValueError(f"V5 配置字段不匹配；缺少={missing}，多出={extra}。")
+    values = {**V5_EXPERIMENT_CONFIG_DEFAULTS, **values}
     if values["dataset"] != "CUB":
         raise ValueError("V5 干净母版只接受 dataset='CUB'。")
     if values["text_source"] != "gpt55":
@@ -228,10 +246,16 @@ config_hash = sha256_file(config_path)
 _require_clean_code_tree()
 code_commit = _current_code_commit()
 
-current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_dir = Path("./train_log/CUB")
-log_dir.mkdir(parents=True, exist_ok=True)
-log_path = log_dir / f"training_log_CUB_{current_time}.txt"
+log_dir = args.output_dir.resolve()
+if args.resume_from is None:
+    if log_dir.exists():
+        raise FileExistsError(f"新运行的输出目录已经存在：{log_dir}")
+    log_dir.mkdir(parents=True)
+elif not log_dir.is_dir():
+    raise FileNotFoundError(f"续训输出目录不存在：{log_dir}")
+else:
+    validate_resume_output_directory(args.resume_from, log_dir)
+log_path = log_dir / "training.log"
 
 
 def print_log(message):
@@ -298,6 +322,9 @@ input_records = {
 }
 validate_stable_input_records(before_load_records, input_records)
 run_input_fingerprints = input_fingerprints(input_records)
+fingerprint_manifest_record = data_fingerprint_manifest_record()
+if fingerprint_manifest_record is None:
+    raise RuntimeError("Data fingerprint manifest was not created.")
 for name, record in input_records.items():
     tensor_summary = ""
     if "shape" in record:
@@ -306,6 +333,11 @@ for name, record in input_records.items():
         f"输入 {name}: {record['path']} | sha256={record['sha256']} | "
         f"size={record['size_bytes']}{tensor_summary}"
     )
+print_log(
+    "数据指纹清单: "
+    f"{fingerprint_manifest_record['path']} | "
+    f"sha256={fingerprint_manifest_record['sha256']}"
+)
 
 # 与历史 V5 一致：数据与缓存准备完成后重置随机状态，再初始化模型。
 repro_state = configure_reproducibility(
@@ -331,10 +363,11 @@ optimizer = optim.Adam(
     model.parameters(), lr=float(stages[0]["lr"]), weight_decay=1e-4
 )
 scheduler = _new_scheduler(optimizer, stages[0])
+batch_generator = make_batch_generator(True, seed)
 active_stage = 0
 start_epoch = 1
-best_h = 0.0
-best_metrics = {"U": 0.0, "S": 0.0, "H": 0.0, "ZS": 0.0, "epoch": 0}
+reported_metrics = None
+test_evaluated = False
 
 if args.resume_from is not None:
     resume_path = args.resume_from.resolve()
@@ -348,11 +381,14 @@ if args.resume_from is not None:
         "stage_index",
         "best_H",
         "best_metrics",
+        "test_evaluated",
         "config",
         "config_sha256",
         "input_files",
         "input_fingerprints",
+        "data_fingerprint_manifest",
         "rng_state",
+        "batch_generator_state",
         "seenclasses",
         "unseenclasses",
         "model_state_dict",
@@ -390,10 +426,47 @@ if args.resume_from is not None:
             f"应处阶段 {expected_stage} 不一致。"
         )
     start_epoch = checkpoint_epoch + 1
-    best_h = float(checkpoint["best_H"])
-    best_metrics = dict(checkpoint["best_metrics"])
+    reported_metrics = dict(checkpoint["best_metrics"])
+    test_evaluated = bool(checkpoint["test_evaluated"])
     restore_rng_state(checkpoint["rng_state"])
-    print_log(f"从 epoch {start_epoch} 继续；历史最佳 H={best_h * 100:.2f}%。")
+    batch_generator.set_state(checkpoint["batch_generator_state"].cpu())
+    if test_evaluated:
+        raise ValueError("该 RUN 已完成唯一一次测试评估，不允许作为续训入口重复评估。")
+    print_log(f"从 epoch {start_epoch} 继续训练。")
+
+
+def save_checkpoint(epoch, *, final_metrics=None, test_was_evaluated=False):
+    metrics = final_metrics or {
+        "U": 0.0,
+        "S": 0.0,
+        "H": 0.0,
+        "ZS": 0.0,
+        "epoch": 0,
+    }
+    torch.save(
+        {
+            "template_id": MODEL_TEMPLATE_ID,
+            "code_commit": code_commit,
+            "epoch": epoch,
+            "stage_index": active_stage,
+            "best_H": float(metrics["H"]),
+            "best_metrics": metrics,
+            "test_evaluated": bool(test_was_evaluated),
+            "config": config_values,
+            "config_sha256": config_hash,
+            "input_files": input_records,
+            "input_fingerprints": run_input_fingerprints,
+            "data_fingerprint_manifest": fingerprint_manifest_record,
+            "rng_state": capture_rng_state(),
+            "batch_generator_state": batch_generator.get_state(),
+            "seenclasses": seenclasses.detach().cpu().long().tolist(),
+            "unseenclasses": unseenclasses.detach().cpu().long().tolist(),
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+        },
+        log_dir / "checkpoint_last.pth",
+    )
 
 iters_per_epoch = len(train_labels) // int(config.batch_size)
 if iters_per_epoch <= 0:
@@ -416,7 +489,9 @@ for epoch in range(start_epoch, total_epochs + 1):
     epoch_loss = 0.0
     for step in range(iters_per_epoch):
         optimizer.zero_grad(set_to_none=True)
-        indices = torch.randperm(len(train_labels))[: int(config.batch_size)]
+        indices = torch.randperm(
+            len(train_labels), generator=batch_generator
+        )[: int(config.batch_size)]
         batch_labels = train_labels[indices].to(config.device)
         cls_batch = train_cls[indices].to(config.device).float().unsqueeze(1)
         patch_batch = train_patches[indices].to(config.device).float()
@@ -435,58 +510,40 @@ for epoch in range(start_epoch, total_epochs + 1):
             )
 
     scheduler.step()
-    seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_cached_v5(
-        model,
-        config.device,
-        test_cache,
-        seenclasses,
-        unseenclasses,
-    )
     print_log(
-        f"epoch {epoch}: S={seen_acc * 100:.2f}% U={unseen_acc * 100:.2f}% "
-        f"H={harmonic * 100:.2f}% ZS={zsl_acc * 100:.2f}% "
-        f"avg_loss={epoch_loss / iters_per_epoch:.4f}"
+        f"epoch {epoch}: avg_loss={epoch_loss / iters_per_epoch:.4f}"
     )
+    save_checkpoint(epoch)
 
-    if harmonic > best_h:
-        best_h = harmonic
-        best_metrics = {
-            "U": unseen_acc,
-            "S": seen_acc,
-            "H": harmonic,
-            "ZS": zsl_acc,
-            "epoch": epoch,
-        }
-        score = int(round(harmonic * 10000))
-        model_path = log_dir / f"best_model_CUB_{current_time}_H{score}.pth"
-        checkpoint_path = log_dir / f"ckpt_full_CUB_{current_time}.pth"
-        torch.save(model.state_dict(), model_path)
-        torch.save(
-            {
-                "template_id": MODEL_TEMPLATE_ID,
-                "code_commit": code_commit,
-                "epoch": epoch,
-                "stage_index": active_stage,
-                "best_H": best_h,
-                "best_metrics": best_metrics,
-                "config": config_values,
-                "config_sha256": config_hash,
-                "input_files": input_records,
-                "input_fingerprints": run_input_fingerprints,
-                "rng_state": capture_rng_state(),
-                "seenclasses": seenclasses.detach().cpu().long().tolist(),
-                "unseenclasses": unseenclasses.detach().cpu().long().tolist(),
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "scheduler_state_dict": scheduler.state_dict(),
-            },
-            checkpoint_path,
-        )
-        print_log(f"保存新最佳模型：{model_path}")
+seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_cached_v5(
+    model,
+    config.device,
+    test_cache,
+    seenclasses,
+    unseenclasses,
+)
+reported_metrics = {
+    "U": unseen_acc,
+    "S": seen_acc,
+    "H": harmonic,
+    "ZS": zsl_acc,
+    "epoch": total_epochs,
+    "evaluation_protocol": "test_once_after_training",
+}
+torch.save(model.state_dict(), log_dir / "model_final.pth")
+save_checkpoint(
+    total_epochs,
+    final_metrics=reported_metrics,
+    test_was_evaluated=True,
+)
 
 print_log("训练完成。")
 print_log(
-    f"最佳 epoch={best_metrics['epoch']}，U={best_metrics['U'] * 100:.2f}%，"
-    f"S={best_metrics['S'] * 100:.2f}%，H={best_metrics['H'] * 100:.2f}%，"
-    f"ZS={best_metrics['ZS'] * 100:.2f}%。"
+    f"最终 epoch={reported_metrics['epoch']}，U={reported_metrics['U'] * 100:.2f}%，"
+    f"S={reported_metrics['S'] * 100:.2f}%，H={reported_metrics['H'] * 100:.2f}%，"
+    f"ZS={reported_metrics['ZS'] * 100:.2f}%。"
+)
+(log_dir / "metrics.yaml").write_text(
+    yaml.safe_dump(reported_metrics, allow_unicode=True, sort_keys=False),
+    encoding="utf-8",
 )

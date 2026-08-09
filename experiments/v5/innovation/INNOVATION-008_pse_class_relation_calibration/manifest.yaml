@@ -1,0 +1,47 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "INNOVATION-008"
+  name: "INNOVATION-008_pse_class_relation_calibration"
+  kind: "innovation"
+  status: "planned"
+  evidence_mode: "formal"
+  attempt_id: "attempt-001"
+  created_or_recorded_at: "2026-08-09T17:00:09+00:00"
+version:
+  base_version: "v5"
+  base_code_tag: "v5"
+  code_branch: "exp/v5/innovation/innovation-008-pse-class-relation-calibration"
+  code_commit: "2f5fa5e"
+  git_dirty: "false"
+reproducibility:
+  config_file: "experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/config.yaml"
+  config_sha256: "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"
+  pre_run_freeze_commit: ""
+  command: ""
+  run_start_receipt_sha256: ""
+  run_start_receipt_ref: ""
+  seed: ""
+  dataset: "CUB GZSL"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  label_mapping_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+idea:
+  idea_id: ""
+  uri: ""
+  title: ""
+  hypothesis: "Tune hyperparameters without changing code."
+artifacts:
+  train_log:
+    artifact_id: ""
+    role: "training_log"
+    uri: ""
+    sha256: ""
+    size_bytes: ""
+    required_for: "audit"
+    status: "pending"
+quality:
+  boundary_audit_required: true
+  raw_artifacts_in_git: false
+  interface_contract_required: "true"
+  evaluation_semantics_verified: "false"

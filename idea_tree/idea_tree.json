@@ -292,6 +292,70 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0007",
+      "idea_dir": "idea_tree/ideas/IDEA-0007_pse_class_relation_calibration/",
+      "title": "PSE 类别关系增强与 GZSL 自校准",
+      "status": "trialing",
+      "source_type": "hybrid",
+      "source_ref": "owner_plan_2026-08-10+counterfactual_probe_other_classes_delta_0",
+      "source_status": "local_heuristic",
+      "global_score": 84.0,
+      "core_summary": "先把 PSE 改为沿类别轴建立关系，再用同一权重分组处理已见与未见原型，最后分别检验训练期概率下限校准和推理期 calibrated stacking。",
+      "version_scores": {
+        "v5": {
+          "score": 88.0,
+          "applicability": "needs_adaptation",
+          "stage": "trialing",
+          "rationale": "旧 PSE 的输入为 [类别数, 句子数, 特征维度]，注意力只在每个类别自己的句子内运行；反事实探针中修改类别 A 后其他类别输出最大变化为 0，因此需要在 V5 上改成真正的类别轴注意力。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "V5 PSE",
+        "CLIP/GPT-5.5 class prototypes",
+        "GZSL seen-only cross entropy"
+      ],
+      "target_component": "model/MyModel.py 的类别原型适配、训练损失与 tools/v5_evaluation.py 的推理校准",
+      "hypothesis": "真正的类别间关系建模和已见/未见一致的原型处理应优先提高 U 与 H；若仍有已见类偏置，有限的训练期概率下限或验证集确定的推理减分可进一步改善 H。",
+      "expected_effect": {
+        "U": "E2/E3 期望提高；E4 只回答判决线偏置空间。",
+        "S": "允许小幅变化，但不能靠明显牺牲 S 换取 U。",
+        "H": "第一阶段以 seed 5 逐项比较；最佳训练方案再与 E0 做 5/17/29 成对复现。"
+      },
+      "implementation_scope": "仅修改实验分支中的 PSE 类别轴适配、共享未见类路径、有界训练校准、推理期 calibrated stacking、独立批次随机数和一次性测试评估；不改变数据划分、类别顺序或已见类交叉熵。",
+      "risk": "直接把 DAZLE 的无界 unseen-mass 损失接到 seen-only CE 会把未见类概率持续推高；因此 E3 使用达到固定下限后归零的有界版本，并明确标为 DAZLE-inspired，而不是原式复现。",
+      "compatibility": "pse_mode=legacy_sentence、pse_apply_unseen=false、lambda_self_calibration=0 时保留 V5 原模型路径；E4 的 gamma=0 与 E2 完全一致。",
+      "transfer_notes": "若迁移到其他数据集，必须重新建立类不重叠验证划分并重新选择 gamma，不能复用 CUB 的数值。",
+      "priority": 0.88,
+      "linked_trials": [],
+      "linked_versions": [
+        "v5"
+      ],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration"
+      ],
+      "evidence": [
+        {
+          "type": "owner_plan",
+          "ref": "owner:2026-08-10:five-group PSE and calibration plan",
+          "note": "E0 到 E4 每次只增加一项，并先做 seed 5。"
+        },
+        {
+          "type": "counterfactual_probe",
+          "ref": "model/MyModel.py:legacy ProgressiveSemanticSelfAttention",
+          "note": "修改一个类别原型后，其他类别输出的 max delta=0.0，证明旧路径没有类别间依赖。"
+        },
+        {
+          "type": "paper",
+          "ref": "https://arxiv.org/pdf/1605.04253",
+          "note": "Calibrated stacking 在推理时统一降低已见类分数；gamma 必须由验证数据确定。"
+        }
+      ]
     }
   ]
 }
