@@ -292,6 +292,63 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0005",
+      "idea_dir": "idea_tree/ideas/IDEA-0005_confidence_conditioned_local_gate/",
+      "title": "置信度条件局部互补门控",
+      "status": "selected",
+      "source_type": "observation",
+      "source_ref": "owner-observation:2026-08-09:局部分支整体增益很小，需要检验它是否只在全局分支低置信度样本上提供互补；owner 在本任务中明确要求执行全部计划实验",
+      "source_status": "local_heuristic",
+      "global_score": 70.0,
+      "core_summary": "不再固定叠加局部分支，而是根据全局分类间隔生成单调门控：全局越犹豫，局部得分权重越大；全局越确定，局部权重不会增大。",
+      "version_scores": {
+        "v5": {
+          "score": 78.0,
+          "applicability": "direct",
+          "stage": "selected",
+          "rationale": "V5 母版已经同时输出 global_logits 与 local_logits，本实验只在二者最终融合处增加一个小门控，直接回答当前局部分支整体增益很小、但可能只对困难样本有用的问题。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "V5 global logits",
+        "V5 local logits"
+      ],
+      "target_component": "V5 全局与局部 logits 的最终融合位置",
+      "hypothesis": "如果局部分支的价值集中在全局分支低置信度样本上，那么让局部权重随全局分类间隔单调下降，应该比固定融合更能保留互补信息；若三次同配置运行没有改善或门控退化为近似常数，这个假设就不成立。",
+      "expected_effect": {
+        "U": "低全局置信度的未见类样本可能得到更多局部信息，但必须由正式运行验证。",
+        "S": "全局高置信度样本的局部权重被压低，目标是避免明显损伤已见类表现。",
+        "H": "只把三次同配置正式运行与同口径基线的比较作为判断依据，不预写提升结论。"
+      },
+      "implementation_scope": "V5-INNOVATION-003 只在实验分支增加 confidence-conditioned local gate：使用 detached global margin，固定 beta=0.05，保持原有辅助损失、类别轴、seen/unseen 划分、标签映射和 U/S/H/ZS 评估口径不变。",
+      "risk": "全局 margin 可能不是可靠置信度；门控可能塌缩、近似常数或放大局部分支噪声；同 seed 重复仍可能受训练非确定性影响。",
+      "compatibility": "不修改 MODEL-V5-TEMPLATE-V1 母版；候选代码只留在独立实验分支，未确认前不创建新框架或 Tag。",
+      "transfer_notes": "当前只评估 v5。以后若框架改变 global/local logits 的尺度、类别轴或融合位置，必须重新检查门控定义，不能直接沿用本次适配结论。",
+      "priority": 0.78,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "V5-INNOVATION-003",
+        "experiments/v5/innovation/INNOVATION-003_confidence_local_gate"
+      ],
+      "evidence": [
+        {
+          "type": "owner_observation",
+          "ref": "owner:2026-08-09:local-branch-complementarity-problem",
+          "note": "Owner 观察到局部分支整体消融增益很小，并要求检验它是否只在全局低置信度样本上互补；这不是论文来源。"
+        },
+        {
+          "type": "experiment_plan",
+          "ref": "experiments/v5/innovation/INNOVATION-003_confidence_local_gate",
+          "note": "计划使用三次 seed=5 同配置运行验证该假设；当前仅登记 pre-run 计划，不记录任何实验结果。"
+        }
+      ]
     }
   ]
 }

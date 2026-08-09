@@ -278,11 +278,14 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
         experiment = yaml.safe_load(experiment_path.read_text(encoding="utf-8"))
         self.assertEqual(experiment["experiment_id"], "V5-INNOVATION-003")
         self.assertEqual(experiment["idea_id"], "IDEA-0005")
+        self.assertEqual(experiment["idea_binding_status"], "ready")
         self.assertEqual(
-            experiment["idea_binding_status"], "blocked_pending_main_ledger_sync"
+            experiment["idea_registry_commit"],
+            "6e42dfcff09a87c14aba807e4bb0fd7ab0d73350",
         )
-        self.assertEqual(experiment["status"], "blocked_pending_idea_registration")
-        self.assertFalse(experiment["formal_run_allowed"])
+        self.assertEqual(experiment["legacy_ref"], "IDEA-0005")
+        self.assertEqual(experiment["status"], "pre_run")
+        self.assertTrue(experiment["formal_run_allowed"])
         self.assertEqual(experiment["base_template_id"], "MODEL-V5-TEMPLATE-V1")
         self.assertEqual(experiment["base_template_tag"], "model/v5-template-v1")
         self.assertEqual(
@@ -299,6 +302,7 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
         self.assertEqual([row["job_id"] for row in rows], ["RUN-001", "RUN-002", "RUN-003"])
         self.assertEqual({row["seed"] for row in rows}, {"5"})
         self.assertEqual({row["status"] for row in rows}, {"frozen"})
+        self.assertEqual({row["base_version"] for row in rows}, {"v5"})
         self.assertEqual(
             {row["base_config_sha256"] for row in rows},
             {"def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"},
@@ -311,6 +315,25 @@ class ConfidenceLocalGateEntryTest(unittest.TestCase):
         self.assertEqual(rows[0]["repeat_of"], "")
         self.assertEqual(rows[1]["repeat_of"], "RUN-001")
         self.assertEqual(rows[2]["repeat_of"], "RUN-001")
+
+        idea_path = (
+            ROOT
+            / "idea_tree"
+            / "ideas"
+            / "IDEA-0005_confidence_conditioned_local_gate"
+            / "IDEA.md"
+        )
+        self.assertTrue(idea_path.is_file(), "缺少 IDEA-0005 共享登记文件")
+        self.assertIn(
+            "IDEA-0005",
+            (ROOT / "idea_tree" / "INDEX.md").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "V5-INNOVATION-003",
+            (ROOT / "experiments" / "v5" / "innovation" / "INDEX.md").read_text(
+                encoding="utf-8"
+            ),
+        )
 
     def test_preflight_rejects_cpu_dirty_git_wrong_commit_and_existing_output(self):
         module = load_module(ENTRY_PATH, "v5_confidence_local_gate_preflight_test")

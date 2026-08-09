@@ -3,7 +3,8 @@ experiment_id: V5-INNOVATION-003
 framework_id: FRAMEWORK-V5
 kind: innovation
 idea_id: IDEA-0005
-idea_binding_status: blocked_pending_main_ledger_sync
+idea_binding_status: ready
+idea_registry_commit: 6e42dfcff09a87c14aba807e4bb0fd7ab0d73350
 base_identity_kind: framework_template
 base_template_id: MODEL-V5-TEMPLATE-V1
 base_template_tag: model/v5-template-v1
@@ -12,9 +13,9 @@ template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-003-confidence-local-gate
-legacy_ref: none
-status: blocked_pending_idea_registration
+legacy_ref: IDEA-0005
+status: pre_run
 canonical_model_modified: false
 canonical_training_modified: false
-formal_run_allowed: false
+formal_run_allowed: true
 formal_training_started: false
