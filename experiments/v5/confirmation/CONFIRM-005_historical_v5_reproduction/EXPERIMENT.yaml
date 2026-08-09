@@ -1,0 +1,19 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-CONFIRM-005
+framework_id: FRAMEWORK-V5
+kind: confirmation
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+template_registry_commit: none
+historical_code_ref: git:4b259379d99c1a791442ea9e2fac0bb22b2411a9; exact CONFIG_USED.yaml sha256:a11706a51657bedec949f612aed2063dfe57807c5bc1a5c81219e4ce5b162aca
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: trial003-old-v5-source@4b259379
+status: completed
+research_question: 历史 V5 原始代码和原始配置在五次 seed 5 独立进程中能否恢复 H>=74.40
+restore_target_H: 74.40
+repeat_type: exact_repeat
+max_attempts: 5
+decision: near_miss_not_restored
