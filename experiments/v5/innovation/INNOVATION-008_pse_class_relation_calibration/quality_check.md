@@ -1,28 +1,35 @@
 # Quality Check
 
 ```text
-runtime:
+runtime: local_cuda
 quality_check_mode: STRICT
-decision: PENDING
+decision: PASS_REJECT_RESULT
 promotion_decision: not_applicable
-evidence_level: pending
-confirmation_status: pending
+evidence_level: single_seed_paired_rejection
+confirmation_status: not_applicable
 ```
 
 ## 范围
 
+检查 E0/E1 的代码提交、配置、数据身份、运行日志、最终指标、模型文件和评估口径；这是结果真实性检查，不是把失败方案晋级。
+
 ## 发现
+
+- E0 与 E1 均从 clean commit `7295b07` 启动，seed 都是 5。
+- 两组均完成 50 个 epoch 后只评估一次测试集。
+- E1 相对 E0：`ΔU=+7.50`、`ΔS=-18.13`、`ΔH=-6.77`、`ΔZS=-0.04`。
+- `RUN-001`、`RUN-006` 的失败日志保留，未混入正式指标。
 
 ## 质量检查
 
-- [ ] 代码快照或 base version 明确。
-- [ ] 配置副本保存在实验目录。
-- [ ] 外部日志 artifact URI、sha256、size 明确。
-- [ ] 结果口径明确。
-- [ ] `evidence_level`、`best_observed_H`、`confirmed_H` 和 `confirmation_status` 已区分。
-- [ ] 没有未声明的 eval / class order / logits shape 改动。
-- [ ] seen/unseen split、label mapping、class order 和 metric calculation 未改变或已按高风险记录。
-- [ ] GitHub 目录中没有新增 raw log、checkpoint、generated figures。
+- [x] 代码快照或 base version 明确。
+- [x] 配置副本保存在实验目录。
+- [x] 外部日志 artifact URI、sha256、size 明确。
+- [x] 结果口径明确。
+- [x] 单 seed 否决证据没有冒充 confirmation 或 promotion。
+- [x] eval 设备修复已声明且不改变指标算法、class order 或 logits shape。
+- [x] seen/unseen split、label mapping、class order 和 metric calculation 未改变。
+- [x] GitHub 目录中没有新增 raw log、checkpoint 或训练生成图。
 
 ## Promotion Gate（仅正式提升 vX 时填写）
 
@@ -45,4 +52,4 @@ confirmation_status: pending
 
 ## 决策
 
-PENDING
+`PASS_REJECT_RESULT`：证据足以否决 E1；不支持继续 E2-E4，也不支持 promotion。

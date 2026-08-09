@@ -2,7 +2,7 @@
 
 ```text
 idea_id: IDEA-0007
-status: trialing
+status: rejected
 source_type: hybrid
 source_ref: owner_plan_2026-08-10 + counterfactual_probe_other_classes_delta_0
 base_version: v5
@@ -50,3 +50,7 @@ linked_experiment: V5-INNOVATION-008
 - E3 只交换 U/S 而不提高 H：删除训练校准。
 - 只有 E4 提升：结论只能写“判决偏置改善”，不能写成表示学习提升。
 - E4 在类不重叠验证入口准备好之前保持未启动，绝不从测试集反推 `gamma`。
+
+## 2026-08-10 实验结论
+
+E0 `RUN-007` 得到 `U/S/H/ZS=71.25/76.30/73.69/81.32`；E1 `RUN-002` 得到 `78.75/58.17/66.92/81.28`。E1 的 U 上升 7.50，但 S 下降 18.13，H 下降 6.77。按第一条停止条件，本想法在当前实现上标记为 `rejected`，E2-E4 跳过。

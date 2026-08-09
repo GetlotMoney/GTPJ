@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-五组 seed 5 计划已经冻结到参数表。`RUN-001` 在首个 epoch 前暴露 CUDA 类别编号设备错误；`RUN-006` 完成 50 个 epoch 后又暴露最终评估索引设备错误。两次失败证据均保留，修复后的原配置重跑登记为 `RUN-007`。E4 的 `gamma` 仍为空；在类不重叠验证划分准备好之前，E4 不得运行。
+实验已按预先停止条件收口。公平基线 E0 为 `H=73.69`；E1 类别轴自注意力为 `H=66.92`，虽然 `U` 增加 7.50，但 `S` 下降 18.13，导致 `H` 下降 6.77。E1 被否决，E2、E3、E4 不再运行。
 
 ```text
 experiment_id: V5-INNOVATION-008
@@ -13,7 +13,7 @@ base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 code_branch: exp/v5/innovation/innovation-008-pse-class-relation-calibration
 seed_first_pass: 5
 run_commit: pending_pre_run_freeze
-status: implementation_ready_for_review
+status: rejected_after_e1
 ```
 
 ## 实验问题
@@ -25,12 +25,12 @@ status: implementation_ready_for_review
 | RUN | 组别 | 配置 | 当前状态 |
 |---|---|---|---|
 | RUN-001 | E0 新公平基线 | `config.yaml` | failed：首个 epoch 前 CUDA 设备检查错误 |
-| RUN-002 | E1 修复类别自注意力 | `configs/E1_fix_class_attention.yaml` | planned |
-| RUN-003 | E2 未见类共享 PSE | `configs/E2_shared_unseen_pse.yaml` | planned |
-| RUN-004 | E3 训练期概率下限 | `configs/E3_training_self_calibration.yaml` | planned |
-| RUN-005 | E4 推理期 calibrated stacking | `configs/E4_calibrated_stacking.yaml` | 等待验证集 gamma |
+| RUN-002 | E1 修复类别自注意力 | `configs/E1_fix_class_attention.yaml` | completed：H=66.92，否决 |
+| RUN-003 | E2 未见类共享 PSE | `configs/E2_shared_unseen_pse.yaml` | skipped：E1 未过门 |
+| RUN-004 | E3 训练期概率下限 | `configs/E3_training_self_calibration.yaml` | skipped：E1 未过门 |
+| RUN-005 | E4 推理期 calibrated stacking | `configs/E4_calibrated_stacking.yaml` | skipped：没有 E2 checkpoint |
 | RUN-006 | E0 CUDA 修复后重跑 | `config.yaml` | failed：完成 50 epoch 后最终评估设备错误 |
-| RUN-007 | E0 评估设备修复后重跑 | `config.yaml` | planned |
+| RUN-007 | E0 评估设备修复后重跑 | `config.yaml` | completed：H=73.69 |
 
 每个训练 RUN 使用独立输出目录，例如：
 

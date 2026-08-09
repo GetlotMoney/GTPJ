@@ -1,22 +1,25 @@
-# INNOVATION-008_pse_class_relation_calibration Result
+# V5-INNOVATION-008 结果
 
-## Summary
+## 结论
 
-Kind: `innovation`.
+E1 被否决。真正的类别轴自注意力虽然把 `U` 提高了 7.50 个点，但让 `S` 下降 18.13 个点，最终 `H` 比同 seed、公平口径 E0 低 6.77 个点。按开跑前写好的停止条件，E2、E3、E4 不再运行。
 
-## Metrics
+## 指标
 
-| U | S | H | ZS | Best epoch |
-|---:|---:|---:|---:|---:|
-| - | - | - | - | - |
+| 组别 | RUN | U | S | H | ZS | epoch |
+|---|---|---:|---:|---:|---:|---:|
+| E0 公平基线 | RUN-007 | 71.25 | 76.30 | 73.69 | 81.32 | 50 |
+| E1 类别轴自注意力 | RUN-002 | 78.75 | 58.17 | 66.92 | 81.28 | 50 |
+| E1 - E0 | - | +7.50 | -18.13 | -6.77 | -0.04 | - |
 
-## Evidence
+两组都使用 seed 5、同一数据、同一训练日程，并且只在第 50 个 epoch 后评估一次测试集。
 
-```text
-log_artifact_id:
-log_uri:
-```
+## 运行证据
 
-## Decision
+- E0：`D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007`
+- E1：`D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-002`
+- `RUN-001` 和 `RUN-006` 是两次已保留的启动/评估失败，不计入模型效果比较。
 
-pending
+## 决策
+
+`rejected`：停止把本版类别关系 PSE 作为有效创新，也不继续叠加未见类 PSE 或自校准来掩盖 E1 的失败。

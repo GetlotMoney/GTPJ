@@ -1,47 +1,51 @@
 schema_version: gtpj-manifest/v1
 experiment:
-  id: "INNOVATION-008"
-  name: "INNOVATION-008_pse_class_relation_calibration"
+  id: "V5-INNOVATION-008"
+  name: "PSE 类别关系增强与 GZSL 自校准"
   kind: "innovation"
-  status: "planned"
+  status: "rejected"
   evidence_mode: "formal"
-  attempt_id: "attempt-001"
-  created_or_recorded_at: "2026-08-09T17:00:09+00:00"
+  created_or_recorded_at: "2026-08-10T02:15:21+08:00"
 version:
   base_version: "v5"
-  base_code_tag: "v5"
+  base_code_tag: "model/v5-template-v1"
+  base_code_commit: "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
   code_branch: "exp/v5/innovation/innovation-008-pse-class-relation-calibration"
-  code_commit: "2f5fa5e"
-  git_dirty: "false"
+  code_commit: "7295b0742020398d17337a804404b12a63680d83"
+  git_dirty_at_run_start: "false"
 reproducibility:
-  config_file: "experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/config.yaml"
-  config_sha256: "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e"
-  pre_run_freeze_commit: ""
-  command: ""
-  run_start_receipt_sha256: ""
-  run_start_receipt_ref: ""
-  seed: ""
+  seed: 5
   dataset: "CUB GZSL"
   split_id: "standard_v1"
   class_order_id: "standard_v1"
   label_mapping_id: "standard_v1"
   metric_contract_id: "gzsl_u_s_h_zs_v1"
+  evaluation_protocol: "test_once_after_training"
 idea:
-  idea_id: ""
-  uri: ""
-  title: ""
-  hypothesis: "Tune hyperparameters without changing code."
+  idea_id: "IDEA-0007"
+  uri: "idea_tree/ideas/IDEA-0007_pse_class_relation_calibration/IDEA.md"
 artifacts:
-  train_log:
-    artifact_id: ""
-    role: "training_log"
-    uri: ""
-    sha256: ""
-    size_bytes: ""
-    required_for: "audit"
-    status: "pending"
+  baseline_train_log:
+    artifact_id: "RUN-007-training-log"
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007/training.log"
+    sha256: "21db4121e264939b4db8d21ae0ae97c9161426c17a627b3ce47d5dedf29626ca"
+    size_bytes: 16040
+  trial_train_log:
+    artifact_id: "RUN-002-training-log"
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-002/training.log"
+    sha256: "a98799fdf26ffa706cf0cbf8e900dfa1755515c6947ebe0819e0a1299652808c"
+    size_bytes: 16064
+  baseline_checkpoint:
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007/model_final.pth"
+    sha256: "a5427141b221865e3519845ea9a664d4e20595c28909ab760b1735bcd65ae472"
+    size_bytes: 98408532
+  trial_checkpoint:
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-002/model_final.pth"
+    sha256: "7c81a259772b710bbd89c8136b161f9c06698b1c342e60e34202a9c8db1e329e"
+    size_bytes: 107866266
 quality:
   boundary_audit_required: true
+  boundary_audit_passed: true
   raw_artifacts_in_git: false
-  interface_contract_required: "true"
-  evaluation_semantics_verified: "false"
+  interface_contract_checked: true
+  evaluation_semantics_verified: true

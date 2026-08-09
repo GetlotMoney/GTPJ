@@ -297,7 +297,7 @@
       "idea_id": "IDEA-0007",
       "idea_dir": "idea_tree/ideas/IDEA-0007_pse_class_relation_calibration/",
       "title": "PSE 类别关系增强与 GZSL 自校准",
-      "status": "trialing",
+      "status": "rejected",
       "source_type": "hybrid",
       "source_ref": "owner_plan_2026-08-10+counterfactual_probe_other_classes_delta_0",
       "source_status": "local_heuristic",
@@ -307,9 +307,11 @@
         "v5": {
           "score": 88.0,
           "applicability": "needs_adaptation",
-          "stage": "trialing",
-          "rationale": "旧 PSE 的输入为 [类别数, 句子数, 特征维度]，注意力只在每个类别自己的句子内运行；反事实探针中修改类别 A 后其他类别输出最大变化为 0，因此需要在 V5 上改成真正的类别轴注意力。",
-          "blockers": []
+          "stage": "rejected",
+          "rationale": "seed 5 公平对照中，E1 将 U 从 71.25 提到 78.75，但 S 从 76.30 降到 58.17，H 从 73.69 降到 66.92；按预先停止条件否决。",
+          "blockers": [
+            "类别轴自注意力造成 seen accuracy 大幅下降，当前实现不再继续叠加 E2-E4。"
+          ]
         }
       },
       "base_versions": [
@@ -354,6 +356,11 @@
           "type": "paper",
           "ref": "https://arxiv.org/pdf/1605.04253",
           "note": "Calibrated stacking 在推理时统一降低已见类分数；gamma 必须由验证数据确定。"
+        },
+        {
+          "type": "experiment_result",
+          "ref": "experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/result.yaml",
+          "note": "E0 H=73.69；E1 H=66.92，S 下降 18.13，结论 rejected，E2-E4 跳过。"
         }
       ]
     }

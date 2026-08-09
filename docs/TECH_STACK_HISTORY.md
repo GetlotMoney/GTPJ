@@ -15,22 +15,22 @@
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
-| PSE 类别关系实验 | `MODEL-PSE-CLASSREL-V1` | 实现完成、实验待运行 | 类别轴 PSE、未见原型共享权重、有界训练校准和推理期 calibrated stacking 已通过机器测试与独立审核；等待真实 seed 5 结果。 |
+| PSE 类别关系实验 | `MODEL-PSE-CLASSREL-V1` | 已放弃 | E1 让 H 从 73.69 降到 66.92，主要因 S 从 76.30 降到 58.17；按停止条件不继续 E2-E4。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
 
-## 2026-08-10：MODEL-PSE-CLASSREL-V1（实现完成、实验待运行）
+## 2026-08-10：MODEL-PSE-CLASSREL-V1（已放弃）
 
 - 本次改的是哪个对象：`V5-INNOVATION-008` 实验分支中的 PSE 原型适配、训练校准、推理校准和训练复现入口；不修改正式 `MODEL-GTPJ-V5`。
 - 目标问题：旧 PSE 只在每个类别自己的句子内做注意力，类别 A 不会影响类别 B；同时 GZSL 联合分类存在已见类偏置。
 - 采用技术：把类别原型变为 `[1, C, D]` 后执行 `LayerNorm → MultiheadAttention → 0.1 残差 → L2 归一化`；seen/unseen 使用同一权重分组运行；E3 使用达到 0.05 后归零的概率下限损失；E4 使用验证集确定的 calibrated stacking。
 - 替换了什么：E1–E3 的 `pse_mode=class_relation` 替换旧 sentence-only PSE；`pse_mode=legacy_sentence` 仍保留为 E0 对照。训练批次从全局 RNG 改为独立且可恢复的 generator；逐 epoch 测试选最佳改为固定训练结束后只测一次。
-- 实际可见效果：代码和参数表已经完成，真实 U/S/H/ZS 尚未产生；因此本条不能写任何性能提升结论。
+- 实际可见效果：E0 为 `U/S/H/ZS=71.25/76.30/73.69/81.32`；E1 为 `78.75/58.17/66.92/81.28`。U 上升但 S 大幅崩塌，H 下降 6.77。
 - 选择原因：每组只增加一个因素，能分别判断类别关系、未见原型一致性、训练偏置和推理判决线的作用。
-- 已知限制：E3 是 DAZLE-inspired 有界版本，不是 DAZLE 原式；E4 仍缺类不重叠验证运行和最终 gamma；新 E0 与历史按测试集选 epoch 的 74.44 不是同一口径。
+- 已知限制：只完成 seed 5 的 E0/E1；由于 E1 已明显失败，按预先规则停止，未生成 E2 checkpoint，也未运行 E3/E4。
 - 素材位置：`model/MyModel.py`、`tools/v5_evaluation.py`、`tools/v5_runtime.py`、`train_GTPJ_CUB.py`、`tests/test_v5_pse_class_relation_calibration.py`、`experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/`。
-- 验证命令与结果：相关 28 项单元测试通过，包含真实 CUDA 构造边界；参数矩阵、框架账本、母版来源和仓库边界校验通过；独立只读审核最终 `PASS`，真实训练待完成。
-- 回退方式：在本实验分支将配置恢复为 `pse_mode=legacy_sentence`、`pse_apply_unseen=false`、`lambda_self_calibration=0`、`gamma=0`，即可回到 E0；正式 V5 母版和历史结果未改动。
+- 验证命令与结果：28 项单元测试通过，包含真实 CUDA 构造与 CUDA→CPU 评估边界；参数矩阵、框架账本、母版来源和仓库边界校验通过；独立只读审核最终 `PASS`；E0/E1 均完成 50 epoch 并一次性评估。
+- 回退方式：继续使用 E0 的 `pse_mode=legacy_sentence`、`pse_apply_unseen=false`、`lambda_self_calibration=0`、`gamma=0`；不接纳本实验类别关系模块。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 

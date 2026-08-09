@@ -8,14 +8,14 @@ activation_mode: implementation_with_bounded_read_only_support
 formal_training_started: true
 memory_used: false
 verified_against_current_repo: true
-final_decision: pending_real_runs
+final_decision: rejected_after_e1
 ```
 
 ## 主实现
 
 - 责任：读取现有 V5 代码和项目规则，完成 E0–E4 的最小实现、配置、测试和账本。
 - 写入范围：`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*`、实验目录、idea_tree 和必要项目文档。
-- 当前结论：首次 CUDA 启动在首个 epoch 前发现类别编号设备错误；第二次完成 50 epoch 后发现最终评估索引设备错误。两处均有真实 CUDA 回归测试并经独立复核通过；旧 checkpoint 的只读诊断评估已跑通，正式成功 RUN 尚待重跑。
+- 当前结论：首次 CUDA 启动在首个 epoch 前发现类别编号设备错误；第二次完成 50 epoch 后发现最终评估索引设备错误。两处均有真实 CUDA 回归测试并经独立复核通过；随后 E0、E1 均完成正式成功 RUN。
 
 ## 只读方法核对
 
@@ -29,4 +29,11 @@ final_decision: pending_real_runs
 - 审核轮数：1 轮，原因是改动触及模型、loss 和 eval 语义，但范围只在一个实验分支。
 - Reviewer：独立只读 Agent，只复核当前实现，不改文件。
 - 审核结论：`PASS`。首轮发现续训可跨 RUN 混写；修复为 checkpoint 必须位于当前输出目录后复核通过，无剩余开跑阻断。
-- 未覆盖：真实 CUDA 训练与 E4 验证集选 gamma，分别由本轮运行和后续 E4 配套验证。
+- 未覆盖：E2-E4 按预先停止条件主动跳过，不是待补证据。
+
+## 真实运行与收口
+
+- E0 `RUN-007`：`U=71.25`、`S=76.30`、`H=73.69`、`ZS=81.32`。
+- E1 `RUN-002`：`U=78.75`、`S=58.17`、`H=66.92`、`ZS=81.28`。
+- 决策：E1 的 `H` 下降 6.77，且 `S` 下降 18.13；按预先停止条件否决，E2-E4 跳过。
+- 失败透明度：`RUN-001` 与 `RUN-006` 的日志原样保留，不计入效果比较。

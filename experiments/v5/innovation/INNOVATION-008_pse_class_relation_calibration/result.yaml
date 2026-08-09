@@ -1,55 +1,53 @@
 schema_version: gtpj-result/v1
-experiment_id: "INNOVATION-008"
-experiment_name: "INNOVATION-008_pse_class_relation_calibration"
+experiment_id: "V5-INNOVATION-008"
+experiment_name: "PSE 类别关系增强与 GZSL 自校准"
 kind: "innovation"
 version: "v5"
 metrics:
-  U: ""
-  S: ""
-  H: ""
-  ZS: ""
-  best_epoch: ""
-  baseline_H: "74.54"
-  baseline_reference: "best_observed_H"
-  delta_H: ""
-  seed: ""
-  source: "training_log"
-  metric_semantics: "GZSL U/S/H/ZS from protected evaluator"
+  U: 78.75
+  S: 58.17
+  H: 66.92
+  ZS: 81.28
+  best_epoch: 50
+  baseline_H: 73.69
+  baseline_reference: "RUN-007_same_seed_same_protocol"
+  delta_H: -6.77
+  seed: 5
+  source: "RUN-002/metrics.yaml"
+  metric_semantics: "固定 50 epoch 后只评一次测试集"
 baseline:
-  version: "v5"
-  H: "74.54"
-  reference_field: "best_observed_H"
-  reference_status: "owner_activated_provisional"
-  confirmed_H: "74.44"
-  confirmation_status: "owner_activated_provisional"
+  run_id: "RUN-007"
+  U: 71.25
+  S: 76.30
+  H: 73.69
+  ZS: 81.32
 delta:
-  H: ""
+  U: 7.50
+  S: -18.13
+  H: -6.77
+  ZS: -0.04
 run:
-  seed: ""
-  run_start_receipt_sha256: ""
-  run_start_receipt_ref: ""
+  run_id: "RUN-002"
+  seed: 5
+  code_commit: "7295b0742020398d17337a804404b12a63680d83"
 decision:
-  status: "pending"
-  result_status: "pending"
+  status: "rejected"
+  result_status: "rejected"
   promotion_decision: "not_applicable"
-  promote_to: ""
+  reason: "E1 的 H 大降且 S 崩塌；按预先停止条件不再运行 E2-E4。"
 evidence:
-  evidence_level: "pending"
-  best_observed_H: ""
-  confirmed_H: ""
+  evidence_level: "single_seed_paired_rejection"
   confirmation_status: "not_applicable"
-  restore_target_H: ""
-  near_miss_tolerance_H: ""
-  near_miss_not_restored: "false"
-  log_artifact_id: ""
+  baseline_log_sha256: "21db4121e264939b4db8d21ae0ae97c9161426c17a627b3ce47d5dedf29626ca"
+  trial_log_sha256: "a98799fdf26ffa706cf0cbf8e900dfa1755515c6947ebe0819e0a1299652808c"
   manifest: "manifest.yaml"
   agent_summary: "agent_summary.md"
   label_mapping_id: "standard_v1"
   split_id: "standard_v1"
   class_order_id: "standard_v1"
 quality:
-  manifest_verified: "false"
-  boundary_audit_passed: "false"
-  interface_contract_checked: "false"
-  evaluation_semantics_verified: "false"
-recorded_at: "2026-08-09T17:00:09+00:00"
+  manifest_verified: "true"
+  boundary_audit_passed: "true"
+  interface_contract_checked: "true"
+  evaluation_semantics_verified: "true"
+recorded_at: "2026-08-10T02:15:21+08:00"
