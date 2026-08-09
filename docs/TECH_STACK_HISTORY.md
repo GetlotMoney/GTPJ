@@ -29,7 +29,7 @@
 - 选择原因：每组只增加一个因素，能分别判断类别关系、未见原型一致性、训练偏置和推理判决线的作用。
 - 已知限制：E3 是 DAZLE-inspired 有界版本，不是 DAZLE 原式；E4 仍缺类不重叠验证运行和最终 gamma；新 E0 与历史按测试集选 epoch 的 74.44 不是同一口径。
 - 素材位置：`model/MyModel.py`、`tools/v5_evaluation.py`、`tools/v5_runtime.py`、`train_GTPJ_CUB.py`、`tests/test_v5_pse_class_relation_calibration.py`、`experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/`。
-- 验证命令与结果：相关 27 项单元测试通过，参数矩阵 5 行、框架账本、母版来源和仓库边界校验通过；1 轮独立只读审核最终 `PASS`，真实训练待完成。
+- 验证命令与结果：相关 28 项单元测试通过，包含真实 CUDA 构造边界；参数矩阵、框架账本、母版来源和仓库边界校验通过；独立只读审核最终 `PASS`，真实训练待完成。
 - 回退方式：在本实验分支将配置恢复为 `pse_mode=legacy_sentence`、`pse_apply_unseen=false`、`lambda_self_calibration=0`、`gamma=0`，即可回到 E0；正式 V5 母版和历史结果未改动。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）

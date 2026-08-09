@@ -95,6 +95,19 @@ class _RecordingClassRelation(torch.nn.Module):
 
 
 class ClassPrototypeRelationAdapterTest(unittest.TestCase):
+    @unittest.skipUnless(torch.cuda.is_available(), "需要 CUDA 验证真实设备边界")
+    def test_gtpj_accepts_cuda_class_ids_during_validation(self) -> None:
+        seen, unseen, seen_text, unseen_text, seen_sentences = _model_inputs()
+        model = model_module.GTPJ(
+            _config(),
+            seen.cuda(),
+            unseen.cuda(),
+            seen_text.cuda(),
+            unseen_text.cuda(),
+            seen_sentences.cuda(),
+        )
+        self.assertEqual(model.seenclass.device.type, "cuda")
+
     def test_one_class_change_affects_other_class_outputs(self) -> None:
         self.assertTrue(
             hasattr(model_module, "ClassPrototypeRelationAdapter"),

@@ -5,7 +5,7 @@ experiment_id: V5-INNOVATION-008
 base_version: v5
 code_branch: exp/v5/innovation/innovation-008-pse-class-relation-calibration
 activation_mode: implementation_with_bounded_read_only_support
-formal_training_started: false
+formal_training_started: true
 memory_used: false
 verified_against_current_repo: true
 final_decision: pending_real_runs
@@ -15,7 +15,7 @@ final_decision: pending_real_runs
 
 - 责任：读取现有 V5 代码和项目规则，完成 E0–E4 的最小实现、配置、测试和账本。
 - 写入范围：`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*`、实验目录、idea_tree 和必要项目文档。
-- 当前结论：实现测试通过；真实 CUDA 运行和指标尚未产生。
+- 当前结论：首次 CUDA 启动在首个 epoch 前发现类别编号设备检查错误；修复后 CUDA 构造、合成前向、loss 和反向传播均通过，真实指标尚未产生。
 
 ## 只读方法核对
 
