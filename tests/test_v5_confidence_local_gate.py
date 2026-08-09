@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import csv
 from contextlib import redirect_stdout
@@ -197,6 +198,20 @@ class ConfidenceLocalGateModelTest(unittest.TestCase):
 
 
 class ConfidenceLocalGateEntryTest(unittest.TestCase):
+    def test_split_ids_stay_on_cpu_until_model_device_transfer(self):
+        tree = ast.parse(ENTRY_PATH.read_text(encoding="utf-8"))
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "load_v5_cub_split"
+        ]
+        self.assertEqual(len(calls), 1)
+        self.assertGreaterEqual(len(calls[0].args), 6)
+        self.assertIsInstance(calls[0].args[5], ast.Constant)
+        self.assertEqual(calls[0].args[5].value, "cpu")
+
     def test_entry_is_import_safe_and_four_runtime_arguments_are_required(self):
         module = load_module(ENTRY_PATH, "v5_confidence_local_gate_entry_test")
 

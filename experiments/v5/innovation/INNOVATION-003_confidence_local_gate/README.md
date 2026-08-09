@@ -29,6 +29,7 @@ F:\Anaconda\envs\dvsr_gpu\python.exe experiments\v5\innovation\INNOVATION-003_co
 ## 当前边界
 
 - 本提交只准备代码、配置、参数表和测试，没有启动训练。
+- 2026-08-09 的首次正式启动在第 1 个 epoch 前失败：类别划分被直接加载到 CUDA，而母版构造阶段会先与 CPU 连续类别轴比较。失败输出单独保留为 `RUN-000-startup-failure`，不计入三轮正式训练；入口现改为先在 CPU 加载类别划分，再随模型统一迁移设备，模型公式、损失和评估口径不变。
 - `IDEA-0005` 共享登记门已通过，`EXPERIMENT.yaml` 记录 `formal_run_allowed: true`；三份参数保持 `frozen`，仍须以本次干净 pre-run commit 作为实际 `--expected-run-commit`。
 - 已知的非训练语义阻断：全局 `validate` / `validate-framework-ledgers` 要求所有索引实验预先存在 `result.md` 与 `evidence/`，但当前最高优先级短流程禁止在 pre-run commit 伪造未来结果文件。本次不创建这两项占位，只以母版、参数表、专项测试、语法和差异范围等 targeted gates 作为预跑放行证据。
 - `beta=0.05` 固定，不能根据测试集成绩修改。

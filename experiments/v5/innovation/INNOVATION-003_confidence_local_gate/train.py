@@ -487,7 +487,7 @@ def run_training(config_path, data_root, run_dir, expected_run_commit):
             train_labels,
             test_cache["seen_labels"],
             test_cache["unseen_labels"],
-            device,
+            "cpu",
         )
         input_tensors = {
             "train_cls": train_cls,

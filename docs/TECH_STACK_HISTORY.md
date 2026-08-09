@@ -29,7 +29,7 @@
 - 选择原因：一个标量 gate 就能直接检验“低置信度才需要更多局部证据”的假设，不新增控制器、标签规则或第二套评估。
 - 已知限制：尚未运行 CUDA 训练，无法判断指标是否改善；三份配置故意相同，不能用测试集修改 beta 或门控初值。
 - 素材位置：`experiments/v5/innovation/INNOVATION-003_confidence_local_gate/`。
-- 验证命令与结果：专项 TDD、canonical 回归、语法和差异检查在本次 pre-run 提交前执行；真实训练未启动。
+- 验证命令与结果：专项 TDD、canonical 回归、语法和差异检查在本次 pre-run 提交前执行。2026-08-09 首次启动在 epoch 1 前暴露类别划分 CPU/CUDA 设备不一致；新增回归测试先准确失败，再将 `load_v5_cub_split` 的目标设备固定为 CPU，专项与 canonical 测试通过后重新冻结；该失败不含训练指标。
 - 回退方式：撤销本实验目录、专项测试和本条登记；`model/MyModel.py`、canonical 训练入口与正式配置均未修改。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
