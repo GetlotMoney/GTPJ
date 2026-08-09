@@ -292,6 +292,58 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0011",
+      "idea_dir": "idea_tree/ideas/IDEA-0011_image_conditioned_pse/",
+      "title": "图像条件 PSE 句子选择",
+      "status": "selected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-10:image-conditioned-PSE-eight-sentence-design",
+      "source_status": "local_heuristic",
+      "global_score": 80.0,
+      "core_summary": "保留 PSE 的 8 个增强句子，由每张图片的全局 CLS 为每个候选类别生成句权，只替换全局类别原型，局部 BVSA 继续使用静态均匀 PSE 原型。",
+      "version_scores": {
+        "v5": {
+          "score": 82.0,
+          "applicability": "direct",
+          "stage": "selected",
+          "rationale": "V5 已有 PSE、全局 CLS、BVSA 与固定融合；只需把 PSE 的句子维保留到全局原型构造阶段，并能用静态局部分支隔离贡献。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE",
+        "CLIP global CLS",
+        "FGVD + BVSA"
+      ],
+      "target_component": "model/MyModel.py 中 PSE 到全局类别原型的构造路径",
+      "hypothesis": "对每张图片和每个候选类别分别选择 8 个增强句子，可让类别原型更贴合当前视觉证据，并在保持静态局部分支的前提下提高 GZSL H。",
+      "expected_effect": {
+        "U": "若句子选择能抓住跨类别可迁移的局部外观描述，U 可能提高。",
+        "S": "静态局部分支和训练条件不变，S 应保持接近 V5。",
+        "H": "目标指标；必须超过既有重复波动，并结合句权/原型诊断判断。"
+      },
+      "implementation_scope": "固定使用 200 类×8句×768 维缓存；PSE 对 seen/unseen 同路；CLS 生成 [B,C,8] 句权和 [B,C,D] 条件原型；BVSA 使用 [C,D] 静态均匀 PSE 原型；最终仍为 global+0.2*local。",
+      "risk": "句权可能近似 1/8、可能过尖放大噪声，或条件原型被误送入局部分支导致实验问题被改变。",
+      "compatibility": "interaction_mode=v5_baseline 时保留 V5 路径；active 模式保持 logits shape、class order、label mapping、loss 公式和 U/S/H/ZS 语义。",
+      "transfer_notes": "迁移到其他框架前重新核对句子数量、文本维度、类别顺序和局部分支文本所有权。",
+      "priority": 0.82,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-009_image_conditioned_pse"
+      ],
+      "evidence": [
+        {
+          "type": "owner_hypothesis",
+          "ref": "owner:2026-08-10:image-conditioned-PSE-eight-sentence-design",
+          "note": "Owner 明确要求与 VSCE 实验使用同一 8 句、Top-K、损失和训练设置，只比较交互方式。"
+        }
+      ]
     }
   ]
 }

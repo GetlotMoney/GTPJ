@@ -193,7 +193,7 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
         '"ZS"',
         "V5_CONFIG_KEYS",
         "TRAIN_PATCH_PATH",
-        "GPT55_SENTENCE_PATH",
+        "EIGHT_SENTENCE_PATH",
         "--resume-from",
         "MODEL_TEMPLATE_ID",
         "input_fingerprints",

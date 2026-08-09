@@ -235,13 +235,15 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `idea_tree/README.md` | 创意树入口说明。 |
 | `idea_tree/创意树.md` | 中文入口页，帮助快速理解创意树文件分工。 |
-| `idea_tree/INDEX.md` | 给人读的总创意清单，只回答有哪些创意；当前为空，等待可靠来源重新登记。 |
-| `idea_tree/idea_tree.json` | 机器可读总创意注册表，包含 `current_version`、`ideas` 和每个 idea 的 `version_scores.vX`；当前 `ideas` 为空，是创意树唯一机器事实源。 |
+| `idea_tree/INDEX.md` | 给人读的总创意清单，只回答有哪些创意；内容由机器注册表派生。 |
+| `idea_tree/idea_tree.json` | 机器可读总创意注册表，包含 `current_version`、`ideas` 和每个 idea 的 `version_scores.vX`，是创意树唯一机器事实源。 |
 | `idea_tree/schema.json` | `idea_tree.json` 的结构约束，规定版本分数字段必须按 `v1`、`v2` 这类版本键保存。 |
 | `idea_tree/versions/` | 按版本生成的人类阅读选择清单；创新 trial 只读取对应 base version 的清单。 |
 | `idea_tree/versions/v1.md` | `v1` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
 | `idea_tree/versions/v2.md` | `v2` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
 | `idea_tree/versions/v3.md` | `v3` 创意选择清单，由 helper 根据 `idea_tree.json` 生成。 |
+| `idea_tree/versions/v4.md` | `v4` 历史配置视图，由 helper 根据 `idea_tree.json` 生成。 |
+| `idea_tree/versions/v5.md` | `v5` 创意选择清单；当前创新实验必须在这里具有 selected 且无 blocker 的记录。 |
 | `idea_tree/inbox.md` | 粗糙想法收件箱，尚未成为稳定 `IDEA-xxxx`。 |
 | `idea_tree/sources/papers_index.md` | 论文来源索引。 |
 | `idea_tree/sources/source_notes/` | 预留来源笔记目录；可放论文摘录、来源复核摘要等轻量文本。 |
@@ -266,6 +268,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `idea_tree/ideas/.gitkeep` | 保留空的创意目录；来源明确后再新增 `IDEA-xxxx_slug/IDEA.md`。 |
+| `idea_tree/ideas/IDEA-xxxx_slug/IDEA.md` | 单个创意的人类入口，记录来源、假设、实现范围、风险、版本适配和关联实验。 |
 
 ## `experiments/`
 
@@ -397,6 +400,8 @@ All formal version directories `experiments/vX/` must also include:
 | `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
 
 每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
+
+改变 module、forward 或视觉—语义交互的创新实验还必须在自身目录保存 `module_source.md`、`implementation.md`、`framework_diagram.md` 和可本地打开的自包含 `framework_diagram.html`；这些文件解释来源、实现边界和张量流，不替代实际代码与测试。
 
 这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
 dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框架对应类型，并用 `legacy_ref` 回查旧目录。

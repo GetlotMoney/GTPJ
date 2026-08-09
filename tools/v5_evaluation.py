@@ -101,8 +101,10 @@ def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_s
     expected_classes = getattr(model, "nclass", None)
     if expected_classes is not None:
         combined = torch.cat([seenclasses, unseenclasses]).sort().values
-        expected = torch.arange(int(expected_classes), dtype=torch.long)
-        if not torch.equal(combined.cpu(), expected):
+        expected = torch.arange(
+            int(expected_classes), dtype=torch.long, device=combined.device
+        )
+        if not torch.equal(combined, expected):
             raise ValueError("seen/unseen 类别没有完整覆盖模型的全局类别轴。")
     _validate_cache_split(
         "seen", cache["seen_cls"], cache["seen_patches"], cache["seen_labels"]

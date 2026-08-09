@@ -11,12 +11,26 @@
 
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
-| 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
+| 工作流 | `SYS-WORKFLOW-V6` | 已完成 | 一个运行前提交、一张参数表、一次开跑检查、独立 RUN 目录和一次结果回填；只读母版与四类实验结构继续沿用。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
+| 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1` | 已实现待跑 | `V5-INNOVATION-009` 已让全局图像为每个候选类别选择 8 句话，同时保留原频域 Top-K 与 BVSA 局部分支；尚无训练结果。 |
+
+## 2026-08-10：MODEL-V5-ICPSE-V1（已实现待跑）
+
+- 本次改的是哪个对象：`V5-INNOVATION-009` 的全局视觉—语义交互路线，不是正式 V5 母版。
+- 目标问题：母版 ICSA 给多个已见类别加同一个图像偏移，既没有按候选类别选择 8 句话，也没有对未见类采用同一路径，因而不能直接回答“全局图像选句是否已经足够”。
+- 采用技术：PSE 为全部 200 类保留 8 个增强句子；全局 CLS 与每个候选类别的 8 句话计算 CLIP 尺度余弦并做 Softmax，得到 `[B,C,8]` 权重；用未逐句归一化的增强句子加权成图像条件原型；全局分数使用该原型，频域 Top-K 32、BVSA 局部分支和 SGMP 继续使用均匀 PSE 原型；最终仍为 `global + 0.2 × local`。
+- 替换了什么：只在独立实验分支替换 ICSA 的全局交互职责；不改母版，不改变 BVSA、频域 Top-K、损失语义或评估口径。
+- 实际可见效果：代码、配置、单行冻结参数表、框架图与诊断输出已完成；服务器 `RUN-001` 尚未完成，不能填写提升结论。
+- 选择原因：把图像条件选择限制在全局分支，可以把“选句本身是否有效”与“局部区域是否也要参与”分开验证，并作为实验 B 的直接对照。
+- 已知限制：句子权重可能接近统一的 `1/8`；一次 seed=5 运行不能证明提升超过训练波动；若均匀 PSE 原型与母版不严格等价，会破坏对照，因此代码必须保留未逐句归一化的加权值路径。
+- 素材位置：`idea_tree/ideas/IDEA-0011_image_conditioned_pse/`、`experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/`。
+- 验证命令与结果：整套相关 unittest 46/46、严格历史 parity、Python 编译、仓库/账本/参数表/边界校验和真实尺寸 CUDA 前后向均已通过；独立只读审核结论为 `PASS`。真实全量训练仍待服务器 `RUN-001`。
+- 回退方式：放弃实验分支 `exp/v5/innovation/innovation-009-image-conditioned-pse` 即可；`MODEL-V5-TEMPLATE-V1`、实验 B、历史 V5 结果和 Tag 均不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 

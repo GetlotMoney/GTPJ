@@ -7,7 +7,7 @@ This file intentionally keeps only the active V5 template path used by
 - Progressive Semantic Enhancement (PSE)
 - Frequency-Guided Visual Disentanglement (FGVD)
 - Bidirectional Visual-Semantic Alignment (BVSA)
-- Image-Conditioned Semantic Adapter (ICSA)
+- image-conditioned eight-sentence prototype selection (experiment A)
 - Semantic-Guided Masked Prediction (SGMP)
 - fixed add scoring: S_final = S_global + 0.2 * S_local
 - CE, consistency, topology, BMDD, MPP, and negative semantic losses
@@ -22,6 +22,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+def _require_finite(name, tensor):
+    if not bool(torch.isfinite(tensor).all()):
+        raise FloatingPointError(f"{name} contains NaN or Inf.")
 
 
 def _gaussian_kernel_1d(length, sigma):
@@ -280,7 +285,7 @@ class BidirectionalVisualSemanticAlignment(nn.Module):
 
 
 class GTPJ(nn.Module):
-    """GTPJ framework with PSE, ICSA, FGVD, BVSA, and SGMP."""
+    """V5 baseline plus experiment A's image-conditioned sentence selection."""
 
     def __init__(
         self,
@@ -290,6 +295,7 @@ class GTPJ(nn.Module):
         seen_text_embeds,
         unseen_text_embeds,
         seen_sentence_embeds=None,
+        unseen_sentence_embeds=None,
     ):
         super().__init__()
         self.config = config
@@ -307,7 +313,10 @@ class GTPJ(nn.Module):
         if torch.isin(seen_ids, unseen_ids).any():
             raise ValueError("seenclass and unseenclass must not overlap.")
         combined_ids = torch.cat([seen_ids, unseen_ids]).sort().values
-        if not torch.equal(combined_ids, torch.arange(self.nclass, dtype=torch.long)):
+        expected_ids = torch.arange(
+            self.nclass, dtype=torch.long, device=combined_ids.device
+        )
+        if not torch.equal(combined_ids, expected_ids):
             raise ValueError("seenclass and unseenclass must cover every global class exactly once.")
         if tuple(seen_text_embeds.shape) != (seen_ids.numel(), self.dim_f):
             raise ValueError("seen_text_embeds must have shape [C_seen, D].")
@@ -327,6 +336,14 @@ class GTPJ(nn.Module):
         self.unseen_text_embeds = nn.Parameter(
             F.normalize(unseen_text_embeds, dim=1), requires_grad=False
         )
+
+        self.interaction_mode = str(
+            getattr(config, "interaction_mode", "v5_baseline")
+        )
+        if self.interaction_mode not in {"v5_baseline", "image_conditioned_pse"}:
+            raise ValueError(
+                "interaction_mode must be 'v5_baseline' or 'image_conditioned_pse'."
+            )
 
         fixed_route = {
             "use_pse_self_attention": True,
@@ -361,6 +378,22 @@ class GTPJ(nn.Module):
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
         )
+        if self.interaction_mode == "image_conditioned_pse":
+            if (
+                seen_sentence_embeds.size(1) != 8
+                or unseen_sentence_embeds is None
+                or unseen_sentence_embeds.dim() != 3
+                or unseen_sentence_embeds.size(0) != unseen_ids.numel()
+                or unseen_sentence_embeds.size(1) != 8
+                or unseen_sentence_embeds.size(-1) != self.dim_f
+            ):
+                raise ValueError(
+                    "image_conditioned_pse requires seen/unseen sentence tensors "
+                    "with shapes [C_seen, 8, D] and [C_unseen, 8, D]."
+                )
+            self.unseen_sentence_embeds = nn.Parameter(
+                F.normalize(unseen_sentence_embeds, dim=-1), requires_grad=False
+            )
         self.pse_module = ProgressiveSemanticSelfAttention(
             dim=self.dim_f,
             heads=int(config.pse_heads),
@@ -406,30 +439,77 @@ class GTPJ(nn.Module):
         self.fgvd_select_k = int(config.fgvd_select_k)
         if not 0 < self.fgvd_select_k < 576:
             raise ValueError("V5 clean template requires 0 < fgvd_select_k < 576.")
-        icsa_hidden = int(config.icsa_hidden)
-        self.icsa_module = nn.Sequential(
-            nn.Linear(self.dim_f, icsa_hidden),
-            nn.LayerNorm(icsa_hidden),
-            nn.GELU(),
-            nn.Linear(icsa_hidden, self.dim_f),
-        )
-        with torch.no_grad():
-            self.icsa_module[-1].weight.zero_()
-            self.icsa_module[-1].bias.zero_()
+        self.icsa_module = None
         self.icsa_ratio = float(config.icsa_ratio)
-        if self.icsa_ratio <= 0:
-            raise ValueError("V5 clean template requires icsa_ratio > 0.")
+        if self.interaction_mode == "v5_baseline":
+            icsa_hidden = int(config.icsa_hidden)
+            self.icsa_module = nn.Sequential(
+                nn.Linear(self.dim_f, icsa_hidden),
+                nn.LayerNorm(icsa_hidden),
+                nn.GELU(),
+                nn.Linear(icsa_hidden, self.dim_f),
+            )
+            with torch.no_grad():
+                self.icsa_module[-1].weight.zero_()
+                self.icsa_module[-1].bias.zero_()
+            if self.icsa_ratio <= 0:
+                raise ValueError("V5 clean template requires icsa_ratio > 0.")
+
+    def _enhance_sentences(self, sentence_embeds):
+        """Keep all sentence values; uniform averaging exactly recovers PSE."""
+        ratio = self.pse_outer_ratio
+        return ratio * self.pse_module(sentence_embeds) + (1.0 - ratio) * sentence_embeds
 
     def get_adapted_seen_text(self):
+        # Keep the switch-off path's operation order bit-for-bit aligned with
+        # the frozen template; averaging after the residual is mathematically
+        # equivalent but changes large ICSA gradients through float rounding.
         sentence_embeds = self.seen_sentence_embeds
         base = sentence_embeds.mean(dim=1)
-        attn = self.pse_module(sentence_embeds).mean(dim=1)
-        ratio = self.pse_outer_ratio
-        adapted = ratio * attn + (1.0 - ratio) * base
+        attended = self.pse_module(sentence_embeds).mean(dim=1)
+        adapted = self.pse_outer_ratio * attended + (
+            1.0 - self.pse_outer_ratio
+        ) * base
         return F.normalize(adapted, dim=1)
 
     def get_adapted_unseen_text(self):
         return self.unseen_text_embeds
+
+    def get_uniform_pse_text(self, device, dtype):
+        if self.interaction_mode != "image_conditioned_pse":
+            return self._make_all_text(device, dtype), None
+        seen_enhanced = self._enhance_sentences(self.seen_sentence_embeds)
+        unseen_enhanced = self._enhance_sentences(self.unseen_sentence_embeds)
+        all_enhanced = torch.zeros(
+            self.nclass,
+            8,
+            self.dim_f,
+            device=device,
+            dtype=dtype,
+        )
+        all_enhanced[self.seenclass.to(device)] = seen_enhanced.to(
+            device=device, dtype=dtype
+        )
+        all_enhanced[self.unseenclass.to(device)] = unseen_enhanced.to(
+            device=device, dtype=dtype
+        )
+        uniform_text = F.normalize(all_enhanced.mean(dim=1), dim=-1)
+        return uniform_text, all_enhanced
+
+    def _image_conditioned_sentence_prototypes(
+        self, cls_token, all_enhanced, logit_scale
+    ):
+        visual = F.normalize(cls_token, dim=-1)
+        sentence_keys = F.normalize(all_enhanced, dim=-1)
+        matching_logits = torch.einsum(
+            "bd,cmd->bcm", visual, sentence_keys
+        ) * logit_scale
+        _require_finite("sentence_matching_logits", matching_logits)
+        sentence_weights = F.softmax(matching_logits, dim=-1)
+        conditioned = torch.einsum(
+            "bcm,cmd->bcd", sentence_weights, all_enhanced
+        )
+        return F.normalize(conditioned, dim=-1), sentence_weights
 
     def _make_all_text(self, device, dtype):
         seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)
@@ -566,25 +646,70 @@ class GTPJ(nn.Module):
         patches = clip_features[:, 1:, :]
 
         logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
-        all_text = self._make_all_text(patches.device, patches.dtype)
         vis_n = F.normalize(cls_token, dim=1)
-        pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
-        all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()
-        seen_idx = self.seenclass.to(patches.device)
-        all_text_cond[:, seen_idx, :] = (
-            all_text[seen_idx].unsqueeze(0)
-            + self.icsa_ratio * pi_x.unsqueeze(1)
-        )
-        text_n_cond = F.normalize(all_text_cond, dim=-1)
-        global_logits = (vis_n.unsqueeze(1) * text_n_cond).sum(dim=-1) * logit_scale
+        if self.interaction_mode == "image_conditioned_pse":
+            uniform_text, all_enhanced = self.get_uniform_pse_text(
+                patches.device, patches.dtype
+            )
+            # The topology loss keeps the template's original input semantics:
+            # PSE-enhanced seen prototypes plus raw unseen mean prototypes.
+            topology_text = self._make_all_text(patches.device, patches.dtype)
+            conditioned_text, sentence_weights = (
+                self._image_conditioned_sentence_prototypes(
+                    cls_token, all_enhanced, logit_scale
+                )
+            )
+            global_logits = torch.einsum(
+                "bd,bcd->bc", vis_n, conditioned_text
+            ) * logit_scale
+            # Experiment A intentionally keeps the local path static.  This is
+            # the control that isolates "global image chooses sentences".
+            local_text = uniform_text
+            all_text_for_aux = uniform_text.unsqueeze(0).expand(
+                cls_token.size(0), -1, -1
+            )
+            uniform_batch = uniform_text.unsqueeze(0).expand_as(conditioned_text)
+            prototype_cosine = F.cosine_similarity(
+                conditioned_text, uniform_batch, dim=-1
+            )
+            uniform_deviation = (
+                sentence_weights - (1.0 / sentence_weights.size(-1))
+            ).abs().mean(dim=-1)
+        else:
+            uniform_text = self._make_all_text(patches.device, patches.dtype)
+            topology_text = uniform_text
+            pi_x = F.normalize(self.icsa_module(cls_token), dim=-1)
+            all_text_cond = uniform_text.unsqueeze(0).expand(
+                cls_token.size(0), -1, -1
+            ).clone()
+            seen_idx = self.seenclass.to(patches.device)
+            all_text_cond[:, seen_idx, :] = (
+                uniform_text[seen_idx].unsqueeze(0)
+                + self.icsa_ratio * pi_x.unsqueeze(1)
+            )
+            conditioned_text = F.normalize(all_text_cond, dim=-1)
+            global_logits = (
+                vis_n.unsqueeze(1) * conditioned_text
+            ).sum(dim=-1) * logit_scale
+            # Preserve the frozen V5 switch-off path exactly: only global
+            # cosine normalizes the conditional text; BVSA and SGMP consume
+            # the unnormalized ICSA residual values.
+            local_text = all_text_cond
+            all_text_for_aux = all_text_cond
+            sentence_weights = None
+            prototype_cosine = None
+            uniform_deviation = None
 
         bvsa_out = self.bvsa_module(
             patches,
-            all_text_cond,
+            local_text,
             fgvd_select_k=self.fgvd_select_k,
         )
         local_logits = bvsa_out["local_score"]
         final_logits = global_logits + 0.2 * local_logits
+        _require_finite("global_logits", global_logits)
+        _require_finite("local_logits", local_logits)
+        _require_finite("final_logits", final_logits)
 
         if is_train:
             logits = final_logits[:, self.seenclass.to(final_logits.device)]
@@ -602,7 +727,13 @@ class GTPJ(nn.Module):
             "sgmp_selected_patches": bvsa_out["fgvd_selected_patches"],
             "sgmp_patch_z": bvsa_out["fgvd_patch_z"],
             "sgmp_memory": bvsa_out["fgvd_memory"],
-            "all_text_cond": all_text_cond,
+            "all_text_cond": all_text_for_aux,
+            "topology_text": topology_text,
+            "uniform_text": uniform_text,
+            "image_conditioned_text": conditioned_text,
+            "sentence_weights": sentence_weights,
+            "sentence_weight_uniform_deviation": uniform_deviation,
+            "prototype_cosine_to_uniform": prototype_cosine,
         }
 
     def _global_to_seen_labels(self, labels):
@@ -651,7 +782,14 @@ class GTPJ(nn.Module):
         loss_topo = torch.tensor(0.0, device=logits.device)
         lambda_topo = float(self.config.lambda_topo_pearson)
         if lambda_topo > 0:
-            loss_topo = self._topology_pearson_loss()
+            topology_text = (
+                in_package.get("topology_text")
+                if self.interaction_mode == "image_conditioned_pse"
+                else None
+            )
+            loss_topo = self._topology_pearson_loss(
+                enh_text=topology_text
+            )
             loss = loss + lambda_topo * loss_topo
 
         loss_mpp = torch.tensor(0.0, device=logits.device)
@@ -688,6 +826,8 @@ class GTPJ(nn.Module):
                 kl_s2v_to_v2s + kl_v2s_to_s2v
             )
             loss = loss + lambda_bmdd * loss_bmdd
+
+        _require_finite("total_loss", loss)
 
         return {
             "loss": loss,
