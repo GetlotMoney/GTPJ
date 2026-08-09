@@ -1,0 +1,74 @@
+schema_version: gtpj.campaign_manifest.v1
+campaign_id: CAMP-20260704-dr035-h76
+campaign_type: confirmation_plus_trial_internal_tune
+status: pre_run_freeze_pending
+created_at: "2026-07-04"
+base_version: v5
+base_code_tag: v5
+trial_dir: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing
+idea_id: IDEA-0003
+trial_id: TRIAL-001
+goal:
+  target_metric: GZSL-H
+  owner_goal_H: "76.00"
+  scope: "先做 DR-035 六次同 seed 复现，再用已有动态路由框架做 100 个调参实验。"
+references:
+  best_observed_single:
+    source: ATTEMPT-004 / DR-035
+    H: "75.02"
+    status: single_run_only
+  strongest_repeat_candidate:
+    source: ATTEMPT-007 / DR-035 exact repeat
+    mean_H: "74.61"
+    min_H: "74.58"
+    max_H: "74.62"
+    status: confirmed_candidate
+  strongest_confirmed_reference:
+    source: v3/CONFIRM-001 local-v3-054
+    confirmed_H: "74.47"
+    status: baseline_grade_config_reference
+  active_mainline:
+    source: GTPJ-v5
+    confirmed_H: "74.44"
+    status: owner_activated_provisional
+requested_runs:
+  - attempt_id: ATTEMPT-008
+    run_id: RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+    profile: dr035-min6-confirm
+    jobs: 6
+    repeat_type: same_seed_min6_exact_repeat
+    seed: 5
+    gpus: "0,1"
+    formal_result_dir: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-008
+  - attempt_id: ATTEMPT-009
+    run_id: RUN-20260704-0002-h76-existing-routing-100-2gpu
+    profile: h76-existing-routing-100
+    jobs: 100
+    repeat_type: trial_internal_score_search
+    seed: 5
+    gpus: "0,1"
+    formal_result_dir: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-009
+pre_run:
+  branch: codex/workflow-closeout-speed-fixes
+  pre_run_freeze_commit: pending_until_local_commit
+  server_repo: lab4090:/data/lby/projects/cv_project/GTPJ
+  server_branch: pending_sync_after_freeze
+  server_commit: pending_sync_after_freeze
+  local_validation:
+    pytest: "114 passed"
+    py_compile: ok
+    validate: validate-ok
+    validate_workflow_consistency: validate-workflow-consistency-ok
+    audit_boundary: audit-boundary-ok
+    validate_evidence_routing: validate-evidence-routing-ok subjects=5
+    git_diff_check: "CRLF warnings only"
+artifact_policy:
+  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse
+  attempt_008_warehouse: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-008/RUN-20260704-0001-dr035-min6-confirm-s5-2gpu
+  attempt_009_warehouse: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-009/RUN-20260704-0002-h76-existing-routing-100-2gpu
+  raw_logs_in_git: forbidden
+  checkpoint_retention: top3_after_result_parse
+decision_policy:
+  first_stage: "ATTEMPT-008 必须先完成并报告 mean/min/max/range。"
+  second_stage: "ATTEMPT-009 是 score_search；单次高分只进入 tune_promising，不能直接 confirmed。"
+  promotion: blocked_until_separate_promotion_evidence

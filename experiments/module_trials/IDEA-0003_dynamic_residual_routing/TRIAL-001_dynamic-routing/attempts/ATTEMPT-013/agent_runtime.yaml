@@ -1,0 +1,75 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: ATTEMPT-013
+subject_type: attempt
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: named_owner_thread
+lifecycle: workflow_scoped
+ui_visibility: left_sidebar_named_threads
+tool_support_real_multi_agent_available: true
+thread_management_tool: codex_app.create_thread
+single_agent_execution: false
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+thread_archive_policy: archive_completed_threads_on_stage_end
+archive_completed_threads_on_stage_end: true
+archived_threads_record: AGENT_ACTIVITY.md
+
+named_thread_ids:
+  runner_monitor: 019f3bed-9cfb-78e3-b2cf-82bc98348610
+  interface_checker: 019f3bed-b90e-7371-9ee6-e90be971de80
+  evidence_quality_checker: 019f3bed-dd29-7a10-a68b-7391d673e639
+
+named_thread_titles:
+  runner_monitor: ATTEMPT-013 | Runner Monitor
+  interface_checker: ATTEMPT-013 | Interface Checker
+  evidence_quality_checker: ATTEMPT-013 | Evidence Quality Checker
+
+agent_instance_status:
+  runner_monitor: completed
+  interface_checker: completed
+  evidence_quality_checker: completed
+
+agent_status_refs:
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+
+pre_run_required_checks:
+  runner_monitor: allow
+  interface_checker: allow
+  evidence_quality_checker: allow
+
+multi_agent_preflight:
+  required_threads_created: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+  threads_archivable: true
+
+authority_refs:
+  task_start_card: task_start_card.md
+  pre_run_plan: pre_run_plan.md
+  work_items: WORK_ITEMS.md
+  manifest: manifest.yaml
+  result: result.yaml
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md

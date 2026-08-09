@@ -1,0 +1,98 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-006
+trial_id: TRIAL-001_dynamic-routing
+idea_id: IDEA-0003_dynamic_residual_routing
+base_version: v5
+result_type: trial_internal_mixed_probe_tune
+source_campaign: CAMP-20260702-workflow-v2-2innov8tune
+campaign_role: routing_index_only
+run:
+  run_id: RUN-20260702-0003-mixed2innov8tune-2gpu
+  profile: workflow-v2-2innov-8tune
+  status: completed
+  jobs_completed: 10
+  jobs_failed: 0
+metrics:
+  best_job: DR-004
+  work_item_id: TUNE-002
+  runner_local_attempt_id: ATTEMPT-004
+  name: tune_direction_h48_w0.525_a0.003
+  group: direction_tune
+  source_type: trial_internal_config_search
+  seed: 5
+  U: "72.90"
+  S: "76.69"
+  H: "74.75"
+  ZS: "81.96"
+  best_epoch: "37"
+workstreams:
+  innovation_probe:
+    count: 2
+    best_work_item: INNOV-002
+    best_job: DR-002
+    best_H: "73.63"
+    decision: stop_no_gain
+    note: Existing TRIAL-001 switch probes, not full paper-derived innovations.
+  direction_tune:
+    count: 8
+    best_work_item: TUNE-002
+    best_job: DR-004
+    best_H: "74.75"
+    runner_jobs:
+      - work_item_id: TUNE-001
+        job_id: DR-003
+        H: "74.59"
+      - work_item_id: TUNE-002
+        job_id: DR-004
+        H: "74.75"
+      - work_item_id: TUNE-003
+        job_id: DR-005
+        H: "74.62"
+      - work_item_id: TUNE-004
+        job_id: DR-006
+        H: "74.67"
+      - work_item_id: TUNE-005
+        job_id: DR-007
+        H: "74.59"
+      - work_item_id: TUNE-006
+        job_id: DR-008
+        H: "74.14"
+      - work_item_id: TUNE-007
+        job_id: DR-009
+        H: "74.20"
+      - work_item_id: TUNE-008
+        job_id: DR-010
+        H: "74.64"
+evidence:
+  evidence_state: tune_promising
+  confirmed_H: pending
+  confirmation_status: not_confirmed
+  best_observed_H: "74.75"
+  exact_repeat: not_run
+  ablation_support: not_checked
+decision:
+  status: keep_as_trial_internal_evidence
+  result_status: tune_promising
+  promotion_decision: blocked
+  next_action: Repeat top direction candidates under a declared repeat protocol; do not use campaign files as authoritative result source.
+artifact_identity:
+  summary_csv:
+    path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu/summary.csv
+    sha256: 5a4aa2fdb2df56aeb50b4d47bac61d0ae492c7b9c019ae3b8e0aac30b4ae59a1
+    size_bytes: 3427
+  summary_jsonl:
+    path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu/summary.jsonl
+    sha256: 29cd157adc4a3fbceea89aab1e7ba704e41d2fc30bff8fc9ac2495bb91191758
+    size_bytes: 8491
+  batch_status_json:
+    path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu/batch_status.json
+    sha256: 6ef61bd94e64e7b6f4c3b16ede2cfb30aa57af2b2a6a8701c9302d95bd9c0d9b
+    size_bytes: 7691
+  plan_json:
+    path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu/plan.json
+    sha256: a4aae1f591ba9f7c27b1dd799d01cd96be4945ef09100bc0db66e96c94b2db4e
+    size_bytes: 7263
+  events_jsonl:
+    path: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260702-0003-mixed2innov8tune-2gpu/events.jsonl
+    sha256: 09fd01babdce78a4d23baeaf80e484cfb7d8133dd1a58bf8c8d9077d1e44f05d
+    size_bytes: 3841

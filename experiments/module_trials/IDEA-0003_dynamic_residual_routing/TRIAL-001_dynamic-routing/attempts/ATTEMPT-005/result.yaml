@@ -1,0 +1,100 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-005
+trial_id: TRIAL-001
+idea_id: IDEA-0003
+run_id: RUN-20260703-0001-dr035-min3-confirm-2gpu
+result_type: seed_sweep
+exact_repeat: false
+confirmation_status: not_confirmed
+confirmed_H: pending
+promotion_decision: blocked
+
+target:
+  source_attempt: ATTEMPT-004
+  source_run: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  source_job: DR-035
+  source_config: direction_sample_h48_w0.525_a0.005
+  source_seed: 5
+  source_H: "75.02"
+  source_U: "72.69"
+  source_S: "77.51"
+  source_ZS: "82.04"
+  source_best_epoch: "48"
+
+classification_correction:
+  planned_name: dr035-min3-confirm
+  corrected_type: multi_seed_stability / seed_sweep
+  reason: seed changed from the source seed 5 to seeds 6/7/8; changed seed is not exact repeat.
+  exact_repeat_required_next: true
+
+runs:
+  - job_id: DR-001
+    work_item_id: SEEDSWEEP-001
+    seed: 6
+    U: "70.99"
+    S: "77.09"
+    H: "73.91"
+    ZS: "81.01"
+    best_epoch: "43"
+  - job_id: DR-002
+    work_item_id: SEEDSWEEP-002
+    seed: 7
+    U: "71.49"
+    S: "77.54"
+    H: "74.39"
+    ZS: "81.55"
+    best_epoch: "41"
+  - job_id: DR-003
+    work_item_id: SEEDSWEEP-003
+    seed: 8
+    U: "70.92"
+    S: "77.70"
+    H: "74.15"
+    ZS: "81.62"
+    best_epoch: "40"
+
+summary:
+  completed: 3
+  failed: 0
+  best_single_job: DR-002
+  best_single_H: "74.39"
+  mean_H: "74.15"
+  min_H: "73.91"
+  max_H: "74.39"
+  range_H: "0.48"
+  mean_U: "71.13"
+  mean_S: "77.44"
+
+gate_result:
+  mean_H_ge_74_60: false
+  min_H_ge_74_45: false
+  range_H_le_0_50: true
+  no_obvious_U_S_collapse: true
+  decision: not_confirmed
+  evidence_state: stopped_repeat_unstable
+
+artifacts:
+  runtime_batch_dir: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260703-0001-dr035-min3-confirm-2gpu
+  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/
+  files:
+    summary.csv:
+      sha256: "4647690bf59b1f1eff5cb64e9d7bd5679ec5034435c0ebd6aea90ee20bd533e7"
+      size_bytes: 1142
+    summary.jsonl:
+      sha256: "ee8f2ca47e71223a7631bd799fcab097019dbf7a30d2d2b41c6687212c936130"
+      size_bytes: 2562
+    batch_status.json:
+      sha256: "022136be3ebce20e6b825522342e3e6e684f338ed219c84be861415c9d2519db"
+      size_bytes: 2433
+    plan.json:
+      sha256: "bcfe342ff1629e144bbdf218ff8d7492102229e66b3d8fcd9847fd8f75076a6b"
+      size_bytes: 2973
+    events.jsonl:
+      sha256: "1feec61898e6ccfa1e7ceacd603f8b222956414503509c307d7243d2deffd542"
+      size_bytes: 1153
+
+decision:
+  state: stopped_repeat_unstable
+  reason: Multi-seed sweep did not reproduce the DR-035 high single and does not meet confirmation thresholds.
+  next_action: run exact_repeat with source seed 5 before any further confirmation claim.
+

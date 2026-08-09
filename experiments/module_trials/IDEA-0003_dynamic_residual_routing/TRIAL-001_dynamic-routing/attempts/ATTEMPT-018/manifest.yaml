@@ -1,0 +1,75 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-018
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: A017DR095 exact-repeat live multi-agent restore campaign
+  status: completed_not_restored
+  recorded_at: "2026-07-09"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-017
+  source_run_id: RUN-20260709-0001-h76-escape100-supported-routing-server-frozen-2gpu
+  source_job_id: DR-095
+  source_candidate_id: A017DR095
+  source_result_ref: attempts/ATTEMPT-017/result.yaml
+  source_quality_ref: attempts/ATTEMPT-017/quality_check.md
+  source_evidence_routing_ref: attempts/ATTEMPT-017/evidence_routing.yaml
+  source_actual_training_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  source_local_ledger_commit: a884fea429a302fecc42ba8cddf9e6e66f5d07c8
+  source_commit_policy: "Exact-repeat training code is pinned to the ATTEMPT-017 server training commit; local helper changes only generate the new five-job plan."
+run:
+  run_id: RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu
+  profile: h76-a017dr095-restore5-exact-repeat
+  jobs: 5
+  execution_mode: live_multi_agent_monitor
+  training_backend: lab4090_screen_detached
+  server_runner_started: true
+  server_started_at_utc: "2026-07-09T04:25:20+00:00"
+  launch_method: direct_nohup_controllers_after_screen_wrapper_exit
+  screen_session: GTPJ_ATTEMPT018_A017DR095_LIVE
+  screen_status: exited_after_start_attempt
+  controller_pids:
+    gpu0: 421592
+    gpu1: 422312
+  initial_status:
+    running: 2
+    pending: 3
+    completed: 0
+    failed: 0
+    skipped: 0
+  initial_running_jobs:
+    - DR-001
+    - DR-002
+  planned_training_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  planned_training_branch: codex/h76-campaign-20260704
+  local_plan_generation_commit: a884fea429a302fecc42ba8cddf9e6e66f5d07c8
+  git_remote: none
+  launch_status: completed
+  local_batch_dir: .gtpj_runtime/batches/RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260709-0002-a017dr095-restore5-live-multiagent-2gpu
+gate:
+  workflow_mode: live_multi_agent_monitor
+  activation_mode: real_multi_agent
+  agent_instance_mode: named_owner_thread
+  formal_runtime_backend: named_owner_thread
+  thread_creation_allowed: true
+  formal_runner_allowed: true
+  gate_status: pre_run_named_threads_allow
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  restore_target_H: 75.11
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+decision:
+  state: stopped_repeat_unstable
+  promotion_decision: blocked
+  confirmation_decision: not_restored
+  reason: "5/5 same-seed exact repeats completed below restore_target_H=75.11; best repeat H=74.71 is below near-miss threshold 74.91."

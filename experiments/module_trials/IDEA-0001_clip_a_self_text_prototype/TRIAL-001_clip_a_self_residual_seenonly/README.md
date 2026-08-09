@@ -81,6 +81,17 @@ flowchart TD
   Root --> Decision["owner activated to GTPJ-v2; confirmation still pending"]
 ```
 
+## Framework Diagram
+
+```text
+path: framework_diagram.md
+html_view:
+warehouse_artifact:
+code_vs_intent: implemented as the CLIP-A-self text prototype adapter behind use_clip_a_self.
+```
+
+`framework_diagram.md` explains the sentence-level text path, adapter residuals, variables, methods, loss boundary, and unchanged GZSL interface.
+
 ## Promotion Gate
 
 - [x] baseline H, current best H, and delta H recorded.

@@ -1,0 +1,78 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-012
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 followup50 multi-seed stability confirmation
+  status: stopped_by_owner
+  recorded_at: "2026-07-06"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempts:
+    - ATTEMPT-011
+  source_note: "ATTEMPT-011 completed 200/200 jobs and identified a stable direction_sample h48 small-anchor hotspot."
+run:
+  run_id: RUN-20260706-0005-h76-followup50-multiseed-2gpu
+  profile: h76-followup50-multiseed
+  jobs: 50
+  execution_mode: server_detached
+  local_shutdown_safe: true
+  stop_mechanism: STOP_REQUESTED
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260706-0005-h76-followup50-multiseed-2gpu
+candidates:
+  - source: DR047
+    config: direction_sample_h48_w0.535_a0.002
+    weight_s2v: 0.535
+    dynamic_gate_anchor_lambda: 0.002
+    seeds: "6-15"
+    jobs: 10
+  - source: DR020
+    config: direction_sample_h48_w0.525_a0.003
+    weight_s2v: 0.525
+    dynamic_gate_anchor_lambda: 0.003
+    seeds: "6-15"
+    jobs: 10
+  - source: DR041
+    config: direction_sample_h48_w0.515_a0.002
+    weight_s2v: 0.515
+    dynamic_gate_anchor_lambda: 0.002
+    seeds: "6-15"
+    jobs: 10
+  - source: A011DR042
+    config: direction_sample_h48_w0.515_a0.004
+    weight_s2v: 0.515
+    dynamic_gate_anchor_lambda: 0.004
+    seeds: "6-15"
+    jobs: 10
+  - source: A011DR020
+    config: direction_sample_h48_w0.555_a0.0045
+    weight_s2v: 0.555
+    dynamic_gate_anchor_lambda: 0.0045
+    seeds: "6-15"
+    jobs: 10
+server:
+  host: lab4090
+  repo: /data/lby/projects/cv_project/GTPJ
+  batch_root: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches
+  detached_session: GTPJ_ATTEMPT012_FOLLOWUP50
+  launcher: screen
+  session_pid: "2941763"
+  controller_pids:
+    gpu0: "2941773"
+    gpu1: "2941774"
+  launched_at: "2026-07-06T22:34:27+08:00"
+  launch_status: stopped_by_owner
+  stopped_at: "2026-07-06T23:13:13+08:00"
+  stop_reason: "Owner requested stopping the server-detached runner and switching to local workflow."
+  final_counts:
+    completed: 6
+    skipped: 44
+gate:
+  formal_runtime_backend: server_detached_role_only
+  formal_runner_allowed: true
+  thread_creation_allowed: false
+decision:
+  promotion_decision: blocked
+  reason: "Owner stopped the server-detached run after 6/50 jobs; partial output is not confirmation or promotion evidence."

@@ -1,0 +1,74 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-016
+status: completed
+run_id: RUN-20260708-0005-h76-hotspot-top2-restore10-exact-repeat-2gpu
+profile: h76-hotspot-top2-restore10-exact-repeat
+planned_jobs: 10
+completed_jobs: 10
+failed_jobs: 0
+skipped_jobs: 0
+running_jobs: 0
+pending_jobs: 0
+previous_failed_launch:
+  run_id: RUN-20260708-0004-h76-hotspot-top2-restore10-exact-repeat-2gpu
+  status: runner_environment_failed_before_training
+  method_evidence: false
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: per_job_source_H
+  per_job_restore_target_H: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+  not_confirmation_evidence: false
+best_single:
+  job_id: DR-008
+  source_candidate_id: A015DR035
+  name: a015dr035_direction_sample_h48_w0.525_a0.0035_s5_r03
+  H: 74.85
+  U: 72.33
+  S: 77.56
+  ZS: 81.75
+  best_epoch: 49
+  restore_target_H: 75.00
+  restored: false
+restored_candidates: []
+near_miss_not_restored:
+  - source_candidate_id: A015DR004
+    best_job_id: DR-003
+    best_H: 74.84
+    restore_target_H: 75.04
+    completed_repeats: 5
+    mean_H: 74.66
+    min_H: 74.47
+    max_H: 74.84
+    range_H: 0.37
+    decision: not_restored_after_hard_cap
+  - source_candidate_id: A015DR035
+    best_job_id: DR-008
+    best_H: 74.85
+    restore_target_H: 75.00
+    completed_repeats: 5
+    mean_H: 74.65
+    min_H: 74.44
+    max_H: 74.85
+    range_H: 0.41
+    decision: not_restored_after_hard_cap
+aggregate:
+  best_job_id: DR-008
+  best_H: 74.85
+  mean_H: 74.66
+  h_ge_75_count: 0
+  restored_candidate_count: 0
+  completed_repeats: 10
+decision:
+  restored: false
+  confirmation_decision: not_restored
+  result_status: stopped_repeat_unstable
+  reason: "All ten same-seed exact repeats completed for A015DR004 and A015DR035; no repeat reached its per-candidate restore_target_H."
+result_state: stopped_repeat_unstable
+promotion_decision: blocked

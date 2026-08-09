@@ -1,0 +1,95 @@
+schema_version: gtpj-manifest/v1
+experiment:
+  id: "V5-INNOVATION-008"
+  name: "PSE 类别关系增强与 GZSL 自校准"
+  kind: "innovation"
+  status: "rejected"
+  evidence_mode: "formal"
+  created_or_recorded_at: "2026-08-10T02:15:21+08:00"
+  completed_at: "2026-08-10T03:19:03+08:00"
+  redesign_status: "validation_rejected"
+  redesign_runs: ["RUN-008", "RUN-009", "RUN-010"]
+version:
+  base_version: "v5"
+  base_code_tag: "model/v5-template-v1"
+  base_code_commit: "2f5fa5e631ef82658d4bac587cdfd17f3534cb35"
+  code_branch: "exp/v5/innovation/innovation-008-pse-class-relation-calibration"
+  code_commit: "9698e6846973d407a15dc1eb2ea262c30a90324a"
+  historical_first_implementation_code_commit: "7295b0742020398d17337a804404b12a63680d83"
+  git_dirty_at_run_start: "false"
+reproducibility:
+  seed: 5
+  dataset: "CUB GZSL"
+  split_id: "xlsa17_train_loc_val_loc_seen_holdout_20pct_seed_20260810"
+  class_order_id: "pseudo_seen_100_then_pseudo_unseen_50"
+  label_mapping_id: "xlsa17_train_val_local_150_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+  evaluation_protocol: "class_disjoint_validation_once_after_training"
+  formal_test_cache_loaded: false
+idea:
+  idea_id: "IDEA-0007"
+  uri: "idea_tree/ideas/IDEA-0007_pse_class_relation_calibration/IDEA.md"
+artifacts:
+  validation_R0_log:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-008/training.log"
+    sha256: "cdb1c81a3397c9d8c3c88731040698b8f8d9776404428b2876cd7894377c8367"
+    size_bytes: 9187
+  validation_R0_metrics:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-008/metrics.yaml"
+    sha256: "e50da16300d5fad740b2dfa547f8962fa2f21058f5207db4e297d7405aed3e3f"
+    size_bytes: 500
+  validation_R0_model:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-008/model_final.pth"
+    sha256: "72ec21108b297248f44e672bb45f42d48d88b046f2e0b7087f6c58369ac5ba4e"
+    size_bytes: 98255253
+  validation_R1_log:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-009/training.log"
+    sha256: "b959c0223e6783ff452e04c3ad2c16db49322cddc22fbdc097a83c1d717577f5"
+    size_bytes: 9200
+  validation_R1_metrics:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-009/metrics.yaml"
+    sha256: "8792206a8a08a01f6427abe194b1ab7eb8ab22bc85d843d836868f4eea42b423"
+    size_bytes: 500
+  validation_R1_model:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-009/model_final.pth"
+    sha256: "53163db6eb330eb3d585fa7dbd6d1d5e38ff7cb03a23de2439969b069a3cf7a1"
+    size_bytes: 98255253
+  validation_R2_log:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-010/training.log"
+    sha256: "db2dfbe2d7d90837dc563f97e6cc5d5e3628d52457f63648325fe6f5b1b42116"
+    size_bytes: 9587
+  validation_R2_metrics:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-010/metrics.yaml"
+    sha256: "6fb2eb7ec13e8b3fbcbaff61dbe349a3558180cfef91f2a66c5de2e8da73098b"
+    size_bytes: 893
+  validation_R2_model:
+    uri: "D:/Backup/Documents/Myself/GTPJ/.runtime/runs/V5-INNOVATION-008/RUN-010/model_final.pth"
+    sha256: "b35e291c4bbcdcdbf785e85d7eb48b44f738f67d17de99832d61075796f98272"
+    size_bytes: 107713051
+  baseline_train_log:
+    artifact_id: "RUN-007-training-log"
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007/training.log"
+    sha256: "21db4121e264939b4db8d21ae0ae97c9161426c17a627b3ce47d5dedf29626ca"
+    size_bytes: 16040
+  trial_train_log:
+    artifact_id: "RUN-002-training-log"
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-002/training.log"
+    sha256: "a98799fdf26ffa706cf0cbf8e900dfa1755515c6947ebe0819e0a1299652808c"
+    size_bytes: 16064
+  baseline_checkpoint:
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-007/model_final.pth"
+    sha256: "a5427141b221865e3519845ea9a664d4e20595c28909ab760b1735bcd65ae472"
+    size_bytes: 98408532
+  trial_checkpoint:
+    uri: "D:/Backup/Documents/Myself/GTPJ_Warehouse/runs/V5-INNOVATION-008/RUN-002/model_final.pth"
+    sha256: "7c81a259772b710bbd89c8136b161f9c06698b1c342e60e34202a9c8db1e329e"
+    size_bytes: 107866266
+quality:
+  boundary_audit_required: true
+  boundary_audit_passed: true
+  raw_artifacts_in_git: false
+  interface_contract_checked: true
+  evaluation_semantics_verified: true
+  class_disjoint_validation_verified: true
+  prototype_bound_verified: true
+  formal_test_not_loaded: true

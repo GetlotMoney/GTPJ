@@ -2,4 +2,4 @@
 
 | Experiment | Status | Directory | Note |
 |---|---|---|---|
-| none | - | - | `GTPJ-v4` is already baseline-grade via source min3 confirmation. |
+| none | - | - | `GTPJ-v4` is a legacy config-only tag; future confirmations should target the active formal version or `v3/CONFIRM-001` as a confirmed config reference. |

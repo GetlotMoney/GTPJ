@@ -24,11 +24,12 @@ Mode: role-only workflow review. No new model agents were launched for this reco
 
 ## Result
 
-`local-v3-054` is confirmed and promoted to `GTPJ-v4`:
+`local-v3-054` is confirmed as a tuned config under `GTPJ-v3`:
 
 ```text
 H values: 74.46 / 74.42 / 74.47
-confirmed_H: 74.45
+confirmed_H: 74.47
+H_mean: 74.45
 best_observed_H: 74.47
 reference_H: 74.27
 delta_H_vs_reference_mean: +0.18
@@ -37,4 +38,4 @@ delta_H_vs_reference_best: +0.20
 
 ## Decision Boundary
 
-This record does not update the canonical v3 baseline. It creates a new official version result, `GTPJ-v4`, under the owner standing min3 promotion rule. It does not run `activate-version`.
+This record does not update the canonical v3 baseline. It records a confirmed config/reference under `GTPJ-v3`; pure tuning does not create a new formal framework version. The historical `v4` tag is retained only as a legacy config-only record.

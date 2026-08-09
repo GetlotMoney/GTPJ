@@ -1,0 +1,57 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: ATTEMPT-016
+subject_type: attempt
+formal_evidence: true
+activation_mode: role_only
+agent_instance_mode: role_only
+lifecycle: server_detached_formal
+formal_runtime_backend: server_detached_role_only
+ui_visibility: current_owner_thread_only
+tool_support_real_multi_agent_available: true
+thread_management_tool: not_used
+single_agent_execution: true
+real_multi_agent_required: false
+thread_creation_allowed: false
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+thread_archive_policy: not_applicable_no_named_threads
+archive_completed_threads_on_stage_end: false
+archived_threads_record: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+
+pre_run_required_checks:
+  runner_monitor: allow
+  interface_checker: allow
+  evidence_quality_checker: allow
+
+sequential_role_preflight:
+  role_plan_recorded: true
+  independent_outputs_present: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+  server_detached_ready: true
+  stop_mechanism_ready: true
+  cleanup_not_required: true
+
+authority_refs:
+  task_start_card: task_start_card.md
+  pre_run_plan: pre_run_plan.md
+  manifest: manifest.yaml
+  agent_summary: agent_summary.md
+  quality_check: quality_check.md
+  transitions: TRANSITIONS.jsonl
+  agent_activity: AGENT_ACTIVITY.md
+  monitor_handoff: monitor_handoff.md
+

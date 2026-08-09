@@ -1,0 +1,24 @@
+# 参数矩阵：INNOVATION-008_pse_class_relation_calibration
+
+这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
+
+来源：一行对应一个真实训练任务；完整日志、指标和模型保存在项目内 .runtime/runs/V5-INNOVATION-008/。
+
+| 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
+|---|---|---|---|---|---:|---|---|---|---:|---|---|
+| RUN-001 | E0 新公平基线 | innovation | failed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 |  | RUN-001 | 在独立批次随机数与测试集只评一次口径下建立基线 |  | failed_before_epoch_cuda_device_mismatch |  |
+| RUN-002 | E1 修复类别自注意力 | innovation | completed | {"pse_mode":"class_relation","pse_apply_unseen":false,"pse_class_residual_ratio":0.1} | 5 |  | RUN-002 | 验证类别间原型关系是否真正有用 | 66.92 | reject_h_drop_seen_collapse |  |
+| RUN-003 | E2 未见类共享 PSE | innovation | skipped | {"pse_mode":"class_relation","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  |  | 验证共享权重分组处理未见类原型是否改善迁移 |  | skipped_after_e1_h_drop |  |
+| RUN-004 | E3 训练期概率下限校准 | innovation | skipped | {"pse_mode":"class_relation","pse_apply_unseen":true,"lambda_self_calibration":0.1,"self_calibration_target":0.05} | 5 |  |  | 验证训练阶段能否减少已见类偏置且不把未见类加入交叉熵 |  | skipped_after_e1_h_drop |  |
+| RUN-005 | E4 验证集选 gamma 的推理校准 | innovation | skipped | {"checkpoint_from":"RUN-003","gamma":null,"gamma_source":"class_disjoint_validation"} | 5 |  |  | 只用验证划分确定 gamma 后复用 E2 checkpoint 并同时报告原始与校准分数 |  | skipped_after_e1_h_drop |  |
+| RUN-006 | E0 CUDA 修复后重跑 | innovation | failed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-001 | RUN-006 | 修复类别编号设备校验后重新建立 E0 公平基线 |  | failed_after_epoch_50_eval_device_mismatch |  |
+| RUN-007 | E0 评估设备修复后重跑 | innovation | completed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-006 | RUN-007 | 修复最终评估类别索引设备后重新建立 E0 公平基线 | 73.69 | fair_baseline |  |
+| RUN-008 | R0 类不重叠验证基线 | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":false} | 5 |  | RUN-008 | 在不接触正式测试集的 100/50 类划分上建立旧 PSE 验证基线 | 69.91 | validation_baseline |  |
+| RUN-009 | R1 未见类共享句子 PSE | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":true} | 5 |  | RUN-009 | 只验证未见类也经过同一旧句子 PSE 是否改善组间一致性 | 61.27 | rejected_below_R0 |  |
+| RUN-010 | R2 安全类别关系增强 | innovation | completed | {"evaluation_split":"class_disjoint_validation","pse_mode":"class_relation_safe","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  | RUN-010 | 在 R1 上增加限幅且从恒等映射开始的分组类别关系注意力 | 58.14 | rejected_no_formal_test |  |
+
+## 查重说明
+
+- `config_fingerprint` 相同的行必须写明 `repeat_of`，否则它被视为误重复。
+- 复跑必须保持同一配置；若只是接近，不得写成复跑成功。
+- 机器使用同目录的 `PARAMETER_MATRIX.csv` 做校验；本 Markdown 只负责让人快速阅读。

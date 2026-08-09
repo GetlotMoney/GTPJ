@@ -1,0 +1,75 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: "ATTEMPT-002"
+  trial_id: "TRIAL-001"
+  idea_id: "IDEA-0003"
+  name: "bs128 dynamic routing follow-up"
+  status: "completed_with_failures"
+  recorded_at: "2026-07-01T12:31:00+08:00"
+version:
+  base_version: "v5"
+  code_branch: "dev/v5-idea-0003-trial-001-dynamic-routing"
+  run_code_commit: "bbc5af90e72a8f6b39cff6d802a1a9de429aff35"
+artifacts:
+  bs128_exploit_summary:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0007:summary"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu/summary.csv"
+    sha256: "d32527adf1cf2ad0b12f88370374a6517bb50138abb97905ec340eb73bfaed31"
+    size_bytes: 17073
+  bs128_bold_summary:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0008:summary"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu/summary.csv"
+    sha256: "6ede0a9df6f8f7e6dd7cf08ca42d9850ad4f767dbdb64e5347c3b2311c90f341"
+    size_bytes: 16295
+runs:
+  - run_id: "RUN-20260701-0007-dynroute-bs128-exploit50-2gpu"
+    profile: "direction-exploit-followup"
+    runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0007-dynroute-bs128-exploit50-2gpu"
+    jobs_total: 50
+    jobs_completed: 50
+    jobs_failed: 0
+    gpus: "0,1"
+    artifacts:
+      summary_csv:
+        sha256: "d32527adf1cf2ad0b12f88370374a6517bb50138abb97905ec340eb73bfaed31"
+        size_bytes: 17073
+      summary_jsonl:
+        sha256: "1e17f45fb01211f1f9df6f721d10df0a217892c93fd0a88ab1665283d86b7070"
+        size_bytes: 42723
+      batch_status_json:
+        sha256: "7de231343ebe00449695853fc33f365afccba2e56f88ab9f5e6135ef765d7080"
+        size_bytes: 38345
+      plan_json:
+        sha256: "d9d6fa439bc8650100d159b8eda582ea2dd4d478e031c1a44b9876b5dda34afd"
+        size_bytes: 31671
+      events_jsonl:
+        sha256: "c691f6284e3d29461b7ddfecc8fabcb0b3352678469da3e42fd47bf6c88c3d90"
+        size_bytes: 19186
+  - run_id: "RUN-20260701-0008-dynroute-bs128-bold50-2gpu"
+    profile: "dynamic-bold-followup"
+    runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0008-dynroute-bs128-bold50-2gpu"
+    jobs_total: 50
+    jobs_completed: 44
+    jobs_failed: 6
+    failed_jobs: ["DR-017", "DR-018", "DR-019", "DR-020", "DR-041", "DR-045"]
+    failure_reason: "dynamic_pse_mode=sample is unsupported"
+    gpus: "0,1"
+    artifacts:
+      summary_csv:
+        sha256: "6ede0a9df6f8f7e6dd7cf08ca42d9850ad4f767dbdb64e5347c3b2311c90f341"
+        size_bytes: 16295
+      summary_jsonl:
+        sha256: "75e20ee705286989c122c8e0f37f508a4af008d8def66bcd35bd7cd727b838d3"
+        size_bytes: 42062
+      batch_status_json:
+        sha256: "d11bc598398f54ed6976c8526ae15e7f97219a72da08ef874ba37f90aff2942d"
+        size_bytes: 36832
+      plan_json:
+        sha256: "37ba8ca5d297237d5f1ced001f86223e48ba3f8c2c66ed3269d87b74b0d27ec0"
+        size_bytes: 31734
+      events_jsonl:
+        sha256: "d1c9ef09d665398b52859cc8ce3532577fbe909708295928e6c036cf9c192ccf"
+        size_bytes: 18084
+checkpoint_retention:
+  applied: false
+  reason: "ATTEMPT-002 rejected; no checkpoint is retained as promotion or best evidence."

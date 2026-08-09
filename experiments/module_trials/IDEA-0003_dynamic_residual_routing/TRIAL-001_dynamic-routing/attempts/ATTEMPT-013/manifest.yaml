@@ -1,0 +1,78 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-013
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 followup50 live multi-agent stability diagnostic
+  status: stopped_invalid_confirmation_scope
+  recorded_at: "2026-07-07"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempts: ATTEMPT-011, ATTEMPT-012
+  source_note: "ATTEMPT-011 supplies the h48 hotspot; ATTEMPT-012 partial output is weak prior only and not formal confirmation evidence."
+run:
+  run_id: RUN-20260707-0001-h76-followup50-live-multiagent-2gpu
+  profile: h76-followup50-multiseed
+  jobs: 50
+  execution_mode: live_multi_agent_monitor
+  server_runner_started: true
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260707-0001-h76-followup50-live-multiagent-2gpu
+  launch_status: running
+  launched_at: "2026-07-07T17:57:41+08:00"
+  latest_checked_at: "2026-07-07T22:00:00+08:00"
+  latest_progress: "44 completed / 0 running / 0 pending / 6 skipped"
+  stop_requested_at: "2026-07-07T21:49:00+08:00"
+  stop_reason: "Owner corrected reproduction rule: seed sweep / multi-seed run is not exact_repeat reproduction."
+confirmation_policy:
+  repeat_type: multi_seed_stability
+  original_seed: not_preserved
+  max_attempts: 5
+  early_stop_on_best_hit: true
+  restore_target_H: not_applicable_not_exact_repeat
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  not_confirmation_evidence: true
+  violation: "Profile changed seed 6-15; strict reproduction must keep the original seed and all parameters unchanged."
+candidates:
+  DR047:
+    config: direction_sample_h48_w0.535_a0.002
+    weight_s2v: 0.535
+    dynamic_gate_anchor_lambda: 0.002
+    seeds: "6-15"
+    jobs: 10
+  DR020:
+    config: direction_sample_h48_w0.525_a0.003
+    weight_s2v: 0.525
+    dynamic_gate_anchor_lambda: 0.003
+    seeds: "6-15"
+    jobs: 10
+  DR041:
+    config: direction_sample_h48_w0.515_a0.002
+    weight_s2v: 0.515
+    dynamic_gate_anchor_lambda: 0.002
+    seeds: "6-15"
+    jobs: 10
+  A011DR042:
+    config: direction_sample_h48_w0.515_a0.004
+    weight_s2v: 0.515
+    dynamic_gate_anchor_lambda: 0.004
+    seeds: "6-15"
+    jobs: 10
+  A011DR020:
+    config: direction_sample_h48_w0.555_a0.0045
+    weight_s2v: 0.555
+    dynamic_gate_anchor_lambda: 0.0045
+    seeds: "6-15"
+    jobs: 10
+gate:
+  workflow_mode: live_multi_agent_monitor
+  activation_mode: real_multi_agent
+  agent_instance_mode: named_owner_thread
+  formal_runner_allowed: true
+  server_runner_allowed: true
+decision:
+  state: stopped_invalid_confirmation_scope
+  promotion_decision: blocked
+  reason: "ATTEMPT-013 is multi_seed_stability / seed_sweep evidence, not exact_repeat reproduction. Highest completed H=74.53, no H>=75, and this run is not eligible for keep/best/confirmation/promotion."

@@ -1,0 +1,52 @@
+schema_version: gtpj-campaign/v1
+campaign_id: CAMP-20260702-workflow-v2-2innov8tune
+campaign_type: mixed_experiment_campaign
+owner_request: "10小时候验证整个工作流，2创新，8调参"
+base_version: v5
+branch: dev/v5-idea-0003-trial-001-dynamic-routing
+profile: workflow-v2-2innov-8tune
+requested_mix:
+  innovation_probe: 2
+  tune: 8
+subject:
+  subject_id: CAMP-20260702-workflow-v2-2innov8tune
+  subject_type: campaign
+evidence_state: completed_needs_repeat
+formal_evidence: false
+authority: routing_index_only
+formal_subject_refs:
+  trial_attempt: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006
+  result_yaml: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006/result.yaml
+  quality_check: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006/quality_check.md
+agent_runtime_gate: agent_runtime.yaml
+planned_run:
+  run_id: RUN-20260702-0003-mixed2innov8tune-2gpu
+  runner: plan-dynamic-routing-batch
+  jobs: 10
+  gpus: "0,1"
+  max_runtime_note: "Owner requested 10-hour workflow validation window; runner has no hard wall-clock kill in v1."
+canonical_result_source: derived_index_only
+ledger_files:
+  work_items: WORK_ITEMS.md
+  campaign_run_map: campaign_run_map.md
+  campaign_run_map_html: campaign_run_map.html
+completed_run:
+  status: completed
+  jobs_completed: 10
+  jobs_failed: 0
+  best_job: DR-004
+  best_name: tune_direction_h48_w0.525_a0.003
+  best_H: "74.75"
+  confirmation_status: needs_confirmation
+  final_report: FINAL_REPORT.md
+  formal_result_ref: experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/attempts/ATTEMPT-006/result.yaml
+related_prior_best:
+  run_id: RUN-20260702-0002-dr018-confirm-ablate50-2gpu
+  job_id: DR-035
+  name: direction_sample_h48_w0.525_a0.005
+  H: "75.02"
+  next_action: min3_repeat
+artifact_boundary:
+  warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse
+  github_raw_artifacts: forbidden
+checkpoint_retention: keep_top3_checkpoints_after_run

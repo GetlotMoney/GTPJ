@@ -1,24 +1,54 @@
 # 实验记录
 
+## 现在从这里看
+
+- 总框架树：`experiments/FRAMEWORK_TREE.md`
+- 正式规范：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`
+- 每个框架总览：`experiments/vX/EXPERIMENTS.md`
+- 每个框架代码母版：`experiments/vX/TEMPLATE.yaml`
+- 每个实验代码起点：该实验目录的 `EXPERIMENT.yaml`
+- 每个实验参数：该实验目录的 `PARAMETER_MATRIX.md`
+
+`v1`、`v2`、`v3`、`v5` 是正式框架；`v4` 只保留为历史 config-only 标签。每个正式框架
+固定有 tune、ablation、innovation、confirmation 四类实验。旧 `module_trials/` 不删除，
+但只作为历史实现和证据来源，不再是人平时查看全貌的入口。
+
 实验记录是轻量证据文件，不是原始训练存储区。
 
 主要区域：
 
 ```text
-VERSION_TREE.md          正式版本的父节点和代码来源账本
+VERSION_TREE.md          同级正式框架的历史来源指针
 EXPERIMENT_REGISTRY.md   全局实验登记表
-module_trials/           有代码实现证据的创新 trial
+module_trials/           旧创新 Trial/Attempt 的只读兼容证据
 v1/                      GTPJ-v1 baseline、tune、ablation、confirmation 记录
 v2/                      GTPJ-v2 baseline、tune、ablation、confirmation 记录
 v3/                      GTPJ-v3 baseline、tune、ablation、confirmation 记录
-v4/                      GTPJ-v4 confirmed reference baseline 记录
+v4/                      historical config-only tag record; formal reference is v3/CONFIRM-001
 v5/                      GTPJ-v5 owner-activated active mainline 记录
 ```
 
 当前 active mainline code 是 `GTPJ-v5 / tag v5`。`GTPJ-v5` 是 owner-activated provisional，`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
 
-当前更强的 confirmed reference 仍是 `GTPJ-v4 / tag v4 / confirmed_H=74.45`。
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。
+
+当前研究最高单次来自 `IDEA-0003/TRIAL-001 ATTEMPT-017`，`H=75.11`；ATTEMPT-018 的 5 次 exact repeat 最好 `H=74.71`、均值 `H=74.58`，未还原，因此该结果仍是未晋级的研究单次，不能替代 confirmed reference。完整高分分布见该 trial 的 [README](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md) 和 [ATTEMPTS](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/ATTEMPTS.md)。
 
 旧的 `experiments/v1/` 到 `experiments/v4/` 不删除。`main` 保存全部版本账本，代码快照靠对应 tag 回滚。
+
+## 正式表格地图
+
+以后查询“现在有哪些待跑实验”，先看正式表格，不从 `.gtpj_runtime/` 目录反推。
+
+| 问题 | 先看哪张表 | 说明 |
+|---|---|---|
+| 全局有哪些版本和已登记实验 | `EXPERIMENT_REGISTRY.md` | 全局索引，辅助定位，不替代各类型正式表格。 |
+| 某个 baseline 的调参待跑 | `vX/tune/INDEX.md` | `Status` 为 `planned/pending/pre_run/pre_run_gated/ready_to_run` 的行是正式待跑。 |
+| 某个 baseline 的消融待跑 | `vX/ablation/INDEX.md` | 同上。 |
+| 某个 baseline 的复现/确认待跑 | `vX/confirmation/INDEX.md` | 同上。 |
+| 某个创新实验还有什么待跑 | `vX/innovation/INDEX.md` 和实验目录的参数矩阵 | 新实验不再写入旧 `module_trials/`；旧 Trial/Attempt 只作回查。 |
+| 混合 campaign 里任务如何分配 | `campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只是 derived index；正式结果和正式待跑仍回到各自归属表格。 |
+
+正式待跑统一叫 `formal_pending`。没有正式表格行、只有 `.gtpj_runtime/batches/<run_id>` 的目录，统一叫 `orphan_runtime_plan`；它只能作为历史参考或排障线索，不能自动续跑，也不能进入 keep / best / confirmation / promotion。
 
 不要在这里保存大型数据集、checkpoint、原始日志或 cache 文件。

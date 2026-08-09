@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GTPJ 正式框架同级表与历史来源连线</title>
+  <style>
+    :root{--bg:#f4f7fb;--ink:#172033;--muted:#62708a;--line:#b6c1d2;--card:#fff;--blue:#3056d3;--green:#13795b;--amber:#9a6700;--red:#b42318}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#eef3ff 0,#f8fafc 260px);font-family:"Microsoft YaHei","Segoe UI",sans-serif;color:var(--ink)}
+    main{max-width:1420px;margin:0 auto;padding:34px 28px 54px}.eyebrow{font-size:13px;letter-spacing:.12em;color:var(--blue);font-weight:700}
+    h1{font-size:32px;margin:8px 0 8px}.lead{max-width:1000px;color:var(--muted);line-height:1.8}.rule{margin:20px 0 30px;padding:14px 18px;border-left:5px solid var(--blue);background:#fff;border-radius:8px;box-shadow:0 8px 24px #23345812}
+    .registry{display:grid;grid-template-columns:minmax(210px,1fr) 70px minmax(210px,1fr) 70px minmax(210px,1fr) 70px minmax(210px,1fr);align-items:stretch;gap:10px}
+    .framework{background:var(--card);border:1px solid #dce3ee;border-radius:16px;padding:20px;box-shadow:0 12px 30px #23345814;min-height:224px;position:relative}
+    .framework.active{border:2px solid var(--blue)}.framework h2{margin:6px 0 4px;font-size:22px}.tag{display:inline-block;background:#edf2ff;color:var(--blue);border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}
+    .source{color:var(--muted);font-size:13px;margin:9px 0 14px}.metrics{font-size:13px;line-height:1.65;border-top:1px solid #edf0f5;padding-top:11px}.metrics b{color:var(--ink)}
+    .arrow{display:flex;align-items:center;justify-content:center;color:var(--blue);font-weight:800;font-size:28px}.arrow small{font-size:11px;writing-mode:vertical-rl;color:var(--muted);margin-left:3px}
+    h3{margin:36px 0 14px;font-size:20px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.kind{background:#fff;border:1px solid #dce3ee;border-radius:13px;padding:15px;min-height:135px}.kind b{display:block;margin-bottom:8px}.kind a{color:var(--blue);text-decoration:none}.kind p{font-size:13px;color:var(--muted);line-height:1.6;margin:8px 0 0}
+    .candidate{border:2px dashed #d6a02b;background:#fffaf0}.candidate .tag{background:#fff0c2;color:#7a4d00}.status{display:inline-block;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700}.planned{background:#fff0c2;color:#7a4d00}.formal{background:#dcfce7;color:#166534}.blocked{background:#fee4e2;color:var(--red)}
+    .legend{margin-top:28px;padding:16px 18px;background:#172033;color:#dbe5f6;border-radius:13px;line-height:1.8}.legend strong{color:#fff}.foot{margin-top:18px;font-size:12px;color:var(--muted)}
+    @media(max-width:1050px){.registry{grid-template-columns:1fr}.arrow{transform:rotate(90deg);height:36px}.grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:620px){main{padding:24px 16px}.grid{grid-template-columns:1fr}h1{font-size:26px}}
+  </style>
+</head>
+<body>
+<main>
+  <div style="margin-bottom:18px;padding:12px 16px;border:2px solid #9a6700;background:#fff7d6;color:#5f4300;font-weight:700">历史页面：本页只保留回查。当前入口为 <a href="GTPJ_FRAMEWORK_REGISTRY_UI-V3.html">UI-V3 框架母版与实验总览</a>。</div>
+  <div class="eyebrow">UI-FRAMEWORK-REGISTRY-V2 · DATA-FRAMEWORK-LEDGER-V2</div>
+  <h1>正式框架全部同级，箭头只表示历史来源</h1>
+  <p class="lead">V1、V2、V3、V5 都是独立正式框架，都拥有长期框架分支和冻结 Tag。下面所有卡片处在同一层；向左箭头表示“右侧框架从左侧框架演变而来”，绝不表示目录包含或上下级。</p>
+  <div class="rule"><strong>唯一读法：</strong>FRAMEWORK-V2 来源于 V1，FRAMEWORK-V3 来源于 V2，FRAMEWORK-V5 来源于 V3。创新候选没有 Tag；确认并接纳后，才注册成新的同级框架。</div>
+
+  <section class="registry" aria-label="同级正式框架注册表">
+    <article class="framework">
+      <span class="tag">tag v1</span><span class="status formal">正式</span>
+      <h2>FRAMEWORK-V1</h2>
+      <div class="source">derived_from: none</div>
+      <div class="metrics"><b>来源：</b>initial<br><b>确认：</b>V1-CONFIRM-001<br><b>实验入口：</b><a href="../../experiments/v1/EXPERIMENTS.md">experiments/v1</a></div>
+    </article>
+    <div class="arrow" title="V2 来源于 V1">←<small>来源</small></div>
+    <article class="framework">
+      <span class="tag">tag v2</span><span class="status formal">正式</span>
+      <h2>FRAMEWORK-V2</h2>
+      <div class="source">derived_from: FRAMEWORK-V1</div>
+      <div class="metrics"><b>来源实验：</b>V1-INNOVATION-001<br><b>历史状态：</b>owner 接纳，未按新规补签确认<br><b>实验入口：</b><a href="../../experiments/v2/EXPERIMENTS.md">experiments/v2</a></div>
+    </article>
+    <div class="arrow" title="V3 来源于 V2">←<small>来源</small></div>
+    <article class="framework">
+      <span class="tag">tag v3</span><span class="status formal">正式</span>
+      <h2>FRAMEWORK-V3</h2>
+      <div class="source">derived_from: FRAMEWORK-V2</div>
+      <div class="metrics"><b>来源实验：</b>V2-INNOVATION-001<br><b>已确认参考：</b>H=74.47<br><b>实验入口：</b><a href="../../experiments/v3/EXPERIMENTS.md">experiments/v3</a></div>
+    </article>
+    <div class="arrow" title="V5 来源于 V3">←<small>来源</small></div>
+    <article class="framework active">
+      <span class="tag">tag v5</span><span class="status formal">当前正式</span>
+      <h2>FRAMEWORK-V5</h2>
+      <div class="source">derived_from: FRAMEWORK-V3</div>
+      <div class="metrics"><b>来源实验：</b>V3-INNOVATION-001<br><b>局部分支权重：</b>local_weight=0.2<br><b>实验入口：</b><a href="../../experiments/v5/EXPERIMENTS.md">experiments/v5</a></div>
+    </article>
+  </section>
+
+  <h3>FRAMEWORK-V5 当前四类实验</h3>
+  <section class="grid">
+    <article class="kind"><b>调参</b><a href="../../experiments/v5/tune/TUNE-001_dynamic_routing_search/PARAMETER_MATRIX.md">V5-TUNE-001</a><p>动态路由搜索，已恢复 8 个真实 RUN。</p></article>
+    <article class="kind"><b>消融</b><a href="../../experiments/v5/ablation/ABLATION-001_local_branch_effect/PARAMETER_MATRIX.md">V5-ABLATION-001</a><p><span class="status planned">15 行 planned</span><br>局部分支效果消融，尚未启动训练。</p></article>
+    <article class="kind candidate"><b>创新候选</b><span class="tag">无正式 Tag</span><p><a href="../../experiments/v5/innovation/INNOVATION-001_dynamic_routing/PARAMETER_MATRIX.md">V5-INNOVATION-001</a><br>2 个创新探针；最高单次 H=75.11，但精确复跑未还原，不能注册新框架。</p></article>
+    <article class="kind"><b>确认</b><span class="status blocked">暂无新正式项</span><p>确认实验本身不产生正式框架或 Tag。</p></article>
+  </section>
+
+  <div class="legend"><strong>晋级规则：</strong>候选创新先在所属框架下完成参数表、结果、确认和质量检查。只有确认并接纳后，才创建新的 <code>framework/vY</code>、Tag <code>vY</code> 和同级 <code>FRAMEWORK-VY</code>；原创新实验继续保留为来源证据。</div>
+  <div class="foot">机器事实源：各版本 framework.yaml、四类 INDEX.md 与 PARAMETER_MATRIX.csv。本页不启动训练，也不改变任何实验结果。</div>
+</main>
+</body>
+</html>

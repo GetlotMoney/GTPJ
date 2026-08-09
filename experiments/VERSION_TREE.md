@@ -1,46 +1,42 @@
-# Version Tree
+# Version Registry
 
-This file records formal baseline/version relationships. It does not record ordinary tune, ablation, or confirmation experiments.
-
-Core rules:
-
-- Every formal version has an explicit `parent_version`.
-- `parent_version` describes the code/config parent, not the ledger parent.
-- `main` stores the current active code plus the full global ledger.
-- Promotion creates a formal version/tag. It does not automatically run `activate-version`.
-
-## Current Version Tree
+## 正式框架同级注册表（DATA-FRAMEWORK-LEDGER-V2）
 
 ```text
-v1
-`-- v2 = parent v1 + IDEA-0001/TRIAL-001 CLIP-A-self text prototype adapter
-    `-- v3 = parent v2 + IDEA-0002/TRIAL-002 strict conditional FAE-memory JEPA
-        `-- v4 = parent v3 + local-v3-054 min3-confirmed tuned config
-            `-- v5 = parent v4 + TRIAL-003 conditional BVSA text active mainline
+FRAMEWORK-V1  [tag v1]  derived_from: none
+FRAMEWORK-V2  [tag v2]  derived_from: FRAMEWORK-V1
+FRAMEWORK-V3  [tag v3]  derived_from: FRAMEWORK-V2
+FRAMEWORK-V5  [tag v5]  derived_from: FRAMEWORK-V3
 ```
 
-## Version Table
+以上四个框架全部同级。`derived_from` 是历史来源指针，不是父子层级。
 
-| Version | Parent | Code tag | Ledger source | Change type | Source | Note |
-|---|---|---|---|---|---|---|
-| `v1` | none | `v1` | initial | initial_baseline | none | First formal baseline. |
-| `v2` | `v1` | `v2` | `dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly@f24a277` | add_module | `trial/v1/idea-0001/trial-001` | CLIP-A-self text prototype adapter; best_observed_H=74.29, confirmed_H=pending. |
-| `v3` | `v2` | `v3` | `dev/v2-idea-0002-trial-002-strict-conditional-jepa@875cbb6` | add_module | `trial/v2/idea-0002/trial-002` | Strict conditional FAE-memory JEPA; best_observed_H=74.27, confirmed_H=pending. |
-| `v4` | `v3` | `v4` | `exp/v3-confirm-001-local-v3-054-min3@39ff2e7` | tune_config | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Min3-confirmed tuned v3 configuration; confirmed_H=74.45, best_observed_H=74.47, active_main_update=not_activated. |
-| `v5` | `v4` | `v5` | `main owner activation 2026-06-30` | combo | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text` | Conditional BVSA text active mainline from `trial003-main100-069`; best_observed_H=74.54, confirmed_H=74.44, active_main_update=activated, v4 remains confirmed reference. |
+正式框架的人类实验全貌以各自 `EXPERIMENTS.md` 为准。普通调参、消融、确认和未晋级创新不进入本注册表，也不能创建正式 Tag。
 
-## Record Template
+## 历史来源表
 
-When adding a formal version, add a row:
+| 正式框架 | 来源框架 | 正式 Tag | 来源实验或历史记录 | 变化类型 | 说明 |
+|---|---|---|---|---|---|
+| `FRAMEWORK-V1` | none | `v1` | initial | initial | 第一套正式框架。 |
+| `FRAMEWORK-V2` | `FRAMEWORK-V1` | `v2` | `V1-INNOVATION-001` | add_module | CLIP-A-self 文本原型适配；历史接纳，未按新规范补签确认。 |
+| `FRAMEWORK-V3` | `FRAMEWORK-V2` | `v3` | `V2-INNOVATION-001` | add_module | 严格条件 FAE-memory JEPA；历史接纳，未按新规范补签确认。 |
+| `FRAMEWORK-V5` | `FRAMEWORK-V3` | `v5` | `V3-INNOVATION-001` | combo | 条件 BVSA 文本正式框架；历史 owner 激活。 |
+
+## 历史特例
+
+`v4` Tag 来自 V3 的纯调参确认，是历史误分类，不是正式框架。它继续保留用于复现，但不进入上面的正式框架注册表。
+
+## 新正式框架登记模板
 
 ```text
-| `vX` | `vParent` | `vX` | `main@<commit>` | add_module / replace_module / remove_module / tune_config / combo | `<source>` | short note |
+| `FRAMEWORK-VX` | `FRAMEWORK-VSOURCE` | `vX` | `VSOURCE-INNOVATION-xxx` | add_module / replace_module / architecture_change / combo | short note |
 ```
 
-Also update:
+同时更新：
 
+- `experiments/vX/framework.yaml`
 - `experiments/vX/VERSION.md`
+- `experiments/vX/EXPERIMENTS.md`
 - `experiments/EXPERIMENT_REGISTRY.md`
 - `config/versions/vX.yaml`
 - `docs/PROJECT_STATUS.md`
-- `README.md`

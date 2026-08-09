@@ -41,7 +41,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "available", "missing", "legacy", "redacted"]
+      "enum": ["pending", "available", "missing", "legacy", "redacted", "pruned"]
     }
   },
   "allOf": [

@@ -1,0 +1,122 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: "ATTEMPT-003"
+trial_id: "TRIAL-001"
+idea_id: "IDEA-0003"
+base_version: "v5"
+attempt_type: "bs64_reproduce_tune_followup"
+status: "completed"
+run_id: "RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu"
+profile: "best-repro-tune-followup"
+jobs:
+  total: 50
+  completed: 50
+  failed: 0
+schedule:
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: "lr_stages"
+  lr_stage_epochs: [20, 20, 10]
+  seed: 5
+references:
+  reference_confirmed_config_H: 74.47
+  reference_confirmed_config: "v3/CONFIRM-001 local-v3-054"
+  v5_repeat_mean_H: 74.44
+  attempt_001_best_dynamic_H: 74.39
+  attempt_001_dynamic_repeat_mean_H: 74.23
+metrics:
+  best_single:
+    job_id: "DR-018"
+    group: "direction_repro_tune"
+    name: "direction_sample_h48_w0.5_a0.003"
+    H: 74.86
+    U: 73.10
+    S: 76.71
+    ZS: 81.84
+    best_epoch: 37
+  best_dynamic_single:
+    job_id: "DR-018"
+    group: "direction_repro_tune"
+    name: "direction_sample_h48_w0.5_a0.003"
+    H: 74.86
+    U: 73.10
+    S: 76.71
+    ZS: 81.84
+    best_epoch: 37
+  reproduce_clusters:
+    static_v5_control_x3:
+      n: 3
+      H_values: [74.49, 74.35, 74.62]
+      H_mean: 74.49
+      H_min: 74.35
+      H_max: 74.62
+    dr008_local_class_h24_a0.001_x3:
+      n: 3
+      H_values: [74.38, 74.18, 74.27]
+      H_mean: 74.28
+      H_min: 74.18
+      H_max: 74.38
+    dr023_direction_sample_h48_a0.003_x3:
+      n: 3
+      H_values: [74.58, 74.61, 74.61]
+      H_mean: 74.60
+      H_min: 74.58
+      H_max: 74.61
+  group_stats:
+    must_reproduce:
+      n: 10
+      H_mean: 74.45
+      H_min: 74.18
+      H_max: 74.62
+    direction_repro_tune:
+      n: 20
+      H_mean: 74.40
+      H_min: 73.97
+      H_max: 74.86
+    local_repro_tune:
+      n: 8
+      H_mean: 73.95
+      H_min: 72.94
+      H_max: 74.42
+    pse_repro_tune:
+      n: 6
+      H_mean: 73.81
+      H_min: 73.32
+      H_max: 74.35
+    combination_repro_tune:
+      n: 6
+      H_mean: 73.43
+      H_min: 73.02
+      H_max: 74.19
+delta:
+  best_single_vs_reference_confirmed_config_H: 0.39
+  dr023_repeat_mean_vs_reference_confirmed_config_H: 0.13
+  best_single_vs_static_control_x3_mean_H: 0.37
+decision:
+  status: "tune_promising"
+  trial_decision: "revise"
+  promotion_decision: "blocked"
+  reason: "ATTEMPT-003 produced a strong direction-gate single H=74.86 and DR-023 reproduced at mean H=74.60, but the new top config still needs clean min3 confirmation and direction-gate ablation before promotion."
+evidence:
+  evidence_level: "valid_single_batch"
+  evidence_state: "tune_promising"
+  best_observed_H: 74.86
+  confirmed_H: ""
+  confirmation_status: "needs_confirmation"
+  summary_artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:summary"
+  manifest: "manifest.yaml"
+  quality_check: "quality_check.md"
+  agent_summary: "agent_summary.md"
+  evidence_routing: "evidence_routing.yaml"
+  label_mapping_id: "standard_v1"
+  split_id: "standard_v1"
+  class_order_id: "standard_v1"
+  metric_contract_id: "gzsl_u_s_h_zs_v1"
+next_required:
+  confirmation:
+    target: "DR-018 direction_sample_h48_w0.5_a0.003"
+    repeats: 3
+  ablation:
+    target: "direction gate contribution"
+    compare_against: "same config with dynamic_direction_mode=fixed"
+recorded_at: "2026-07-02T14:35:00+08:00"

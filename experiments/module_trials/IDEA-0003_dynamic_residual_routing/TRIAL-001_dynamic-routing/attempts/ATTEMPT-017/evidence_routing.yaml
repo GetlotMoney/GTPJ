@@ -1,0 +1,13 @@
+schema_version: gtpj.evidence_routing.v1
+subject:
+  subject_id: "ATTEMPT-017"
+  subject_type: "attempt"
+  hypothesis_id: "IDEA-0003/TRIAL-001"
+current_state:
+  evidence_state: "tune_promising"
+  derived_from_transition_id: "ER-20260709-ATTEMPT017-002"
+  derived_from_transition_hash: "sha256:42686647997aa500f60fdf66a3ab5c5a8f1134b54be88004eccaecbe7efb7193"
+transitions:
+  file: "TRANSITIONS.jsonl"
+  chain_head_transition_id: "ER-20260709-ATTEMPT017-002"
+  chain_head_hash: "sha256:42686647997aa500f60fdf66a3ab5c5a8f1134b54be88004eccaecbe7efb7193"

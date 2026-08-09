@@ -1,0 +1,139 @@
+schema_version: gtpj-attempt-result/v1
+attempt_id: ATTEMPT-014
+status: completed_with_skips
+run_id: RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+profile: h76-restore100-exact-repeat
+planned_jobs: 100
+completed_jobs: 80
+failed_jobs: 0
+skipped_jobs: 20
+server_batch_status: completed_with_skips
+server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+warehouse_root: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-014/RUN-20260708-0002-h76-restore100-exact-repeat-2gpu
+evidence:
+  summary_csv_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:summary-csv
+  summary_jsonl_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:summary-jsonl
+  batch_status_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:batch-status-json
+  events_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:events-jsonl
+  plan_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-014:RUN-20260708-0002:plan-json
+metrics:
+  U: 73.33
+  S: 76.73
+  H: 74.99
+  ZS: 82.01
+  best_epoch: 37
+  seed: 5
+  source: best_single_completed_job
+  metric_semantics: GZSL U/S/H/ZS from protected evaluator
+previous_failed_launch:
+  run_id: RUN-20260708-0001-h76-restore100-exact-repeat-2gpu
+  status: runner_preflight_failed_commit_mismatch
+  method_evidence: false
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed: 5
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H: per_job_source_H
+  per_job_restore_target_H: true
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_change_allowed: false
+  not_confirmation_evidence: false
+summary:
+  h_ge_75_count: 0
+  restored_candidates: 12
+  candidate_count: 20
+  event_counts:
+    job_started: 80
+    job_completed: 80
+    near_miss_not_restored: 33
+    job_skipped_candidate_restored: 20
+    candidate_exact_repeat_best_hit: 13
+best_single:
+  job_id: DR-022
+  source_candidate_id: A011B01DR017
+  source_job_id: DR-017
+  source_H: 74.89
+  restore_target_H: 74.89
+  H: 74.99
+  U: 73.33
+  S: 76.73
+  config:
+    dynamic_direction_mode: sample
+    dynamic_gate_hidden: 48
+    weight_s2v: 0.5
+    dynamic_gate_anchor_lambda: 0.003
+top_completed:
+  - job_id: DR-022
+    source_candidate_id: A011B01DR017
+    H: 74.99
+    target: 74.89
+    restored: true
+  - job_id: DR-067
+    source_candidate_id: A011B03DR013
+    H: 74.93
+    target: 74.79
+    restored: true
+  - job_id: DR-020
+    source_candidate_id: A011B01DR023
+    H: 74.92
+    target: 74.96
+    restored: false
+  - job_id: DR-091
+    source_candidate_id: A011B04DR023
+    H: 74.88
+    target: 74.72
+    restored: true
+  - job_id: DR-092
+    source_candidate_id: A011B04DR023
+    H: 74.87
+    target: 74.72
+    restored: true
+source_75_candidates:
+  - source_candidate_id: A011B01DR042
+    source_H: 75.00
+    restore_target_H: 75.00
+    completed_jobs: 5
+    best_H: 74.81
+    mean_H: 74.690
+    min_H: 74.64
+    max_H: 74.81
+    restored: false
+  - source_candidate_id: A011B04DR036
+    source_H: 75.00
+    restore_target_H: 75.00
+    completed_jobs: 5
+    best_H: 74.80
+    mean_H: 74.684
+    min_H: 74.54
+    max_H: 74.80
+    restored: false
+candidate_hotspots_for_followup:
+  - center: h48_w0.500_a0.003
+    source_candidate_id: A011B01DR017
+    best_H: 74.99
+    mean_H: 74.775
+    restored: true
+  - center: h48_w0.550_a0.003
+    source_candidate_id: A011B01DR023
+    best_H: 74.92
+    mean_H: 74.774
+    restored: false
+    note: near_miss_not_restored
+  - center: h48_w0.545_a0.002
+    source_candidate_id: A011B04DR023
+    best_H: 74.88
+    mean_H: 74.875
+    restored: true
+  - center: h48_w0.535_a0.0015_0.0025
+    source_candidate_id: A011B03DR009/A011B03DR010
+    best_H: 74.86
+    restored: true
+result_state: tune_promising
+promotion_decision: blocked
+notes:
+  - "No completed ATTEMPT-014 job reached H>=75."
+  - "The two source candidates with H=75.00 were not restored after five exact repeats each."
+  - "Restored lower-target candidates support follow-up tuning only; they do not create promotion or baseline evidence."

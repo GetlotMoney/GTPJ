@@ -1,0 +1,80 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: "ATTEMPT-003"
+  trial_id: "TRIAL-001"
+  idea_id: "IDEA-0003"
+  name: "bs64 dynamic routing reproduce and narrow tune"
+  status: "completed"
+  recorded_at: "2026-07-02T14:35:00+08:00"
+version:
+  base_version: "v5"
+  code_branch: "dev/v5-idea-0003-trial-001-dynamic-routing"
+  run_code_commit: "632218034dd3656fe62e0f78d1354c927462a536"
+schedule:
+  batch_size: 64
+  config_epochs_field: 30
+  planned_train_epochs: 50
+  epoch_schedule_source: "lr_stages"
+  lr_stage_epochs: [20, 20, 10]
+  seed: 5
+  gpus: "0,1"
+run:
+  run_id: "RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu"
+  profile: "best-repro-tune-followup"
+  runtime_path: "/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu"
+  jobs_total: 50
+  jobs_completed: 50
+  jobs_failed: 0
+  server_repo: "/data/lby/projects/cv_project/GTPJ"
+  warehouse_root: "/data/lby/projects/cv_project/GTPJ_Warehouse"
+artifacts:
+  runtime_summary:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:summary"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu/summary.csv"
+    sha256: "ae2050d2094b09e68fa7327d6926f3d82270fdad9f0a36605f5ed46e12e86af8"
+    size_bytes: 17020
+  runtime_summary_jsonl:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:summary_jsonl"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu/summary.jsonl"
+    sha256: "cb0647fb3f34effb43c3ef1ea75d62a163e1d7a4f3b47cdefd5ce08c11b189ff"
+    size_bytes: 42057
+  batch_status:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:batch_status"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu/batch_status.json"
+    sha256: "6cff63cd1d545640cd0995946d645f1955a6c49e9d52a83302b3bc03c48cf576"
+    size_bytes: 38294
+  plan_json:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:plan"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu/plan.json"
+    sha256: "a642c6455d181fe056a15baa7f8b41089a9c3f8f72622dfc2b07401b88cedc44"
+    size_bytes: 30690
+  events_jsonl:
+    artifact_id: "runtime:v5:module_trial:TRIAL-001:RUN-20260701-0010:events"
+    uri: "lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260701-0010-dynroute-bs64-repro-tune50-2gpu/events.jsonl"
+    sha256: "0cdc52b1b05ad65339079e04ff8372c37dfd1c0b3bb318fa1729445b66faab60"
+    size_bytes: 19201
+checkpoint_retention:
+  applied: true
+  scope: "current RUN-20260701-0010 copied best_model_*.pth files only"
+  copied_model_files_seen: 49
+  deleted_model_checkpoint_files: 46
+  retained_model_checkpoint_files: 3
+  retained:
+    - job_id: "DR-018"
+      name: "direction_sample_h48_w0.5_a0.003"
+      H: 74.86
+      uri: "lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/attempt-018/logs/best_model_CUB_2026-07-01_15-20-51_H7486.pth"
+      sha256: "2ed456b75483707873fdf765c120d47ccae52128e577d17594ffd3fa974b08e1"
+      size_bytes: 102790544
+    - job_id: "DR-019"
+      name: "direction_sample_h48_w0.5_a0.005"
+      H: 74.82
+      uri: "lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/attempt-019/logs/best_model_CUB_2026-07-01_15-28-47_H7482.pth"
+      sha256: "61686727a0b427898d5fd35ab2c9714fa0a385fbf47a5d65bc7f71e0279585b3"
+      size_bytes: 102790544
+    - job_id: "DR-016"
+      name: "direction_sample_h48_w0.45_a0.003"
+      H: 74.69
+      uri: "lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/attempt-016/logs/best_model_CUB_2026-07-01_15-10-48_H7469.pth"
+      sha256: "4141ef8393db4854fa55a25ef309bc6cc664ddad71a817d68d108c1da8e7fd4d"
+      size_bytes: 102790544

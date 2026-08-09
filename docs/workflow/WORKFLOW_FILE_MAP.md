@@ -1,0 +1,109 @@
+# GTPJ 工作流文件地图
+
+这个文件用来让 workflow 目录可读：哪些是日常入口，哪些只是参考材料。
+
+机器可读索引见 `WORKFLOW_MANIFEST.yaml`。后续物理迁移目录时，先更新 manifest 和
+helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有效。
+
+## 日常权威文件
+
+| 文件 | 状态 |
+|---|---|
+| `START_HERE.md` | 每个 GTPJ 工作流任务从这里开始。 |
+| `WORKFLOW_KERNEL.md` | 硬规则层。必须短而权威。 |
+| `WORKFLOW_MANIFEST.yaml` | 机器可读瘦身索引，标记 daily/core/playbook/protocol/archive。 |
+| `WORKFLOW_FILE_MAP.md` | 人读路径地图。 |
+
+## Core 文件
+
+| 文件 | 状态 |
+|---|---|
+| `core/QUICK_START.md` | owner 短口令备忘。 |
+| `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
+| `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
+| `core/TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动硬门。 |
+
+## 有效执行卡
+
+| 文件 | 状态 |
+|---|---|
+| `playbooks/paper_intake.md` | 论文/来源/idea discovery 操作卡。 |
+| `playbooks/paper_to_experiment.md` | 论文来源到 idea_tree 再到 module trial 的桥接闭环操作卡。 |
+| `playbooks/tune.md` | 调参操作卡。 |
+| `playbooks/ablation.md` | 消融操作卡。 |
+| `playbooks/confirmation.md` | 复现/确认操作卡。 |
+| `playbooks/innovation.md` | idea/module-trial 操作卡。 |
+| `playbooks/promotion.md` | 升版操作卡。 |
+| `playbooks/mixed_campaign.md` | 任意组合实验 campaign 操作卡。 |
+| `playbooks/autonomous_campaign.md` | 长周期全自动研究 campaign 操作卡。 |
+
+## 参考协议
+
+只有被当前 playbook 要求时才读：
+
+```text
+protocols/paper_intake.md
+protocols/idea_tree_protocol.md
+protocols/experiment_protocol.md
+protocols/module_trial_protocol.md
+protocols/module_template_selection.md
+protocols/code_interface_contract.md
+protocols/innovation_code_review_protocol.md
+protocols/quality_gate.md
+protocols/promotion.md
+protocols/ARTIFACT_REGISTRATION.md
+protocols/agent_orchestration.md
+protocols/agent_report_policy.md
+agents/
+protocols/mixed_experiment_campaign_protocol.md
+protocols/autonomous_research_campaign.md
+```
+
+## 历史或状态文件
+
+这些文件保存决策、历史、图示或实现状态，不作为第一阅读入口：
+
+```text
+archive/specs/GTPJ_WORKFLOW_SPEC.md
+archive/reports/CURRENT_WORKFLOW_REPORT.md
+core/FIRST_CLOSED_LOOP.md
+archive/reports/IMPLEMENTATION_STATUS.md
+archive/diagrams/workflow_diagrams.md
+archive/runbooks/runbook.md
+protocols/progress_dashboard.md
+archive/issues/
+```
+
+## 模板和 Schema
+
+真正写证据时使用：
+
+```text
+experiments/templates/
+experiments/templates/modules/
+schemas/
+workflow/gtpj_workflow.py
+```
+
+常用 helper：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "开新模块"
+python workflow/gtpj_workflow.py start --phrase "从论文开始"
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+python workflow/gtpj_workflow.py start-card --type tune --version v5 --owner-request "调参"
+python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py validate-workflow-consistency
+```
+
+## 简化规则
+
+如果某条规则每天都要用，写进 `WORKFLOW_KERNEL.md`。
+
+如果规则只和某类任务有关，写进对应 playbook。
+
+如果只是长解释、证据或历史，保留为参考文件，并从 playbook 指过去。
+
+混合实验 campaign 只负责调度和索引；正式事实仍写回对应 attempt / version / trial。

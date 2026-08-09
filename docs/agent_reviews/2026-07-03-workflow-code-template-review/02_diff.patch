@@ -1,0 +1,1306 @@
+# Git diff
+
+```diff
+diff --git a/AGENTS.md b/AGENTS.md
+index 47df710..75a7edf 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -29,11 +29,20 @@
+ ## 沟通
+ 
+ - 与 owner 协作时默认使用中文。
++- 新增或修改项目文档、workflow 文档、模板说明和审核报告时，正文必须使用中文；命令、字段名、文件名、代码标识和必要英文接口名可以保留原文。
+ - 先说结论，再说关键原因。
+ - 复杂任务在编辑前先给简短计划。
+ - 直接说明不确定性和风险。
+ - 交付流程图、框架图、代码路径图或实验链路图时，默认额外生成一个可本地打开的 HTML 文件，并在回复中用 `file:///D:/.../xxx.html` 的绝对本地链接给 owner。Markdown/Mermaid 可以作为仓库权威记录，但不能替代 owner 可直接打开的 HTML 视图。
+ 
++## AI 审核规范
++
++- 重要代码修改、workflow/helper/template 修改、训练入口、评估语义、实验结论、promotion 或论文 claim 相关决策，默认由 Codex 与 Claude Code 完成三轮交叉审核，不要求 owner 参与日常审核。
++- Codex 负责实现、修复、反驳和重跑验证；Claude Code 只读审查，不直接改文件、不启动训练、不执行 push/delete/发布。
++- 三轮审核必须留下中文 evidence pack，并通过 `python workflow\gtpj_workflow.py validate-ai-cross-review --path <review_pack>` 后，才能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
++- AI 审核不能替代机器验证；能运行的测试、workflow validate、audit-boundary、schema 或 helper gate 必须优先运行并记录。
++- push、删除、远端发布、破坏性迁移、密钥处理或用户数据操作仍然必须等待 owner 明确授权。
++
+ ## 仓库规则
+ 
+ - `main` 是唯一长期分支。
+diff --git a/docs/workflow/START_HERE.md b/docs/workflow/START_HERE.md
+index b5d6d82..04f4b0c 100644
+--- a/docs/workflow/START_HERE.md
++++ b/docs/workflow/START_HERE.md
+@@ -169,3 +169,24 @@ evidence_level: debug_smoke
+ formal_evidence: false
+ eligible_for_keep_best_promotion_confirmation: false
+ ```
++
++## 7. 免 owner 日常参与的 AI 交叉审核
++
++重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动，默认不需要 owner 参与日常审核。
++
++改动必须走 Claude Code + Codex 三轮交叉审核：
++
++```text
++Codex 实现/修复 -> Claude Code 只读审核 -> Codex 回应/重跑验证
++重复 3 轮 -> validate-ai-cross-review -> 通过后才信任改动
++```
++
++正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。通过包必须包含：
++
++```text
++owner_participation: not_required
++rounds_completed: 3
++claude_code_read_only: true
++machine_gates_passed: true
++unresolved_blocking_issues: 0
++```
+diff --git a/docs/workflow/WORKFLOW_KERNEL.md b/docs/workflow/WORKFLOW_KERNEL.md
+index 717bf1d..3e42420 100644
+--- a/docs/workflow/WORKFLOW_KERNEL.md
++++ b/docs/workflow/WORKFLOW_KERNEL.md
+@@ -171,3 +171,16 @@ promotion 可以按协议创建本地文件、commit 和 tag，但不能 push，
+ ```
+ 
+ 如果都不满足，不进入日常 workflow。
++
++## 免 owner 日常参与的 AI 交叉审核
++
++Owner 不参与日常代码审核。重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion
++或论文 claim 相关改动，必须由 Claude Code 与 Codex 完成三轮交叉审核，并通过：
++
++```text
++python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
++```
++
++Claude Code 必须只读；Codex 可以实现、修复、重跑验证和记录 rebuttal。三轮审核包 blocked 时，不能进入正式
++Runner、keep/best、confirmation、promotion、baseline 或 paper claim。push、删除、远端发布和破坏性迁移仍然需要
++owner 明确授权。
+diff --git a/docs/workflow/WORKFLOW_MANIFEST.yaml b/docs/workflow/WORKFLOW_MANIFEST.yaml
+index f166e2e..35b5108 100644
+--- a/docs/workflow/WORKFLOW_MANIFEST.yaml
++++ b/docs/workflow/WORKFLOW_MANIFEST.yaml
+@@ -151,6 +151,11 @@ files:
+     category: protocol
+     status: active_reference
+     daily_read: false
++  - logical_id: ai_cross_review_protocol
++    canonical_path: docs/workflow/protocols/ai_cross_review_protocol.md
++    category: protocol
++    status: active_reference
++    daily_read: false
+   - logical_id: quality_gate
+     canonical_path: docs/workflow/protocols/quality_gate.md
+     category: protocol
+diff --git a/docs/workflow/protocols/agent_report_policy.md b/docs/workflow/protocols/agent_report_policy.md
+index 09c6dd7..9e7b488 100644
+--- a/docs/workflow/protocols/agent_report_policy.md
++++ b/docs/workflow/protocols/agent_report_policy.md
+@@ -94,6 +94,7 @@ runtime_state:
+ warehouse_report_artifacts:
+ final_decision:
+ review_rounds:
++ai_cross_review:
+ temporary_agents:
+ ```
+ 
+diff --git a/docs/workflow/protocols/innovation_code_review_protocol.md b/docs/workflow/protocols/innovation_code_review_protocol.md
+index a734d2c..6696df1 100644
+--- a/docs/workflow/protocols/innovation_code_review_protocol.md
++++ b/docs/workflow/protocols/innovation_code_review_protocol.md
+@@ -43,6 +43,14 @@ Review 2: code diff pre-run review
+ Review 3: post-run evidence review
+ ```
+ 
++重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion 或论文 claim 相关改动，还必须执行
++`docs/workflow/protocols/ai_cross_review_protocol.md` 的 Claude Code + Codex 三轮交叉审核。该审核不需要 owner
++参与日常判断，但必须保留 review pack 并通过：
++
++```text
++python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
++```
++
+ ### Review 0: Idea / Source Intent
+ 
+ Reader/Planner 与 Coordinator 检查：
+diff --git a/docs/workflow/protocols/module_trial_protocol.md b/docs/workflow/protocols/module_trial_protocol.md
+index 7a872b6..de50504 100644
+--- a/docs/workflow/protocols/module_trial_protocol.md
++++ b/docs/workflow/protocols/module_trial_protocol.md
+@@ -172,6 +172,7 @@ Review 0 -> idea_intent_check.md
+ Review 1 -> interface_precheck.md
+ Review 2 -> review_round_1.md + interface_check.md + quality_check.md
+ Review 3 -> review_round_2.md + agent_summary.md
++AI 交叉审核 -> 重要代码/决策改动使用 docs/workflow/protocols/ai_cross_review_protocol.md
+ ```
+ 
+ 这些文件是轻量审查凭证，允许进入 GitHub。完整长报告、日志和大文件仍进入 Warehouse。
+diff --git a/experiments/templates/TRIAL_README_template.md b/experiments/templates/TRIAL_README_template.md
+index d8da660..f501657 100644
+--- a/experiments/templates/TRIAL_README_template.md
++++ b/experiments/templates/TRIAL_README_template.md
+@@ -144,6 +144,7 @@ Review 1: interface_precheck.md
+ Review 2: review_round_1.md + interface_check.md + quality_check.md
+ Review 3: review_round_2.md + agent_summary.md
+ activation_mode: real_multi_agent
++ai_cross_review: 重要代码/决策改动必须执行；使用 validate-ai-cross-review 校验
+ ```
+ 
+ ## Promotion Gate
+diff --git a/experiments/templates/agent_summary_template.md b/experiments/templates/agent_summary_template.md
+index a4cc835..1ac83db 100644
+--- a/experiments/templates/agent_summary_template.md
++++ b/experiments/templates/agent_summary_template.md
+@@ -33,6 +33,16 @@ agent_cleanup:
+   close_results:
+   unknown_ui_agents:
+   closed_agents_record:
++ai_cross_review:
++  required:
++  review_pack:
++  rounds_completed:
++  claude_code_read_only:
++  codex_fixes_or_rebuttals_recorded:
++  machine_gates_passed:
++  unresolved_blocking_issues:
++  validate_command:
++  validate_result:
+ multi_agent_preflight:
+   required_agents_spawned:
+   agent_instance_ids_present:
+diff --git a/experiments/templates/quality_check_template.md b/experiments/templates/quality_check_template.md
+index 67c5da1..e156462 100644
+--- a/experiments/templates/quality_check_template.md
++++ b/experiments/templates/quality_check_template.md
+@@ -44,6 +44,13 @@ transition_id:
+ - [ ] GitHub 目录没有新增 raw logs、checkpoint、generated figures 或 cache。
+ - [ ] checkpoint retention 已记录：默认最多保留 Top-3 checkpoint；logs、receipts、configs、summaries、manifests、registries 和 artifact id 不随 checkpoint 删除。
+ 
++## AI 交叉审核
++
++- [ ] 重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动已创建三轮 AI 交叉审核包。
++- [ ] Claude Code 审核保持只读，Codex 的修复、rebuttal 和重跑验证已记录。
++- [ ] 已运行 `validate-ai-cross-review --path <review_pack>`，且 `unresolved_blocking_issues: 0`。
++- [ ] 若审核包 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
++
+ ## Promotion Gate（仅正式提升 vX 时填写）
+ 
+ - [ ] parent_version / parent_tag 明确。
+diff --git a/tests/test_gtpj_workflow.py b/tests/test_gtpj_workflow.py
+index 9f2ec12..62b1226 100644
+--- a/tests/test_gtpj_workflow.py
++++ b/tests/test_gtpj_workflow.py
+@@ -407,6 +407,7 @@ class WorkflowHelperTest(unittest.TestCase):
+             ("agent_runtime_hard_gate", "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "core", "active", False),
+             ("agent_cleanup_protocol", "docs/workflow/protocols/agent_cleanup_protocol.md", "protocol", "active_reference", False),
+             ("module_template_selection", "docs/workflow/protocols/module_template_selection.md", "protocol", "active_reference", False),
++            ("ai_cross_review_protocol", "docs/workflow/protocols/ai_cross_review_protocol.md", "protocol", "active_reference", False),
+             ("playbook_tune", "docs/workflow/playbooks/tune.md", "playbook", "active", False),
+             ("playbook_ablation", "docs/workflow/playbooks/ablation.md", "playbook", "active", False),
+             ("playbook_confirmation", "docs/workflow/playbooks/confirmation.md", "playbook", "active", False),
+@@ -436,6 +437,8 @@ class WorkflowHelperTest(unittest.TestCase):
+         self.assertIn("docs/workflow/WORKFLOW_MANIFEST.yaml", required)
+         self.assertIn("docs/workflow/core/TASK_START_MINI.md", required)
+         self.assertIn("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", required)
++        self.assertIn("docs/workflow/protocols/ai_cross_review_protocol.md", required)
++        self.assertIn("experiments/templates/ai_cross_review_template.md", required)
+         self.assertIn("experiments/templates/modules/standard_gzsl_training_template.py", required)
+         self.assertIn("experiments/templates/modules/composite_module_template.py", required)
+         self.assertIn("experiments/templates/modules/trial_meta_template.yaml", required)
+@@ -2349,6 +2352,156 @@ decision:
+         self.assertIn("multi_agent_preflight:", stdout)
+         self.assertIn("formal_runner_allowed: false", stdout)
+ 
++    def _write_valid_ai_cross_review_pack(self, pack_dir: str) -> None:
++        self._write(f"{pack_dir}/00_task.md", "task_id: TEST\nowner_participation: not_required\n")
++        self._write(f"{pack_dir}/01_codex_actions.md", "codex_role: implementer\nchanged_files:\n")
++        self._write(f"{pack_dir}/02_diff.patch", "diff --git a/file b/file\n")
++        self._write(f"{pack_dir}/03_validation.md", "commands_run:\nmachine_gates_passed: true\n")
++        self._write(f"{pack_dir}/04_claims.md", "claim:\nstatus: verified\nevidence_ref:\n")
++        self._write(
++            f"{pack_dir}/05_claude_review_round_1.md",
++            "round: 1\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
++        )
++        self._write(
++            f"{pack_dir}/06_codex_response_round_1.md",
++            "round: 1\nreviewer: codex\naddressed_claude_findings:\nvalidation_rerun:\nremaining_blocking_issues:\n",
++        )
++        self._write(
++            f"{pack_dir}/07_claude_review_round_2.md",
++            "round: 2\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
++        )
++        self._write(
++            f"{pack_dir}/08_codex_response_round_2.md",
++            "round: 2\nreviewer: codex\naddressed_claude_findings:\nvalidation_rerun:\nremaining_blocking_issues:\n",
++        )
++        self._write(
++            f"{pack_dir}/09_claude_review_round_3.md",
++            "round: 3\nreviewer: claude_code\nclaude_code_read_only: true\nverdict: pass\nblocking_issues:\n",
++        )
++        self._write(
++            f"{pack_dir}/10_final_decision.md",
++            "ai_cross_review_status: pass\n"
++            "owner_participation: not_required\n"
++            "rounds_completed: 3\n"
++            "claude_code_read_only: true\n"
++            "codex_fixes_or_rebuttals_recorded: true\n"
++            "machine_gates_passed: true\n"
++            "unresolved_blocking_issues: 0\n",
++        )
++
++    def test_validate_ai_cross_review_accepts_three_round_pack(self) -> None:
++        pack_dir = "docs/agent_reviews/2026-07-03-test"
++        self._write_valid_ai_cross_review_pack(pack_dir)
++
++        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
++
++        self.assertEqual("", stderr)
++        self.assertEqual(0, code)
++        self.assertIn("validate-ai-cross-review-ok", stdout)
++        self.assertIn("rounds=3", stdout)
++
++    def test_validate_ai_cross_review_rejects_non_pass_claude_verdict(self) -> None:
++        pack_dir = "docs/agent_reviews/2026-07-03-non-pass"
++        self._write_valid_ai_cross_review_pack(pack_dir)
++        self._write(
++            f"{pack_dir}/05_claude_review_round_1.md",
++            "round: 1\n"
++            "reviewer: claude_code\n"
++            "claude_code_read_only: true\n"
++            "verdict: needs_fix\n"
++            "blocking_issues:\n",
++        )
++
++        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
++
++        self.assertEqual("", stdout)
++        self.assertEqual(1, code)
++        self.assertIn("05_claude_review_round_1.md verdict must be pass", stderr)
++
++    def test_validate_ai_cross_review_rejects_missing_round_three(self) -> None:
++        pack_dir = "docs/agent_reviews/2026-07-03-bad"
++        for filename in [
++            "00_task.md",
++            "01_codex_actions.md",
++            "02_diff.patch",
++            "03_validation.md",
++            "04_claims.md",
++            "05_claude_review_round_1.md",
++            "06_codex_response_round_1.md",
++            "07_claude_review_round_2.md",
++            "08_codex_response_round_2.md",
++            "10_final_decision.md",
++        ]:
++            self._write(f"{pack_dir}/{filename}", "placeholder\n")
++
++        code, stdout, stderr = self._run_main("validate-ai-cross-review", "--path", pack_dir)
++
++        self.assertEqual("", stdout)
++        self.assertEqual(1, code)
++        self.assertIn("missing review file: 09_claude_review_round_3.md", stderr)
++
++    def test_run_ai_cross_review_creates_three_round_pack_with_fake_claude(self) -> None:
++        self._write(
++            "fake_claude.py",
++            "import sys\n"
++            "print('round: fake')\n"
++            "print('reviewer: claude_code')\n"
++            "print('claude_code_read_only: true')\n"
++            "print('verdict: pass')\n"
++            "print('blocking_issues:')\n",
++        )
++        self._write("docs/example.md", "changed\n")
++        validation_command = f'"{sys.executable}" -c "print(123)"'
++
++        code, stdout, stderr = self._run_main(
++            "run-ai-cross-review",
++            "--path",
++            "docs/agent_reviews/run-test",
++            "--slug",
++            "run-test",
++            "--task-title",
++            "测试三轮 AI 交叉审核",
++            "--no-default-validation",
++            "--validation-command",
++            validation_command,
++            "--claude-command",
++            sys.executable,
++            "--claude-command-arg",
++            "fake_claude.py",
++        )
++
++        self.assertEqual("", stderr)
++        self.assertEqual(0, code)
++        self.assertIn("run-ai-cross-review-ok", stdout)
++        pack = self.repo / "docs/agent_reviews/run-test"
++        self.assertTrue((pack / "05_claude_review_round_1.md").exists())
++        self.assertTrue((pack / "07_claude_review_round_2.md").exists())
++        self.assertTrue((pack / "09_claude_review_round_3.md").exists())
++        final_text = (pack / "10_final_decision.md").read_text(encoding="utf-8")
++        self.assertIn("ai_cross_review_status: pass", final_text)
++        self.assertIn("unresolved_blocking_issues: 0", final_text)
++
++    def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
++        validation_command = f'"{sys.executable}" -c "print(123)"'
++
++        code, stdout, stderr = self._run_main(
++            "run-ai-cross-review",
++            "--path",
++            "docs/agent_reviews/skip-claude",
++            "--slug",
++            "skip-claude",
++            "--no-default-validation",
++            "--validation-command",
++            validation_command,
++            "--skip-claude",
++        )
++
++        self.assertEqual("", stderr)
++        self.assertEqual(1, code)
++        self.assertIn("status=blocked", stdout)
++        final_text = (self.repo / "docs/agent_reviews/skip-claude/10_final_decision.md").read_text(encoding="utf-8")
++        self.assertIn("ai_cross_review_status: blocked", final_text)
++
+     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
+         self._write_minimal_workflow_manifest()
+         self._write("docs/workflow/README.md", "# Workflow\n")
+@@ -2361,6 +2514,10 @@ decision:
+         self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\n")
+         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
+         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n")
++        self._write(
++            "docs/workflow/protocols/ai_cross_review_protocol.md",
++            "owner_participation: not_required\nclaude_code_read_only: true\nrounds_completed: 3\nrun-ai-cross-review\nvalidate-ai-cross-review\n",
++        )
+         self._write(
+             "docs/workflow/protocols/module_template_selection.md",
+             "feature_adapter_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nvalidate-trial-meta\nstandard GZSL U/S/H/ZS\nbase_code_tag\nstandard_gzsl_training_template.py\nstrict_template_entry\n",
+@@ -2376,7 +2533,11 @@ decision:
+         self._write("docs/workflow/playbooks/mixed_campaign.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+         self._write("docs/workflow/playbooks/paper_intake.md", "START_HERE.md\nWORKFLOW_KERNEL.md\n")
+         self._write("docs/workflow/playbooks/paper_to_experiment.md", "START_HERE.md\nWORKFLOW_KERNEL.md\nbase_code_tag\nmodule_template_selection.md\nmodule_source.md\n")
+-        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\n")
++        self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nagent_cleanup:\nai_cross_review:\n")
++        self._write(
++            "experiments/templates/ai_cross_review_template.md",
++            "05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
++        )
+         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
+         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n")
+ 
+@@ -2398,6 +2559,7 @@ decision:
+             "core/TASK_START_CARD.md",
+             "core/AGENT_RUNTIME_HARD_GATE.md",
+             "protocols/agent_cleanup_protocol.md",
++            "protocols/ai_cross_review_protocol.md",
+             "protocols/module_template_selection.md",
+             "playbooks/tune.md",
+             "playbooks/ablation.md",
+diff --git a/workflow/gtpj_workflow.py b/workflow/gtpj_workflow.py
+index 56923fb..3a4293f 100644
+--- a/workflow/gtpj_workflow.py
++++ b/workflow/gtpj_workflow.py
+@@ -1352,6 +1352,7 @@ def required_repository_files() -> list[str]:
+         "docs/workflow/protocols/module_template_selection.md",
+         "docs/workflow/protocols/code_interface_contract.md",
+         "docs/workflow/protocols/innovation_code_review_protocol.md",
++        "docs/workflow/protocols/ai_cross_review_protocol.md",
+         "docs/workflow/reference/code_interface.md",
+         "docs/workflow/protocols/experiment_protocol.md",
+         "docs/workflow/reference/artifact_policy.md",
+@@ -1394,6 +1395,7 @@ def required_repository_files() -> list[str]:
+         "experiments/templates/experiment_README_template.md",
+         "experiments/templates/implementation_template.md",
+         "experiments/templates/agent_summary_template.md",
++        "experiments/templates/ai_cross_review_template.md",
+         "experiments/templates/run_receipt_template.yaml",
+         "experiments/templates/quality_check_template.md",
+         "experiments/templates/modules/README.md",
+@@ -1567,6 +1569,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
+         "agent_instance_status:",
+         "agent_status_refs:",
+         "agent_output_refs:",
++        "ai_cross_review:",
+         "temporary_subagent_ids:",
+         "runner_start_gate:",
+         "pre_run_required_checks:",
+@@ -1600,6 +1603,8 @@ def cmd_validate(_: argparse.Namespace) -> int:
+         "validate-trial-meta",
+         "standard_gzsl_training_template.py",
+         "module_scope: composite",
++        "validate-ai-cross-review",
++        "unresolved_blocking_issues: 0",
+     ]:
+         if marker not in quality_template:
+             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
+@@ -1858,6 +1863,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
+         "Review 1",
+         "Review 2",
+         "Review 3",
++        "ai_cross_review_protocol.md",
+         "临时 agents",
+         "正式 run 前硬阻断",
+     ]:
+@@ -1872,6 +1878,7 @@ def cmd_validate(_: argparse.Namespace) -> int:
+         "review_round_2.md",
+         "temporary_agents",
+         "review_rounds",
++        "ai_cross_review",
+     ]:
+         if marker not in agent_report_policy:
+             raise WorkflowError(f"agent_report_policy.md missing field: {marker}")
+@@ -5647,8 +5654,47 @@ WORKFLOW_MANIFEST_REQUIRED_IDS = {
+     "playbook_paper_intake",
+     "playbook_paper_to_experiment",
+     "module_template_selection",
++    "ai_cross_review_protocol",
+ }
+ 
++AI_CROSS_REVIEW_REQUIRED_FILES = [
++    "00_task.md",
++    "01_codex_actions.md",
++    "02_diff.patch",
++    "03_validation.md",
++    "04_claims.md",
++    "05_claude_review_round_1.md",
++    "06_codex_response_round_1.md",
++    "07_claude_review_round_2.md",
++    "08_codex_response_round_2.md",
++    "09_claude_review_round_3.md",
++    "10_final_decision.md",
++]
++
++AI_CROSS_REVIEW_ROUND_MARKERS = {
++    "05_claude_review_round_1.md": ["round: 1", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
++    "06_codex_response_round_1.md": ["round: 1", "reviewer: codex", "addressed_claude_findings:", "validation_rerun:", "remaining_blocking_issues:"],
++    "07_claude_review_round_2.md": ["round: 2", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
++    "08_codex_response_round_2.md": ["round: 2", "reviewer: codex", "addressed_claude_findings:", "validation_rerun:", "remaining_blocking_issues:"],
++    "09_claude_review_round_3.md": ["round: 3", "reviewer: claude_code", "claude_code_read_only: true", "verdict:", "blocking_issues:"],
++}
++
++AI_CROSS_REVIEW_FINAL_MARKERS = {
++    "ai_cross_review_status: pass",
++    "owner_participation: not_required",
++    "rounds_completed: 3",
++    "claude_code_read_only: true",
++    "codex_fixes_or_rebuttals_recorded: true",
++    "machine_gates_passed: true",
++    "unresolved_blocking_issues: 0",
++}
++AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS = [
++    "python workflow\\gtpj_workflow.py validate",
++    "python workflow\\gtpj_workflow.py validate-workflow-consistency",
++    "python workflow\\gtpj_workflow.py audit-boundary",
++    "python -m py_compile workflow\\gtpj_workflow.py",
++]
++
+ 
+ def cmd_agent_cleanup_plan(args: argparse.Namespace) -> int:
+     gate_path = resolve_agent_runtime_gate_path(args.path)
+@@ -5826,6 +5872,13 @@ def workflow_consistency_errors() -> list[str]:
+             "agent_output_refs",
+             "agent-cleanup-plan",
+         ],
++        "docs/workflow/protocols/ai_cross_review_protocol.md": [
++            "owner_participation: not_required",
++            "claude_code_read_only: true",
++            "rounds_completed: 3",
++            "run-ai-cross-review",
++            "validate-ai-cross-review",
++        ],
+         "docs/workflow/protocols/module_template_selection.md": [
+             "feature_adapter_template.py",
+             "composite_module_template.py",
+@@ -5854,6 +5907,14 @@ def workflow_consistency_errors() -> list[str]:
+             "formal_runner_allowed:",
+             "agent_output_refs:",
+             "agent_cleanup:",
++            "ai_cross_review:",
++        ],
++        "experiments/templates/ai_cross_review_template.md": [
++            "05_claude_review_round_1.md",
++            "09_claude_review_round_3.md",
++            "10_final_decision.md",
++            "owner_participation: not_required",
++            "unresolved_blocking_issues: 0",
+         ],
+         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
+         "experiments/templates/modules/README.md": [
+@@ -5893,6 +5954,447 @@ def cmd_validate_workflow_consistency(_: argparse.Namespace) -> int:
+     return 0
+ 
+ 
++def resolve_ai_cross_review_path(path_text: str) -> Path:
++    path = Path(path_text)
++    if not path.is_absolute():
++        path = REPO_ROOT / path
++    return path
++
++
++def ai_cross_review_errors(pack_dir: Path) -> list[str]:
++    errors: list[str] = []
++    if not pack_dir.exists():
++        return [f"missing ai cross review pack: {display_path(pack_dir)}"]
++    if not pack_dir.is_dir():
++        return [f"ai cross review path must be a directory: {display_path(pack_dir)}"]
++
++    for filename in AI_CROSS_REVIEW_REQUIRED_FILES:
++        path = pack_dir / filename
++        if not path.exists():
++            errors.append(f"missing review file: {filename}")
++            continue
++        if not path.is_file():
++            errors.append(f"review entry must be a file: {filename}")
++
++    for filename, markers in AI_CROSS_REVIEW_ROUND_MARKERS.items():
++        path = pack_dir / filename
++        if not path.is_file():
++            continue
++        text = read_text(path)
++        for marker in markers:
++            if marker not in text:
++                errors.append(f"{filename} missing marker: {marker}")
++        if filename in {"05_claude_review_round_1.md", "07_claude_review_round_2.md", "09_claude_review_round_3.md"}:
++            verdict_match = re.search(r"(?im)^\s*verdict:\s*(\S+)\s*$", text)
++            if not verdict_match:
++                errors.append(f"{filename} missing verdict value")
++            elif verdict_match.group(1).strip().lower() != "pass":
++                errors.append(f"{filename} verdict must be pass")
++
++    final_path = pack_dir / "10_final_decision.md"
++    if final_path.is_file():
++        final_text = read_text(final_path)
++        if "ai_cross_review_status: blocked" in final_text:
++            errors.append("ai cross review is blocked")
++        for marker in sorted(AI_CROSS_REVIEW_FINAL_MARKERS):
++            if marker not in final_text:
++                errors.append(f"10_final_decision.md missing marker: {marker}")
++        if re.search(r"unresolved_blocking_issues:\s*[1-9]", final_text):
++            errors.append("10_final_decision.md has unresolved blocking issues")
++
++    return errors
++
++
++def run_command_capture(command: str, *, cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
++    result = subprocess.run(
++        command,
++        cwd=cwd,
++        shell=True,
++        text=True,
++        encoding="utf-8",
++        errors="replace",
++        stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE,
++    )
++    return result.returncode, result.stdout, result.stderr
++
++
++def git_capture(*args: str) -> str:
++    result = subprocess.run(
++        ["git", *args],
++        cwd=REPO_ROOT,
++        text=True,
++        encoding="utf-8",
++        errors="replace",
++        stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE,
++    )
++    if result.returncode != 0:
++        raise WorkflowError(result.stderr.strip() or result.stdout.strip() or f"git {' '.join(args)} failed")
++    return result.stdout
++
++
++def safe_review_slug(value: str) -> str:
++    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip("-._")
++    if not slug:
++        raise WorkflowError("run-ai-cross-review requires a non-empty --slug or --path")
++    return slug[:80]
++
++
++def default_ai_cross_review_dir(slug: str) -> Path:
++    day = datetime.now().strftime("%Y-%m-%d")
++    return REPO_ROOT / "docs" / "agent_reviews" / f"{day}-{safe_review_slug(slug)}"
++
++
++def ensure_review_pack_writable(pack_dir: Path, *, overwrite: bool) -> None:
++    if pack_dir.exists() and any(pack_dir.iterdir()) and not overwrite:
++        raise WorkflowError(f"review pack already exists; pass --overwrite to replace generated files: {display_path(pack_dir)}")
++    pack_dir.mkdir(parents=True, exist_ok=True)
++
++
++def write_review_file(pack_dir: Path, filename: str, content: str, *, overwrite: bool) -> None:
++    path = pack_dir / filename
++    if path.exists() and not overwrite:
++        raise WorkflowError(f"review file already exists; pass --overwrite to replace it: {display_path(path)}")
++    path.write_text(content.rstrip() + "\n", encoding="utf-8")
++
++
++def is_excluded_review_path(path_text: str, exclude_prefixes: list[str]) -> bool:
++    normalized = path_text.replace("\\", "/")
++    return any(normalized == prefix.rstrip("/") or normalized.startswith(prefix.rstrip("/") + "/") for prefix in exclude_prefixes)
++
++
++def collect_changed_files(exclude_prefixes: list[str] | None = None) -> tuple[list[str], list[str]]:
++    prefixes = exclude_prefixes or []
++    status = git_capture("status", "--short").splitlines()
++    changed: list[str] = []
++    untracked: list[str] = []
++    for line in status:
++        if len(line) < 4:
++            continue
++        marker = line[:2]
++        path_text = line[3:].strip()
++        if " -> " in path_text:
++            path_text = path_text.split(" -> ", 1)[1].strip()
++        if is_excluded_review_path(path_text, prefixes):
++            continue
++        changed.append(path_text)
++        if marker == "??":
++            untracked.append(path_text)
++    return changed, untracked
++
++
++def read_untracked_review_snippets(untracked: list[str], *, max_bytes: int = 200_000) -> str:
++    sections: list[str] = []
++    for path_text in untracked:
++        path = REPO_ROOT / path_text
++        if not path.is_file():
++            continue
++        try:
++            data = path.read_bytes()
++        except OSError:
++            continue
++        if b"\0" in data:
++            sections.append(f"\n## 未跟踪二进制文件：{path_text}\n\n```text\nbinary file omitted\n```\n")
++            continue
++        if len(data) > max_bytes:
++            sections.append(f"\n## 未跟踪大文件：{path_text}\n\n```text\nfile omitted because size={len(data)} bytes\n```\n")
++            continue
++        text = data.decode("utf-8", errors="replace")
++        sections.append(f"\n## 未跟踪文件：{path_text}\n\n```text\n{text.rstrip()}\n```\n")
++    return "\n".join(sections)
++
++
++def build_ai_cross_review_diff(exclude_prefixes: list[str] | None = None) -> str:
++    _changed, untracked = collect_changed_files(exclude_prefixes=exclude_prefixes)
++    diff = git_capture("diff", "--binary", "--")
++    snippet = read_untracked_review_snippets(untracked)
++    header = [
++        "# Git diff",
++        "",
++        "```diff",
++        diff.rstrip(),
++        "```",
++    ]
++    if snippet:
++        header.extend(["", "# 未跟踪文件内容", snippet.rstrip()])
++    if not diff.strip() and not snippet:
++        header.extend(["", "```text", "当前没有 git diff 或未跟踪文本文件。", "```"])
++    return "\n".join(header)
++
++
++def run_ai_cross_review_validations(commands: list[str]) -> tuple[bool, str]:
++    if not commands:
++        return False, "commands_run:\nnot_run:\n- 未提供验证命令。\nmachine_gates_passed: false\n"
++    blocks: list[str] = ["commands_run:"]
++    all_passed = True
++    failed: list[str] = []
++    for command in commands:
++        code, stdout, stderr = run_command_capture(command)
++        if code != 0:
++            all_passed = False
++            failed.append(command)
++        blocks.append(
++            "\n".join(
++                [
++                    f"- command: {command}",
++                    f"  exit_code: {code}",
++                    "  stdout: |",
++                    indent_block(stdout.rstrip() or "(empty)", "    "),
++                    "  stderr: |",
++                    indent_block(stderr.rstrip() or "(empty)", "    "),
++                ]
++            )
++        )
++    blocks.append(f"machine_gates_passed: {str(all_passed).lower()}")
++    blocks.append("failed_commands:")
++    if failed:
++        blocks.extend(f"- {command}" for command in failed)
++    else:
++        blocks.append("- none")
++    return all_passed, "\n".join(blocks)
++
++
++def indent_block(text: str, prefix: str) -> str:
++    return "\n".join(prefix + line for line in text.splitlines())
++
++
++def build_claude_prompt(pack_dir: Path, round_number: int) -> str:
++    return f"""你是 GTPJ 的只读 Claude Code 审核者。
++
++请阅读审核证据包：{display_path(pack_dir)}
++
++当前是第 {round_number} 轮。不要修改任何文件，不要启动训练，不要执行 push/delete/发布。
++
++请只报告可复现的问题。每个问题必须给出文件路径、行号或能复现的命令/缺失证据。
++
++输出必须包含这些字段：
++
++```text
++round: {round_number}
++reviewer: claude_code
++claude_code_read_only: true
++verdict: pass | needs_fix | blocked
++blocking_issues:
++non_blocking_issues:
++unsupported_claims:
++missing_validation:
++```
++"""
++
++
++def run_claude_review(args: argparse.Namespace, pack_dir: Path, round_number: int) -> tuple[int, str, str]:
++    prompt = build_claude_prompt(pack_dir, round_number)
++    if args.skip_claude:
++        return 0, "verdict: blocked\nblocking_issues:\n- skip_claude enabled; 未调用 Claude Code。\n", ""
++    executable = shutil.which(args.claude_command) or args.claude_command
++    command = [
++        executable,
++        *args.claude_command_arg,
++        "-p",
++        "--bare",
++        "--permission-mode",
++        "plan",
++        "--output-format",
++        "json",
++        "--disallowedTools",
++        "Edit",
++        "Write",
++    ]
++    try:
++        result = subprocess.run(
++            command,
++            cwd=REPO_ROOT,
++            input=prompt,
++            text=True,
++            encoding="utf-8",
++            errors="replace",
++            stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE,
++        )
++    except OSError as exc:
++        return 127, "", str(exc)
++    return result.returncode, result.stdout, result.stderr
++
++
++def extract_review_verdict(text: str, exit_code: int) -> str:
++    if exit_code != 0:
++        return "blocked"
++    match = re.search(r"verdict\s*:\s*(pass|needs_fix|blocked)", text, flags=re.IGNORECASE)
++    if not match:
++        return "blocked"
++    return match.group(1).lower()
++
++
++def make_claude_review_md(round_number: int, exit_code: int, stdout: str, stderr: str) -> tuple[str, str]:
++    verdict = extract_review_verdict(stdout + "\n" + stderr, exit_code)
++    blocking_value = "" if verdict == "pass" else f"- Claude Code 第 {round_number} 轮未通过或未给出可接受输出。"
++    content = f"""round: {round_number}
++reviewer: claude_code
++claude_code_read_only: true
++inputs_checked:
++- 00_task.md
++- 01_codex_actions.md
++- 02_diff.patch
++- 03_validation.md
++- 04_claims.md
++verdict: {verdict}
++blocking_issues:
++{blocking_value}
++non_blocking_issues:
++unsupported_claims:
++missing_validation:
++
++## Claude Code 原始 stdout
++
++```text
++{stdout.rstrip() or "(empty)"}
++```
++
++## Claude Code 原始 stderr
++
++```text
++{stderr.rstrip() or "(empty)"}
++```
++
++exit_code: {exit_code}
++"""
++    return verdict, content
++
++
++def make_codex_response_md(round_number: int, verdict: str, validation_passed: bool) -> str:
++    remaining = 0 if verdict == "pass" and validation_passed else 1
++    if remaining:
++        summary = "本 helper 不自动修改代码；本轮仍需 Codex 在主流程中修复或基于证据反驳后重新运行审核。"
++    else:
++        summary = "Claude Code 本轮未报告 blocking issue，机器验证保持通过。"
++    return f"""round: {round_number}
++reviewer: codex
++addressed_claude_findings:
++- {summary}
++fixes_applied:
++rejected_findings_with_evidence:
++validation_rerun:
++- 见 03_validation.md
++remaining_blocking_issues: {remaining}
++"""
++
++
++def make_final_decision_md(verdicts: list[str], validation_passed: bool, *, skip_claude: bool) -> str:
++    unresolved = 0 if validation_passed and verdicts == ["pass", "pass", "pass"] and not skip_claude else 1
++    status = "pass" if unresolved == 0 else "blocked"
++    blocked_reason = "" if status == "pass" else "机器验证失败、Claude 未三轮通过、或本次跳过了真实 Claude Code 调用。"
++    return f"""ai_cross_review_status: {status}
++owner_participation: not_required
++rounds_completed: 3
++claude_code_read_only: true
++codex_fixes_or_rebuttals_recorded: true
++machine_gates_passed: {str(validation_passed).lower()}
++unresolved_blocking_issues: {unresolved}
++accepted_by: machine_gates_plus_ai_cross_review
++blocked_reason: {blocked_reason}
++"""
++
++
++def cmd_run_ai_cross_review(args: argparse.Namespace) -> int:
++    pack_dir = resolve_ai_cross_review_path(args.path) if args.path else default_ai_cross_review_dir(args.slug)
++    review_slug = args.slug or pack_dir.name
++    ensure_review_pack_writable(pack_dir, overwrite=args.overwrite)
++    review_exclude_prefixes = ["docs/agent_reviews"]
++    changed_files, _untracked = collect_changed_files(exclude_prefixes=review_exclude_prefixes)
++    commands = [] if args.no_default_validation else list(AI_CROSS_REVIEW_DEFAULT_VALIDATION_COMMANDS)
++    commands.extend(args.validation_command)
++
++    write_review_file(
++        pack_dir,
++        "00_task.md",
++        f"""task_id: {args.task_id or safe_review_slug(review_slug)}
++task_title: {args.task_title or review_slug}
++scope: {args.scope}
++risk_level: {args.risk_level}
++owner_participation: not_required
++review_required: true
++review_reason: {args.review_reason or "重要代码/工作流改动需要 Claude Code 与 Codex 三轮交叉审核。"}
++acceptance_gates:
++- machine_gates_passed: true
++- rounds_completed: 3
++- unresolved_blocking_issues: 0
++""",
++        overwrite=args.overwrite,
++    )
++    write_review_file(
++        pack_dir,
++        "01_codex_actions.md",
++        f"""codex_role: implementer
++changed_files:
++{chr(10).join("- " + item for item in changed_files) if changed_files else "- 当前没有 git status 变化"}
++intended_behavior: {args.task_title or review_slug}
++out_of_scope:
++- 不启动训练
++- 不启动子 agents
++- 不 push
++- 不删除用户数据
++risk_notes: {args.risk_notes or "由 AI 交叉审核和机器验证共同控制风险。"}
++""",
++        overwrite=args.overwrite,
++    )
++    write_review_file(pack_dir, "02_diff.patch", build_ai_cross_review_diff(exclude_prefixes=review_exclude_prefixes), overwrite=args.overwrite)
++    validation_passed, validation_text = run_ai_cross_review_validations(commands)
++    write_review_file(pack_dir, "03_validation.md", validation_text, overwrite=args.overwrite)
++    write_review_file(
++        pack_dir,
++        "04_claims.md",
++        f"""claim: 本次改动已由 Codex 生成证据包，并将由 Claude Code 只读审核三轮。
++status: supported
++evidence_ref: 05_claude_review_round_1.md; 07_claude_review_round_2.md; 09_claude_review_round_3.md
++
++claim: 机器验证命令已运行。
++status: {"verified" if validation_passed else "false"}
++evidence_ref: 03_validation.md
++""",
++        overwrite=args.overwrite,
++    )
++
++    verdicts: list[str] = []
++    round_files = [
++        ("05_claude_review_round_1.md", "06_codex_response_round_1.md"),
++        ("07_claude_review_round_2.md", "08_codex_response_round_2.md"),
++        ("09_claude_review_round_3.md", ""),
++    ]
++    for index, (claude_file, codex_file) in enumerate(round_files, start=1):
++        exit_code, stdout, stderr = run_claude_review(args, pack_dir, index)
++        verdict, claude_md = make_claude_review_md(index, exit_code, stdout, stderr)
++        verdicts.append(verdict)
++        write_review_file(pack_dir, claude_file, claude_md, overwrite=args.overwrite)
++        if codex_file:
++            write_review_file(pack_dir, codex_file, make_codex_response_md(index, verdict, validation_passed), overwrite=args.overwrite)
++
++    write_review_file(
++        pack_dir,
++        "10_final_decision.md",
++        make_final_decision_md(verdicts, validation_passed, skip_claude=args.skip_claude),
++        overwrite=args.overwrite,
++    )
++
++    errors = ai_cross_review_errors(pack_dir)
++    if errors:
++        print(f"run-ai-cross-review path={display_path(pack_dir)} status=blocked")
++        for error in errors:
++            print(f"ERROR {error}")
++        return 1
++    print(f"run-ai-cross-review-ok path={display_path(pack_dir)} rounds=3")
++    return 0
++
++
++def cmd_validate_ai_cross_review(args: argparse.Namespace) -> int:
++    pack_dir = resolve_ai_cross_review_path(args.path)
++    errors = ai_cross_review_errors(pack_dir)
++    if errors:
++        raise WorkflowError("AI 交叉审核校验失败:\n" + "\n".join(errors))
++    print(f"validate-ai-cross-review-ok path={display_path(pack_dir)} rounds=3")
++    return 0
++
++
+ def cmd_validate_trial_meta(args: argparse.Namespace) -> int:
+     path = (REPO_ROOT / args.path).resolve() if args.path else REPO_ROOT / "trial_meta.yaml"
+     if not path.exists():
+@@ -7328,6 +7830,7 @@ Review 1: interface_precheck.md
+ Review 2: review_round_1.md + interface_check.md + quality_check.md
+ Review 3: review_round_2.md + agent_summary.md
+ activation_mode: real_multi_agent
++ai_cross_review: 重要代码/决策改动必须执行；使用 validate-ai-cross-review 校验
+ ```
+ 
+ ## Promotion Gate
+@@ -9380,6 +9883,27 @@ def build_parser() -> argparse.ArgumentParser:
+     validate_workflow_consistency = sub.add_parser("validate-workflow-consistency", help="校验 workflow 文档和模板的 runtime gate 标记")
+     validate_workflow_consistency.set_defaults(func=cmd_validate_workflow_consistency)
+ 
++    validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 三轮 AI 交叉审核证据包")
++    validate_ai_cross_review.add_argument("--path", required=True)
++    validate_ai_cross_review.set_defaults(func=cmd_validate_ai_cross_review)
++
++    run_ai_cross_review = sub.add_parser("run-ai-cross-review", help="生成证据包并调用 Claude Code 三轮只读审核")
++    run_ai_cross_review.add_argument("--slug", default="")
++    run_ai_cross_review.add_argument("--path", default="")
++    run_ai_cross_review.add_argument("--task-id", default="")
++    run_ai_cross_review.add_argument("--task-title", default="")
++    run_ai_cross_review.add_argument("--scope", default="current git diff")
++    run_ai_cross_review.add_argument("--risk-level", default="medium", choices=["low", "medium", "high"])
++    run_ai_cross_review.add_argument("--review-reason", default="")
++    run_ai_cross_review.add_argument("--risk-notes", default="")
++    run_ai_cross_review.add_argument("--validation-command", action="append", default=[])
++    run_ai_cross_review.add_argument("--no-default-validation", action="store_true")
++    run_ai_cross_review.add_argument("--claude-command", default="claude")
++    run_ai_cross_review.add_argument("--claude-command-arg", action="append", default=[])
++    run_ai_cross_review.add_argument("--skip-claude", action="store_true")
++    run_ai_cross_review.add_argument("--overwrite", action="store_true")
++    run_ai_cross_review.set_defaults(func=cmd_run_ai_cross_review)
++
+     validate_trial_meta = sub.add_parser("validate-trial-meta", help="校验 module trial meta 的 scope/affects 分流")
+     validate_trial_meta.add_argument("--path", default="")
+     validate_trial_meta.set_defaults(func=cmd_validate_trial_meta)
+```
+
+# 未跟踪文件内容
+
+## 未跟踪文件：docs/workflow/protocols/ai_cross_review_protocol.md
+
+```text
+# AI 交叉审核协议
+
+本协议定义 GTPJ 中重要代码、workflow、helper、模板、训练、评估和实验决策改动的“免 owner 日常参与”审核门。
+
+目标不是增加仪式感，而是让每个重要改动在被信任前，先经受一次独立、只读、可复现的反向审查。
+
+## 核心规则
+
+日常审核不要求 owner 参与。
+
+Codex 可以实现、修复和记录反驳。Claude Code 只读审核。Codex 必须对 Claude Code 的每个发现给出三类回应之一：
+
+```text
+修复
+基于证据驳回
+标记 blocked
+```
+
+最终是否接受改动，由机器验证和审核证据包共同决定。
+
+owner 不参与日常审核循环，但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
+
+## 必需轮次
+
+高影响改动必须执行三轮 AI 交叉审核：
+
+```text
+第 1 轮：Claude Code 审查原始 diff 和证据包。
+第 2 轮：Codex 修复或反驳，重跑验证，Claude Code 审查更新后的状态。
+第 3 轮：Codex 关闭剩余问题，重跑验证，Claude Code 做最终接受性审查。
+```
+
+每一轮 Claude Code 都必须保持只读。Claude 的发现必须引用具体文件、行号范围、命令或缺失证据。没有可复现抓手的意见可以记录为 non-blocking concern，但不能只凭观点阻断。
+
+## 触发条件
+
+以下改动必须执行三轮 AI 交叉审核：
+
+- workflow helper 代码改动；
+- 会创建或改变硬门的 workflow 协议、模板或规范改动；
+- model、forward、loss、evaluation、data、split、class-order、metric 或 training-entry 改动；
+- module trial 中代码语义发生变化，且即将进入正式 Runner；
+- 会影响 keep、best、rerun、confirmation、promotion、baseline 或论文 claim 的结果解释；
+- owner 明确要求 Claude/Codex 审核的任何任务。
+
+不改变硬门、代码或实验结论的小型文档修订，可以不启用本协议。
+
+## 证据包
+
+审核证据包应放在改动所在目录附近，或统一放在：
+
+```text
+docs/agent_reviews/YYYY-MM-DD-task-name/
+```
+
+证据包必须包含：
+
+```text
+00_task.md
+01_codex_actions.md
+02_diff.patch
+03_validation.md
+04_claims.md
+05_claude_review_round_1.md
+06_codex_response_round_1.md
+07_claude_review_round_2.md
+08_codex_response_round_2.md
+09_claude_review_round_3.md
+10_final_decision.md
+```
+
+模板位置：
+
+```text
+experiments/templates/ai_cross_review_template.md
+```
+
+证据包正文必须使用中文；命令、字段名、文件名、代码标识和必要英文接口名可以保留原文。
+
+## Claude Code 调用方式
+
+推荐本地命令形态：
+
+```powershell
+$prompt = "阅读审核证据包。不要修改文件。只报告能用文件路径、行号、缺失测试、未支撑 claim 或可复现命令证明的问题。"
+$prompt | claude -p --bare --permission-mode plan --output-format json --disallowedTools Edit Write
+```
+
+`ultrareview` 可以作为额外审查，但不能替代审核证据包和最终决定文件。
+
+## 通过条件
+
+审核包只有同时满足下面条件时，才能通过：
+
+```text
+ai_cross_review_status: pass
+owner_participation: not_required
+rounds_completed: 3
+claude_code_read_only: true
+codex_fixes_or_rebuttals_recorded: true
+machine_gates_passed: true
+unresolved_blocking_issues: 0
+```
+
+只要仍有 blocking issue，最终决定必须写成：
+
+```text
+ai_cross_review_status: blocked
+```
+
+blocked 的改动不能进入正式 Runner、keep/best 决策、confirmation、promotion、baseline claim 或论文 claim。
+
+## 校验命令
+
+信任审核包前必须运行：
+
+```powershell
+python workflow\gtpj_workflow.py validate-ai-cross-review --path docs\agent_reviews\YYYY-MM-DD-task-name
+```
+
+这个 helper 检查结构、最终字段、每轮 Claude verdict 是否全部为 `pass`。它不判断 Claude 是否一定正确；它只保证审核循环完整、可追踪、且没有被最终决定文件伪装成通过。
+
+## 自动运行命令
+
+需要自动生成证据包、运行机器验证、调用 Claude Code 三轮只读审核并写回结果时，使用：
+
+```powershell
+python workflow\gtpj_workflow.py run-ai-cross-review --slug task-name --task-title "任务标题"
+```
+
+默认会写入：
+
+```text
+docs/agent_reviews/YYYY-MM-DD-task-name/
+```
+
+默认会运行不启动训练的 workflow 机器验证：
+
+```text
+python workflow\gtpj_workflow.py validate
+python workflow\gtpj_workflow.py validate-workflow-consistency
+python workflow\gtpj_workflow.py audit-boundary
+python -m py_compile workflow\gtpj_workflow.py
+```
+
+如需加入额外验证命令，可重复传入：
+
+```powershell
+--validation-command "python -m pytest tests\test_gtpj_workflow.py -q -p no:cacheprovider"
+```
+
+如果只想生成证据包但不调用真实 Claude Code，可传入 `--skip-claude`；这种情况下最终状态必须是 blocked，不能当作正式通过。
+```
+
+
+## 未跟踪文件：experiments/templates/ai_cross_review_template.md
+
+```text
+# AI 交叉审核证据包模板
+
+## 00_task.md
+
+```text
+task_id:
+task_title:
+scope:
+risk_level: low | medium | high
+owner_participation: not_required
+review_required: true
+review_reason:
+acceptance_gates:
+```
+
+## 01_codex_actions.md
+
+```text
+codex_role: implementer
+changed_files:
+intended_behavior:
+out_of_scope:
+risk_notes:
+```
+
+## 02_diff.patch
+
+```text
+填写 git diff 或 git diff --cached 输出。
+```
+
+## 03_validation.md
+
+```text
+commands_run:
+machine_gates_passed: true | false
+failed_commands:
+not_run:
+reason_if_not_run:
+```
+
+## 04_claims.md
+
+```text
+claim:
+status: verified | supported | assumption | unproven | false
+evidence_ref:
+```
+
+## 05_claude_review_round_1.md
+
+```text
+round: 1
+reviewer: claude_code
+claude_code_read_only: true
+inputs_checked:
+verdict: pass | needs_fix | blocked
+blocking_issues:
+non_blocking_issues:
+unsupported_claims:
+missing_validation:
+```
+
+## 06_codex_response_round_1.md
+
+```text
+round: 1
+reviewer: codex
+addressed_claude_findings:
+fixes_applied:
+rejected_findings_with_evidence:
+validation_rerun:
+remaining_blocking_issues:
+```
+
+## 07_claude_review_round_2.md
+
+```text
+round: 2
+reviewer: claude_code
+claude_code_read_only: true
+inputs_checked:
+verdict: pass | needs_fix | blocked
+blocking_issues:
+non_blocking_issues:
+unsupported_claims:
+missing_validation:
+```
+
+## 08_codex_response_round_2.md
+
+```text
+round: 2
+reviewer: codex
+addressed_claude_findings:
+fixes_applied:
+rejected_findings_with_evidence:
+validation_rerun:
+remaining_blocking_issues:
+```
+
+## 09_claude_review_round_3.md
+
+```text
+round: 3
+reviewer: claude_code
+claude_code_read_only: true
+inputs_checked:
+verdict: pass | needs_fix | blocked
+blocking_issues:
+non_blocking_issues:
+unsupported_claims:
+missing_validation:
+```
+
+## 10_final_decision.md
+
+```text
+ai_cross_review_status: pass | blocked
+owner_participation: not_required
+rounds_completed: 3
+claude_code_read_only: true
+codex_fixes_or_rebuttals_recorded: true
+machine_gates_passed: true | false
+unresolved_blocking_issues: 0
+accepted_by: machine_gates_plus_ai_cross_review
+blocked_reason:
+```
+```

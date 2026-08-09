@@ -1,0 +1,527 @@
+# Git diff
+
+```diff
+diff --git a/NEXT_ACTIONS.md b/NEXT_ACTIONS.md
+index 08dba8c..900c237 100644
+--- a/NEXT_ACTIONS.md
++++ b/NEXT_ACTIONS.md
+@@ -4,15 +4,15 @@
+
+ - 当前关注：GTPJ-v5 active mainline 后的近期复现、调参、队列整理和证据收尾。
+ - 管理规则：只保留 3-7 条近期动作；完整创意库看 idea_tree/INDEX.md；具体实验动作写入 task/trial/attempt。
+-- 更新时间：2026-07-04
++- 更新时间：2026-07-11
+
+ ## 当前窗口
+
+ | 优先级 | 事项 | 类型 | 负责人 | 状态 | 阻塞 | 证据位置 |
+ | --- | --- | --- | --- | --- | --- | --- |
+-| P0 | 每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-5 best model_best/best-model files 并记录 manifest。 | artifact_retention | Coordinator | open | - | docs/workflow/reference/artifact_policy.md |
++| P0 | 每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-3 best model_best/best-model files 并记录 manifest。 | artifact_retention | Coordinator | open | - | docs/workflow/reference/artifact_policy.md |
+ | P1 | 继续 v5-based tuning 或 ablation，配置来源必须是 config/versions/v5.yaml。 | tune_or_ablation | Coordinator | open | 需要 owner 指定调参、消融或混合实验范围。 | experiments/v5/ |
+-| P1 | 下一轮调参后，用 repeat mean 判断 v5 是否超过 v4 confirmed_H=74.45。 | confirmation_planning | Coordinator | open | 需要先产生新的候选结果。 | experiments/v5/confirmation/ |
++| P1 | 下一轮调参后，用 repeat mean 判断 v5 是否超过 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。 | confirmation_planning | Coordinator | open | 需要先产生新的候选结果。 | experiments/v5/confirmation/ |
+
+ ## 已完成摘要
+
+diff --git a/README.md b/README.md
+index 2831d37..c27e9e6 100644
+--- a/README.md
++++ b/README.md
+@@ -17,6 +17,24 @@ future_tuning_base: config/versions/v5.yaml
+
+ The stronger confirmed reference is `v3 / CONFIRM-001 local-v3-054 / confirmed_H=74.47`. v5 is active for the next tuning round, but its frozen-repeat mean is `74.44`, so it is not a stronger confirmed-baseline claim over that confirmed v3 config.
+
++## 当前研究前沿（尚未晋级）
++
++```text
++research_trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
++research_best_single_H: 75.11
++research_best_single_ref: ATTEMPT-017 / DR-095
++research_best_restore_status: not_restored
++latest_exact_repeat: ATTEMPT-018
++latest_repeat_best_H: 74.71
++latest_repeat_mean_H: 74.58
++confirmed_reference_H: 74.47
++promotion_decision: blocked
++```
++
++`H=75.11` 是当前仓库记录的最高单次结果，但它属于调参/窄消融单次证据，不是 confirmed 结果。随后 5 次同配置、同 seed 的 exact repeat 均未还原该数值，因此不能把正式 baseline 或 `confirmed_H` 写成 75.11。
++
++高分并非孤立点：历史账本还记录了 `75.04`、`75.02`、多次 `75.00`，以及一批 `74.80–74.99` 候选。完整分布、候选身份和复现结论见[项目状态](docs/PROJECT_STATUS.md)与[动态路由 trial 进展](experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md)。
++
+ ## Versions
+
+ | Version | Code tag | Status | Dataset | Note |
+diff --git a/docs/PROJECT_STATUS.md b/docs/PROJECT_STATUS.md
+index 68a7349..396f6dc 100644
+--- a/docs/PROJECT_STATUS.md
++++ b/docs/PROJECT_STATUS.md
+@@ -1,6 +1,6 @@
+ # Project Status
+
+-Date: 2026-06-30
++Date: 2026-07-11
+
+ ## Current Active Mainline
+
+@@ -41,6 +41,43 @@ historical_tag: v4 (legacy config-only tag; not a formal framework version)
+
+ `v3/CONFIRM-001 local-v3-054` remains the stronger confirmed reference because its min3 cluster passed and the formal confirmed H is `74.47`; its repeat mean is `74.45`, while the v5 frozen-repeat mean is `74.44`. `GTPJ-v5` is active because the owner explicitly selected it as the next mainline for tuning, not because it supersedes the confirmed v3 config.
+
++## 当前研究前沿（尚未晋级）
++
++```text
++trial: IDEA-0003 / TRIAL-001 Dynamic Residual Routing
++best_single_H: 75.11
++best_single_ref: ATTEMPT-017 / DR-095
++best_single_status: valid_single_run
++latest_repeat_attempt: ATTEMPT-018
++latest_repeat_best_H: 74.71
++latest_repeat_mean_H: 74.58
++latest_repeat_status: not_restored
++promotion_decision: blocked
++```
++
++当前最高单次 `H=75.11` 来自 ATTEMPT-017 的 `DR-095 / a015dr035_weight_plus_0.01`，对应 `U=73.00`、`S=77.36`、`ZS=82.12`。ATTEMPT-018 对该配置完成 5 次同 seed exact repeat，结果为 `74.71/74.62/74.51/74.60/74.45`，均值 `74.58`，没有达到 `restore_target_H=75.11`。
++
++### 高分候选分布
++
++| 证据位置 | 已记录的高分分布 | 说明 |
++|---|---|---|
++| `ATTEMPT-004` | `75.02`、`75.00`、`74.90`、`74.90` | 早期 direction h48 高分单次；75.02 后续复现未回到来源水平。 |
++| `ATTEMPT-011` | 选出的 12 个 `H>=74.80` 来源候选：`75.00×2`、`74.98`、`74.96`、`74.89`、`74.85`、`74.83`、`74.82×3`、`74.81`、`74.80` | 说明 direction h48 附近存在连续高分区域，而不是单个偶然配置。 |
++| `ATTEMPT-014` | exact repeat top5：`74.99`、`74.93`、`74.92`、`74.88`、`74.87` | `74.99` 还原的是较低来源目标 `74.89`；两个来源为 75.00 的候选只达到 `74.81/74.80`。 |
++| `ATTEMPT-015` | 100 jobs 中有 15 个 `H>=74.80`：`75.04`、`75.00`、`74.92`、`74.91`、`74.89`、`74.88×2`、`74.85`、`74.83`、`74.81×5`、`74.80` | 这是当前最清楚的密集高分带证据。 |
++| `ATTEMPT-017` | 结果文件 top5：`75.11`、`74.92`、`74.90`、`74.86`、`74.86` | 机制窄消融产生当前最高单次，但随后未复现。 |
++
++### 75 分来源的复现结论
++
++| 来源单次 | 来源 | 后续 exact repeat | 结论 |
++|---:|---|---|---|
++| `75.11` | ATTEMPT-017 DR-095 | ATTEMPT-018，5 次，best `74.71`，mean `74.58` | `not_restored`，promotion blocked |
++| `75.04` | ATTEMPT-015 DR-004 | ATTEMPT-016，5 次，best `74.84`，mean `74.66` | `not_restored` |
++| `75.00` | ATTEMPT-015 DR-035 | ATTEMPT-016，5 次，best `74.85`，mean `74.65` | `not_restored` |
++| `75.02` | ATTEMPT-004 DR-035 | ATTEMPT-007 min3 mean `74.61`；ATTEMPT-008 min6 mean `74.56`、best `74.76` | 扩展复现未确认，promotion blocked |
++
++因此，项目可以公开陈述“最高单次达到 `H=75.11`，并存在密集的 `74.8x/74.9x` 候选带”，但不能陈述“confirmed/baseline 已达到 75”。
++
+ ## Enabled Modules
+
+ - Frozen CLIP ViT-L/14@336px backbone
+@@ -65,6 +102,7 @@ historical_tag: v4 (legacy config-only tag; not a formal framework version)
+ ## Known Risks
+
+ - `GTPJ-v5` has a best single repeat of `H=74.54`, but its 5-repeat mean is `H=74.44`, below the confirmed v3 config `confirmed_H=74.47`.
++- Dynamic Routing trial 已出现 `H=75.11` 的研究单次和大量 `74.8x/74.9x` 候选，但 75.11、75.04、75.02、75.00 的关键来源均未在后续 exact repeat 中还原。
+ - Future manuscript-grade claims should cite whether a number is `confirmed_H`, repeat mean, or `best_observed_H`.
+ - The next tuning round should start from `config/versions/v5.yaml` but still compare against `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`.
+
+diff --git a/experiments/README.md b/experiments/README.md
+index d1f8006..a8e70a2 100644
+--- a/experiments/README.md
++++ b/experiments/README.md
+@@ -19,6 +19,8 @@ v5/                      GTPJ-v5 owner-activated active mainline 记录
+
+ 当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。
+
++当前研究最高单次来自 `IDEA-0003/TRIAL-001 ATTEMPT-017`，`H=75.11`；ATTEMPT-018 的 5 次 exact repeat 最好 `H=74.71`、均值 `H=74.58`，未还原，因此该结果仍是未晋级的研究单次，不能替代 confirmed reference。完整高分分布见该 trial 的 [README](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md) 和 [ATTEMPTS](module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/ATTEMPTS.md)。
++
+ 旧的 `experiments/v1/` 到 `experiments/v4/` 不删除。`main` 保存全部版本账本，代码快照靠对应 tag 回滚。
+
+ ## 正式表格地图
+diff --git a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md
+index a9dbec3..0f49658 100644
+--- a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md
++++ b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/README.md
+@@ -12,15 +12,20 @@ version_score: 82.0
+ applicability: direct
+ code_branch: dev/v5-idea-0003-trial-001-dynamic-routing
+ run_code_commit: d49f60849b498a0aa6539bb245a2389ffabf2941
+-trial_decision: rerun
++trial_decision: revise
+ promotion_decision: blocked
+ promote_to:
+ evidence_level: valid_single_run
+-best_observed_H: 75.04
+-best_dynamic_single_H: 75.02
+-best_dynamic_repeat_mean_H: 74.61
++best_observed_H: 75.11
++best_dynamic_single_H: 75.11
++best_fixed_n_repeat_mean_H: 74.63
++best_fixed_n_repeat_mean_ref: ATTEMPT-011 / DR047 / n=10
++latest_exact_repeat_ref: ATTEMPT-018 / A017DR095 / n=5
++latest_exact_repeat_best_H: 74.71
++latest_exact_repeat_mean_H: 74.58
++latest_exact_repeat_status: not_restored
+ confirmed_H: pending
+-confirmation_status: needs_confirmation
++confirmation_status: not_restored
+ changed_files: model/MyModel.py; train_GTPJ_CUB.py; workflow/gtpj_workflow.py; tests/test_fae_memory_jepa.py; tests/test_gtpj_workflow.py; trial ledger/config
+ run_config:
+ attempts: ATTEMPTS.md
+@@ -32,7 +37,26 @@ agent_summary: agent_summary.md
+ implementation: implementation.md
+ ```
+
+-## Run Summary
++## 当前实验前沿
++
++当前最高单次是 ATTEMPT-017 `DR-095 / a015dr035_weight_plus_0.01`：`H=75.11`、`U=73.00`、`S=77.36`、`ZS=82.12`。该结果是 `valid_single_run`，不是 confirmation 或 promotion 证据。
++
++ATTEMPT-018 已完成同配置、同 seed 的 5 次 exact repeat，最好 `H=74.71`、均值 `H=74.58`、范围 `74.45–74.71`，没有达到 `restore_target_H=75.11`，状态为 `stopped_repeat_unstable / not_restored`。
++
++| 分层 | 代表结果 | 证据解释 |
++|---|---|---|
++| 最高搜索单次 | ATTEMPT-017 DR-095 `H=75.11` | 当前最高，但未复现。 |
++| 其他 75 分单次 | ATTEMPT-015 `75.04/75.00`；ATTEMPT-004 `75.02/75.00`；ATTEMPT-011 `75.00×2` | 都只能作为调参信号。 |
++| 74.9x 前沿 | `74.99/74.98/74.96/74.93/74.92/74.91/74.90` | 分布在 ATTEMPT-011、014、015、017，说明 h48 小 anchor 区域存在连续信号。 |
++| 74.8x 密集带 | ATTEMPT-015 单轮有 11 个 `74.80–74.89` job；ATTEMPT-011 选出的来源候选中有 8 个 `74.80–74.89` | 高分不是只有一个点，但仍缺少稳定 75+ 复现。 |
++| 最佳固定次数重复均值 | ATTEMPT-011 DR047，`n=10`，mean `74.630`，best `74.87` | 高于旧的 ATTEMPT-007 min3 mean `74.61`，仍非 75+ confirmation。 |
++| 较低目标还原 | ATTEMPT-014 DR-022 `H=74.99`，来源目标 `74.89` | 证明较低目标可还原，不等于还原 75。 |
++
++当前结论保持：`promotion_decision: blocked`；正式 confirmed reference 仍是 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。
++
++## ATTEMPT-001 初始运行摘要
++
++以下 ATTEMPT-001/002/004/006 段落保留历史阶段判断；当前结论以本文开头“当前实验前沿”和 `ATTEMPTS.md` 为准。
+
+ | Field | Value |
+ |---|---|
+@@ -91,7 +115,7 @@ Group summary:
+ | `icsa_gate` | 8 | 53.64 | 62.88 | collapsed or over-injected; avoid dynamic ICSA for now |
+ | `combination` | 8 | 57.32 | 73.38 | combinations are too unstable in this profile |
+
+-## Decision
++## ATTEMPT-001 当时决策
+
+ `promotion_decision: rejected`.
+
+@@ -130,9 +154,9 @@ ATTEMPT-004 and the workflow-v2 validation campaign refine the ATTEMPT-003 direc
+ | ATTEMPT-004 | `RUN-20260702-0002-dr018-confirm-ablate50-2gpu` | DR-009 | `dr016_direction_sample_h48_w0.45_a0.003_r02` | 75.00 | 72.93 | 77.19 | supporting single |
+ | ATTEMPT-006 | `RUN-20260702-0003-mixed2innov8tune-2gpu` | TUNE-002 / DR-004 | `tune_direction_h48_w0.525_a0.003` | 74.75 | 72.90 | 76.69 | repeat candidate |
+
+-Current interpretation:
++ATTEMPT-004/006 当时解释（已被后续 ATTEMPT-017/018 证据更新）：
+
+-- Best observed single is ATTEMPT-004 DR-035 H=75.02.
++- 当时最高单次是 ATTEMPT-004 DR-035 H=75.02；当前最高单次已更新为 ATTEMPT-017 H=75.11。
+ - The strongest family is `direction_sample`, hidden 48, anchor lambda around 0.003-0.005.
+ - ATTEMPT-006 workflow-v2 innovation probes did not help and are stopped for this campaign.
+ - No result is confirmed; promotion remains blocked until min3 repeat and post-run quality closeout.
+diff --git a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/quality_check.md b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/quality_check.md
+index b51de16..2bba237 100644
+--- a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/quality_check.md
++++ b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/quality_check.md
+@@ -3,17 +3,20 @@
+ ```text
+ quality_check_mode: STRICT
+ attempt_id: ATTEMPT-017
+-decision: PASS_RERUN
++latest_repeat_attempt: ATTEMPT-018
++decision: PASS_REVISE
++decision_scope: current trial after ATTEMPT-018 exact repeat closeout
++latest_trial_decision: revise
+ promotion_decision: blocked
+ evidence_level: valid_single_run
+ ```
+
+ ## Findings
+
+-- Metrics are synchronized from `ATTEMPT-017`: U=73.00, S=77.36, H=75.11, ZS=82.12, best_epoch=48.
+-- Trial-level decision recorded as `rerun`.
+-- Attempt confirmation status: confirmed_H=pending, confirmation_status=needs_confirmation.
+-- Promotion/tag remains blocked because active v5 comparison reference is unconfirmed: v5 best_observed_H=74.54 (unconfirmed), confirmed_H=74.44.
++- 最高单次来自 `ATTEMPT-017`：U=73.00、S=77.36、H=75.11、ZS=82.12、best_epoch=48。
++- `ATTEMPT-018` 已完成 5 次 exact repeat：best H=74.71、mean H=74.58，未达到 restore_target_H=75.11。
++- Trial-level decision 记录为 `revise`，confirmation_status 为 `not_restored`。
++- Promotion/tag 保持 blocked；H=75.11 只能作为未还原的研究单次。
+ - Raw artifacts remain in Warehouse; GitHub stores lightweight identities only.
+
+ ## Artifact Check
+@@ -25,8 +28,9 @@ evidence_level: valid_single_run
+ - [x] `artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:server-status-json` exists in Warehouse.
+ - [x] `artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:plan-json` exists in Warehouse.
+ - [x] `manifest.yaml`, `result.yaml`, and `result.md` point back to the attempt-local evidence.
++- [x] `attempts/ATTEMPT-018/manifest.yaml`、`result.yaml`、`quality_check.md` 记录了最新 exact repeat 非还原结论。
+ - [x] No raw training log or checkpoint is copied into GitHub.
+
+ ## Decision
+
+-PASS_RERUN.
++PASS_REVISE；ATTEMPT-017 保留为最高单次来源，ATTEMPT-018 的复现结论为 `not_restored`，当前 trial decision 为 `revise`。
+diff --git a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.md b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.md
+index ad7748a..c231480 100644
+--- a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.md
++++ b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.md
+@@ -11,11 +11,16 @@
+ ```text
+ trial_id: TRIAL-001
+ attempt_id: ATTEMPT-017
++attempt_role: selected_best_single
++current_trial_state_source: ATTEMPT-018
+ evidence_level: valid_single_run
+-result_status: rerun
++result_status: revise
+ promotion_decision: blocked
+ confirmed_H: pending
+-confirmation_status: needs_confirmation
++confirmation_status: not_restored
++latest_exact_repeat_attempt: ATTEMPT-018
++latest_confirmation_status: not_restored
++latest_trial_decision: revise
+ server_summary_csv_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-csv
+ server_summary_jsonl_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-jsonl
+ server_batch_status_json_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:batch-status-json
+@@ -26,6 +31,12 @@ server_plan_json_artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN
+
+ ## Decision
+
+-`rerun`
++`revise`
+
+-ATTEMPT-017 is recorded as `valid_single_run` with confirmed_H=pending and confirmation_status=needs_confirmation. Promotion/tag remains blocked because active v5 comparison reference is unconfirmed: v5 best_observed_H=74.54 (unconfirmed), confirmed_H=74.44.
++ATTEMPT-017 保留为 `valid_single_run` 最高单次来源；ATTEMPT-018 已完成 hard cap 内的 5 次 exact repeat，因此 trial 当前状态为 `revise/not_restored`，promotion/tag 继续 blocked。ATTEMPT-017 当时的 `rerun/needs_confirmation` 历史 decision 保留在 attempt-local 文件中。
++
++## 最新 exact repeat 结论
++
++ATTEMPT-018 对 ATTEMPT-017 `DR-095 / H=75.11` 完成 5 次同配置、同 seed exact repeat：`74.71/74.62/74.51/74.60/74.45`，最好 `74.71`、均值 `74.58`。没有一次达到 `restore_target_H=75.11`，且最好结果低于 near-miss 阈值 `74.91`。
++
++因此 `H=75.11` 继续作为当前 `best_observed_H` 单次记录保留，但状态是 `not_restored`；它不能更新 `confirmed_H`，也不能触发 promotion。
+diff --git a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml
+index 4d45c75..3af4332 100644
+--- a/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml
++++ b/experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml
+@@ -4,6 +4,8 @@ experiment_name: "TRIAL-001_dynamic-routing"
+ kind: "module-trial"
+ version: "v5"
+ attempt_id: "ATTEMPT-017"
++attempt_role: "selected_best_single"
++current_trial_state_source: "ATTEMPT-018"
+ metrics:
+   U: "73.00"
+   S: "77.36"
+@@ -30,15 +32,24 @@ run:
+   pre_run_freeze_commit: ""
+   command: ""
+ decision:
+-  status: "rerun"
+-  result_status: "rerun"
++  status: "revise"
++  result_status: "revise"
+   promotion_decision: "blocked"
+   promote_to: ""
+ evidence:
+   evidence_level: "valid_single_run"
+-  best_observed_H: "75.04"
++  best_observed_H: "75.11"
++  best_observed_ref: "ATTEMPT-017/DR-095"
++  best_observed_evidence_level: "valid_single_run"
++  best_observed_restore_status: "not_restored"
+   confirmed_H: "pending"
+-  confirmation_status: "needs_confirmation"
++  confirmation_status: "not_restored"
++  latest_exact_repeat_attempt: "ATTEMPT-018"
++  latest_exact_repeat_best_H: "74.71"
++  latest_exact_repeat_mean_H: "74.58"
++  latest_exact_repeat_status: "not_restored"
++  latest_trial_decision: "revise"
++  latest_result_status: "stopped_repeat_unstable"
+   server_summary_csv_artifact_id: "artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-csv"
+   server_summary_jsonl_artifact_id: "artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:summary-jsonl"
+   server_batch_status_json_artifact_id: "artifact:v5:module_trial:TRIAL-001:ATTEMPT-017:RUN-20260709-0001:batch-status-json"
+@@ -56,3 +67,4 @@ quality:
+   interface_contract_checked: "true"
+   evaluation_semantics_verified: "true"
+ recorded_at: "2026-07-09T03:35:52+00:00"
++progress_synced_at: "2026-07-11"
+diff --git a/experiments/module_trials/INDEX.md b/experiments/module_trials/INDEX.md
+index d00f599..15a8702 100644
+--- a/experiments/module_trials/INDEX.md
++++ b/experiments/module_trials/INDEX.md
+@@ -10,7 +10,7 @@ Authoritative idea records live under `idea_tree/ideas/`. This directory stores
+ | `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-001_fae_memory_jepa` | revise | ATTEMPT-001 H=73.82, delta_H=-0.47 vs active v2 best_observed_H=74.29 (unconfirmed); do not promote/tag before v2 clean confirmation. |
+ | `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-002_strict_conditional_jepa` | owner_accepted_to_v3 | ATTEMPT-004 H=74.27 accepted as `GTPJ-v3` by owner stochastic-variance decision; confirmed_H remains pending and seed-42 reruns are kept as variance evidence. |
+ | `IDEA-0002` | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | `experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIAL-003_conditional_bvsa_text` | owner_activated_to_v5 | `all_text_cond` enters BVSA cross/local_score; main100 best repeat H=74.54 and frozen-repeat mean H=74.44; owner activated as `GTPJ-v5` active mainline. |
+-| `IDEA-0003` | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing` | rerun | ATTEMPT-017 H=75.11, delta_H=+0.57 vs active v5 best_observed_H=74.54 (unconfirmed); do not promote/tag before v5 clean confirmation. |
++| `IDEA-0003` | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | `experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing` | revise | ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 exact repeat 5 次 best H=74.71、mean H=74.58，未还原；同一候选已到 5 次 hard cap，promotion blocked。 |
+ ## Start Rules
+
+ - Verify or explicitly record source status before any trial starts.
+diff --git a/idea_tree/idea_tree.json b/idea_tree/idea_tree.json
+index 808fbee..9a53b73 100644
+--- a/idea_tree/idea_tree.json
++++ b/idea_tree/idea_tree.json
+@@ -137,7 +137,7 @@
+           "score": 76,
+           "applicability": "direct",
+           "stage": "validated",
+-          "rationale": "TRIAL-003 extends IDEA-0002 by routing all_text_cond into BVSA cross/local_score. Owner activated the best main100 candidate as GTPJ-v5; v4 remains the stronger confirmed reference by repeat mean.",
++          "rationale": "TRIAL-003 通过把 all_text_cond 路由到 BVSA cross/local_score 扩展 IDEA-0002。Owner 已把 main100 最佳候选激活为 GTPJ-v5；更强的正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。",
+           "blockers": []
+         }
+       },
+@@ -215,7 +215,7 @@
+         {
+           "type": "version",
+           "ref": "experiments/v5/VERSION.md",
+-          "note": "GTPJ-v5 is the active mainline for future tuning; v4 confirmed_H=74.45 remains the confirmed reference."
++          "note": "GTPJ-v5 是后续调参的 active mainline；正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
+         }
+       ]
+     },
+@@ -234,9 +234,9 @@
+           "score": 82.0,
+           "applicability": "direct",
+           "stage": "trialing",
+-          "rationale": "GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. TRIAL-001 ATTEMPT-001 completed 50/50 jobs; best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Version fit remains tied to direction/local/PSE routing points; ICSA full dynamic routing is recorded as a higher-risk variant rather than a default version action.",
++          "rationale": "TRIAL-001 已把 direction_sample h48 收敛成连续高分区域：ATTEMPT-017 最高单次 H=75.11，ATTEMPT-015 有 15 个 H>=74.80 job。ATTEMPT-018 对 75.11 候选做 5 次同配置同 seed exact repeat，最好 H=74.71、均值 H=74.58，未还原。因此该机制保留为有信号但不稳定的 trial，不进入 promotion。",
+           "blockers": [
+-            "ATTEMPT-001 did not exceed v4 confirmed_H=74.45 or v5 repeat mean H=74.44"
++            "ATTEMPT-018 未还原 ATTEMPT-017 的 H=75.11；最高重复 H=74.71、均值 H=74.58，promotion 继续 blocked"
+           ]
+         }
+       },
+@@ -256,7 +256,7 @@
+       "expected_effect": {
+         "U": "Main target. Dynamic local/ICSA/PSE balance may improve unseen transfer by avoiding a single fixed seen-biased coefficient.",
+         "S": "Should stay near v5 if gates initialize around v5 fixed values and anchor regularization is enabled.",
+-        "H": "Target improvement is repeat mean above v5 repeat mean H=74.44 and preferably above v4 confirmed_H=74.45."
++        "H": "目标是让重复均值超过 v5 repeat mean H=74.44，并与 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47 比较。"
+       },
+       "implementation_scope": "TRIAL-001 only adds dynamic routing gates, config switches, gate statistics, tests, and two-GPU batch automation. The switch-off path must preserve v5 behavior. The trial does not change dataset split, class index order, evaluation metrics, optimizer, or promotion status.",
+       "risk": "Gate collapse to 0/1, hidden seen-class overfit, sample/class broadcasting mistakes, silent switch-off drift, extra compute, and config alias drift are the main risks.",
+@@ -284,12 +284,12 @@
+         {
+           "type": "baseline_anchor",
+           "ref": "experiments/v5/VERSION.md",
+-          "note": "v5 is the active mainline; v4 confirmed_H=74.45 remains the confirmed reference."
++          "note": "v5 是 active mainline；正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
+         },
+         {
+           "type": "trial",
+           "ref": "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml",
+-          "note": "ATTEMPT-017 H=75.11, delta_H=+0.57 vs v5 best_observed_H=74.54 (unconfirmed); trial decision=rerun."
++          "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
+         }
+       ]
+     }
+diff --git a/idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md b/idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md
+index 8acb25c..a2017ee 100644
+--- a/idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md
++++ b/idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md
+@@ -3,7 +3,7 @@
+ ```text
+ idea_id: IDEA-0003
+ title: Dynamic Residual Routing
+-status: selected
++status: weakened
+ source_type: user
+ source_ref: owner:2026-06-30:make residual and mixture coefficients dynamic routes
+ source_status: local_heuristic
+@@ -54,13 +54,13 @@ TRIAL-001 must not change dataset split, class order, label mapping, logits shap
+ |---|---|
+ | U | Main target. Dynamic local/ICSA/PSE balance may improve unseen transfer by avoiding a single fixed seen-biased coefficient. |
+ | S | Should stay near v5 if gates initialize around v5 fixed values and anchor regularization is enabled. |
+-| H | Target improvement is repeat mean above v5 repeat mean H=74.44 and preferably above v4 confirmed_H=74.45. |
++| H | 目标是让重复均值超过 v5 repeat mean H=74.44，并与 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47 比较。 |
+
+ ## Version Adaptation
+
+ | Version | Score | Applicability | Stage | Rationale |
+ |---|---:|---|---|---|
+-| `v5` | 82.0 | direct | selected | v5 already routes `all_text_cond` into BVSA when configured, and has the fixed residual/mix coefficients this trial will replace dynamically. |
++| `v5` | 82.0 | direct | trialing | v5 already routes `all_text_cond` into BVSA when configured, and has the fixed residual/mix coefficients this trial will replace dynamically. |
+
+ ## Compatibility
+
+@@ -83,23 +83,21 @@ This idea can only move beyond trial evidence if:
+
+ - 50-run batch has complete status and failure accounting.
+ - Top2 frozen repeats complete.
+-- Repeat mean clearly beats v5 repeat mean H=74.44 and is compared against v4 confirmed_H=74.45.
++- 重复均值明确超过 v5 repeat mean H=74.44，并与 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47 比较。
+ - Interface and quality checks confirm class order, seen/unseen split, logits shape, and metric semantics are unchanged.
+
+-## ATTEMPT-001 Result
++## 当前实验结果
+
+-`TRIAL-001_dynamic-routing` ran `RUN-20260630-0005-dynroute50-2gpu` with 50 completed jobs and 0 failures.
++TRIAL-001 已记录到 ATTEMPT-018。当前研究前沿如下：
+
+-Key evidence:
++- ATTEMPT-017 `DR-095 / a015dr035_weight_plus_0.01` 为最高单次，`H=75.11`、`U=73.00`、`S=77.36`、`ZS=82.12`。
++- ATTEMPT-015 的 100 jobs 中有 15 个 `H>=74.80`，其中 `75.04/75.00` 两个达到 75；ATTEMPT-011 也选出了 12 个 `H>=74.80` 来源候选。
++- ATTEMPT-018 对 `H=75.11` 候选完成 5 次同配置、同 seed exact repeat，最好 `H=74.71`、均值 `H=74.58`，未还原。
++- ATTEMPT-014 的 exact repeat 曾达到 `H=74.99`，但它还原的是来源目标 `74.89`，不能解释为 75 已复现。
++- 正式 confirmed reference 仍是 `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47`。
+
+-- best overall: DR-001 static control, H=74.40;
+-- best dynamic single: DR-008 `local_class_h24`, H=74.39;
+-- best direction single: DR-023 `direction_sample_h48_a0.003`, H=74.38;
+-- best dynamic repeat mean: DR-008, H=74.23;
+-- references: v4 confirmed H=74.45, v5 repeat mean H=74.44.
+-
+-Decision: no promotion. The idea remains selected for a revise/follow-up trial.
++结论：动态路由在 direction_sample h48 小 anchor 区域具有连续高分信号，但 75+ 来源候选尚未稳定复现。保留该 idea 为 `weakened/trialing`，`promotion_decision: blocked`。
+
+ ## Next Action
+
+-Run the `principled-followup` profile from `workflow/gtpj_workflow.py`: keep dynamic ICSA fixed, focus on direction/local/PSE gates, and repeat the top 3 candidates.
++不要继续追加 ATTEMPT-017 `DR-095` 的复现次数；它已经达到 5 次 hard cap。后续如继续研究，应基于 `74.8x/74.9x` 密集带提出新的机制假设或新候选，再走独立的 tune -> exact repeat 证据链。
+diff --git a/idea_tree/queues/queue_state.yaml b/idea_tree/queues/queue_state.yaml
+index 943b27c..7db8daa 100644
+--- a/idea_tree/queues/queue_state.yaml
++++ b/idea_tree/queues/queue_state.yaml
+@@ -1,11 +1,11 @@
+ schema_version: "gtpj-queue-state/v1"
+-updated_at: "2026-07-04"
++updated_at: "2026-07-11"
+ current_window:
+   focus: "GTPJ-v5 active mainline 后的近期复现、调参、队列整理和证据收尾。"
+   policy: "只保留 3-7 条近期动作；完整创意库看 idea_tree/INDEX.md；具体实验动作写入 task/trial/attempt。"
+ actions:
+   - priority: "P0"
+-    item: "每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-5 best model_best/best-model files 并记录 manifest。"
++    item: "每次正式 campaign 结束后执行 Warehouse checkpoint retention，只保留 Top-3 best model_best/best-model files 并记录 manifest。"
+     type: "artifact_retention"
+     owner: "Coordinator"
+     status: "open"
+@@ -19,7 +19,7 @@ actions:
+     blocked_by: "需要 owner 指定调参、消融或混合实验范围。"
+     evidence_ref: "experiments/v5/"
+   - priority: "P1"
+-    item: "下一轮调参后，用 repeat mean 判断 v5 是否超过 v4 confirmed_H=74.45。"
++    item: "下一轮调参后，用 repeat mean 判断 v5 是否超过 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
+     type: "confirmation_planning"
+     owner: "Coordinator"
+     status: "open"
+diff --git a/idea_tree/versions/v5.md b/idea_tree/versions/v5.md
+index 0a4cee1..b4321f7 100644
+--- a/idea_tree/versions/v5.md
++++ b/idea_tree/versions/v5.md
+@@ -5,9 +5,9 @@
+
+ | 排名 | Idea | 标题 | Idea 文件 | 优先级 | 适用性 | 阶段 | 阻塞点 | 版本适配说明 |
+ |---:|---|---|---|---:|---|---|---|---|
+-| 1 | `IDEA-0003` | Dynamic Residual Routing | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | 82.0 | direct | trialing | ATTEMPT-001 did not exceed v4 confirmed_H=74.45 or v5 repeat mean H=74.44 | GTPJ-v5 already has fixed residual and mixture coefficients on the same active path: local_weight, icsa_ratio, weight_s2v, and pse_outer_ratio. TRIAL-001 ATTEMPT-001 completed 50/50 jobs; best dynamic single H=74.39 and dynamic repeat mean H=74.23 did not beat v4 confirmed H=74.45 or v5 repeat mean H=74.44. Version fit remains tied to direction/local/PSE routing points; ICSA full dynamic routing is recorded as a higher-risk variant rather than a default version action. |
++| 1 | `IDEA-0003` | Dynamic Residual Routing | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | 82.0 | direct | trialing | ATTEMPT-018 未还原 ATTEMPT-017 的 H=75.11；最高重复 H=74.71、均值 H=74.58，promotion 继续 blocked | TRIAL-001 已把 direction_sample h48 收敛成连续高分区域：ATTEMPT-017 最高单次 H=75.11，ATTEMPT-015 有 15 个 H>=74.80 job。ATTEMPT-018 对 75.11 候选做 5 次同配置同 seed exact repeat，最好 H=74.71、均值 H=74.58，未还原。因此该机制保留为有信号但不稳定的 trial，不进入 promotion。 |
+ | 2 | `IDEA-0001` | CLIP-A-self text prototype adapter | `idea_tree/ideas/IDEA-0001_clip_a_self_text_prototype/IDEA.md` | 80 | direct | validated | - | Inherited by GTPJ-v5; v5 activates conditional BVSA text and tuned PSE/local weights but keeps the PSE interface and legacy aliases intact. |
+-| 3 | `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | 76 | direct | validated | - | TRIAL-003 extends IDEA-0002 by routing all_text_cond into BVSA cross/local_score. Owner activated the best main100 candidate as GTPJ-v5; v4 remains the stronger confirmed reference by repeat mean. |
++| 3 | `IDEA-0002` | FAE-memory JEPA auxiliary loss | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | 76 | direct | validated | - | TRIAL-003 通过把 all_text_cond 路由到 BVSA cross/local_score 扩展 IDEA-0002。Owner 已把 main100 最佳候选激活为 GTPJ-v5；更强的正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。 |
+
+ ## 准入规则
+
+diff --git a/workflow/README.md b/workflow/README.md
+index 79651af..9079928 100644
+--- a/workflow/README.md
++++ b/workflow/README.md
+@@ -15,7 +15,7 @@ docs/workflow/reference/agent_contracts.md
+ ```
+
+ 当前 active mainline code 是 `GTPJ-v5 / tag v5`。`best_observed_H=74.54`，
+-`confirmed_H=74.44`，仍需和更强 confirmed reference `v4 confirmed_H=74.45` 区分表述。
++`confirmed_H=74.44`，仍需和更强 confirmed reference `v3/CONFIRM-001 local-v3-054 confirmed_H=74.47` 区分表述。当前 IDEA-0003/TRIAL-001 的研究最高单次为 `H=75.11`，但 exact repeat 未还原，不能写成 confirmed 或 promoted 结果。
+ `validate` 会检查本地 baseline tag 是否能读到对应记录；`validate-remote`
+ 用于核对远端 `main` 和 baseline tags 是否与本地治理事实对齐。
+```

@@ -1,10 +1,17 @@
 # Confirmation Agents
 
-本文件用于 version-level confirmation。重新复现用于验证已有 baseline 或版本级结果是否可信。
+## 默认模式更新
 
-如果确认对象是某个 module trial 的 `best_attempt_id`，使用 `module_trial_protocol.md` 的
-trial-internal clean `confirmation`，写入该 trial 的 `ATTEMPTS.md` 和
-`attempts/ATTEMPT-xxx/`，不写入 `experiments/vX/confirmation/`。
+正式 confirmation / rerun 默认使用 `real_multi_agent` + workflow-scoped `named_owner_thread`。Runner 仍然串行，但 Log Analyst、Quality Checker、Result Analyst 必须使用独立上下文；promotion 前或争议结果还必须启用 Reviewer。
+
+`role_only` 只允许用于准备冻结配置、查看复现状态，或明确不登记正式证据的 debug/smoke。
+
+`named_owner_thread` 可以覆盖本轮 confirmation workflow；正式复现结论、best 复核和 promotion-facing 结论必须回到 `agent_summary.md`、result、quality 和 artifact evidence。跨 workflow 连续追踪时才启用 `persistent_thread`。
+
+本文件用于正式框架 confirmation。重新复现用于验证已有框架、配置或具体运行是否可信。
+
+如果确认对象是旧 module trial 的 `best_attempt_id`，仍在所属正式框架的 `confirmation/` 建正式实验，
+并用 `legacy_ref` 回指旧 Attempt。
 
 ## 启用角色
 
@@ -13,6 +20,7 @@ Coordinator
 Runner
 Log Analyst
 Quality Checker
+Result Analyst
 ```
 
 ## 默认禁用角色
@@ -20,14 +28,13 @@ Quality Checker
 ```text
 Implementer
 Interface Checker
-Reviewer
-Result Analyst
+Reviewer, unless promotion-facing or disputed evidence
 ```
 
 ## 编排
 
 ```text
-Coordinator -> Runner -> Log Analyst + Quality Checker -> Coordinator
+Coordinator -> Runner -> Log Analyst + Quality Checker + Result Analyst -> Coordinator
 ```
 
 ## 关键规则

@@ -12,6 +12,7 @@
       "source_ref": "paper:Enhancing CLIP with GPT-4; code:https://github.com/mayug/VDT-Adapter",
       "source_status": "verified",
       "global_score": 82.0,
+      "core_summary": "用 CLIP-A-self 对 seen-class GPT/VDT 句子描述做自注意力聚合，增强文本原型适配器，同时保持 GZSL 接口不变。",
       "version_scores": {
         "v1": {
           "score": 78.0,
@@ -98,8 +99,7 @@
           "ref": "experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.yaml",
           "note": "TRIAL-001 current formal best is ATTEMPT-019 H=74.29, promoted to GTPJ-v2 by owner decision on 2026-06-27; clean confirmation and U/S gap analysis remain follow-ups."
         }
-      ],
-      "next_action": "Use GTPJ-v5 as the active mainline; future tuning can inspect PSE/BVSA weight sensitivity while comparing repeat mean against v4 confirmed_H=74.45."
+      ]
     },
     {
       "idea_id": "IDEA-0002",
@@ -110,6 +110,7 @@
       "source_ref": "owner:2026-06-27:move AG-JEPA visual context after FAE while keeping FAE-pre patch target",
       "source_status": "local_heuristic",
       "global_score": 72.0,
+      "core_summary": "把 JEPA 辅助损失的视觉 context 移到 FAE memory，用 FAE-enhanced context 预测 detached pre-FAE patch target。",
       "version_scores": {
         "v2": {
           "score": 72.0,
@@ -136,7 +137,7 @@
           "score": 76,
           "applicability": "direct",
           "stage": "validated",
-          "rationale": "TRIAL-003 extends IDEA-0002 by routing all_text_cond into BVSA cross/local_score. Owner activated the best main100 candidate as GTPJ-v5; v4 remains the stronger confirmed reference by repeat mean.",
+          "rationale": "TRIAL-003 通过把 all_text_cond 路由到 BVSA cross/local_score 扩展 IDEA-0002。Owner 已把 main100 最佳候选激活为 GTPJ-v5；更强的正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。",
           "blockers": []
         }
       },
@@ -214,10 +215,83 @@
         {
           "type": "version",
           "ref": "experiments/v5/VERSION.md",
-          "note": "GTPJ-v5 is the active mainline for future tuning; v4 confirmed_H=74.45 remains the confirmed reference."
+          "note": "GTPJ-v5 是后续调参的 active mainline；正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
         }
+      ]
+    },
+    {
+      "idea_id": "IDEA-0003",
+      "idea_dir": "idea_tree/ideas/IDEA-0003_dynamic_residual_routing/",
+      "title": "Dynamic Residual Routing",
+      "status": "weakened",
+      "source_type": "user",
+      "source_ref": "owner:2026-06-30:make residual and mixture coefficients dynamic routes",
+      "source_status": "local_heuristic",
+      "global_score": 78.0,
+      "core_summary": "把 v5 中固定 residual/mix 系数改成可学习 dynamic gates，按样本或类别调节 local、ICSA、BVSA direction 和 PSE routing。",
+      "version_scores": {
+        "v5": {
+          "score": 82.0,
+          "applicability": "direct",
+          "stage": "trialing",
+          "rationale": "TRIAL-001 已把 direction_sample h48 收敛成连续高分区域：ATTEMPT-017 最高单次 H=75.11，ATTEMPT-015 有 15 个 H>=74.80 job。ATTEMPT-018 对 75.11 候选做 5 次同配置同 seed exact repeat，最好 H=74.71、均值 H=74.58，未还原。因此该机制保留为有信号但不稳定的 trial，不进入 promotion。",
+          "blockers": [
+            "ATTEMPT-018 未还原 ATTEMPT-017 的 H=75.11；最高重复 H=74.71、均值 H=74.58，promotion 继续 blocked"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
       ],
-      "next_action": "Use GTPJ-v5 as the active mainline. Next work should tune from config/versions/v5.yaml and compare repeat mean against v4 confirmed_H=74.45."
+      "based_on_modules": [
+        "PSE",
+        "ICSA",
+        "BVSA local_score",
+        "BVSA direction mix",
+        "FGVD",
+        "SGMP"
+      ],
+      "target_component": "model/MyModel.py dynamic residual and score routing",
+      "hypothesis": "Replacing v5 fixed coefficients with gates initialized near the fixed values can adapt local score strength, ICSA injection strength, BVSA direction mix, and PSE outer residual per sample or class. If the gates avoid collapse, they may preserve seen-class strength while improving unseen transfer and H stability.",
+      "expected_effect": {
+        "U": "Main target. Dynamic local/ICSA/PSE balance may improve unseen transfer by avoiding a single fixed seen-biased coefficient.",
+        "S": "Should stay near v5 if gates initialize around v5 fixed values and anchor regularization is enabled.",
+        "H": "目标是让重复均值超过 v5 repeat mean H=74.44，并与 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47 比较。"
+      },
+      "implementation_scope": "TRIAL-001 only adds dynamic routing gates, config switches, gate statistics, tests, and two-GPU batch automation. The switch-off path must preserve v5 behavior. The trial does not change dataset split, class index order, evaluation metrics, optimizer, or promotion status.",
+      "risk": "Gate collapse to 0/1, hidden seen-class overfit, sample/class broadcasting mistakes, silent switch-off drift, extra compute, and config alias drift are the main risks.",
+      "compatibility": "use_dynamic_routing=false keeps the v5 fixed path. Fixed gate modes initialize to v5 values and provide an auditable bridge between static coefficients and learned gates.",
+      "transfer_notes": "Treat as a routing mechanism tied to BVSA/PSE/ICSA. Reuse in later versions only after verifying class order, conditional text path, and score scale invariants.",
+      "priority": 0.82,
+      "linked_trials": [
+        "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing"
+      ],
+      "linked_versions": [
+        "v5"
+      ],
+      "linked_experiments": [],
+      "evidence": [
+        {
+          "type": "owner_hypothesis",
+          "ref": "owner:2026-06-30",
+          "note": "Owner proposed replacing residual-like coefficients a*x+(1-a)*x with dynamic routing gates."
+        },
+        {
+          "type": "code_anchor",
+          "ref": "model/MyModel.py",
+          "note": "Existing fixed coefficients appear in PSE outer residual, ICSA text injection, BVSA direction mix, and final local_score blend."
+        },
+        {
+          "type": "baseline_anchor",
+          "ref": "experiments/v5/VERSION.md",
+          "note": "v5 是 active mainline；正式 confirmed reference 是 v3/CONFIRM-001 local-v3-054 confirmed_H=74.47。"
+        },
+        {
+          "type": "trial",
+          "ref": "experiments/module_trials/IDEA-0003_dynamic_residual_routing/TRIAL-001_dynamic-routing/result.yaml",
+          "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
+        }
+      ]
     }
   ]
 }

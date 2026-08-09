@@ -1,0 +1,74 @@
+# paper-derived GTPJ module 的 trial-local config 模板。
+# 默认值必须保持选定 base version 的行为。
+
+trial_id:
+  value: TRIAL-xxx
+base_version:
+  value: vX
+base_code_tag:
+  value: vX
+
+dataset:
+  value: CUB
+dataset_split:
+  value: xlsa17/att_splits.mat
+evaluation_protocol:
+  value: standard_gzsl_u_s_h_zs
+
+module_name:
+  value: TODO_MODULE
+module_source:
+  value: module_source.md
+trial_meta:
+  value: trial_meta.yaml
+module_template_family:
+  value: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view | composite | architecture_change
+training_template:
+  value: experiments/templates/modules/standard_gzsl_training_template.py
+training_entry_mode:
+  value: existing_entry_equivalent | strict_template_entry
+selected_training_entry:
+  value: train_GTPJ_CUB.py | training_entry.py
+legacy_module_migration:
+  value: not_required | required | completed
+module_scope:
+  value: single_module | composite | architecture_change
+composition_mode:
+  value: none | sequential | parallel | gated | residual
+components:
+  value:
+    - name: TODO_COMPONENT
+      template_family: feature_adapter | fusion_gate | auxiliary_loss | sampler_or_data_view
+      attachment_point: TODO_ATTACHMENT
+      enabled_key: use_TODO_COMPONENT
+use_trial_module:
+  value: false
+
+affects:
+  value:
+    forward_main_flow: false
+    class_scoring: false
+    train_data_view: false
+    eval_input_output: false
+    split_or_label_mapping: false
+
+epochs:
+  value: 0
+eval_every_epochs:
+  value: 1
+top_k_checkpoints:
+  value: 3
+
+# 在某个 attempt 明确启用模块前，lambda 保持为 0。
+lambda_trial_loss:
+  value: 0.0
+
+# 受保护的 GZSL 语义；普通 module trial 内不得改变。
+protect_seen_unseen_split:
+  value: true
+protect_class_order:
+  value: true
+protect_label_mapping:
+  value: true
+protect_metric_semantics:
+  value: true

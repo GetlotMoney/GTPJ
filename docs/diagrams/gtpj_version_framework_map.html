@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ Version Framework Map</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5d6773;
+      --line: #c7d0da;
+      --panel: #ffffff;
+      --bg: #f4f7fb;
+      --blue: #2563eb;
+      --teal: #0f766e;
+      --green: #15803d;
+      --amber: #b45309;
+      --rose: #be123c;
+      --violet: #6d28d9;
+      --shadow: 0 12px 28px rgba(17, 24, 39, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.55 "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    header {
+      padding: 28px 36px 18px;
+      background: #101827;
+      color: #f8fafc;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 0;
+      color: #cbd5e1;
+      max-width: 1100px;
+    }
+
+    main {
+      padding: 24px 36px 40px;
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .meta div,
+    .panel,
+    .version-card,
+    .legend-card {
+      background: var(--panel);
+      border: 1px solid #d9e1eb;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .meta div {
+      padding: 12px 14px;
+    }
+
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+
+    .value {
+      font-weight: 650;
+      word-break: break-word;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 0.95fr 1.35fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .wide {
+      margin-bottom: 18px;
+    }
+
+    .io-flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(170px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow-box {
+      position: relative;
+      padding: 12px 12px 11px;
+      border: 1px solid #d5dde8;
+      border-radius: 8px;
+      background: #ffffff;
+      min-height: 132px;
+    }
+
+    .flow-box::after {
+      content: ">";
+      position: absolute;
+      right: -10px;
+      top: 48%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-weight: 800;
+      background: var(--bg);
+      padding: 0 2px;
+    }
+
+    .flow-box.end::after,
+    .flow-box.branch::after {
+      content: "";
+    }
+
+    .flow-box h3 {
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .flow-box p {
+      margin: 3px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .flow-box strong {
+      color: var(--ink);
+    }
+
+    .flow-box.clip { border-top: 4px solid var(--blue); }
+    .flow-box.text { border-top: 4px solid var(--teal); }
+    .flow-box.memory { border-top: 4px solid var(--violet); }
+    .flow-box.align { border-top: 4px solid var(--amber); }
+    .flow-box.output { border-top: 4px solid var(--green); }
+    .flow-box.loss { border-top: 4px solid var(--rose); }
+
+    .branch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .loss-detail {
+      margin-top: 12px;
+      border: 1px solid #ead0d7;
+      background: #fff7f8;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .loss-detail h3 {
+      color: #9f1239;
+      margin-bottom: 10px;
+    }
+
+    .loss-flow {
+      display: grid;
+      grid-template-columns: 1.25fr 0.9fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .loss-col {
+      border: 1px solid #f0c7d1;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 120px;
+    }
+
+    .loss-col.center {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-color: #fb7185;
+      background: #fff1f2;
+    }
+
+    .loss-col h4 {
+      margin: 0 0 7px;
+      font-size: 13px;
+      color: #4c0519;
+    }
+
+    .loss-col p {
+      margin: 4px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .module-table-wrap {
+      margin-top: 14px;
+      overflow-x: auto;
+      border: 1px solid #d9e1eb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table.module-table {
+      width: 100%;
+      min-width: 1050px;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .module-table th,
+    .module-table td {
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid #e5ebf2;
+      padding: 9px 10px;
+    }
+
+    .module-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .module-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .panel {
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .version-tree {
+      display: grid;
+      gap: 12px;
+      position: relative;
+    }
+
+    .tree-row {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .tag {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      min-height: 56px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 17px;
+    }
+
+    .v1 { background: var(--blue); }
+    .v2 { background: var(--teal); }
+    .v3 { background: var(--violet); }
+    .v4 { background: var(--green); }
+
+    .version-card {
+      padding: 13px 14px;
+      box-shadow: none;
+      min-height: 56px;
+    }
+
+    .version-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      margin-left: 6px;
+      vertical-align: 1px;
+    }
+
+    .confirmed { background: #dcfce7; color: #166534; }
+    .pending { background: #fff7ed; color: #9a3412; }
+    .owner { background: #eef2ff; color: #3730a3; }
+
+    .arrow {
+      margin: -2px 0 -2px 26px;
+      height: 18px;
+      border-left: 2px solid var(--line);
+    }
+
+    .flow-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    svg {
+      min-width: 820px;
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .module {
+      fill: #ffffff;
+      stroke: #cbd5e1;
+      stroke-width: 1.4;
+      rx: 8;
+    }
+
+    .module-title {
+      fill: #111827;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .module-sub {
+      fill: #526071;
+      font-size: 11px;
+    }
+
+    .flow-line {
+      stroke: #475569;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+
+    .aux-line {
+      stroke: #b45309;
+      stroke-width: 1.7;
+      stroke-dasharray: 7 5;
+      fill: none;
+      marker-end: url(#arrow-aux);
+    }
+
+    .text-line {
+      stroke: #0f766e;
+      stroke-width: 1.8;
+      fill: none;
+      marker-end: url(#arrow-text);
+    }
+
+    .version-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .version-grid .version-card {
+      min-height: 320px;
+    }
+
+    ul {
+      padding-left: 18px;
+      margin: 8px 0 0;
+    }
+
+    li { margin: 4px 0; }
+
+    code {
+      background: #eef2f7;
+      padding: 1px 5px;
+      border-radius: 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(170px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .legend-card {
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .legend-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .note {
+      margin-top: 16px;
+      color: var(--muted);
+      background: #ffffff;
+      border-left: 4px solid var(--blue);
+      padding: 11px 14px;
+      border-radius: 6px;
+    }
+
+    @media (max-width: 1100px) {
+      .grid,
+      .meta,
+      .io-flow,
+      .branch-row,
+      .loss-flow,
+      .version-grid,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+      .flow-box::after { content: ""; }
+      main { padding: 18px; }
+      header { padding: 24px 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GTPJ 版本框架图：v1 -> v4</h1>
+    <p>这张图按正式版本记录框架演进、来源证据和当前命名体系。事实源来自 <code>experiments/VERSION_TREE.md</code>、<code>experiments/v*/VERSION.md</code> 和 v4 confirmation 账本。</p>
+  </header>
+
+  <main>
+    <section class="meta">
+      <div><span class="label">Current formal version</span><span class="value">GTPJ-v4 / tag v4</span></div>
+      <div><span class="label">Current main</span><span class="value">f5ca623 checkpoint-retention ledger</span></div>
+      <div><span class="label">V4 tag commit</span><span class="value">87e84e2 confirmed v4 local-054</span></div>
+      <div><span class="label">Boundary</span><span class="value">promotion != activate-version</span></div>
+    </section>
+
+    <section class="panel wide">
+      <h2>重点流程图入口</h2>
+      <p>
+        如果要看从 CLIP 开始的视觉特征、文本特征、条件文本、BVSA、logits 和 loss 输入链路，
+        打开这个专门页面：
+        <a href="gtpj_v4_feature_flow.html">gtpj_v4_feature_flow.html</a>
+      </p>
+      <p>
+        这个页面按张量输入输出画主链路和训练监督分支；SGMP、BMDD、CE 这类 loss 都从实际读取的变量处接入。
+      </p>
+    </section>
+
+    <section class="panel wide">
+      <h2>从 CLIP 开始的模块输入输出流程图（v4）</h2>
+      <div class="io-flow">
+        <div class="flow-box clip">
+          <h3>1. Frozen CLIP</h3>
+          <p><strong>输入</strong>：image batch</p>
+          <p><strong>输出</strong>：<code>clip_features</code></p>
+          <p>[B（图片数量）, 577（CLS+patch）, 768（CLIP维度）]</p>
+          <p>拆成 <code>cls_token</code> + <code>patches</code></p>
+        </div>
+        <div class="flow-box text">
+          <h3>2. Text Cache + PSE</h3>
+          <p><strong>输入</strong>：GPT descriptions</p>
+          <p><strong>输出</strong>：<code>all_text</code></p>
+          <p>[200（类别数）, 768（文本维度）]</p>
+          <p>PSE = CLIP-A-self，v4 <code>outer_ratio=0.5</code></p>
+        </div>
+        <div class="flow-box text">
+          <h3>3. ICSA</h3>
+          <p><strong>输入</strong>：<code>cls_token</code> + <code>all_text</code></p>
+          <p><strong>输出</strong>：<code>all_text_cond</code></p>
+          <p>[B（图片数量）, 200（类别数）, 768（文本维度）]</p>
+          <p>同时生成 <code>base_logits</code></p>
+        </div>
+        <div class="flow-box memory">
+          <h3>4. Patch Select + FGVD</h3>
+          <p><strong>输入</strong>：<code>patches</code></p>
+          <p><strong>输出</strong>：<code>jepa_patch_z</code>, <code>jepa_memory</code></p>
+          <p>[B（图片数量）, 32（选中patch）, 512（公共维度）]</p>
+          <p>FGVD = FAE geometry memory</p>
+        </div>
+        <div class="flow-box align">
+          <h3>5. BVSA</h3>
+          <p><strong>输入</strong>：FGVD memory + text</p>
+          <p><strong>输出</strong>：<code>score_s2v</code>, <code>score_v2s</code>, <code>local_score</code></p>
+          <p>[B（图片数量）, 200（类别数）]</p>
+          <p>双向视觉-语义对齐</p>
+        </div>
+      </div>
+
+      <div class="branch-row">
+        <div class="flow-box output end">
+          <h3>主输出：logits</h3>
+          <p><code>logits_200 = base_logits + 0.1 * local_score</code></p>
+          <p>训练输出：<code>logits</code> = [B（图片数量）, 150（seen类别数）]</p>
+          <p>评估输出：<code>logits</code> = [B（图片数量）, 200（全部类别数）]</p>
+          <p>指标：GZSL U/S/H/ZS</p>
+        </div>
+        <div class="flow-box loss end">
+          <h3>辅助监督：SGMP / BMDD / CE</h3>
+          <p><strong>SGMP</strong> 读 <code>jepa_selected_patches</code>, <code>jepa_patch_z</code>, <code>jepa_memory</code>, <code>all_text_cond</code>, labels。</p>
+          <p>mask topk=8，target = masked <code>patch_z</code> mean.detach，context = kept <code>jepa_memory</code> mean。</p>
+          <p><strong>BMDD</strong> 读 <code>score_s2v</code> 和 <code>score_v2s</code>；<strong>CE</strong> 读 seen logits。</p>
+        </div>
+      </div>
+
+      <div class="loss-detail">
+        <h3>SGMP 不是无输入模块：它是训练时的 auxiliary loss 分支</h3>
+        <div class="loss-flow">
+          <div class="loss-col">
+            <h4>输入张量</h4>
+            <p><code>jepa_selected_patches</code>: [B, 32, 768]，用于按条件文本选 masked patch。</p>
+            <p><code>jepa_patch_z</code>: [B, 32, 512]，masked target 来源，target 会 <code>detach</code>。</p>
+            <p><code>jepa_memory</code>: [B, 32, 512]，keep tokens 的 FGVD memory，作为 context。</p>
+            <p><code>all_text_cond</code>: [B, 200, 768]，正样本/负样本条件文本。</p>
+            <p><code>labels</code>: [B]，全局 seen 类 id，用来取正类和构造负类。</p>
+          </div>
+          <div class="loss-col center">
+            <div>
+              <h4>SGMP / AG-JEPA legacy</h4>
+              <p><code>_ag_jepa_loss()</code></p>
+              <p>mask topk=8</p>
+              <p>context + text_z -> predictor -> pred</p>
+            </div>
+          </div>
+          <div class="loss-col">
+            <h4>输出 loss</h4>
+            <p><code>loss_mpp</code> / legacy <code>loss_jepa</code>: 让 pred 接近 detached masked target。</p>
+            <p><code>loss_neg</code> / legacy <code>loss_jepa_neg</code>: 负类条件文本 margin 约束。</p>
+            <p>最后进入总损失：<code>loss += lambda_mpp * loss_mpp + lambda_neg * loss_neg</code>。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="module-table-wrap">
+        <table class="module-table">
+          <thead>
+            <tr>
+              <th>模块</th>
+              <th>代码位置</th>
+              <th>输入</th>
+              <th>输出</th>
+              <th>作用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Frozen CLIP</td>
+              <td><code>train_GTPJ_CUB.py</code> feature/cache stage</td>
+              <td>图片 batch；GPT/class text descriptions</td>
+              <td><code>clip_features</code> = [B（图片数量）, 577（CLS+576 patch）, 768（CLIP维度）]；<code>gpt_sentence_embeds</code> = [C（类别数）, M（每类句子数）, 768（CLIP文本维度）]</td>
+              <td>冻结视觉/文本编码器，提供所有后续模块的视觉和文本基础特征。</td>
+            </tr>
+            <tr>
+              <td>PSE</td>
+              <td><code>GTPJ.get_adapted_seen_text()</code></td>
+              <td><code>seen_sentence_embeds</code> = [150（seen类别数）, M（每类句子数）, 768（文本维度）]</td>
+              <td><code>seen_text</code> = [150（seen类别数）, 768（文本维度）]；拼上 unseen 后得到 <code>all_text</code> = [200（全部类别数）, 768（文本维度）]</td>
+              <td>句子级 CLIP-A-self 聚合 seen 类文本原型；v4 使用 <code>pse_outer_ratio=0.5</code>。</td>
+            </tr>
+            <tr>
+              <td>ICSA</td>
+              <td><code>GTPJ.forward()</code> / <code>meta_net</code></td>
+              <td><code>cls_token</code> = [B（图片数量）, 768（CLIP维度）]；<code>all_text</code> = [200（类别数）, 768（文本维度）]</td>
+              <td><code>all_text_cond</code> = [B（图片数量）, 200（类别数）, 768（文本维度）]；<code>base_logits</code> = [B（图片数量）, 200（类别数）]</td>
+              <td>用图片 CLS 生成轻量条件偏移，只改 seen 类文本；提供条件文本和基础 cosine logits。</td>
+            </tr>
+            <tr>
+              <td>Patch Selection</td>
+              <td><code>CrossModalTransformer.forward()</code> / <code>lastvit_select_patches()</code></td>
+              <td><code>patches</code> = [B（图片数量）, 576（patch数量）, 768（CLIP维度）]</td>
+              <td><code>jepa_selected_patches</code> = [B（图片数量）, 32（选中patch数）, 768（CLIP维度）]；<code>jepa_selected_indices</code> = [B（图片数量）, 32（选中patch数）]</td>
+              <td>按 v2_abs_mean 选择最有信息的 patch，减少后续 FGVD/BVSA 计算量。</td>
+            </tr>
+            <tr>
+              <td>FGVD</td>
+              <td><code>CrossModalTransformer.embed_cv</code> + <code>FAELayer</code></td>
+              <td><code>jepa_selected_patches</code> + geometry embedding</td>
+              <td><code>jepa_patch_z</code> = [B（图片数量）, 32（选中patch数）, 512（公共维度）]；<code>jepa_memory</code> = [B（图片数量）, 32（选中patch数）, 512（公共维度）]</td>
+              <td>把 CLIP patch 映射到公共维度，并加入几何关系记忆。</td>
+            </tr>
+            <tr>
+              <td>BVSA</td>
+              <td><code>CrossModalTransformer.decoder_v2s</code> / <code>decoder_s2v</code></td>
+              <td><code>jepa_memory</code> = [B（图片数量）, 32（选中patch数）, 512（公共维度）]；<code>all_text</code> = [200（类别数）, 768（文本维度）]</td>
+              <td><code>score_v2s</code>, <code>score_s2v</code>, <code>local_score</code> = [B（图片数量）, 200（类别数）]</td>
+              <td>视觉到语义、语义到视觉双向交互，产生局部对齐分数。</td>
+            </tr>
+            <tr>
+              <td>Classifier head</td>
+              <td><code>GTPJ.forward()</code></td>
+              <td><code>base_logits</code> + <code>local_score</code></td>
+              <td><code>logits_200</code> = [B（图片数量）, 200（类别数）]；训练时切成 [B（图片数量）, 150（seen类别数）]</td>
+              <td>固定 add scoring：<code>base_logits + local_weight * local_score</code>；v4 <code>local_weight=0.1</code>。</td>
+            </tr>
+            <tr>
+              <td>SGMP</td>
+              <td><code>GTPJ._ag_jepa_loss()</code></td>
+              <td><code>jepa_selected_patches</code>, <code>jepa_patch_z</code>, <code>jepa_memory</code>, <code>all_text_cond</code>, labels</td>
+              <td><code>loss_mpp/loss_jepa</code> 和 <code>loss_neg/loss_jepa_neg</code></td>
+              <td>用条件文本选 masked patch，预测 detached target；负样本文本走 margin 约束。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>版本树和来源</h2>
+        <div class="version-tree">
+          <div class="tree-row">
+            <div class="tag v1">v1</div>
+            <div class="version-card">
+              <h3>GTPJ-v1 <span class="status confirmed">confirmed</span></h3>
+              <p>初始正式 baseline。CUB seed=5，H=73.93。</p>
+            </div>
+          </div>
+          <div class="arrow"></div>
+          <div class="tree-row">
+            <div class="tag v2">v2</div>
+            <div class="version-card">
+              <h3>GTPJ-v2 <span class="status owner">owner activated</span></h3>
+              <p>来源：IDEA-0001 / TRIAL-001 / ATTEMPT-019。加入 CLIP-A-self，也就是现在的 PSE。best_observed_H=74.29，confirmed_H=pending。</p>
+            </div>
+          </div>
+          <div class="arrow"></div>
+          <div class="tree-row">
+            <div class="tag v3">v3</div>
+            <div class="version-card">
+              <h3>GTPJ-v3 <span class="status pending">stochastic accepted</span></h3>
+              <p>来源：IDEA-0002 / TRIAL-002 / ATTEMPT-004。加入 strict FAE-memory JEPA 和 conditional text。best_observed_H=74.27，confirmed_H=pending。</p>
+            </div>
+          </div>
+          <div class="arrow"></div>
+          <div class="tree-row">
+            <div class="tag v4">v4</div>
+            <div class="version-card">
+              <h3>GTPJ-v4 <span class="status confirmed">formal confirmed</span></h3>
+              <p>来源：local-v3-054 min3 confirmation。只改配置，不改代码。confirmed_H=74.45，best_observed_H=74.47。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>当前 v4 框架链路</h2>
+        <div class="flow-wrap">
+          <svg viewBox="0 0 980 430" role="img" aria-label="GTPJ v4 framework flow">
+            <defs>
+              <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+                <path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"></path>
+              </marker>
+              <marker id="arrow-text" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+                <path d="M0,0 L9,4.5 L0,9 Z" fill="#0f766e"></path>
+              </marker>
+              <marker id="arrow-aux" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+                <path d="M0,0 L9,4.5 L0,9 Z" fill="#b45309"></path>
+              </marker>
+            </defs>
+
+            <rect class="module" x="30" y="78" width="130" height="68"></rect>
+            <text class="module-title" x="50" y="105">Image</text>
+            <text class="module-sub" x="50" y="126">CUB input</text>
+
+            <rect class="module" x="200" y="72" width="150" height="80"></rect>
+            <text class="module-title" x="224" y="101">Frozen CLIP</text>
+            <text class="module-sub" x="224" y="123">ViT-L/14@336</text>
+
+            <rect class="module" x="390" y="72" width="156" height="80"></rect>
+            <text class="module-title" x="415" y="101">Patch Bottleneck</text>
+            <text class="module-sub" x="415" y="123">LastViT selection</text>
+
+            <rect class="module" x="590" y="72" width="142" height="80"></rect>
+            <text class="module-title" x="635" y="101">FGVD</text>
+            <text class="module-sub" x="615" y="123">geometry memory</text>
+
+            <rect class="module" x="780" y="72" width="150" height="80"></rect>
+            <text class="module-title" x="828" y="101">BVSA</text>
+            <text class="module-sub" x="805" y="123">visual-semantic align</text>
+
+            <rect class="module" x="780" y="212" width="150" height="70"></rect>
+            <text class="module-title" x="827" y="239">Logits</text>
+            <text class="module-sub" x="805" y="260">GZSL U/S/H/ZS</text>
+
+            <rect class="module" x="30" y="258" width="130" height="70"></rect>
+            <text class="module-title" x="54" y="286">GPT Text</text>
+            <text class="module-sub" x="52" y="307">class descriptions</text>
+
+            <rect class="module" x="200" y="250" width="150" height="86"></rect>
+            <text class="module-title" x="254" y="281">PSE</text>
+            <text class="module-sub" x="222" y="302">CLIP-A-self</text>
+            <text class="module-sub" x="222" y="319">outer_ratio=0.5</text>
+
+            <rect class="module" x="390" y="250" width="156" height="86"></rect>
+            <text class="module-title" x="444" y="281">ICSA</text>
+            <text class="module-sub" x="414" y="302">conditional text</text>
+            <text class="module-sub" x="414" y="319">all_text_cond</text>
+
+            <rect class="module" x="590" y="250" width="142" height="86"></rect>
+            <text class="module-title" x="636" y="281">SGMP</text>
+            <text class="module-sub" x="616" y="302">auxiliary loss</text>
+            <text class="module-sub" x="616" y="319">AG-JEPA legacy</text>
+
+            <path class="flow-line" d="M160 112 H200"></path>
+            <path class="flow-line" d="M350 112 H390"></path>
+            <path class="flow-line" d="M546 112 H590"></path>
+            <path class="flow-line" d="M732 112 H780"></path>
+            <path class="flow-line" d="M855 152 V212"></path>
+            <path class="text-line" d="M160 293 H200"></path>
+            <path class="text-line" d="M350 293 H390"></path>
+            <path class="text-line" d="M546 293 C610 293 706 178 780 132"></path>
+            <path class="aux-line" d="M661 250 C652 202 646 176 661 152"></path>
+            <path class="aux-line" d="M732 293 C772 293 820 286 848 282"></path>
+
+            <text x="32" y="24" class="module-title">solid gray = main visual path</text>
+            <text x="290" y="24" class="module-title" fill="#0f766e">solid teal = text / condition path</text>
+            <text x="610" y="24" class="module-title" fill="#b45309">dashed amber = auxiliary SGMP supervision</text>
+            <text x="34" y="390" class="module-sub">Evaluation boundary: class order, seen/unseen split, label mapping, logits shape, and metric calculation are unchanged from v3 to v4.</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="version-grid">
+      <article class="version-card">
+        <h3>v1: initial formal baseline</h3>
+        <p><strong>Status:</strong> confirmed, H=73.93</p>
+        <ul>
+          <li>Frozen CLIP image backbone.</li>
+          <li>GPT class text prototypes.</li>
+          <li>Original text adapter path.</li>
+          <li>Patch bottleneck and geometry-aware visual encoding.</li>
+          <li>Original bidirectional visual-text interaction and auxiliary losses.</li>
+        </ul>
+      </article>
+
+      <article class="version-card">
+        <h3>v2: PSE enters</h3>
+        <p><strong>Status:</strong> owner_activated_unconfirmed, best_observed_H=74.29</p>
+        <ul>
+          <li>Parent: v1.</li>
+          <li>Source: IDEA-0001 / TRIAL-001 / ATTEMPT-019.</li>
+          <li>Change: CLIP-A-self sentence-level prototype adapter.</li>
+          <li>Modern name: <code>PSE</code>.</li>
+          <li>Evaluation semantics unchanged; confirmation still pending.</li>
+        </ul>
+      </article>
+
+      <article class="version-card">
+        <h3>v3: conditional memory framework</h3>
+        <p><strong>Status:</strong> owner_accepted_stochastic_unconfirmed, best_observed_H=74.27</p>
+        <ul>
+          <li>Parent: v2.</li>
+          <li>Source: IDEA-0002 / TRIAL-002 / ATTEMPT-004.</li>
+          <li>Adds strict main-path FAE-memory JEPA context.</li>
+          <li>Modern names: <code>FGVD</code>, <code>BVSA</code>, <code>ICSA</code>, <code>SGMP</code>.</li>
+          <li>Conditional text enters the alignment path as <code>all_text_cond</code>.</li>
+        </ul>
+      </article>
+
+      <article class="version-card">
+        <h3>v4: confirmed tuned config</h3>
+        <p><strong>Status:</strong> confirmed, confirmed_H=74.45</p>
+        <ul>
+          <li>Parent: v3.</li>
+          <li>Source: <code>local-v3-054</code> min3 server confirmation.</li>
+          <li>Config only: <code>pse_outer_ratio=0.5</code>.</li>
+          <li>Config only: <code>local_weight=0.1</code>.</li>
+          <li>No code or evaluation-contract change; not auto activated.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="legend">
+      <div class="legend-card">
+        <strong>PSE</strong>
+        Prototype Semantic Enhancement. Legacy names: Adapter / CLIP-A-self.
+      </div>
+      <div class="legend-card">
+        <strong>ICSA</strong>
+        Instance-Conditioned Semantic Adaptation. Legacy name: meta_net conditional text path.
+      </div>
+      <div class="legend-card">
+        <strong>FGVD</strong>
+        Fine-grained Geometric Visual Descriptor. Legacy name: FAE geometry memory path.
+      </div>
+      <div class="legend-card">
+        <strong>BVSA</strong>
+        Bidirectional Visual-Semantic Alignment. Legacy name: CrossModalTransformer path.
+      </div>
+      <div class="legend-card">
+        <strong>SGMP</strong>
+        Semantic-Guided Masked Prediction. Legacy name: AG-JEPA auxiliary training.
+      </div>
+    </section>
+
+    <p class="note">
+      V4 的正式含义：它是当前确认过的正式版本。它不表示已经运行 <code>activate-version v4</code>，也不表示当前 runtime alias 自动切换。
+      后续 tune、ablation、confirmation 默认应以 <code>config/versions/v4.yaml</code> 为正式基准。
+    </p>
+  </main>
+</body>
+</html>

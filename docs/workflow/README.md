@@ -1,152 +1,123 @@
-# GTPJ 实验创新工作流
+# GTPJ 工作流
 
-本目录默认只服务跑实验、做创新、复现、消融、调参、debug 和实验结果记账。
+本目录不再要求作为一整片协议森林来阅读。
 
-当前阶段已经强制执行核心 workflow。任务路由、启动卡、pre-run freeze、artifact 边界、结果账本、质量门、
-agent 凭证和 promotion gate 都是正式规则，不是未来参考。
+`WORKFLOW_MANIFEST.yaml` 是当前文档瘦身索引：它把 workflow 文件标成
+`daily_entry`、`core`、`playbook`、`protocol`、`reference`、`agents` 和
+`archive`。日常只看入口和一个 playbook；长协议只按 playbook 点名读取。
 
-框架和实验的结构以 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md` 为唯一准则：新代码先是
-`Vx-INNOVATION-xxx` 下的候选框架，候选完成自身验证后才能晋级为新的平级正式框架。旧
-`module_trials`、`TRIAL`、`ATTEMPT` 和 `dev/...` 只用于历史回查，不能作为新实验入口。
-
-owner 日常不需要直接阅读完整协议森林。默认先看：
+日常规则：
 
 ```text
-docs/workflow/QUICK_START.md
-docs/workflow/TASK_START_MINI.md
-docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
+先读 START_HERE.md
+再读 WORKFLOW_KERNEL.md
+再读一个相关 playbook
+只有路由不清楚或 playbook 明确要求时，才读 core/protocols/reference/archive
 ```
 
-`QUICK_START.md` 是人话入口，支持 `查状态`、`复现`、`调参`、`消融`、`开新模块`、
-`试这个：...`、`继续上一个`、`升版本`、`切版本` 等短口令。`TASK_START_MINI.md` 是 owner
-可见的 8 字段启动卡。完整 `WORKFLOW_ROUTER.md` 和 `TASK_START_CARD.md` 保留为 Coordinator
-后台展开和审查依据。
+## 当前有效入口
 
-状态、复现、结果比较、promotion 或 tag 前，Coordinator 必须先检查 `baseline_repro_status`
-或运行 `python workflow/gtpj_workflow.py repro-status --version <vX>`，不要靠聊天记忆判断
-某个 `best_observed_H` 是否已经变成 `confirmed_H`。
+| 文件 | 用途 |
+|---|---|
+| `START_HERE.md` | 人话入口。每个 GTPJ 工作流任务先从这里开始。 |
+| `WORKFLOW_KERNEL.md` | 不可破坏的核心规则：证据、agents、版本、保留策略和安全边界。 |
+| `WORKFLOW_MANIFEST.yaml` | 机器可读文档索引。 |
+| `WORKFLOW_FILE_MAP.md` | 说明哪些文件是有效入口、参考资料、历史记录或模板。 |
 
-当前主规范是：
+## Core 文件
+
+| 文件 | 用途 |
+|---|---|
+| `core/QUICK_START.md` | 人话短口令备忘。 |
+| `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
+| `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
+| `core/TASK_START_CARD.md` | 正式写入或运行前的完整 Coordinator 启动卡。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动前的左侧命名 Codex 线程硬门。 |
+
+## 执行卡 Playbooks
+
+每种任务只选一个执行卡：
 
 ```text
-docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
-docs/workflow/QUICK_START.md
-docs/workflow/TASK_START_MINI.md
-docs/workflow/GTPJ_WORKFLOW_SPEC.md
-docs/workflow/WORKFLOW_ROUTER.md
-docs/workflow/TASK_START_CARD.md
-docs/workflow/IMPLEMENTATION_STATUS.md
-docs/GITHUB_GOVERNANCE.md
-docs/PROJECT_STRUCTURE.md
-docs/PROJECT_STATUS.md
+docs/workflow/playbooks/paper_intake.md
+docs/workflow/playbooks/paper_to_experiment.md
+docs/workflow/playbooks/tune.md
+docs/workflow/playbooks/ablation.md
+docs/workflow/playbooks/confirmation.md
+docs/workflow/playbooks/innovation.md
+docs/workflow/playbooks/promotion.md
+docs/workflow/playbooks/mixed_campaign.md
+docs/workflow/playbooks/autonomous_campaign.md
 ```
 
-当前强制 workflow 文档：
+这些 playbook 是很薄的操作卡，只在任务真的需要细节时才指向旧的长协议。
+
+## 当前简化规则
+
+旧的详细文件保留作审计和边界场景参考，不再作为日常必读。
+
+如果多个工作流文件冲突，按下面优先级处理：
 
 ```text
-docs/workflow/QUICK_START.md
-docs/workflow/TASK_START_MINI.md
-docs/workflow/WORKFLOW_ROUTER.md
-docs/workflow/TASK_START_CARD.md
-docs/workflow/FIRST_CLOSED_LOOP.md
-docs/workflow/CURRENT_WORKFLOW_REPORT.md
-docs/workflow/GTPJ_WORKFLOW_SPEC.md
-docs/workflow/IMPLEMENTATION_STATUS.md
-docs/workflow/workflow_diagrams.md
-docs/workflow/paper_intake.md
-docs/workflow/artifact_policy.md
-docs/workflow/ARTIFACT_REGISTRATION.md
-docs/workflow/result_index_protocol.md
-docs/workflow/experiment_protocol.md
-docs/workflow/innovation_code_review_protocol.md
-docs/workflow/quality_gate.md
-docs/workflow/promotion.md
-docs/workflow/agent_contracts.md
-docs/workflow/agent_orchestration.md
-docs/workflow/agents/long_term_memory.md
-docs/workflow/agent_report_policy.md
+本轮 owner 明确要求
+WORKFLOW_KERNEL.md
+START_HERE.md
+core/WORKFLOW_ROUTER.md
+core/TASK_START_CARD.md
+被选中的 playbook
+protocols/reference 文件
+archive 历史文件
 ```
 
-已落地 runtime / helper 入口：
+GitHub 仍然是工作流规范的权威来源。本地 Codex skill 只是执行镜像，工作流规则改变后必须同步。
+
+正式实验的最短硬门：
 
 ```text
-workflow/README.md
-workflow/codex/README.md
-workflow/openclaw/README.md
+START_HERE.md
+-> WORKFLOW_KERNEL.md
+-> 相关 playbook
+-> core/TASK_START_CARD.md
+-> core/AGENT_RUNTIME_HARD_GATE.md
+-> validate-agent-runtime
+-> multi-agent-preflight
+-> Runner
 ```
 
-按需创建或仍在完善的自动 runtime / 看板文档：
+正式待跑实验的最短查询链是：
 
 ```text
-docs/workflow/progress_dashboard.md
-docs/workflow/runbook.md
-docs/workflow/issues/README.md
+experiments/vX/<type>/INDEX.md
+-> experiments/vX/<type>/<TYPE-xxx>/PARAMETER_MATRIX.csv
+-> 旧 experiments/module_trials/... 仅由 legacy_ref 回查
+-> .gtpj_runtime/batches/<run_id> 只核对执行状态
 ```
 
-实验执行中的具体问题、解决方案和预防规则放在 `docs/workflow/issues/`。新对话只需要先读
-`issues/README.md` 和最近日期的问题文档，不需要每次全量读取所有历史问题。
+`.gtpj_runtime` 不是正式待跑表；没有正式表格行的运行目录统一视为 `orphan_runtime_plan`。
 
-GTPJ workflow 使用“正式框架平级、候选先验证再晋级”的实验结构。
+组合实验用同一个入口自动路由：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
+```
+
+论文到实验闭环用桥接执行卡，不直接从 paper intake 开训；正式实验必须由 owner 指定 base version：
+
+```bash
+python workflow/gtpj_workflow.py start --phrase "基于 v5 从论文开始做实验"
+```
+
+最小闭环是：
 
 ```text
-idea_tree
-  -> Vx-INNOVATION-xxx
-  -> CANDIDATE-xxx-Ry（冻结候选提交）
-  -> 候选内部 tune / ablation / confirmation
-  -> 通过晋级硬门后成为平级 FRAMEWORK-VY
+plan -> agent_runtime -> preflight -> runner -> evidence -> cleanup -> sync
 ```
 
-可以保留的核心规则：
+不要为了“完整”默认搬运或阅读整个 `docs/workflow/`。
 
-```text
-一个 vX = 一个 baseline = 一个 Git tag = 一个版本实验目录
+检查当前瘦身索引：
+
+```bash
+python workflow/gtpj_workflow.py list-workflow-files
+python workflow/gtpj_workflow.py validate-workflow-consistency
 ```
-
-runtime 规则：
-
-- OpenClaw 优先用于运行实验。
-- Codex 遵循相同仓库事实来源和 workflow 规范。
-- GitHub 仓库是治理事实源、复现控制层和轻量结果索引层。
-- `GTPJ_Research` 保存 idea/source 长推理，`GTPJ_Warehouse` 保存大型实验资产。
-- 结构性动作优先使用 `workflow/gtpj_workflow.py` 做 validate、audit-boundary、目录创建和结果记录；该工具不替代研究判断或实验解释。
-- GitHub 文档是 workflow 规范的权威来源；本地 `gtpj-workflow` skill 是执行副本，修改后必须同步。
-
-日常阅读顺序：
-
-1. `QUICK_START.md`
-2. `TASK_START_MINI.md`
-3. `../../workflow/README.md`
-
-Coordinator / agent 完整展开顺序：
-
-1. `WORKFLOW_ROUTER.md`
-2. `TASK_START_CARD.md`
-3. `FIRST_CLOSED_LOOP.md`
-4. `CURRENT_WORKFLOW_REPORT.md`
-5. `GTPJ_WORKFLOW_SPEC.md`
-6. `IMPLEMENTATION_STATUS.md`
-7. `workflow_diagrams.md`
-8. `../GITHUB_GOVERNANCE.md`
-9. `../PROJECT_STRUCTURE.md`
-10. `../PROJECT_STATUS.md`
-11. `git_policy.md`
-12. `versioning.md`
-13. `idea_tree_protocol.md`
-14. `paper_intake.md`
-15. `module_trial_protocol.md`
-16. `code_interface_contract.md`
-17. `innovation_code_review_protocol.md`
-18. `artifact_policy.md`
-19. `ARTIFACT_REGISTRATION.md`
-20. `result_index_protocol.md`
-21. `experiment_protocol.md`
-22. `quality_gate.md`
-23. `promotion.md`
-24. `agent_contracts.md`
-25. `agent_report_policy.md`
-26. `agent_orchestration.md`
-27. `agents/README.md`
-28. `agents/long_term_memory.md`
-29. `progress_dashboard.md`
-30. `runbook.md`
-31. `../../workflow/README.md`

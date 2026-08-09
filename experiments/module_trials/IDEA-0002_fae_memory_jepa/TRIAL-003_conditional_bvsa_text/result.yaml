@@ -32,7 +32,7 @@ metrics:
     H_values: ["74.49", "74.43", "74.35", "74.41", "74.54"]
 comparison:
   reference_version: v4
-  reference_confirmed_H: "74.45"
+  reference_confirmed_H: "74.47"
   repeat_mean_delta_H: "-0.01"
   best_observed_delta_H: "+0.09"
 interface:

@@ -1,0 +1,114 @@
+schema_version: gtpj-result/v1
+attempt_id: ATTEMPT-010
+run_id: RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu
+profile: h76-top4-min5-repeat
+repeat_type: same_seed_min5_exact_repeat
+result_type: partial_workflow_smoke
+status: completed_with_skips
+formal_confirmation_status: incomplete
+workflow_smoke_status: complete
+promotion_decision: blocked
+
+targets:
+  DR-020:
+    source_H: "75.00"
+    source_config: direction_sample_h48_w0.525_a0.003
+    repeats_planned: 5
+    repeats_completed: 4
+    repeats_skipped: 1
+    completed_jobs:
+      - job_id: DR-001
+        repeat: 1
+        seed: 5
+        U: "72.43"
+        S: "76.97"
+        H: "74.63"
+        ZS: "81.61"
+        best_epoch: "48"
+      - job_id: DR-002
+        repeat: 2
+        seed: 5
+        U: "72.73"
+        S: "76.58"
+        H: "74.61"
+        ZS: "81.45"
+        best_epoch: "48"
+      - job_id: DR-003
+        repeat: 3
+        seed: 5
+        U: "72.26"
+        S: "76.77"
+        H: "74.44"
+        ZS: "81.21"
+        best_epoch: "37"
+      - job_id: DR-004
+        repeat: 4
+        seed: 5
+        U: "72.53"
+        S: "76.96"
+        H: "74.68"
+        ZS: "81.72"
+        best_epoch: "47"
+    partial_summary:
+      best_single_job: DR-004
+      best_H: "74.68"
+      mean_H: "74.59"
+      min_H: "74.44"
+      max_H: "74.68"
+      range_H: "0.24"
+      mean_U: "72.49"
+      mean_S: "76.82"
+      mean_ZS: "81.50"
+  DR-051:
+    source_H: "74.96"
+    source_config: direction_sample_h48_w0.545_a0.004
+    repeats_planned: 5
+    repeats_completed: 0
+    repeats_skipped: 5
+  DR-041:
+    source_H: "74.83"
+    source_config: direction_sample_h48_w0.515_a0.002
+    repeats_planned: 5
+    repeats_completed: 0
+    repeats_skipped: 5
+  DR-047:
+    source_H: "74.82"
+    source_config: direction_sample_h48_w0.535_a0.002
+    repeats_planned: 5
+    repeats_completed: 0
+    repeats_skipped: 5
+
+run_summary:
+  jobs_total: 20
+  completed: 4
+  failed: 0
+  skipped: 16
+  running: 0
+  pending: 0
+  user_stop_reason: user_requested_stop_after_four_completed_workflow_smoke
+  note: "用户要求跑完两条额外实验后停止，用于验证 workflow 闭环；本结果不能作为 ATTEMPT-010 正式 top4 confirmation。"
+
+artifacts:
+  runtime_batch_dir: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu
+  warehouse_root: lab4090:/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/module_trial/TRIAL-001/ATTEMPT-010/RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu
+  files:
+    summary.csv:
+      sha256: "85609aa7172b73a615793096c638c15397685baa93bdb29fe7783452d5a1052b"
+      size_bytes: 4065
+    summary.jsonl:
+      sha256: "c026d17cfb7346921e3b266608355094e5c881936d7d866e207be12b183ef67b"
+      size_bytes: 13660
+    batch_status.json:
+      sha256: "a4e546e29594ac4f8c65bbad10bbfb827d7812d34d461b4776c55e35561e52d3"
+      size_bytes: 9473
+    plan.json:
+      sha256: "1a9789c248f2bf16dd8a7ad2657902d2685c8151a0d88ff40ed7efbfbfdd92c9"
+      size_bytes: 15073
+    events.jsonl:
+      sha256: "fedc746da84771b38642994e0144e88d290e57ae437831bc648845800a191baa"
+      size_bytes: 4765
+
+decision:
+  state: rerun_required
+  reason: "工作流 smoke 已闭环，但正式 20-job top4 same-seed min5 repeat 未完成。"
+  next_action: "若要正式 ATTEMPT-010 证据，重新启动完整 20 jobs 或新建明确的 partial-repeat attempt。"

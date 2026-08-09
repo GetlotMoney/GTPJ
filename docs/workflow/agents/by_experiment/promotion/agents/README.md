@@ -5,6 +5,8 @@ Promotion agents 在实验记录已经写出 `promotion_decision: promote`、`pr
 
 Promotion 必须保留 `agent_summary.md`，记录 Quality Checker、Interface Checker、Result Analyst 和 Reviewer 的准入结论。长报告放 Warehouse，GitHub 只保存摘要和 artifact id。
 
+Promotion 默认使用 `real_multi_agent` + workflow-scoped `named_owner_thread`。最终通过结论必须写入 `agent_summary.md`、quality、result/promotion evidence 和 version ledger；跨 workflow 连续追踪时才启用 `persistent_thread`。
+
 ## 启用角色
 
 ```text
@@ -12,12 +14,13 @@ Coordinator
 Quality Checker
 Interface Checker
 Result Analyst
+Reviewer
 ```
 
 ## 编排
 
 ```text
-Coordinator -> Quality Checker + Interface Checker + Result Analyst -> Coordinator
+Coordinator -> Quality Checker + Interface Checker + Result Analyst + Reviewer -> Coordinator
 ```
 
 ## 关键规则

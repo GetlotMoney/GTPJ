@@ -1,5 +1,5 @@
-# GTPJ-v3 Ablation Index
+# FRAMEWORK-V3 消融实验索引
 
-| Experiment | Status | Directory | Note |
-|---|---|---|---|
-| none | - | - | No v3 ablation runs recorded yet. |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
+|---|---|---|---|---|---|---|
+| - | none | 尚未发现可可靠恢复的 v3 正式消融项 | - | - | - | - |

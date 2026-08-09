@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ Workflow v2 完整流程图</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5d6d7e;
+      --line: #b8c3cf;
+      --paper: #f7f9fb;
+      --panel: #ffffff;
+      --blue: #1f6feb;
+      --green: #218838;
+      --red: #c0392b;
+      --amber: #b7791f;
+      --teal: #087f8c;
+      --violet: #6f42c1;
+      --slate: #34495e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: #111827;
+      color: #fff;
+      padding: 28px 36px 24px;
+      border-bottom: 5px solid #2f80ed;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      max-width: 1180px;
+      margin: 0;
+      color: #dce6f1;
+      font-size: 15px;
+    }
+
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid #d8dee6;
+      border-radius: 8px;
+      margin: 0 0 22px;
+      padding: 22px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      color: #111827;
+    }
+
+    h3 {
+      margin: 16px 0 10px;
+      font-size: 16px;
+      color: #1f2937;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 4px 0 14px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 2px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.blue { background: var(--blue); }
+    .dot.green { background: var(--green); }
+    .dot.red { background: var(--red); }
+    .dot.amber { background: var(--amber); }
+    .dot.teal { background: var(--teal); }
+    .dot.violet { background: var(--violet); }
+
+    .flow {
+      display: grid;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .flow.cols-5 {
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+    }
+
+    .flow.cols-4 {
+      grid-template-columns: repeat(4, minmax(210px, 1fr));
+    }
+
+    .flow.cols-3 {
+      grid-template-columns: repeat(3, minmax(230px, 1fr));
+    }
+
+    .node {
+      border: 1px solid #cbd5e1;
+      border-left: 5px solid var(--slate);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px 13px;
+      min-height: 96px;
+      position: relative;
+    }
+
+    .node h3 {
+      margin: 0 0 7px;
+      font-size: 15px;
+    }
+
+    .node p {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #334155;
+    }
+
+    .node ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+      color: #334155;
+      font-size: 13px;
+    }
+
+    .node li {
+      margin: 3px 0;
+    }
+
+    .node.blue { border-left-color: var(--blue); }
+    .node.green { border-left-color: var(--green); }
+    .node.red { border-left-color: var(--red); }
+    .node.amber { border-left-color: var(--amber); }
+    .node.teal { border-left-color: var(--teal); }
+    .node.violet { border-left-color: var(--violet); }
+
+    .arrow {
+      text-align: center;
+      color: #52616f;
+      font-weight: 700;
+      align-self: center;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .sequence {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 36px minmax(180px, 1fr) 36px minmax(180px, 1fr) 36px minmax(180px, 1fr);
+      gap: 8px;
+      align-items: center;
+      margin: 14px 0;
+    }
+
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .state {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      min-height: 92px;
+    }
+
+    .state strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .state span {
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .lane-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .lane-table th,
+    .lane-table td {
+      border: 1px solid #d8dee6;
+      padding: 9px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .lane-table th {
+      background: #eef2f7;
+      color: #1f2937;
+    }
+
+    .code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #0f172a;
+      color: #e5edf7;
+      padding: 13px;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre;
+      font-size: 12px;
+      margin: 10px 0 0;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 16px;
+    }
+
+    .callout {
+      border: 1px solid #f0c36d;
+      border-left: 5px solid var(--amber);
+      background: #fff8e6;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #5f4200;
+      margin: 12px 0 0;
+      font-size: 13px;
+    }
+
+    .danger {
+      border-color: #f1b4ab;
+      border-left-color: var(--red);
+      background: #fff1f0;
+      color: #6b1d16;
+    }
+
+    .ok {
+      border-color: #afd7b8;
+      border-left-color: var(--green);
+      background: #f0fff4;
+      color: #174b25;
+    }
+
+    @media (max-width: 1100px) {
+      main {
+        padding: 16px;
+      }
+
+      .flow.cols-5,
+      .flow.cols-4,
+      .flow.cols-3,
+      .state-grid,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .sequence {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GTPJ Workflow v2 完整流程图</h1>
+    <p>阅读方式：先把 workflow 看成一个证据状态机，再看 agent 如何围绕 subject 的 transition 临时上场。多 agent 不是目标，状态迁移、硬门阻断和权威证据才是主线。</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>0. 你现在应该怎么看这套规范</h2>
+      <div class="legend">
+        <span class="tag"><span class="dot blue"></span>日常入口</span>
+        <span class="tag"><span class="dot green"></span>正式证据</span>
+        <span class="tag"><span class="dot amber"></span>agent runtime</span>
+        <span class="tag"><span class="dot red"></span>硬阻断</span>
+        <span class="tag"><span class="dot teal"></span>外部 artifact</span>
+      </div>
+
+      <div class="sequence">
+        <div class="node blue">
+          <h3>先读入口</h3>
+          <p><strong>START_HERE.md</strong></p>
+          <ul>
+            <li>判断任务类型</li>
+            <li>决定 role_only / real_multi_agent</li>
+            <li>选择对应 playbook</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node red">
+          <h3>再看硬规则</h3>
+          <p><strong>WORKFLOW_KERNEL.md</strong></p>
+          <ul>
+            <li>正式证据边界</li>
+            <li>GZSL 硬门</li>
+            <li>版本和 promotion 规则</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node amber">
+          <h3>按任务看执行卡</h3>
+          <p><strong>playbooks/*.md</strong></p>
+          <ul>
+            <li>tune / ablation / confirmation</li>
+            <li>innovation / mixed campaign</li>
+            <li>promotion</li>
+          </ul>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node green">
+          <h3>正式工作看 v2 内核</h3>
+          <p><strong>evidence_routing_protocol.md</strong></p>
+          <ul>
+            <li>subject_id</li>
+            <li>TRANSITIONS.jsonl</li>
+            <li>agent propose/check/apply</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        日常理解口诀：入口管“读什么”，Kernel 管“不能越过什么”，playbook 管“这类任务怎么做”，v2 evidence routing 管“状态怎么正式成立”。
+      </div>
+    </section>
+
+    <section>
+      <h2>1. 总流程：从一句口令到正式证据</h2>
+      <p class="note">这张图是完整主线。任何真实实验、best 选择、复现、promotion 或下一轮高成本实验，都要走这条链。</p>
+
+      <div class="flow cols-5">
+        <div class="node blue">
+          <h3>Owner 口令</h3>
+          <p>例：汇报、调参、消融、复现、开新模块、跑10创新+100调参。</p>
+          <ul>
+            <li>用户不用说内部术语</li>
+            <li>Coordinator 自动路由</li>
+          </ul>
+        </div>
+        <div class="node blue">
+          <h3>START_HERE 路由</h3>
+          <p>判断任务是否只是只读，还是正式证据工作。</p>
+          <ul>
+            <li>role_only</li>
+            <li>real_multi_agent</li>
+            <li>debug_smoke</li>
+          </ul>
+        </div>
+        <div class="node amber">
+          <h3>Mini Card / Full Card</h3>
+          <p>填写任务边界和 agent 需求。</p>
+          <ul>
+            <li>base_version</li>
+            <li>subject_id</li>
+            <li>agents</li>
+            <li>hard_gates</li>
+          </ul>
+        </div>
+        <div class="node red">
+          <h3>硬门预检</h3>
+          <p>不清楚就不跑。</p>
+          <ul>
+            <li>GZSL split / label / class order</li>
+            <li>logits shape [B, C]</li>
+            <li>metric semantics</li>
+          </ul>
+        </div>
+        <div class="node green">
+          <h3>Subject 建立</h3>
+          <p>把任务变成可路由对象。</p>
+          <ul>
+            <li>TRIAL / ATTEMPT / RUN / CAMP</li>
+            <li>evidence_state</li>
+            <li>authority_refs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="flow cols-5">
+        <div class="node amber">
+          <h3>Agent 上场</h3>
+          <p>按 transition 需求启动，不按数量乱开。</p>
+          <ul>
+            <li>Planner propose</li>
+            <li>Checker check</li>
+            <li>Coordinator apply</li>
+          </ul>
+        </div>
+        <div class="node teal">
+          <h3>Runner / Warehouse</h3>
+          <p>真实训练只运行冻结 config。</p>
+          <ul>
+            <li>GPU lock</li>
+            <li>raw logs 外置</li>
+            <li>Top-3 checkpoint retention</li>
+          </ul>
+        </div>
+        <div class="node green">
+          <h3>结果和质量入账</h3>
+          <p>正式事实写到权威文件。</p>
+          <ul>
+            <li>manifest.yaml</li>
+            <li>result.yaml / result.md</li>
+            <li>quality_check.md</li>
+            <li>agent_summary.md</li>
+          </ul>
+        </div>
+        <div class="node green">
+          <h3>TRANSITIONS.jsonl</h3>
+          <p>状态迁移权威历史。</p>
+          <ul>
+            <li>append-only</li>
+            <li>hash chain</li>
+            <li>current_state 派生</li>
+          </ul>
+        </div>
+        <div class="node violet">
+          <h3>下一步决策</h3>
+          <p>只按证据成熟度推进。</p>
+          <ul>
+            <li>rerun / reject / stop</li>
+            <li>repeat min3</li>
+            <li>ablation</li>
+            <li>promotion gate</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Evidence State Machine：正式实验怎么升级</h2>
+      <p class="note">当前状态不是手写结论，而是由 transition log 推导出来。</p>
+
+      <div class="state-grid">
+        <div class="state"><strong>hypothesis_ready</strong><span>已有可检验假设、来源、风险、最小验证信号。</span></div>
+        <div class="state"><strong>interface_precheck_passed</strong><span>输入输出、shape、baseline-off、GZSL hard rules 预检通过。</span></div>
+        <div class="state"><strong>smoke_passed</strong><span>小跑通过，无 shape、metric、split、label 错误。</span></div>
+        <div class="state"><strong>single_run_valid</strong><span>一次正式 run 有 manifest/result/quality/artifact refs。</span></div>
+        <div class="state"><strong>tune_promising</strong><span>调参有价值，但不是 confirmed baseline。</span></div>
+        <div class="state"><strong>ablation_supported</strong><span>消融支持模块贡献，能解释结果来源。</span></div>
+        <div class="state"><strong>min3_confirmed</strong><span>3 次 clean repeat，有 mean/min/max/all runs。</span></div>
+        <div class="state"><strong>promotion_candidate</strong><span>方法状态稳定，硬门清楚，reviewer allow。</span></div>
+        <div class="state"><strong>promoted</strong><span>进入正式版本账本或 tag 流程。</span></div>
+        <div class="state"><strong>blocked</strong><span>硬门、证据或工具条件不满足。</span></div>
+        <div class="state"><strong>rerun_required</strong><span>证据可疑或运行失败，需要重新跑。</span></div>
+        <div class="state"><strong>stopped / rejected</strong><span>无收益、复现不稳、消融不支持或预算停止。</span></div>
+      </div>
+
+      <div class="code">TRANSITIONS.jsonl = 权威历史
+evidence_routing.yaml = 当前状态缓存
+
+合法推进：
+  propose -> check -> apply -> append transition -> derive current_state
+
+非法推进：
+  直接手改 evidence_routing.yaml
+  failed hard rule 后 advance/promote
+  campaign RESULT_INDEX 自建正式 H/U/S/ZS</div>
+    </section>
+
+    <section>
+      <h2>3. Agent 怎么合作：不是聊天协作，是 transition 协作</h2>
+      <p class="note">agent 的职责不是“大家一起讨论”，而是围绕一个 subject 的状态迁移分别提出、检查、应用。</p>
+
+      <table class="lane-table">
+        <thead>
+          <tr>
+            <th>角色</th>
+            <th>默认存活时间</th>
+            <th>能做什么</th>
+            <th>不能做什么</th>
+            <th>典型输出</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Coordinator</td>
+            <td>workflow/campaign scoped</td>
+            <td>路由任务、冻结计划、apply transition、写最终账本</td>
+            <td>不能跳过 checker，不能单独宣布证据成立</td>
+            <td>task card, DECISION_LOG, applied transition</td>
+          </tr>
+          <tr>
+            <td>Planner</td>
+            <td>workstream scoped</td>
+            <td>拆候选、生成 workstream、提出 hypothesis/candidate transition</td>
+            <td>不能改代码，不能写正式结果</td>
+            <td>candidate list, workstream plan</td>
+          </tr>
+          <tr>
+            <td>Implementer</td>
+            <td>task scoped</td>
+            <td>只改一个 trial/code path</td>
+            <td>不能并行改同一路径，不能决定 keep/promote</td>
+            <td>code diff, implementation notes</td>
+          </tr>
+          <tr>
+            <td>Runner Monitor / Experiment Runner</td>
+            <td>campaign or run scoped</td>
+            <td>管 GPU、队列、run command、失败隔离</td>
+            <td>不能解释结果，不能写 promotion 结论</td>
+            <td>batch status, events, Warehouse receipts</td>
+          </tr>
+          <tr>
+            <td>Log Analyst</td>
+            <td>run scoped</td>
+            <td>解析 U/S/H/ZS、best epoch，propose single_run_valid/failed</td>
+            <td>不能检查 GZSL 语义，不能 apply transition</td>
+            <td>metric parse, proposed transition</td>
+          </tr>
+          <tr>
+            <td>Interface Checker</td>
+            <td>task scoped</td>
+            <td>检查 input/output、shape、baseline-off、GZSL hard rules</td>
+            <td>不能修代码，不能启动 Runner</td>
+            <td>interface_check, rule_checks</td>
+          </tr>
+          <tr>
+            <td>Quality Checker</td>
+            <td>task scoped by default</td>
+            <td>检查证据链、artifact 边界、not_checked、是否允许 transition</td>
+            <td>默认不 campaign 长期驻留，不决定最终账本</td>
+            <td>quality_check, allow/block</td>
+          </tr>
+          <tr>
+            <td>Result Analyst / Reviewer</td>
+            <td>task or workstream scoped</td>
+            <td>比较结果、复核争议、提出 repeat/stop/promotion_candidate</td>
+            <td>不能把 best repeat 单独当 promotion 依据</td>
+            <td>comparison summary, review notes</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>4. Mixed Campaign：创新3 + 调参20 + 消融 怎么执行</h2>
+      <div class="split">
+        <div>
+          <h3>Campaign 层级</h3>
+          <div class="flow cols-3">
+            <div class="node violet">
+              <h3>Campaign</h3>
+              <p>解析 owner requested_mix，建立 campaign ledger。</p>
+              <ul>
+                <li>campaign_manifest</li>
+                <li>WORKSTREAMS</li>
+                <li>AGENT_LIFECYCLE</li>
+              </ul>
+            </div>
+            <div class="node amber">
+              <h3>Workstreams</h3>
+              <p>按实验类型拆开。</p>
+              <ul>
+                <li>innovation</li>
+                <li>tune</li>
+                <li>ablation</li>
+                <li>confirmation</li>
+              </ul>
+            </div>
+            <div class="node green">
+              <h3>Tasks / Runs</h3>
+              <p>每个 task 有 subject_id 和 evidence_state。</p>
+              <ul>
+                <li>TRIAL</li>
+                <li>ATTEMPT</li>
+                <li>RUN</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>调度原则</h3>
+          <div class="code">不是：
+  直接排 3 + 20 + N 个 run
+
+而是：
+  innovation 先 hypothesis/interface/smoke
+  tune 只跑 frozen baseline/config
+  ablation 等候有效候选
+  top candidate 才 min3 confirmation
+  promotion 只由 evidence gate 触发</div>
+        </div>
+
+        <div>
+          <h3>Workstream agents</h3>
+          <table class="lane-table">
+            <thead>
+              <tr><th>范围</th><th>角色</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>campaign scoped</td><td>Coordinator, Runner Monitor, Campaign Result Comparator</td></tr>
+              <tr><td>innovation workstream</td><td>Source Reader, Innovation Planner, Implementer, Interface Checker, Reviewer</td></tr>
+              <tr><td>tune workstream</td><td>Tune Planner, Runner, Log Analyst, Result Analyst, Quality Checker</td></tr>
+              <tr><td>ablation workstream</td><td>Ablation Planner, Interface Checker, Runner, Result Analyst, Quality Checker</td></tr>
+              <tr><td>confirmation workstream</td><td>Runner, Log Analyst, Result Analyst, Quality Checker</td></tr>
+              <tr><td>run scoped</td><td>Experiment Runner, Log Parser, Warehouse Registrar</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        Campaign 目录不能成为第二事实源。它只保存 routing facts 和 result_ref。正式 H/U/S/ZS 仍然来自 result.yaml、quality_check.md、agent_summary.md 和 Warehouse。
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Innovation：一篇论文到多个 Trial</h2>
+      <p class="note">创新不是按论文名字堆实验，而是按假设和工程绑定拆。</p>
+
+      <div class="sequence">
+        <div class="node blue"><h3>Paper</h3><p>论文、来源、官方代码、Research 长笔记。</p></div>
+        <div class="arrow">→</div>
+        <div class="node blue"><h3>Claim / Mechanism</h3><p>论文里的一个机制或主张。</p></div>
+        <div class="arrow">→</div>
+        <div class="node green"><h3>Hypothesis</h3><p>为什么它可能提升 GZSL。</p></div>
+        <div class="arrow">→</div>
+        <div class="node amber"><h3>Interpretation</h3><p>完整复现、轻量移植、loss-only、fusion-only、routing-only。</p></div>
+      </div>
+
+      <div class="sequence">
+        <div class="node amber"><h3>Attachment Point</h3><p>text prototype、PSE、ICSA、local branch、classifier 前后。</p></div>
+        <div class="arrow">→</div>
+        <div class="node violet"><h3>Trial</h3><p>hypothesis + interpretation + attachment point + implementation contract。</p></div>
+        <div class="arrow">→</div>
+        <div class="node teal"><h3>Attempt</h3><p>同一 Trial 内的参数、seed、epoch、权重、top-k 尝试。</p></div>
+        <div class="arrow">→</div>
+        <div class="node green"><h3>Evidence State</h3><p>interface_precheck、smoke、single_run、tune、ablation、min3。</p></div>
+      </div>
+
+      <div class="split">
+        <div class="callout ok">
+          新开 Trial：改变科学假设、论文机制理解、接入点、forward 路径、新 loss、eval 语义或 baseline-off contract。
+        </div>
+        <div class="callout">
+          继续 Attempt：只改参数、seed、epoch、batch size、loss weight、top-k、hidden size。
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>6. GZSL 硬规范：哪些东西不能动</h2>
+      <div class="flow cols-4">
+        <div class="node red">
+          <h3>评估边界</h3>
+          <ul>
+            <li>seen/unseen split 不变</li>
+            <li>class order 不变</li>
+            <li>label mapping 不变</li>
+            <li>metric semantics 不变</li>
+          </ul>
+        </div>
+        <div class="node red">
+          <h3>形状边界</h3>
+          <ul>
+            <li>logits = [B（图片/样本数量）, C（类别数量）]</li>
+            <li>C 是 protected evaluation class count</li>
+            <li>文本/视觉特征 shape 必须声明</li>
+          </ul>
+        </div>
+        <div class="node red">
+          <h3>泄漏边界</h3>
+          <ul>
+            <li>不能泄露 unseen label</li>
+            <li>不能暗改 eval 口径</li>
+            <li>不能绕过 baseline-off</li>
+          </ul>
+        </div>
+        <div class="node red">
+          <h3>不清楚时</h3>
+          <ul>
+            <li>blocked</li>
+            <li>rerun</li>
+            <li>reject</li>
+            <li>不能 keep/best/promote/confirmed</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>7. 文件和事实源边界</h2>
+      <div class="flow cols-4">
+        <div class="node green">
+          <h3>GitHub 轻量事实源</h3>
+          <ul>
+            <li>manifest.yaml</li>
+            <li>result.yaml / result.md</li>
+            <li>quality_check.md</li>
+            <li>agent_summary.md</li>
+            <li>TRANSITIONS.jsonl</li>
+          </ul>
+        </div>
+        <div class="node teal">
+          <h3>Warehouse</h3>
+          <ul>
+            <li>raw logs</li>
+            <li>checkpoints</li>
+            <li>receipts</li>
+            <li>large artifacts</li>
+          </ul>
+        </div>
+        <div class="node blue">
+          <h3>Research</h3>
+          <ul>
+            <li>论文长笔记</li>
+            <li>source review</li>
+            <li>完整 idea 历史</li>
+            <li>长推理</li>
+          </ul>
+        </div>
+        <div class="node red">
+          <h3>不是证据源</h3>
+          <ul>
+            <li>聊天上下文</li>
+            <li>persistent thread 内容</li>
+            <li>Codex memory</li>
+            <li>campaign 自建指标表</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>8. 你日常浏览文件顺序</h2>
+      <table class="lane-table">
+        <thead>
+          <tr>
+            <th>你想做什么</th>
+            <th>先看</th>
+            <th>再看</th>
+            <th>只有正式执行才看</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>只是理解 workflow</td>
+            <td>START_HERE.md</td>
+            <td>WORKFLOW_KERNEL.md</td>
+            <td>evidence_routing_protocol.md</td>
+          </tr>
+          <tr>
+            <td>查状态/汇报</td>
+            <td>START_HERE.md</td>
+            <td>WORKFLOW_KERNEL.md</td>
+            <td>repro-status / dynamic-routing-status</td>
+          </tr>
+          <tr>
+            <td>跑单类实验</td>
+            <td>START_HERE.md</td>
+            <td>对应 playbook</td>
+            <td>TASK_START_CARD.md, GZSL_HARD_RULES.md</td>
+          </tr>
+          <tr>
+            <td>跑混合实验</td>
+            <td>playbooks/mixed_campaign.md</td>
+            <td>mixed_experiment_campaign_protocol.md</td>
+            <td>agent_orchestration.md, evidence_routing_protocol.md</td>
+          </tr>
+          <tr>
+            <td>开创新模块</td>
+            <td>playbooks/innovation.md</td>
+            <td>innovation_decomposition_protocol.md</td>
+            <td>code_interface_contract.md, innovation_code_review_protocol.md</td>
+          </tr>
+          <tr>
+            <td>看 agent 怎么协作</td>
+            <td>agent_orchestration.md</td>
+            <td>agents/shared_roles/*</td>
+            <td>agent_summary.md / review_rounds</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code">核心命令：
+python workflow/gtpj_workflow.py validate
+python workflow/gtpj_workflow.py audit-boundary
+python workflow/gtpj_workflow.py validate-evidence-routing
+python workflow/gtpj_workflow.py repro-status --version v5</div>
+    </section>
+  </main>
+</body>
+</html>

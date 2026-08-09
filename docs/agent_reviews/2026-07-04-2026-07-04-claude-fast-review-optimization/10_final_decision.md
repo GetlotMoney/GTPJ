@@ -1,0 +1,9 @@
+ai_cross_review_status: pass
+owner_participation: not_required
+rounds_completed: 3
+claude_code_read_only: true
+codex_fixes_or_rebuttals_recorded: true
+machine_gates_passed: true
+unresolved_blocking_issues: 0
+accepted_by: machine_gates_plus_ai_cross_review
+blocked_reason:

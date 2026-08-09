@@ -1,0 +1,17 @@
+schema_version: gtpj.framework.v2
+framework_id: FRAMEWORK-VX
+framework_version: vX
+registry_level: formal_peer
+derived_from_framework: none
+promoted_from_experiment: initial
+source_legacy_ref: none
+framework_branch: framework/vX
+framework_tag: vX
+framework_commit: 0000000000000000000000000000000000000000
+governance_source_commit: 0000000000000000000000000000000000000000
+origin_status: initial
+change_type: initial
+modules: []
+inherits: []
+does_not_inherit: []
+status: formal

@@ -1,0 +1,67 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-011
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 mixed200 offline server campaign
+  status: completed
+  recorded_at: "2026-07-06"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempts:
+    - ATTEMPT-009
+    - ATTEMPT-010
+  source_profile: h76-existing-routing-100
+  source_note: "ATTEMPT-009 提供 H76 100 组搜索来源；ATTEMPT-010 只作为 workflow smoke，不作为完整 confirmation 证据。"
+campaign:
+  campaign_id: ATTEMPT-011-H76-MIXED200
+  total_jobs: 200
+  split:
+    search: 120
+    same_seed_repeat: 40
+    ablation: 40
+  execution_mode: server_detached
+  local_shutdown_safe: true
+  stop_mechanism: STOP_REQUESTED
+run_batches:
+  - batch: b01
+    run_id: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu
+    profile: h76-mixed200-b01-search50
+    jobs: 50
+    composition: "search 50"
+  - batch: b02
+    run_id: RUN-20260706-0002-h76-mixed200-b02-search50-2gpu
+    profile: h76-mixed200-b02-search50
+    jobs: 50
+    composition: "search 50"
+  - batch: b03
+    run_id: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu
+    profile: h76-mixed200-b03-search20-repeat20-ablate10
+    jobs: 50
+    composition: "search 20 + same-seed repeat 20 + ablation 10"
+  - batch: b04
+    run_id: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu
+    profile: h76-mixed200-b04-repeat20-ablate30
+    jobs: 50
+    composition: "same-seed repeat 20 + ablation 30"
+server:
+  host: lab4090
+  repo: /data/lby/projects/cv_project/GTPJ
+  batch_root: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches
+  status_file: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/ATTEMPT-011_SERVER_STATUS.json
+  detached_session: GTPJ_ATTEMPT011_MIXED200
+  launcher: screen
+  session_pid: "2396386"
+  launched_at: "2026-07-06T03:00:43+08:00"
+  launch_status: completed
+gate:
+  formal_runtime_backend: server_detached_role_only
+  formal_runner_allowed: true
+  blocked_until: ""
+  gate_validated_at: "2026-07-06T02:59:30+08:00"
+  rule: "正式启动前必须完成 role_only server_detached formal gate；不得创建右侧临时 agents，也不要求左侧命名线程。"
+decision:
+  promotion_decision: blocked
+  reason: "本轮完成 H76 mixed search/repeat/ablation 和 workflow 离线运行闭环；出现 H=75.00 source single，但 promotion 仍需后续 exact-repeat restore 证据。"

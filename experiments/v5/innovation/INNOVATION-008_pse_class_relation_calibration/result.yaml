@@ -1,0 +1,67 @@
+schema_version: gtpj-result/v1
+experiment_id: "V5-INNOVATION-008"
+experiment_name: "PSE 类别关系增强与 GZSL 自校准"
+kind: "innovation"
+version: "v5"
+phase: "second_implementation_class_disjoint_validation_complete"
+overall_experiment_status: "rejected"
+metrics:
+  U: 42.89
+  S: 90.24
+  H: 58.14
+  ZS: 75.60
+  best_epoch: 50
+  baseline_H: 69.91
+  baseline_reference: "RUN-008_same_seed_same_class_disjoint_validation"
+  delta_H: -11.76
+  seed: 5
+  source: "RUN-010/metrics.yaml"
+  metric_semantics: "固定 50 epoch 后只评一次类不重叠验证；正式 test 缓存未加载"
+baseline:
+  run_id: "RUN-008"
+  U: 58.85
+  S: 86.08
+  H: 69.91
+  ZS: 79.44
+delta:
+  U: -15.96
+  S: 4.16
+  H: -11.76
+  ZS: -3.84
+run:
+  run_id: "RUN-010"
+  seed: 5
+  code_commit: "9698e6846973d407a15dc1eb2ea262c30a90324a"
+decision:
+  status: "rejected"
+  result_status: "rejected"
+  promotion_decision: "not_applicable"
+  reason: "R1 与 R2 的 H 均显著低于 R0；R2 虽严格限幅，仍让 U 下降 15.96。"
+  scope: "否决本轮共享旧句子 PSE 与限幅分组类别关系路线；不进入正式测试、多 seed 或校准。"
+evidence:
+  evidence_level: "single_seed_class_disjoint_validation_rejection"
+  confirmation_status: "not_applicable"
+  R0_log_sha256: "cdb1c81a3397c9d8c3c88731040698b8f8d9776404428b2876cd7894377c8367"
+  R1_log_sha256: "b959c0223e6783ff452e04c3ad2c16db49322cddc22fbdc097a83c1d717577f5"
+  R2_log_sha256: "db2dfbe2d7d90837dc563f97e6cc5d5e3628d52457f63648325fe6f5b1b42116"
+  manifest: "manifest.yaml"
+  agent_summary: "agent_summary.md"
+  label_mapping_id: "xlsa17_train_val_local_150_v1"
+  split_id: "xlsa17_train_loc_val_loc_seen_holdout_20pct_seed_20260810"
+  class_order_id: "pseudo_seen_100_then_pseudo_unseen_50"
+  formal_test_cache_loaded: false
+quality:
+  manifest_verified: "true"
+  boundary_audit_passed: "true"
+  interface_contract_checked: "true"
+  evaluation_semantics_verified: "true"
+  prototype_bound_verified: "true"
+history:
+  first_implementation:
+    baseline_run: "RUN-007"
+    trial_run: "RUN-002"
+    baseline_H: 73.69
+    trial_H: 66.92
+    delta_H: -6.77
+    decision: "rejected"
+recorded_at: "2026-08-10T03:19:03+08:00"

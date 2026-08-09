@@ -1,0 +1,302 @@
+workflow_version: v2
+governance_standard: SYS-WORKFLOW-V5
+slimming_stage: manifest_first
+owner_daily_rule: read_start_here_kernel_one_playbook
+
+files:
+  - logical_id: workflow_readme
+    canonical_path: docs/workflow/README.md
+    category: daily_entry
+    status: active
+    daily_read: false
+  - logical_id: start_here
+    canonical_path: docs/workflow/START_HERE.md
+    category: daily_entry
+    status: active
+    daily_read: true
+  - logical_id: kernel
+    canonical_path: docs/workflow/WORKFLOW_KERNEL.md
+    category: daily_entry
+    status: active
+    daily_read: true
+  - logical_id: quick_start
+    canonical_path: docs/workflow/core/QUICK_START.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: file_map
+    canonical_path: docs/workflow/WORKFLOW_FILE_MAP.md
+    category: daily_entry
+    status: active
+    daily_read: false
+  - logical_id: manifest
+    canonical_path: docs/workflow/WORKFLOW_MANIFEST.yaml
+    category: daily_entry
+    status: active
+    daily_read: false
+  - logical_id: framework_experiment_standard
+    canonical_path: docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
+    category: protocol
+    status: active
+    daily_read: false
+
+  - logical_id: router
+    canonical_path: docs/workflow/core/WORKFLOW_ROUTER.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: task_start_mini
+    canonical_path: docs/workflow/core/TASK_START_MINI.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: task_start_card
+    canonical_path: docs/workflow/core/TASK_START_CARD.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: agent_runtime_hard_gate
+    canonical_path: docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: workflow_version
+    canonical_path: docs/workflow/core/WORKFLOW_VERSION.md
+    category: core
+    status: active
+    daily_read: false
+  - logical_id: changelog
+    canonical_path: docs/workflow/core/CHANGELOG.md
+    category: core
+    status: active_reference
+    daily_read: false
+  - logical_id: first_closed_loop
+    canonical_path: docs/workflow/core/FIRST_CLOSED_LOOP.md
+    category: core
+    status: active_reference
+    daily_read: false
+
+  - logical_id: playbook_paper_intake
+    canonical_path: docs/workflow/playbooks/paper_intake.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_paper_to_experiment
+    canonical_path: docs/workflow/playbooks/paper_to_experiment.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_tune
+    canonical_path: docs/workflow/playbooks/tune.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_ablation
+    canonical_path: docs/workflow/playbooks/ablation.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_confirmation
+    canonical_path: docs/workflow/playbooks/confirmation.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_innovation
+    canonical_path: docs/workflow/playbooks/innovation.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_promotion
+    canonical_path: docs/workflow/playbooks/promotion.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_mixed_campaign
+    canonical_path: docs/workflow/playbooks/mixed_campaign.md
+    category: playbook
+    status: active
+    daily_read: false
+  - logical_id: playbook_autonomous_campaign
+    canonical_path: docs/workflow/playbooks/autonomous_campaign.md
+    category: playbook
+    status: active_reference
+    daily_read: false
+
+  - logical_id: paper_intake_protocol
+    canonical_path: docs/workflow/protocols/paper_intake.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: idea_tree_protocol
+    canonical_path: docs/workflow/protocols/idea_tree_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: experiment_protocol
+    canonical_path: docs/workflow/protocols/experiment_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: module_trial_protocol
+    canonical_path: docs/workflow/protocols/module_trial_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: module_template_selection
+    canonical_path: docs/workflow/protocols/module_template_selection.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: code_interface_contract
+    canonical_path: docs/workflow/protocols/code_interface_contract.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: innovation_code_review_protocol
+    canonical_path: docs/workflow/protocols/innovation_code_review_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: ai_cross_review_protocol
+    canonical_path: docs/workflow/protocols/ai_cross_review_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: quality_gate
+    canonical_path: docs/workflow/protocols/quality_gate.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: promotion_protocol
+    canonical_path: docs/workflow/protocols/promotion.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: versioning
+    canonical_path: docs/workflow/protocols/versioning.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: git_policy
+    canonical_path: docs/workflow/protocols/git_policy.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: artifact_registration
+    canonical_path: docs/workflow/protocols/ARTIFACT_REGISTRATION.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: evidence_routing_protocol
+    canonical_path: docs/workflow/protocols/evidence_routing_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: mixed_campaign_protocol
+    canonical_path: docs/workflow/protocols/mixed_experiment_campaign_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: autonomous_research_campaign
+    canonical_path: docs/workflow/protocols/autonomous_research_campaign.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: progress_dashboard
+    canonical_path: docs/workflow/protocols/progress_dashboard.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: agent_orchestration
+    canonical_path: docs/workflow/protocols/agent_orchestration.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: agent_report_policy
+    canonical_path: docs/workflow/protocols/agent_report_policy.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+  - logical_id: agent_cleanup_protocol
+    canonical_path: docs/workflow/protocols/agent_cleanup_protocol.md
+    category: protocol
+    status: active_reference
+    daily_read: false
+
+  - logical_id: agent_contracts
+    canonical_path: docs/workflow/reference/agent_contracts.md
+    category: reference
+    status: active_reference
+    daily_read: false
+  - logical_id: artifact_policy
+    canonical_path: docs/workflow/reference/artifact_policy.md
+    category: reference
+    status: active_reference
+    daily_read: false
+  - logical_id: result_index_protocol
+    canonical_path: docs/workflow/reference/result_index_protocol.md
+    category: reference
+    status: active_reference
+    daily_read: false
+  - logical_id: code_interface
+    canonical_path: docs/workflow/reference/code_interface.md
+    category: reference
+    status: active_reference
+    daily_read: false
+  - logical_id: gzsl_hard_rules
+    canonical_path: docs/workflow/reference/GZSL_HARD_RULES.md
+    category: reference
+    status: active_reference
+    daily_read: false
+  - logical_id: innovation_decomposition_protocol
+    canonical_path: docs/workflow/reference/innovation_decomposition_protocol.md
+    category: reference
+    status: active_reference
+    daily_read: false
+
+  - logical_id: agents_readme
+    canonical_path: docs/workflow/agents/README.md
+    category: agents
+    status: active
+    daily_read: false
+  - logical_id: agents_long_term_memory
+    canonical_path: docs/workflow/agents/long_term_memory.md
+    category: agents
+    status: active_reference
+    daily_read: false
+
+  - logical_id: gtpj_workflow_spec
+    canonical_path: docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: current_workflow_report
+    canonical_path: docs/workflow/archive/reports/CURRENT_WORKFLOW_REPORT.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: implementation_status
+    canonical_path: docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: workflow_diagrams
+    canonical_path: docs/workflow/archive/diagrams/workflow_diagrams.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: runbook
+    canonical_path: docs/workflow/archive/runbooks/runbook.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: experiment_issues
+    canonical_path: docs/workflow/archive/issues/EXPERIMENT_ISSUES.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: issues_index
+    canonical_path: docs/workflow/archive/issues/README.md
+    category: archive
+    status: historical
+    daily_read: false

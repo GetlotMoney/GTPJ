@@ -1,0 +1,15 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-ABLATION-004
+framework_id: FRAMEWORK-V5
+kind: ablation
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V1
+base_template_tag: model/v5-template-v1
+base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
+experiment_branch: exp/v5/ablation/ablation-004-fgvd-geometry-effect
+legacy_ref: exp/v5/ablation/ablation-004-fgvd-geometry-effect@ab51e36
+status: completed
+research_question: 只跳过 FGVD 几何编码时，最终 H 是否持平或提高

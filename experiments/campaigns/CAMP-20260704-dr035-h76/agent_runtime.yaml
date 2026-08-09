@@ -1,0 +1,83 @@
+schema_version: gtpj.agent_runtime_gate.v0
+subject_id: CAMP-20260704-dr035-h76
+subject_type: campaign
+formal_evidence: true
+activation_mode: real_multi_agent
+agent_instance_mode: temporary_subagent
+lifecycle: campaign_scoped
+ui_visibility: right_sidebar_temporary_agents
+tool_support_real_multi_agent_available: true
+spawn_tool: multi_agent_v1.spawn_agent
+single_agent_execution: false
+runner_start_allowed: true
+formal_runner_allowed: true
+formal_evidence_allowed: true
+owner_monitor_mode: true
+owner_role: monitor
+owner_visible_reporting: true
+report_channel: current_conversation
+report_interval_minutes: 15
+agent_activity_stream: AGENT_ACTIVITY.md
+monitor_handoff_on_pause: required
+right_sidebar_retention_policy: current_stage_active_only
+close_completed_agents_on_stage_end: true
+closed_agents_record: AGENT_ACTIVITY.md
+
+temporary_subagent_ids:
+  runner_monitor: 019f2cbc-2293-7902-83a1-8336abf43a72
+  interface_checker: 019f2cbb-a022-7d93-b9e5-fe223bc7d001
+  evidence_quality_checker: 019f2cbb-c728-7731-be0e-151e1734dacf
+  tune_planner: 019f2cbb-fefc-7170-acfc-cd953daf8b8c
+  result_comparator: 019f2cc0-c597-70c0-bf91-026fa3572e8b
+
+temporary_subagent_display_names:
+  runner_monitor: "CAMP-20260704-dr035-h76 | Runner Monitor"
+  interface_checker: "CAMP-20260704-dr035-h76 | Interface Checker"
+  evidence_quality_checker: "CAMP-20260704-dr035-h76 | Evidence Quality Checker"
+  tune_planner: "CAMP-20260704-dr035-h76 | Tune Planner"
+  result_comparator: "CAMP-20260704-dr035-h76 | Result Comparator"
+
+agent_instance_status:
+  runner_monitor: closed
+  interface_checker: closed
+  evidence_quality_checker: closed
+  tune_planner: closed
+  result_comparator: closed
+
+agent_status_refs:
+  runner_monitor: AGENT_ACTIVITY.md
+  interface_checker: AGENT_ACTIVITY.md
+  evidence_quality_checker: AGENT_ACTIVITY.md
+  tune_planner: AGENT_ACTIVITY.md
+  result_comparator: AGENT_ACTIVITY.md
+
+agent_output_refs:
+  runner_monitor: agent_outputs/runner_monitor.md
+  interface_checker: agent_outputs/interface_checker.md
+  evidence_quality_checker: agent_outputs/evidence_quality_checker.md
+  tune_planner: agent_outputs/tune_planner.md
+  result_comparator: agent_outputs/result_comparator.md
+
+pre_run_required_checks:
+  runner_monitor: allow
+  interface_checker: allow
+  evidence_quality_checker: allow
+  tune_planner: allow
+  result_comparator: allow
+
+multi_agent_preflight:
+  required_agents_spawned: true
+  agent_instance_ids_present: true
+  agent_status_refs_valid: true
+  independent_outputs_present: true
+  agent_output_refs_valid: true
+  pre_run_allow_checks_passed: true
+  agent_runtime_validated: true
+
+authority_refs:
+  campaign_manifest: campaign_manifest.yaml
+  campaign_plan: campaign_plan.md
+  work_items: WORK_ITEMS.md
+  quality_check: quality_check.md
+  agent_summary: agent_summary.md
+  agent_activity: AGENT_ACTIVITY.md

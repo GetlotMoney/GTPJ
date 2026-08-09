@@ -1,0 +1,154 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-015
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 hotspot100 tune live multi-agent campaign
+  status: completed
+  recorded_at: "2026-07-08"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-014
+  source_result_ref: attempts/ATTEMPT-014/result.yaml
+  source_quality_ref: attempts/ATTEMPT-014/quality_check.md
+  source_note: "ATTEMPT-014 is tune_promising only; it supplies hotspot evidence, not confirmation or promotion evidence."
+run:
+  run_id: RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu
+  profile: h76-hotspot100-tune
+  jobs: 100
+  execution_mode: live_multi_agent_monitor
+  training_backend: lab4090_screen_detached
+  server_runner_started: true
+  server_batch_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu
+  local_batch_dir: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu
+  local_frozen_plan_status: generated
+  launch_status: completed
+  screen_session: GTPJ_ATTEMPT015_HOTSPOT100_LIVE
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  git_remote: none
+  latest_monitor:
+    checked_at_utc: "2026-07-08T15:36:36+00:00"
+    completed: 100
+    running: 0
+    pending: 0
+    failed: 0
+    skipped: 0
+    best_single:
+      job_id: DR-004
+      H: 75.04
+      U: 73.30
+      S: 76.85
+      ZS: 82.05
+    h_ge_75_count: 2
+    h_ge_76_count: 0
+artifacts:
+  server_summary_csv:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-015:RUN-20260708-0003:summary-csv
+    role: server_summary_csv
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/summary.csv
+    sha256: b6f4d1863dd9c44aa95dbf81735e061d1bfbd23484fc660690710f16f484f495
+    size_bytes: 43634
+    status: available
+  server_summary_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-015:RUN-20260708-0003:summary-jsonl
+    role: server_summary_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/summary.jsonl
+    sha256: d5d0ea891f67a27f8d5784ad6da958bbeaebd25178aa047139ee5454fcec7ff0
+    size_bytes: 97066
+    status: available
+  server_batch_status_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-015:RUN-20260708-0003:batch-status-json
+    role: server_batch_status_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/batch_status.json
+    sha256: 43102bef35912f1e143f20debd6f28a8df75818f62accffe939f444a396a4158
+    size_bytes: 85590
+    status: available
+  server_events_jsonl:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-015:RUN-20260708-0003:events-jsonl
+    role: server_events_jsonl
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/events.jsonl
+    sha256: ac07c64b8c83f65474ca2e17ea6f357f2b3c2615b69ec65ec69912dc2b6d194e
+    size_bytes: 45002
+    status: available
+  server_plan_json:
+    artifact_id: artifact:v5:module_trial:TRIAL-001:ATTEMPT-015:RUN-20260708-0003:plan-json
+    role: server_plan_json
+    uri: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/plan.json
+    sha256: 4dc6d04b080c55a22f66958c02495e8eed8bb952b3358f8331cf704dc42a0a86
+    size_bytes: 69372
+    status: available
+local_frozen_plan:
+  config_count: 100
+  files:
+    plan_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/plan.json
+      size_bytes: 69372
+      sha256: 4dc6d04b080c55a22f66958c02495e8eed8bb952b3358f8331cf704dc42a0a86
+    batch_status_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/batch_status.json
+      size_bytes: 20361
+      sha256: caaca5f221b0eca14b189a8f4be0088f52fd13cf2c5665ac1ba1db84db04ff1d
+    run_dynamic_routing_batch_py:
+      path: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/run_dynamic_routing_batch.py
+      size_bytes: 26943
+      sha256: 609bcee227ede155861f19809e254b1d36ade6b034fca36e5bb377e587920eaf
+    start_batch_sh:
+      path: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/start_batch.sh
+      size_bytes: 312
+      sha256: 23364bfc4939e109321f1b6dbe980abb6cd61f4fba1ab1bb7938cbc3583a6316
+    workflow_state_json:
+      path: .gtpj_runtime/batches/RUN-20260708-0003-h76-hotspot100-tune-live-multiagent-2gpu/workflow_state.json
+      size_bytes: 2013
+      sha256: c7097e6f674d4116a30a78b32d965282119016d1576c66b78f2cbed5b7081cf7
+server_launch:
+  started_at_utc: "2026-07-08T06:32:05+00:00"
+  screen_session: GTPJ_ATTEMPT015_HOTSPOT100_LIVE
+  controller_pids:
+    gpu0: 4011915
+    gpu1: 4011916
+  initial_status:
+    running: 2
+    pending: 98
+  initial_running_jobs:
+    - DR-001
+    - DR-002
+  initial_gpu_state:
+    gpu0:
+      utilization_percent: 2
+      memory_mib: 520
+    gpu1:
+      utilization_percent: 0
+      memory_mib: 460
+campaign:
+  experiment_type: tune_search
+  planned_jobs: 100
+  seed_policy: fixed_seed_5
+  target_metric: GZSL_H
+  target_single_threshold_H: 75.0
+  promotion_allowed: false
+  confirmation_allowed: false
+  followup_if_hit: exact_repeat_same_seed_same_config
+  scope:
+    dynamic_direction_mode: sample
+    dynamic_gate_hidden: 48
+    dynamic_local_mode: fixed
+    dynamic_icsa_mode: fixed
+    dynamic_pse_mode: fixed
+    tuned_parameters:
+      - weight_s2v
+      - dynamic_gate_anchor_lambda
+gate:
+  workflow_mode: live_multi_agent_monitor
+  activation_mode: real_multi_agent
+  agent_instance_mode: named_owner_thread
+  formal_runtime_backend: named_owner_thread
+  thread_creation_allowed: true
+  formal_runner_allowed: true
+  formal_evidence_allowed: true
+  blocked_until: null
+decision:
+  state: completed
+  promotion_decision: blocked
+  reason: "Completed 100-job tune_search. DR-004 reached H=75.04 and DR-035 reached H=75.00 as tune_promising single-run evidence only; no H>=76 appeared. Follow-up must be exact-repeat same config and same seed before any confirmation or promotion."

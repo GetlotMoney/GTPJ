@@ -42,6 +42,115 @@ def _config_get(config, key, legacy_key=None, default=None):
     return default
 
 
+def _gate_bias_from_value(value, min_value=0.0, max_value=1.0):
+    span = max(float(max_value) - float(min_value), 1e-8)
+    ratio = (float(value) - float(min_value)) / span
+    ratio = float(np.clip(ratio, 1e-4, 1.0 - 1e-4))
+    return float(np.log(ratio / (1.0 - ratio)))
+
+
+class DynamicRoutingGate(nn.Module):
+    """Small gate initialized to a fixed routing coefficient."""
+
+    valid_modes = {"fixed", "sample", "class"}
+
+    def __init__(
+        self,
+        dim_f,
+        hidden,
+        mode,
+        init_value,
+        min_value=0.0,
+        max_value=1.0,
+        class_uses_sample=True,
+    ):
+        super().__init__()
+        self.mode = str(mode).lower()
+        if self.mode not in self.valid_modes:
+            raise ValueError(
+                f"dynamic gate mode must be one of {sorted(self.valid_modes)}, got {mode!r}."
+            )
+        self.min_value = float(min_value)
+        self.max_value = float(max_value)
+        self.class_uses_sample = bool(class_uses_sample)
+        self.register_buffer("anchor", torch.tensor(float(init_value)), persistent=False)
+
+        if self.mode == "fixed":
+            self.net = None
+            return
+
+        input_dim = int(dim_f)
+        if self.mode == "class" and self.class_uses_sample:
+            input_dim = int(dim_f) * 2
+        hidden = max(1, int(hidden))
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden),
+            nn.LayerNorm(hidden),
+            nn.GELU(),
+            nn.Linear(hidden, 1),
+        )
+        with torch.no_grad():
+            self.net[-1].weight.zero_()
+            self.net[-1].bias.fill_(
+                _gate_bias_from_value(init_value, self.min_value, self.max_value)
+            )
+
+    def _scale(self, logits):
+        return self.min_value + (self.max_value - self.min_value) * torch.sigmoid(logits)
+
+    def _fixed(self, sample_feat=None, class_text=None, batch_size=None, class_count=None):
+        device = self.anchor.device
+        dtype = self.anchor.dtype
+        if sample_feat is not None:
+            device = sample_feat.device
+            dtype = sample_feat.dtype
+        elif class_text is not None:
+            device = class_text.device
+            dtype = class_text.dtype
+
+        if batch_size is None and sample_feat is not None:
+            batch_size = sample_feat.size(0)
+        if class_count is None and class_text is not None:
+            class_count = class_text.size(-2)
+
+        value = self.anchor.to(device=device, dtype=dtype)
+        if batch_size is not None and class_count is not None:
+            return value.view(1, 1).expand(int(batch_size), int(class_count))
+        if batch_size is not None:
+            return value.view(1, 1).expand(int(batch_size), 1)
+        if class_count is not None:
+            return value.view(1, 1).expand(int(class_count), 1)
+        return value.view(1, 1)
+
+    def forward(self, sample_feat=None, class_text=None, batch_size=None, class_count=None):
+        if self.mode == "fixed":
+            return self._fixed(sample_feat, class_text, batch_size, class_count)
+        if self.mode == "sample":
+            if sample_feat is None:
+                raise ValueError("sample dynamic gate requires sample_feat.")
+            return self._scale(self.net(sample_feat))
+
+        if class_text is None:
+            raise ValueError("class dynamic gate requires class_text.")
+        if self.class_uses_sample:
+            if sample_feat is None:
+                raise ValueError("class dynamic gate requires sample_feat.")
+            if class_text.dim() == 2:
+                B = sample_feat.size(0)
+                C = class_text.size(0)
+                class_batch = class_text.unsqueeze(0).expand(B, -1, -1)
+            elif class_text.dim() == 3:
+                B = class_text.size(0)
+                C = class_text.size(1)
+                class_batch = class_text
+            else:
+                raise ValueError(f"class_text must be [C, D] or [B, C, D], got {tuple(class_text.shape)}.")
+            sample_batch = sample_feat.unsqueeze(1).expand(-1, C, -1)
+            gate_in = torch.cat([sample_batch, class_batch], dim=-1)
+            return self._scale(self.net(gate_in)).squeeze(-1)
+        return self._scale(self.net(class_text))
+
+
 def fgvd_select_patches(F_p, K=64, sigma=None, largest=True, formula="v2_abs_mean"):
     """Select top-K patches for Frequency-Guided Visual Disentanglement."""
     _, N, D = F_p.shape
@@ -475,6 +584,7 @@ class GTPJ(nn.Module):
         tf_heads = int(getattr(config, "tf_heads", 4))
         tf_dropout = float(getattr(config, "tf_dropout", 0.1))
         weight_s2v = float(getattr(config, "weight_s2v", 0.5))
+        self.weight_s2v = weight_s2v
         use_fgvd_geometry = bool(_config_get(config, "use_fgvd_geometry", "use_fae", True))
         self.local_weight = float(getattr(config, "local_weight", 0.3))
         self.score_mode = str(getattr(config, "score_mode", "add"))
@@ -593,6 +703,47 @@ class GTPJ(nn.Module):
             if self.cond_text_ratio <= 0:
                 raise ValueError("sgmp_text_mode='conditional' requires icsa_ratio > 0.")
 
+        self.use_dynamic_routing = bool(getattr(config, "use_dynamic_routing", False))
+        self.dynamic_local_mode = str(getattr(config, "dynamic_local_mode", "fixed")).lower()
+        self.dynamic_icsa_mode = str(getattr(config, "dynamic_icsa_mode", "fixed")).lower()
+        self.dynamic_direction_mode = str(getattr(config, "dynamic_direction_mode", "fixed")).lower()
+        self.dynamic_pse_mode = str(getattr(config, "dynamic_pse_mode", "fixed")).lower()
+        if self.dynamic_pse_mode not in {"fixed", "class"}:
+            raise ValueError(
+                "dynamic_pse_mode supports only 'fixed' or 'class' because PSE gates are "
+                f"built before sample-conditioned text exists; got {self.dynamic_pse_mode!r}."
+            )
+        self.dynamic_gate_hidden = int(getattr(config, "dynamic_gate_hidden", 64))
+        self.dynamic_gate_anchor_lambda = float(
+            getattr(config, "dynamic_gate_anchor_lambda", 0.0)
+        )
+        if self.use_dynamic_routing:
+            self.dynamic_local_gate = DynamicRoutingGate(
+                self.dim_f,
+                self.dynamic_gate_hidden,
+                self.dynamic_local_mode,
+                self.local_weight,
+            )
+            self.dynamic_icsa_gate = DynamicRoutingGate(
+                self.dim_f,
+                self.dynamic_gate_hidden,
+                self.dynamic_icsa_mode,
+                self.cond_text_ratio,
+            )
+            self.dynamic_direction_gate = DynamicRoutingGate(
+                self.dim_f,
+                self.dynamic_gate_hidden,
+                self.dynamic_direction_mode,
+                self.weight_s2v,
+            )
+            self.dynamic_pse_gate = DynamicRoutingGate(
+                self.dim_f,
+                self.dynamic_gate_hidden,
+                self.dynamic_pse_mode,
+                self.clip_a_self_outer_ratio,
+                class_uses_sample=False,
+            )
+
     @property
     def bvsa(self):
         return self.cross_tf
@@ -666,17 +817,72 @@ class GTPJ(nn.Module):
             if cls._float_config(config, key, 0.0) != 0.0:
                 raise ValueError(f"MyModel.py is baseline-only; unsupported loss weight {key}.")
 
-    def get_adapted_seen_text(self):
+    def _gate_stats(self, gate):
+        detached = gate.detach().float()
+        return {
+            "shape": list(detached.shape),
+            "mean": float(detached.mean().item()),
+            "std": float(detached.std(unbiased=False).item()),
+            "min": float(detached.min().item()),
+            "max": float(detached.max().item()),
+        }
+
+    def _dynamic_anchor_loss(self, gates, device):
+        if not gates:
+            return torch.tensor(0.0, device=device)
+        losses = []
+        gate_modules = {
+            "local": getattr(self, "dynamic_local_gate", None),
+            "icsa": getattr(self, "dynamic_icsa_gate", None),
+            "direction": getattr(self, "dynamic_direction_gate", None),
+            "pse": getattr(self, "dynamic_pse_gate", None),
+        }
+        for name, gate in gates.items():
+            module = gate_modules.get(name)
+            if module is None:
+                continue
+            anchor = module.anchor.to(device=gate.device, dtype=gate.dtype)
+            losses.append(((gate - anchor) ** 2).mean())
+        if not losses:
+            return torch.tensor(0.0, device=device)
+        return torch.stack(losses).mean()
+
+    def get_adapted_seen_text(self, return_gate=False):
         if self.use_clip_a_self:
             sentence_embeds = self.seen_sentence_embeds
             base = sentence_embeds.mean(dim=1)
             attn = self.semantic_prototype_self_attention(sentence_embeds).mean(dim=1)
+            if self.use_dynamic_routing:
+                ratio = self.dynamic_pse_gate(class_text=base, class_count=base.size(0))
+                adapted = ratio * attn + (1.0 - ratio) * base
+                adapted = F.normalize(adapted, dim=1)
+                if return_gate:
+                    return adapted, ratio
+                return adapted
             ratio = self.clip_a_self_outer_ratio
             adapted = ratio * attn + (1.0 - ratio) * base
-            return F.normalize(adapted, dim=1)
+            adapted = F.normalize(adapted, dim=1)
+            if return_gate:
+                gate = torch.full(
+                    (base.size(0), 1),
+                    float(ratio),
+                    device=base.device,
+                    dtype=base.dtype,
+                )
+                return adapted, gate
+            return adapted
         x = self.seen_text_embeds
         adapted = self.adapter_ratio * self.semantic_prototype_adapter(x) + (1.0 - self.adapter_ratio) * x
-        return F.normalize(adapted, dim=1)
+        adapted = F.normalize(adapted, dim=1)
+        if return_gate:
+            gate = torch.full(
+                (x.size(0), 1),
+                float(self.adapter_ratio),
+                device=x.device,
+                dtype=x.dtype,
+            )
+            return adapted, gate
+        return adapted
 
     def get_adapted_unseen_text(self):
         if (
@@ -691,12 +897,16 @@ class GTPJ(nn.Module):
             return F.normalize(ratio * attn + (1.0 - ratio) * base, dim=1)
         return self.unseen_text_embeds
 
-    def _make_all_text(self, device, dtype):
-        seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)
+    def _make_all_text(self, device, dtype, return_pse_gate=False):
+        seen_text, pse_gate = self.get_adapted_seen_text(return_gate=True)
+        seen_text = seen_text.to(device=device, dtype=dtype)
+        pse_gate = pse_gate.to(device=device, dtype=dtype)
         unseen_text = self.get_adapted_unseen_text().to(device=device, dtype=dtype)
         all_text = torch.zeros(self.nclass, self.dim_f, device=device, dtype=dtype)
         all_text[self.seenclass.to(device)] = seen_text
         all_text[self.unseenclass.to(device)] = unseen_text
+        if return_pse_gate:
+            return all_text, pse_gate
         return all_text
 
     def _topology_pearson_loss(self, enh_text=None):
@@ -889,7 +1099,14 @@ class GTPJ(nn.Module):
             cls_token = None
 
         logit_scale = torch.clamp(self.logit_scale.exp(), max=100.0)
-        all_text = self._make_all_text(patches.device, patches.dtype)
+        dynamic_gates = {}
+        dynamic_route_stats = {}
+        all_text, pse_gate = self._make_all_text(
+            patches.device, patches.dtype, return_pse_gate=True
+        )
+        if self.use_dynamic_routing:
+            dynamic_gates["pse"] = pse_gate
+            dynamic_route_stats["pse_gate"] = self._gate_stats(pse_gate)
         all_text_cond = None
 
         if cls_token is not None:
@@ -901,14 +1118,39 @@ class GTPJ(nn.Module):
             pi_x = F.normalize(self.image_conditioned_semantic_adapter(cls_token), dim=-1)
             all_text_cond = all_text.unsqueeze(0).expand(cls_token.size(0), -1, -1).clone()
             seen_idx = self.seenclass.to(patches.device)
+            if self.use_dynamic_routing:
+                icsa_gate = self.dynamic_icsa_gate(
+                    sample_feat=cls_token,
+                    class_text=all_text[seen_idx],
+                    batch_size=cls_token.size(0),
+                    class_count=seen_idx.numel(),
+                )
+                dynamic_gates["icsa"] = icsa_gate
+                dynamic_route_stats["icsa_gate"] = self._gate_stats(icsa_gate)
+            else:
+                icsa_gate = torch.full(
+                    (cls_token.size(0), 1),
+                    float(self.cond_text_ratio),
+                    device=patches.device,
+                    dtype=patches.dtype,
+                )
             all_text_cond[:, seen_idx, :] = (
-                all_text[seen_idx].unsqueeze(0) + self.cond_text_ratio * pi_x.unsqueeze(1)
+                all_text[seen_idx].unsqueeze(0) + icsa_gate.unsqueeze(-1) * pi_x.unsqueeze(1)
             )
             text_n_cond = F.normalize(all_text_cond, dim=-1)
             s_global = (vis_n.unsqueeze(1) * text_n_cond).sum(dim=-1) * logit_scale
         else:
             text_n = F.normalize(all_text, dim=1)
             s_global = vis_n @ text_n.T * logit_scale
+            if self.use_dynamic_routing:
+                icsa_gate = self.dynamic_icsa_gate(
+                    sample_feat=vis_n,
+                    class_text=all_text[self.seenclass.to(patches.device)],
+                    batch_size=vis_n.size(0),
+                    class_count=self.seenclass.numel(),
+                )
+                dynamic_gates["icsa"] = icsa_gate
+                dynamic_route_stats["icsa_gate"] = self._gate_stats(icsa_gate)
 
         bvsa_text = all_text
         if self.bvsa_text_mode == "conditional":
@@ -928,14 +1170,38 @@ class GTPJ(nn.Module):
             fgvd_select_formula=self.fgvd_select_formula,
         )
         s_local = bvsa_out["local_score"]
-        s_final = s_global + self.local_weight * s_local
+        if self.use_dynamic_routing:
+            direction_gate = self.dynamic_direction_gate(
+                sample_feat=vis_n,
+                class_text=bvsa_text,
+                batch_size=vis_n.size(0),
+                class_count=s_local.size(1),
+            )
+            s_local = (
+                direction_gate * bvsa_out["score_s2v"]
+                + (1.0 - direction_gate) * bvsa_out["score_v2s"]
+            )
+            dynamic_gates["direction"] = direction_gate
+            dynamic_route_stats["direction_gate"] = self._gate_stats(direction_gate)
+
+            local_gate = self.dynamic_local_gate(
+                sample_feat=vis_n,
+                class_text=bvsa_text,
+                batch_size=vis_n.size(0),
+                class_count=s_local.size(1),
+            )
+            s_final = s_global + local_gate * s_local
+            dynamic_gates["local"] = local_gate
+            dynamic_route_stats["local_gate"] = self._gate_stats(local_gate)
+        else:
+            s_final = s_global + self.local_weight * s_local
 
         if is_train:
             logits = s_final[:, self.seenclass.to(s_final.device)]
         else:
             logits = s_final
 
-        return {
+        output = {
             "logits": logits,
             "logits_200": s_final,
             "s_final": s_final,
@@ -961,6 +1227,13 @@ class GTPJ(nn.Module):
             "all_text": all_text,
             "all_text_cond": all_text_cond,
         }
+        if self.use_dynamic_routing:
+            output["dynamic_gates"] = dynamic_gates
+            output["dynamic_route_stats"] = dynamic_route_stats
+            output["dynamic_gate_anchor_loss"] = self._dynamic_anchor_loss(
+                dynamic_gates, s_final.device
+            )
+        return output
 
     def _global_to_seen_labels(self, labels):
         labels = labels.to(device=self.seenclass.device, dtype=torch.long)
@@ -1058,6 +1331,14 @@ class GTPJ(nn.Module):
             loss_bmdd = (T_msdn * T_msdn / 2.0) * (kl_s2v_to_v2s + kl_v2s_to_s2v)
             loss = loss + lambda_bmdd * loss_bmdd
 
+        loss_dynamic_gate_anchor = in_package.get("dynamic_gate_anchor_loss")
+        if loss_dynamic_gate_anchor is None:
+            loss_dynamic_gate_anchor = torch.tensor(0.0, device=logits.device)
+        else:
+            loss_dynamic_gate_anchor = loss_dynamic_gate_anchor.to(logits.device)
+        if self.dynamic_gate_anchor_lambda > 0:
+            loss = loss + self.dynamic_gate_anchor_lambda * loss_dynamic_gate_anchor
+
         return {
             "loss": loss,
             "loss_CE": loss_CE,
@@ -1072,4 +1353,5 @@ class GTPJ(nn.Module):
             "loss_neg": loss_neg,
             "loss_jepa": loss_mpp,
             "loss_jepa_neg": loss_neg,
+            "loss_dynamic_gate_anchor": loss_dynamic_gate_anchor,
         }

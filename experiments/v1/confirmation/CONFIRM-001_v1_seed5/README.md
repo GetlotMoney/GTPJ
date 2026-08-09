@@ -46,7 +46,7 @@ status: recorded
 
 ## 运行前检查
 
-- [x] 临时分支来源符合实验类型；当前版本从 `main` 切出，历史版本可从 `v1` tag 开只运行分支。
+- [x] 这是迁移前完成的历史运行，原分支来源保持原样；今后的新运行必须先绑定冻结母版，再从准确母版 commit 独立切出。
 - [x] `base_code_tag: v1` 和 `branch_source` 已记录。
 - [x] 配置复制自 `experiments/v1/config.yaml`。
 - [x] 只改变声明过的变量或开关。本 confirmation 不改配置、不改模型结构。

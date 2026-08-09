@@ -5,8 +5,10 @@ version: v2
 baseline_name: GTPJ-v2
 status: owner_activated_unconfirmed
 code_tag: v2
-parent_version: v1
-parent_tag: v1
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+source_tag: v1
+promoted_from_experiment: V1-INNOVATION-001
 change_type: add_module
 based_on_trial: trial/v1/idea-0001/trial-001
 source_trial: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly
@@ -17,6 +19,8 @@ ledger_source: dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly
 ledger_source_commit: f24a277
 code_source: v1 + TRIAL-001 CLIP-A-self text prototype adapter
 config: experiments/v2/config.yaml
+framework_diagram: experiments/v2/framework_diagram.md
+module_glossary: experiments/v2/MODULES.md
 baseline_evidence: experiments/v2/baseline/
 evidence_level: valid_single_run
 best_observed_H: 74.29
@@ -84,13 +88,23 @@ confirmation_status: needs_confirmation
 - `S - U = 6.20`，结果偏 seen-heavy；
 - 后续论文级结论仍建议补做 v2 confirmation、seen/unseen gap analysis 和关键 ablation。
 
-## 版本树位置
+## 同级框架注册位置
 
 ```text
-parent_version: v1
-children: none yet
-notes: v2 是基于 v1 + IDEA-0001/TRIAL-001 的当前 active mainline；证据状态为 owner_activated_unconfirmed。
+registry_level: formal_peer
+derived_from_framework: FRAMEWORK-V1
+notes: V2 与 V1 同级；历史来源为 V1 + IDEA-0001/TRIAL-001，证据状态为 owner_activated_unconfirmed。
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+source_trial_framework: experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/framework_diagram.md
+```
+
+The version-level diagram summarizes the activated v2 path. The source trial diagram records the trial-local implementation evidence.
 
 ## Version Flow
 
@@ -108,4 +122,5 @@ flowchart TD
 
 - `tune/`
 - `ablation/`
+- `innovation/`
 - `confirmation/`

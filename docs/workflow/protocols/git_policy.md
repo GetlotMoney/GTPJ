@@ -1,0 +1,214 @@
+# Git 策略
+
+## 永久对象
+
+- `main`：总管理长期分支，保存规范、同级正式框架注册表、全局索引和 owner 明确选择的正式状态。
+- `framework/vX-template-vN`：正式框架的只读母版分支；`TEMPLATE.yaml` 将它与 `MODEL-VX-TEMPLATE-VN`、Tag 和准确 commit 绑定。
+- `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5`：旧长期代码分支，只用于历史来源回查；不能直接作为新实验起点。
+- `v1`、`v2`、`v3`、`v4`、`v5`：永久版本 tag，不是分支；`v4` 是历史 config-only tag。
+- `trial/v1/idea-xxxx/trial-xxx`：永久 trial 代码快照，必须带 base version。
+
+当前 active mainline code 是：
+
+```text
+GTPJ-v5
+tag: v5
+best_observed_H: 74.54
+confirmed_H: 74.44
+confirmation_status: owner_activated_provisional
+status: owner_activated_provisional
+```
+
+历史 baseline `GTPJ-v1 / tag v1 / H=73.93` 仍永久保留。`v3 CONFIRM-001 local-v3-054`
+是当前 strongest confirmed reference，`confirmed_H=74.47`，历史 `v4` 只是 config-only tag。
+如果本地或远端 baseline tag
+指向的记录与版本账本不一致，说明 tag 错位，必须先修正，不能继续开正式实验。
+
+## 临时分支
+
+普通实验必须先由 `EXPERIMENT.yaml` 绑定冻结母版，再从准确母版提交独立分叉；治理文档改动才从 `main` 开专用审核分支。
+
+```text
+exp/v1/tune/tune-001-short-name
+exp/v1/ablation/ablation-001-short-name
+exp/v1/innovation/innovation-001-short-name
+exp/v1/confirmation/confirm-001-short-name
+promote/v1-idea-0001-to-v2
+```
+
+旧 `dev/vX-idea-...` 分支继续保留用于历史回查，但不再是新工作的主入口。
+
+## 命名规范
+
+普通实验分支：
+
+```text
+exp/<framework-version>/<kind>/<typed-id>-<short-name>
+```
+
+示例：
+
+```text
+exp/v1/tune/tune-001-topo008
+exp/v1/ablation/ablation-001-disable-jepa
+exp/v1/innovation/innovation-001-token-router
+exp/v1/confirmation/confirm-001-clean-seed5
+```
+
+历史模块 trial 开发分支（只用于回查，不再新建）：
+
+```text
+dev/<base-version>-idea-xxxx-trial-xxx-<short-name>
+```
+
+示例：
+
+```text
+dev/v1-idea-0003-trial-001-token-router
+dev/v2-idea-0003-trial-002-token-router
+```
+
+历史模块 trial 永久快照 tag：
+
+```text
+trial/<base-version>/idea-xxxx/trial-xxx
+```
+
+示例：
+
+```text
+trial/v1/idea-0003/trial-001
+trial/v2/idea-0003/trial-002
+```
+
+一个 `trial/...` tag 只对应一个 module trial 的代码快照，不对应某次
+`ATTEMPT-xxx`、某个 H 值或某个 best result。trial 内部的参数尝试、窄消融、
+confirmation/rerun 和 debug-fix 只写入 `ATTEMPTS.md`、`attempts/ATTEMPT-xxx/`、
+commit hash 和 Warehouse artifact id；不要创建 attempt 级 git tag。
+
+Promote 分支：
+
+```text
+promote/from-vX-innovation-xxx-to-vY
+```
+
+示例：
+
+```text
+promote/from-v5-innovation-002-to-v6
+```
+
+这里的 `v6` 只是命名示例，不表示当前已经存在 `FRAMEWORK-V6`；只有确认和接纳通过后才能实际创建。
+
+## 分支从哪里切
+
+规则：
+
+- 每个正式框架用 `TEMPLATE.yaml` 登记母版 `MODEL-VX-TEMPLATE-VN`、只读分支、不可变 Tag 和准确 commit。
+- 不创建 controller branch。
+- 不直接在 `main` 上做新模块开发或普通训练实验。
+- 新 `exp/...` 必须先创建 `EXPERIMENT.yaml`，再从准确母版提交独立分叉，统一命名为
+  `exp/vX/<type>/<experiment-id>-<slug>`；实验代码不得并回母版，也不得从另一项实验继续切分支。
+- `promote/...` 从当前 `main` 切出，只负责把已确认的创新登记为新的同级正式框架、创建本地 Tag 并同步总账。
+- `base_template_id`、`base_template_tag` 和 `base_template_commit` 共同记录唯一代码来源。
+- `legacy_frozen 不能启动新实验`；必须先整理出新的干净母版，完成审核后冻结为 `frozen`。
+
+代码层包括：
+
+```text
+model/
+tools/
+train_*.py
+当前运行别名 config/GTPJ_*.yaml
+```
+
+账本层包括：
+
+```text
+docs/
+workflow/
+idea_tree/
+experiments/
+config/versions/
+README.md
+AGENTS.md
+NEXT_ACTIONS.md
+```
+
+## 命名怎么看
+
+```text
+exp/v1/tune/tune-001-topo008
+```
+
+含义：
+
+- `exp`：普通实验分支。
+- `v1`：目标框架是 `FRAMEWORK-V1`；真正代码起点由该实验的 `EXPERIMENT.yaml` 指向母版 commit。
+- `tune`：调参实验，也可以是 `ablation`、`innovation` 或 `confirmation`。
+- `001`：该版本该类型第 1 次实验。
+- `topo008`：人能读懂的短名。
+
+```text
+dev/v1-idea-0003-trial-001-token-router
+```
+
+以下含义只解释历史 `dev/...`，不作为新分支规范：
+
+- `dev`：新模块开发分支，不是稳定版本。
+- `v1`：这次旧 trial 的来源代码是 `v1` Tag。
+- `idea-0003`：对应 `idea_tree/ideas/IDEA-0003_*`。
+- `trial-001`：这个 idea 的第 1 次实现尝试。
+- `token-router`：人能读懂的短名。
+
+```text
+trial/v1/idea-0003/trial-001
+```
+
+含义：
+
+- `trial`：永久 trial 代码快照。
+- `v1`：快照基于 `v1` baseline。
+- `idea-0003`：对应的创意。
+- `trial-001`：对应的实现尝试。
+
+分支名里的 `v1` 是来源版本，不是最终版本号。成功 trial 可以提升为 `v2`、`v3` 或后续任何新的 baseline tag。
+
+## Tag 规则
+
+- tag 必须打在明确 commit 上，不打在 dirty working tree 上。
+- 打 trial tag 前，先把 trial README 的 `code_commit` 填成 `git rev-parse HEAD`。
+- 命令使用 `git tag <tag-name> <code_commit>`，不要省略 `<code_commit>`。
+- 不为 `ATTEMPT-xxx`、`best_attempt`、单次指标值或调参结果创建 git tag。
+  这些证据由 trial 账本、attempt 目录、commit hash 和 Warehouse artifact id 固定。
+- 新 `vX` tag 必须打在包含正式版本代码和版本材料的明确 commit 上，而不是打在中间 trial
+  commit 或 dirty working tree 上；该 commit 不必是当前 `main` commit。
+- 推送后的 `vX` 和 `trial/...` tag 视为不可移动对象。
+
+## 合并和删除
+
+- `exp/...`：实验记录合并回 `main` 后可以删除。
+- 失败 `dev/...`：先打 `trial/...` tag，再把失败证据记录回 `main`，然后可以删除。
+- 成功 `dev/...`：先打 `trial/...` tag，再通过 `promote/...` 提升为新 `vX`。
+- `promote/...`：从当前 `main` 开出，保留最新账本，整理正式版本代码和新增版本账本。
+  tag `vX` 打好后，只把账本层回流到 `main`；代码层是否回流由 owner 通过 `activate-version`
+  明确决定。账本回流完成后可以删除 promotion 分支。
+- 不删除 `main`。
+- 不删除已推送的 `vX` baseline tag。
+- 不删除已推送的 `trial/...` 永久快照 tag。
+
+## GitHub 远端保护
+
+建议在 GitHub ruleset 中配置：
+
+- `main`：禁止 force push，禁止删除。
+- `v*`：保护正式 baseline tag，禁止移动、覆盖或删除。
+- `trial/**`：保护 trial 快照 tag，禁止移动、覆盖或删除。
+
+当前仓库初始化阶段如果发现 `v1` tag 错指旧基线，允许做一次性更正；更正后 `v1`
+必须指向 `H=73.93` 的 GTPJ-v1 快照，之后按不可移动对象管理。`v2` 和 `v3`
+都是正式 baseline tag；当前 owner-accepted tag 是 `v3`，也按不可移动对象管理。
+
+Push 规则：
+
+- 不自动 push。只有 owner 明确要求后才 push。

@@ -1,5 +1,5 @@
-# GTPJ-v3 Confirmation Index
+# FRAMEWORK-V3 确认实验索引
 
-| Experiment | Status | Directory | Note |
-|---|---|---|---|
-| `CONFIRM-001_local_v3_054_min3` | promoted_to_v4 | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Server min3 confirms `local-v3-054`: H=74.46/74.42/74.47, confirmed_H=74.45; promoted to `GTPJ-v4`. |
+| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
+|---|---|---|---|---|---|---|
+| `V3-CONFIRM-001` | completed | local-v3-054 是否通过三次固定配置复跑 | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3/PARAMETER_MATRIX.md` | `RUN-20260629-1722` | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | - |

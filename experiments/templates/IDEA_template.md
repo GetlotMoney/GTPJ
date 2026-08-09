@@ -18,7 +18,9 @@ idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 ## 基于什么
 
 - base version:
+- base code tag:
 - based on modules:
+- required module template:
 
 ## 目标组件
 
@@ -29,6 +31,9 @@ idea_dir: idea_tree/ideas/IDEA-xxxx_short_name/
 ## 实现范围
 
 必须写清楚会改哪些文件、哪些模块、哪些 forward/loss/eval 路径。
+如果要从论文创新进入实验，必须写明基于哪个 `base_version` / `base_code_tag`，
+并说明候选模板族：`feature_adapter`、`fusion_gate`、`auxiliary_loss` 或
+`sampler_or_data_view`。
 
 ## 版本评分
 

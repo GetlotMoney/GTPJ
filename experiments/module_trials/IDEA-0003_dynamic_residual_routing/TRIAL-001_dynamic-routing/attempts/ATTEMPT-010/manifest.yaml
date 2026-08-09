@@ -1,0 +1,56 @@
+schema_version: gtpj-attempt-manifest/v1
+attempt:
+  id: ATTEMPT-010
+  trial_id: TRIAL-001
+  idea_id: IDEA-0003
+  name: H76 top4 same-seed min5 exact repeat
+  status: stopped_workflow_smoke
+  recorded_at: "2026-07-05"
+version:
+  base_version: v5
+  base_code_tag: v5
+source:
+  source_attempt: ATTEMPT-009
+  source_run: RUN-20260704-0002-h76-existing-routing-100-2gpu
+  source_profile: h76-existing-routing-100
+run:
+  run_id: RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu
+  profile: h76-top4-min5-repeat
+  repeat_type: same_seed_min5_exact_repeat
+  jobs_total: 20
+  jobs_completed: 4
+  jobs_skipped: 16
+  jobs_failed: 0
+  status: completed_with_skips
+  stop_reason: user_requested_stop_after_four_completed_workflow_smoke
+  server_repo: /data/lby/projects/cv_project/GTPJ
+  server_run_dir: /data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches/RUN-20260705-0001-confirm-dr020-051-041-047-sameseed5x-2gpu
+  server_branch: codex/h76-campaign-20260704
+  server_commit: d505e992492eb6fe7272edf0f0dc1d15a5932434
+  launched_at: "2026-07-05T17:37:18+00:00"
+  stopped_at: "2026-07-05T18:11:00+00:00"
+targets:
+  - source_job: DR-020
+    source_config: direction_sample_h48_w0.525_a0.003
+    source_H: "75.00"
+    repeats_planned: 5
+    repeats_completed: 4
+  - source_job: DR-051
+    source_config: direction_sample_h48_w0.545_a0.004
+    source_H: "74.96"
+    repeats_planned: 5
+    repeats_completed: 0
+  - source_job: DR-041
+    source_config: direction_sample_h48_w0.515_a0.002
+    source_H: "74.83"
+    repeats_planned: 5
+    repeats_completed: 0
+  - source_job: DR-047
+    source_config: direction_sample_h48_w0.535_a0.002
+    source_H: "74.82"
+    repeats_planned: 5
+    repeats_completed: 0
+result:
+  status: partial_workflow_smoke_complete
+  formal_confirmation_status: incomplete
+  promotion_decision: blocked

@@ -1,0 +1,145 @@
+schema_version: gtpj-result/v1
+attempt_id: ATTEMPT-011
+campaign_id: ATTEMPT-011-H76-MIXED200
+result_type: server_detached_mixed_campaign
+status: completed_server_campaign
+promotion_decision: blocked
+planned_jobs:
+  total: 200
+  search: 120
+  same_seed_repeat: 40
+  ablation: 40
+completed_jobs: 200
+failed_jobs: 0
+skipped_jobs: 0
+run_batches:
+  RUN-20260706-0001-h76-mixed200-b01-search50-2gpu:
+    status: completed
+    jobs: 50
+  RUN-20260706-0002-h76-mixed200-b02-search50-2gpu:
+    status: completed
+    jobs: 50
+  RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu:
+    status: completed
+    jobs: 50
+  RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu:
+    status: completed
+    jobs: 50
+best_single:
+  job_ref: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu/DR-042
+  group: direction_micro_tune
+  name: direction_sample_h48_w0.515_a0.004
+  seed: 5
+  H: "75.00"
+  U: "73.17"
+  S: "76.91"
+  config:
+    dynamic_direction_mode: sample
+    dynamic_gate_hidden: 48
+    weight_s2v: 0.515
+    dynamic_gate_anchor_lambda: 0.004
+supporting_75_single:
+  job_ref: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu/DR-036
+  group: h76_mixed200_ablate_top4
+  name: dr041_direction_sample_h48_w0.515_a0.002_weight_plus_0.01
+  seed: 5
+  H: "75.00"
+  U: "73.13"
+  S: "76.97"
+  config:
+    dynamic_direction_mode: sample
+    dynamic_gate_hidden: 48
+    weight_s2v: 0.525
+    dynamic_gate_anchor_lambda: 0.002
+top_exact_repeat_groups:
+  DR047:
+    source_config: direction_sample_h48_w0.535_a0.002
+    seed: 5
+    n: 10
+    best_H: "74.87"
+    mean_H: "74.630"
+    min_H: "74.41"
+    max_H: "74.87"
+    range_H: "0.46"
+  DR020:
+    source_config: direction_sample_h48_w0.525_a0.003
+    seed: 5
+    n: 10
+    best_H: "74.83"
+    mean_H: "74.606"
+    min_H: "74.42"
+    max_H: "74.83"
+    range_H: "0.41"
+  DR041:
+    source_config: direction_sample_h48_w0.515_a0.002
+    seed: 5
+    n: 10
+    best_H: "74.72"
+    mean_H: "74.598"
+    min_H: "74.45"
+    max_H: "74.72"
+    range_H: "0.27"
+  DR051:
+    source_config: direction_sample_h48_w0.545_a0.004
+    seed: 5
+    n: 10
+    best_H: "74.75"
+    mean_H: "74.524"
+    min_H: "74.29"
+    max_H: "74.75"
+    range_H: "0.46"
+attempt014_source_candidates:
+  note: "These are pure direction_sample h48 seed=5 source singles selected for ATTEMPT-014 exact-repeat planning. Each candidate may receive at most 5 exact repeats under the current reproduction rule."
+  count: 20
+  candidates:
+    - {id: A011B01DR042, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-042, config: direction_sample_h48_w0.515_a0.004, seed: 5, source_H: "75.00"}
+    - {id: A011B04DR036, run: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu, job: DR-036, config: direction_sample_h48_w0.525_a0.002, seed: 5, source_H: "75.00"}
+    - {id: A011B03DR020, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-020, config: direction_sample_h48_w0.555_a0.0045, seed: 5, source_H: "74.98"}
+    - {id: A011B01DR023, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-023, config: direction_sample_h48_w0.55_a0.003, seed: 5, source_H: "74.96"}
+    - {id: A011B01DR017, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-017, config: direction_sample_h48_w0.5_a0.003, seed: 5, source_H: "74.89"}
+    - {id: A011B01DR021, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-021, config: direction_sample_h48_w0.525_a0.005, seed: 5, source_H: "74.85"}
+    - {id: A011B01DR024, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-024, config: direction_sample_h48_w0.55_a0.005, seed: 5, source_H: "74.83"}
+    - {id: A011B01DR026, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-026, config: direction_sample_h48_w0.575_a0.003, seed: 5, source_H: "74.82"}
+    - {id: A011B03DR009, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-009, config: direction_sample_h48_w0.535_a0.0015, seed: 5, source_H: "74.82"}
+    - {id: A011B03DR010, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-010, config: direction_sample_h48_w0.535_a0.0025, seed: 5, source_H: "74.82"}
+    - {id: A011B04DR035, run: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu, job: DR-035, config: direction_sample_h48_w0.505_a0.002, seed: 5, source_H: "74.81"}
+    - {id: A011B03DR017, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-017, config: direction_sample_h48_w0.555_a0.0015, seed: 5, source_H: "74.80"}
+    - {id: A011B01DR049, run: RUN-20260706-0001-h76-mixed200-b01-search50-2gpu, job: DR-049, config: direction_sample_h48_w0.535_a0.006, seed: 5, source_H: "74.79"}
+    - {id: A011B03DR013, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-013, config: direction_sample_h48_w0.545_a0.0015, seed: 5, source_H: "74.79"}
+    - {id: A011B03DR042, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-042, config: direction_sample_h48_w0.525_a0.0, seed: 5, source_H: "74.78"}
+    - {id: A011B03DR001, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-001, config: direction_sample_h48_w0.515_a0.0015, seed: 5, source_H: "74.77"}
+    - {id: A011B03DR044, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-044, config: direction_sample_h48_w0.525_a0.006, seed: 5, source_H: "74.77"}
+    - {id: A011B03DR018, run: RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu, job: DR-018, config: direction_sample_h48_w0.555_a0.0025, seed: 5, source_H: "74.75"}
+    - {id: A011B04DR023, run: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu, job: DR-023, config: direction_sample_h48_w0.545_a0.002, seed: 5, source_H: "74.72"}
+    - {id: A011B04DR043, run: RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu, job: DR-043, config: direction_sample_h48_w0.535_a0.001, seed: 5, source_H: "74.70"}
+artifacts:
+  server_root: lab4090:/data/lby/projects/cv_project/GTPJ/.gtpj_runtime/batches
+  files:
+    RUN-20260706-0001-h76-mixed200-b01-search50-2gpu:
+      summary_jsonl: {size_bytes: 46762, sha256: "793e7e4392d9a318b9959228bf93316c8e71d3fa80f035ba847429926cbc4aa9"}
+      summary_csv: {size_bytes: 20413, sha256: "e2a770037beeb119c81dd5c065cd92ab7fc3ea2b4875f1b4449d32089a03d9c0"}
+      batch_status_json: {size_bytes: 41461, sha256: "3c8178e5e9e51348cd524bad140b8287440b9e1c746df85e75683afafd6d0071"}
+      events_jsonl: {size_bytes: 22002, sha256: "9f7c0783809c05f3bdf9fd8a56ba0a38290d63a548a6e5d9b351c5e2b3df260e"}
+      plan_json: {size_bytes: 34389, sha256: "472abd4a806bd2ddb73a90baa50f4a863765cd42d6454cc627e2d285764ac98e"}
+    RUN-20260706-0002-h76-mixed200-b02-search50-2gpu:
+      summary_jsonl: {size_bytes: 48496, sha256: "9b32a2019aec59e99bf681ce919658c5c05d7933cc94e751dc97be5006d6712f"}
+      summary_csv: {size_bytes: 20465, sha256: "99d96fbe9f5073e5c700e5faf695f63931be624f912636e1b7a59d7159ec0bdf"}
+      batch_status_json: {size_bytes: 41509, sha256: "41e33904735ed57eb88fa94fdc486bdc7c76df8c450bfda895f307c8e5c73ac0"}
+      events_jsonl: {size_bytes: 21998, sha256: "4e2bac86482d83a1e98420cd09277df871a27df716903f6b93ca059ec14a98b4"}
+      plan_json: {size_bytes: 36739, sha256: "5cec2c7539140e57eb8027da89bb7729b48775c848d32b364279cfa3344ffcb4"}
+    RUN-20260706-0003-h76-mixed200-b03-search20-repeat20-ablate10-2gpu:
+      summary_jsonl: {size_bytes: 50038, sha256: "74286774da593f682133311cca424ce47c711dcbb219837328af496e86530b6c"}
+      summary_csv: {size_bytes: 23363, sha256: "1337f4ac9f781e07f091920fbefed960a794ac61fa13f287dd30db1f0faabde7"}
+      batch_status_json: {size_bytes: 44395, sha256: "bcc3f0f251e7ddf374f8b9fbc3cd6da2a48ee9b69d9f4b051070c1e56c7505b0"}
+      events_jsonl: {size_bytes: 22902, sha256: "4a4c4a69bd4d8366000abc099987e285bf9fc0f93f9498f651ff2d39273a13a7"}
+      plan_json: {size_bytes: 35991, sha256: "0bcefebccb10ed243529c15d4b5a8de649cba1db2c616edf511a5cef4981451c"}
+    RUN-20260706-0004-h76-mixed200-b04-repeat20-ablate30-2gpu:
+      summary_jsonl: {size_bytes: 49491, sha256: "448935ffea2b25127cb3783f60aa43b93e2371ab0a8d190b32e3b7e44e484d94"}
+      summary_csv: {size_bytes: 22747, sha256: "aeb04f07ee811e22fcb5a89130c5e66941774dc8221ef49a511cc3f6a15bfd66"}
+      batch_status_json: {size_bytes: 43790, sha256: "30997d9c25460532715ab8bde095e2ded1b1fa4acdfb18b25d2c66bbaf62aa11"}
+      events_jsonl: {size_bytes: 22452, sha256: "6cc585304ad3cb4002db6f3ccae0fcae986fc15b751922e3a97eeb19866d8f27"}
+      plan_json: {size_bytes: 36362, sha256: "a434287fb2524be398dee943a19ea02056429f0df9d40bc482cc1f03931c27e3"}
+decision:
+  state: tune_promising
+  reason: "ATTEMPT-011 completed the mixed H76 server campaign and produced two H=75.00 source singles, but exact-repeat stability and promotion remain blocked."
+  next_action: "Use ATTEMPT-014 to exact-repeat selected ATTEMPT-011 source candidates under the current max5 reproduction rule."

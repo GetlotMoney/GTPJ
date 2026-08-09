@@ -1,0 +1,363 @@
+# GTPJ Workflow Router
+
+正式写入前先绑定 `FRAMEWORK-VX`。调参写 `VX-TUNE-xxx`，消融写 `VX-ABLATION-xxx`，
+创新写 `VX-INNOVATION-xxx`，确认写 `VX-CONFIRM-xxx`。旧 `TRIAL / ATTEMPT` 只作为
+`legacy_ref`；创新通过确认和接纳后，才允许注册新的同级正式框架 `FRAMEWORK-VY`。
+
+## 默认 agent 路由
+
+Router 默认把真实实验类任务路由到 `real_multi_agent`，并把正式角色实例路由到 workflow-scoped
+`named_owner_thread`。如果目标是服务器 detached 连续训练、owner 明确不希望创建线程，允许走第二条正式路径：`role_only + formal_runtime_backend=server_detached_role_only`。无论哪条路径，正式事实都必须沉淀到文件和 artifact。
+
+默认 `real_multi_agent` 的范围包括：真实 Runner、正式 attempt/result/quality 证据、代码或配置语义变化、结果解释、best 选择、promotion、版本判断、论文实验路线或下一轮高成本实验决策。
+
+`role_only` 默认只允许用于纯只读状态/解释、训练前候选 triage、不改变结论的机械账本格式整理，或 debug/smoke 且结果不进入正式证据。唯一正式例外是 `server_detached_role_only`：它要求独立 sequential role outputs、formal gate 和 detached server monitoring。
+
+`named_owner_thread` 是本轮 workflow / campaign 的活上下文默认形态。`persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或当前 campaign 的 Coordinator/Monitor 需要跨天保留连续上下文时启用。若采用 `server_detached_role_only`，则不创建线程，改为 owner 当前线程 + 独立 role outputs + server status files 共同构成 formal gate。无论使用哪种形态，正式证据都必须写入 repo、Research、Warehouse、result、quality 和 agent summary。
+
+本文件是 GTPJ 的总教官。它不替代具体协议，而是在任何任务开始前先做路由判断：
+
+```text
+用户请求 -> 任务类型 -> 是否进入 idea_tree -> 写入位置 -> 需要读取的协议 -> agents -> gates
+```
+
+默认范围：本 Router 只服务“跑实验、做创新、复现、消融、调参、debug 和实验结果记账”。
+
+Owner 不需要说“开启动卡”或自己判断任务类型。默认先读 `START_HERE.md`；`QUICK_START.md` 只作为人话短口令备忘。
+Owner 可以只说：
+
+```text
+查状态
+复现
+调参
+消融
+开新模块
+开下一个新模块
+试这个：<一句话想法>
+读论文
+基于 vX 从论文开始做实验
+全自动研究 campaign
+跑10创新+100调参
+继续上一个
+别问，给我三个候选
+升版本
+切版本
+```
+
+Router 和 Coordinator 必须自动判断这是什么任务、能不能开工、缺什么、下一步最小动作是什么。
+不要要求 owner 口头说 `module trial`、`innovation workflow`、`real_multi_agent`、`Review 0-3`、
+`artifact boundary` 或 `pre-run freeze`。这些内部词由 Coordinator 展开到 mini 启动卡和完整启动卡。
+
+如果其它文档分散描述了某条规则，先用本文件判断任务归类，再进入对应协议细节。
+
+## Owner 人话入口
+
+| owner 口令 | Router 默认归类 | 默认行为 |
+|---|---|---|
+| `查状态` | read-only status | 只读检查仓库、active baseline 复现状态、队列和阻塞项。 |
+| `复现` | confirmation | 默认先查当前 active baseline 是否已复现；未要求正式证据时优先 `quick_local` 或准备路径。 |
+| `调参` | tune | 默认当前 active baseline；先给最多 3 个候选，不直接训练。 |
+| `消融` | ablation | 确定目标框架和单一消融因素，并先检查接口门。 |
+| `读论文` / `找创新点` | paper intake / idea discovery | 只做来源复核和候选创新登记，不直接开 trial 或训练。 |
+| `基于 vX 从论文开始做实验` / `论文到实验闭环` | paper -> idea -> module trial closed loop | 缺 owner 指定 base version 时只读论文和建候选；成熟 IDEA 进 selected queue 且指定 base code tag 后才进入正式实验硬门。 |
+| `开新模块` | innovation / module trial | 基于当前 active baseline，从 selected ready idea 队列自动选一个，不 push。 |
+| `开下一个新模块` | innovation / module trial | 明确继续当前版本 selected 队列的下一个 ready idea。 |
+| `试这个：...` | local heuristic idea 或 innovation / module trial | 先判断能否成为 idea / trial，不能直接跳过 source 和 interface gate。 |
+| `全自动研究 campaign` | autonomous research campaign | owner 给来源、评估标准、安全边界和实验标准；Coordinator 自行拆分 paper intake、idea、tune、ablation、confirmation、module trial、promotion 和最终交付。 |
+| `跑10创新+100调参` / 任意数量组合 | mixed experiment campaign | 解析 requested_mix，拆成 workstreams，按 `mixed_experiment_campaign_protocol.md` 调度 agents、Runner、证据和收口。 |
+| `继续上一个` | 当前正式框架实验续跑 | 优先读取框架四类账本；旧 trial/attempt 只用于定位兼容证据。 |
+| `别问，给我三个候选` | read-only idea selection | 只读列候选，不改代码、不建 trial。 |
+| `升版本` | promotion | 检查 promotion gate，不把单次 H 提升直接当 baseline。 |
+| `切版本` | set-current-version 或 activate-version | 默认只解释差异；activate-version 必须 owner 明确授权。 |
+
+`开新模块` 的 ready idea 必须满足：有 `idea_id`、当前版本 `version_scores`、`selected/ready`
+状态、空 blockers、明确 source/ref/status、hypothesis、implementation scope 和 risk。没有 ready idea
+时，只问一个最小问题。
+
+## 0. 优先级
+
+发生冲突时按下面顺序处理：
+
+1. 用户本轮明确要求。
+2. 安全边界：不 push、不发布、不删远端、不重写历史，除非用户明确要求。
+3. 复现状态硬门：先判断 `baseline_repro_status`，不能把未确认 `best_observed_H` 当 confirmed baseline。
+4. 硬门：`code_interface_contract.md`、`quality_gate.md`、`promotion.md`。
+5. 本文件的路由判断。
+6. 具体协议：`idea_tree_protocol.md`、`experiment_protocol.md`、`module_trial_protocol.md` 等。
+7. `IMPLEMENTATION_STATUS.md` 的已落地/按需创建状态。
+
+Router 只负责决定走哪条路；证据是否有效，由接口硬门、质量门和 promotion gate 决定。
+
+## 0.1 复现状态快速判定
+
+每次 `查状态`、`复现`、`升版本`、结果比较、tag 或 promotion 前，Coordinator 必须读取当前版本的
+`evidence_level`、`best_observed_H`、`confirmed_H`、`confirmation_status` 和 `status`，或直接运行：
+
+```bash
+python workflow/gtpj_workflow.py repro-status --version <vX>
+```
+
+判定：
+
+```text
+confirmation_status=confirmed 且 confirmed_H 非 pending -> confirmed baseline。
+best_observed_H 有值但 confirmed_H=pending -> unconfirmed reference。
+status=owner_activated_unconfirmed -> active code 可以使用，但 baseline-grade 结论必须阻断。
+```
+
+因此，`H=74.29` 这类单次高点只能写成 `best_observed_H`，不能让 agent 凭记忆或聊天上下文把它当
+已复现 baseline。任何 mini 启动卡如果涉及状态、复现、比较或 promotion，`gates` 必须包含
+`baseline_repro_status`。
+
+## 1. 总判断规则
+
+最重要的两条：
+
+```text
+实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
+实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
+实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，接纳后才注册新的同级正式框架。
+```
+
+不要因为一次实验有“想法”两个字就写入创意树。只有可复用的新机制、新模块、新方法，或者可能成为新 baseline 的设计，才进入 `idea_tree/`。
+
+## 2. 任务分类表
+
+| 用户请求 | 任务类型 | 是否进 `idea_tree/` | GitHub 写入 | 本地外部写入 | 必读协议 | 必需 agents/gates |
+|---|---|---:|---|---|---|---|
+| 读一篇论文，找创新点 | paper intake / idea discovery | 候选成熟后才进 | `idea_tree/sources/`、必要时 `idea_tree/inbox.md` 或 `idea_tree/ideas/` | `GTPJ_Research/papers/`、`notes/`、`source_reviews/`、`ideas/` | `docs/workflow/protocols/paper_intake.md`, `docs/workflow/protocols/idea_tree_protocol.md` | Reader/Planner，source review |
+| 基于 vX 从论文开始，形成创新并验证 | paper -> idea -> module trial closed loop | 成熟 IDEA 才进 | `idea_tree/sources/`、`idea_tree/ideas/`、`idea_tree/queues/`、`experiments/module_trials/` | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `docs/workflow/playbooks/paper_to_experiment.md` 加 paper intake / idea_tree / module template / module trial 协议 | Reader/Planner、Source Reviewer；正式 trial 前加 Implementer、Interface Checker、Runner、Quality Checker、Reviewer，并通过 base_code_tag / module_source / agent_runtime / preflight / cleanup |
+| 给论文来源、评估标准、安全边界和实验标准，让 workflow 全部接管 | autonomous research campaign | 由子任务决定 | campaign ledger、`idea_tree/`、`experiments/` 各子目录 | `GTPJ_Research`、`GTPJ_Warehouse`、服务器 runner 状态 | `autonomous_research_campaign.md` 加各子任务协议 | Coordinator、Source Reader、Idea Planner、Runner Monitor、Log Metric Parser、Result Comparator、Evidence Quality Checker，按阶段加 Implementer/Interface/Reviewer/Promotion |
+| 任意组合实验，例如 `跑10创新+100调参` | mixed experiment campaign | 由 workstream 决定 | `experiments/campaigns/` + 各实验归属目录 | `GTPJ_Warehouse`、必要时 `GTPJ_Research`、服务器 runner 状态 | `mixed_experiment_campaign_protocol.md` 加各子任务协议 | Workflow Coordinator、Campaign Planner、Runner Monitor、Result Comparator、Evidence Quality Checker；按 workstream 加专用角色 |
+| 自己想到一个新机制 | local heuristic idea | 是，但先写来源和假设 | `idea_tree/inbox.md` 或 `idea_tree/ideas/IDEA-xxxx/` | `GTPJ_Research/ideas/` | `idea_tree_protocol.md` | Reader/Planner，Interface Checker 预审 |
+| 调正式 baseline 的参数、seed、epoch、loss weight | tune | 否 | `experiments/vX/tune/` | Warehouse logs/runs | `experiment_protocol.md` | Coordinator、Runner、Log Analyst、Quality Checker |
+| 对正式 baseline 做关掉/旁路/替换已有模块看贡献 | ablation | 否 | `experiments/vX/ablation/` | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Implementer、Interface Checker、Runner、Quality Checker |
+| 复现 baseline 或确认某个版本级结果 | confirmation | 否 | `experiments/vX/confirmation/` | Warehouse logs/runs | `experiment_protocol.md` | Runner、Log Analyst、Quality Checker |
+| 调某个旧 module trial 的参数、头数、ratio、dropout、seed | 所属正式框架 tune | 已有 idea | `experiments/vX/tune/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `module_trial_protocol.md` 仅查旧证据 | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
+| 对某个旧 module trial 做窄消融或 clean confirmation | 所属正式框架 ablation / confirmation | 已有 idea | `experiments/vX/ablation/` 或 `experiments/vX/confirmation/`，并用 `legacy_ref` 回指旧 Trial | Warehouse logs/runs | `experiment_protocol.md`, `code_interface_contract.md` | Coordinator、Interface Checker 视风险、Runner、Log Analyst、Quality Checker、Result Analyst |
+| debug、smoke test、环境验证 | debug / smoke | 否 | 通常不写；若结果要引用，必须转为对应实验目录并标明 `evidence_level: debug_smoke`、`formal_evidence: false` | 可写临时本地输出；长期证据进 Warehouse | `docs/workflow/protocols/experiment_protocol.md` 视情况 | 不得作为有效结果，除非补齐 manifest/result/quality 并重新按正式证据运行 |
+| 加新模块、新结构、新 forward 路径、新 loss 机制，或把 idea/创新落成代码 | framework innovation | 是 | `idea_tree/` + `experiments/vX/innovation/` | Research 长推理，Warehouse 运行证据 | `idea_tree_protocol.md`, `experiment_protocol.md`, `code_interface_contract.md`, `innovation_code_review_protocol.md` | Reader/Planner、Implementer、Interface Checker、Runner、Quality Checker、Reviewer；按风险多轮审查 |
+| 结果想成为新 baseline | promotion | 通常已有 idea 或实验来源 | `config/versions/vY.yaml`、`experiments/vY/`、`experiments/VERSION_TREE.md` | Warehouse 证据引用 | `docs/workflow/protocols/promotion.md`, `docs/workflow/protocols/quality_gate.md`, `docs/workflow/protocols/versioning.md` | Coordinator、Quality Checker、Reviewer、Result Analyst |
+| 只切换创意树当前视图 | set-current-version | 使用已有 idea_tree | `idea_tree/idea_tree.json`、`idea_tree/versions/vX.md` | 不写 | `idea_tree_protocol.md` | 不切 main active code |
+| 切换 main 当前运行代码到某版本 | activate-version | 否 | `config/GTPJ_*.yaml` 等 active code/config | 不写 | `versioning.md`, `git_policy.md` | 必须 owner 明确要求 |
+| 创建或查看运行看板状态 | progress dashboard | 否 | 不写长期 GitHub 账本 | `.gtpj_runtime/` | `progress_dashboard.md` | 只读看板，不启动训练 |
+
+## 2.1 正式待跑表格
+
+当 owner 问“有哪些待跑实验”“表格中有没有”时，Coordinator 必须从正式表格回答，而不是从
+`.gtpj_runtime/` 目录数量回答。
+
+| 范围 | 正式表格 | 待跑行由什么决定 | runtime 的作用 |
+|---|---|---|---|
+| 框架 tune | `experiments/vX/tune/INDEX.md` | `Status` 为 `planned`、`pending`、`pre_run`、`pre_run_gated` 或 `ready_to_run` 的实验行 | 只核对运行包和事件，不新增待跑事实 |
+| 框架 ablation | `experiments/vX/ablation/INDEX.md` | 同上，且实验类型必须是 ablation | 只核对运行包和事件 |
+| 框架 innovation | `experiments/vX/innovation/INDEX.md` | 同上，候选仍归所属正式框架且没有 Tag | 只核对运行包和事件 |
+| 框架 confirmation | `experiments/vX/confirmation/INDEX.md` | 同上，且目标必须是 baseline、candidate 或正式 config | 只核对运行包和事件 |
+| mixed campaign | `experiments/campaigns/.../WORK_ITEMS.md` / `RESULT_INDEX.md` | 只列 work item；每个 work item必须回指上述四类正式表格行 | 只核对调度和 monitor 状态 |
+
+正式待跑的统一判定名为 `formal_pending`。如果 `.gtpj_runtime/batches/<run_id>` 存在，但上面任一正式表格都没有对应行，判为 `orphan_runtime_plan`。`orphan_runtime_plan` 只能作为历史参考、排障证据或重新登记新实验的输入，不能直接续跑，也不能进入 keep / best / confirmation / promotion。
+
+debug/smoke 不进入正式待跑表。若必须长期保留，只能写成 `evidence_level: debug_smoke`、
+`formal_evidence: false`，并放在对应实验目录的 debug 记录或 Warehouse 引用里。
+
+## 3. 路由流程
+
+每个 GTPJ 任务先执行这 9 步：
+
+1. 用一句话复述用户请求。
+2. 从任务分类表选择一个主类型；如果请求混合多个类型，拆成多个阶段。
+3. 判断是否进入 `idea_tree/`。
+4. 判断写入位置：GitHub、Research、Warehouse 或 `.gtpj_runtime/`。
+5. 判断是否需要 Research-GitHub-Warehouse 联动更新，以及哪个目录先写、哪个目录只写引用。
+6. 读取该类型必读协议。
+7. 选择 agents 和并行/串行边界。
+8. 做 preflight：分支、dirty 状态、base version、路径、GPU lock、远端是否需要核对。
+9. 执行或给出执行计划。
+10. 用对应 gate 收口：interface、quality、promotion、source review 或 sync check。
+
+如果第 2 步无法归类，先不要动代码和文件，向 owner 提出一个最关键问题。
+
+## 3.1 对话先行规则
+
+正式开工前，Coordinator 先给 owner 一个简短判断：
+
+```text
+能不能开工：
+任务类型：
+基于版本：
+为什么这样归类：
+当前缺口：
+下一步最小动作：
+```
+
+然后再决定是否进入启动卡、分支、目录、代码或运行。
+
+没有下面任一信号时，不要改代码、跑实验、创建实验目录或登记结果：
+
+- owner 明确说“开始”“跑”“你来操作”“按这个做”；
+- owner 本轮请求本身已经明确授权实际操作；
+- 当前动作只是只读检查、解释或建议。
+
+如果存在阻断，先说阻断原因和最小补齐动作，不要让 owner 自己填完整流程表。
+
+## 4. Idea Tree 准入
+
+进入 `idea_tree/` 的必要条件：
+
+- 这是新模块、新机制、新方法，或可能成为新 baseline 的设计。
+- 有明确 `source_type`：`paper`、`user`、`observation`、`cross_domain` 或 `hybrid`。
+- 有明确 `source_status`：正式 trial 前必须是 `verified` 或 `local_heuristic`。
+- 有针对 base version 的 `version_scores.<vX>`。
+- 写清楚 hypothesis、implementation_scope、risk。
+- 接口影响能被 Interface Checker 检查。
+
+不进入 `idea_tree/` 的情况：
+
+- 框架 tune 参数搜索。
+- 框架 ablation 问题本身。
+- 框架 confirmation 复现实验。
+- 来源于旧 module trial 的 param_tune、窄 ablation、confirmation/rerun。
+- debug/smoke test。
+- 只为了排查环境、日志、cache 或数据路径。
+
+框架调参或消融中如果发现了可复用新机制，先把原实验记入 `experiments/vX/...`，再创建 idea 和
+`INNOVATION-xxx`。旧 module trial 的后续动作如果超出原实现假设，则在所属正式框架新建创新实验，
+不要继续扩大旧 Trial 目录。
+
+## 5. 来源不是论文时怎么写
+
+不是所有 idea 都需要论文来源。
+
+用户自己的想法：
+
+```yaml
+source_type: user
+source_status: local_heuristic
+source_ref: owner:YYYY-MM-DD:<short reason>
+```
+
+来自实验观察：
+
+```yaml
+source_type: observation
+source_status: local_heuristic
+source_ref: observation:<experiment_id>:<short observation>
+```
+
+混合来源：
+
+```yaml
+source_type: hybrid
+source_status: verified
+source_ref: paper:<paper_id> + observation:<experiment_id>
+```
+
+`local_heuristic` 必须写明可复核观察、owner 接受理由和日期；否则只能留在 `inbox`，不能开 trial。
+
+## 6. 写入边界
+
+| 内容 | 写入位置 |
+|---|---|
+| 完整论文、长笔记、长推理、完整创意树 | `GTPJ_Research` |
+| GitHub 轻量 idea id、评分、状态、linked trials | `idea_tree/` |
+| 四类正式实验配置、manifest、result、quality_check | `experiments/vX/<type>/...` |
+| 旧模块 Trial/Attempt 证据 | 原目录保留，只由正式实验用 `legacy_ref` 引用 |
+| raw logs、checkpoint、generated figures、failure cases | `GTPJ_Warehouse`；模型 checkpoint 按 retention 规则最多保留 3 个 |
+| 运行中状态 | `.gtpj_runtime/`，不进 Git |
+| 本机真实路径 | `.gtpj/local_paths.yaml`，不提交 |
+
+## 6.1 联动更新规则
+
+GitHub 和本地不是机械“每次同时写”，而是按任务类型成对更新：
+
+| 触发场景 | 先写 | 后写 | 收尾检查 |
+|---|---|---|---|
+| 读论文、提取创新点 | `GTPJ_Research/papers/`、`source_reviews/`、`ideas/` | GitHub `idea_tree/sources/`、`idea_tree/ideas/` 轻量索引 | GitHub 有 `research://` 或本地路径指针 |
+| 用户提出新机制 | `GTPJ_Research/ideas/` 长版动机/机制/风险 | GitHub `idea_tree/inbox.md` 或正式 `IDEA.md` | `source_status` 和 owner 接受理由可追溯 |
+| 创新实验运行 | Warehouse raw artifacts | GitHub 所属正式框架 `innovation/` 的 matrix/manifest/result/quality | GitHub artifact URI/hash/size 可反查 Warehouse |
+| trial 改变 idea 结论 | Research `decision_history.md`、`experiment_plan.md` | GitHub `idea_tree.json`、`IDEA.md`、版本视图 | 人类版和机器版状态一致 |
+| framework tune/ablation/innovation/confirmation | Warehouse + GitHub `experiments/vX/...` | 创新需要 Research 来源，其他类型通常不写 | 若产生新机制，再另走 idea discovery |
+
+如果某个结论影响后续实验选择、promotion、版本适配分或论文叙述，不能只留在聊天里。
+Coordinator 收尾时必须说明：
+
+```text
+GitHub 写了什么：
+Research 写了什么：
+Warehouse 写了什么：
+哪些内容没有联动，为什么：
+```
+
+Paper intake 的细化流程见 `docs/workflow/protocols/paper_intake.md`。论文是否读过、读到哪一步，以
+`GTPJ_Research/papers/PAPERS_INDEX.md` 为准，不以 PDF 是否存在为准。
+
+## 7. Agent 路由
+
+| 任务类型 | 默认 agents |
+|---|---|
+| paper intake / idea discovery | Coordinator、Reader/Planner |
+| autonomous research campaign | Coordinator、Source Reader、Idea Planner、Runner Monitor、Log Metric Parser、Result Comparator、Evidence Quality Checker；按阶段加 Runner、Implementer、Interface Checker、Reviewer、Promotion Manager |
+| mixed experiment campaign | Workflow Coordinator、Campaign Planner、Runner Monitor、Result Comparator、Evidence Quality Checker、Warehouse Registrar；按 workstream 加 Innovation/Tune/Ablation/Confirmation roles |
+| tune | Coordinator、Reader/Planner、Runner、Log Analyst、Quality Checker、Result Analyst |
+| ablation | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Quality Checker、Result Analyst |
+| confirmation | Coordinator、Runner、Log Analyst、Quality Checker、Result Analyst |
+| innovation / module trial | Coordinator、Reader/Planner、Implementer、Interface Checker、Runner、Log Analyst、Quality Checker、Result Analyst、Reviewer |
+| promotion | Coordinator、Quality Checker、Interface Checker、Result Analyst、Reviewer |
+| debug / smoke | Coordinator；必要时 Implementer 或 Runner，但结果默认无效 |
+
+Router 选择 agents 时必须先套用“最快合规路径”：
+
+- 能用 `role_only` 且不违反 hard gates 的任务，不启用 `real_multi_agent`。
+- 必须用 `real_multi_agent` 的任务，默认启动 workflow-scoped named threads，并把只读审查角色并行执行，不串行排队等待。
+- Runner 串行并持有 GPU lock；同一代码路径只能有一个 Implementer；Coordinator 是最终账本 writer。
+- 被跳过的 agent 必须在启动卡 `agents.decision_basis.fastest_valid_path.skipped_agents` 中说明。
+- 如果启用了 persistent thread，启动卡必须列出 thread id 或可见 label；如果未启用，必须说明状态如何写回 campaign ledger、agent_summary、memory 或 issues。
+
+Runner 串行。多个 agents 可以并行读文档、审查和分析，但同一代码路径只能有一个 writer。
+`Experiment Runner` 是实际启动训练命令的运行者；`Runner Monitor` 是服务器/GPU/队列/失败隔离监控者。小规模任务可由同一 Runner family 承担，但启动卡和 summary 必须写清楚显示名、`role_key` 和职责。
+
+## 8. 强制阻断
+
+以下情况 Router 必须阻断继续执行：
+
+- 当前动作试图 push、发布、删除远端或改写历史，但用户未授权。
+- 当前任务会写 raw logs、checkpoint 或 generated figures 到 GitHub。
+- 任务需要有效实验结果，但缺少 split、label mapping、class order、logits shape 或 metric semantics。
+- module trial 没有 idea_id。
+- idea 的 `source_status` 是 `unknown` 或 `unverified`，却要开 trial。
+- idea / 创新 / module trial 将改代码，但没有遵守 `innovation_code_review_protocol.md` 的
+  Review 0-3 多轮审查。
+- 创新代码改动的 task-start card 没有写 `agents.activation_mode: real_multi_agent`
+  或没有列出 `required_real_agents`。
+- 正式 evidence、best、promotion 或 owner 明确要求多 agents，但 task-start card 没有写
+  `agents.agent_instance_mode`、`lifecycle` 和各角色独立输出位置。
+- promotion 只凭一次 H 提升，没有完整 manifest/result/quality/interface 证据。
+- promotion 或 baseline 表述只凭 `best_observed_H`，没有 `confirmation_grade` /
+  `baseline_grade` 证据。
+- 运行前 dirty、`run_commit` 不明确，或 `git_dirty: true`，却要把结果写成 confirmed /
+  stable baseline。
+- 真实实验要启动，但 GPU lock 或运行目录状态不清楚。
+
+阻断时输出：阻断原因、需要补什么、下一步最小动作。
+
+## 9. 每次回答的最小格式
+
+GTPJ 工作流类任务开始时，先给出：
+
+```text
+能不能开工：
+任务类型：
+基于版本：
+是否进入 idea_tree：
+GitHub 写入：
+本地写入：
+联动更新：
+必读协议：
+启用 agents：
+最快合规路径：
+硬门：
+当前阻塞：
+下一步最小动作：
+```
+
+这个摘要是给 owner 和后续 agent 的共同入口。

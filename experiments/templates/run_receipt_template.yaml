@@ -1,0 +1,56 @@
+schema_version: gtpj.run_receipt.v0
+run_id:
+subject_id:
+subject_type:
+base_version:
+branch:
+commit:
+runner_scope: formal_runner
+formal_evidence: true
+formal_runner_allowed:
+formal_evidence_allowed:
+evidence_level:
+confirmation_policy:
+  repeat_type: exact_repeat
+  original_seed:
+  max_attempts: 5
+  max_attempts_hard_cap: true
+  early_stop_on_best_hit: true
+  restore_target_H:
+  near_miss_tolerance_H: 0.2
+  near_miss_not_restored: true
+  seed_sweep_or_multi_seed_stability: not_confirmation_evidence
+agent_runtime_gate:
+agent_instance_status:
+agent_status_refs:
+agent_output_refs:
+multi_agent_preflight:
+  required_threads_created:
+  agent_instance_ids_present:
+  agent_status_refs_valid:
+  independent_outputs_present:
+  agent_output_refs_valid:
+  pre_run_allow_checks_passed:
+  agent_runtime_validated:
+artifacts:
+  manifest:
+  result:
+  quality_check:
+  agent_summary:
+  transitions:
+  evidence_routing:
+  agent_activity:
+warehouse_refs:
+  run_dir:
+  logs:
+  checkpoints:
+  receipts:
+research_refs:
+  notes:
+decisions:
+  final_decision:
+  promotion_decision:
+  next_transition:
+limitations:
+  independence:
+  artifact_boundary:

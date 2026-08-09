@@ -1,0 +1,35 @@
+schema_version: gtpj-result/v1
+attempt_id: ATTEMPT-012
+run_id: RUN-20260706-0005-h76-followup50-multiseed-2gpu
+status: stopped_by_owner
+result_state: partial_only
+metrics:
+  completed_jobs: 6
+  skipped_jobs: 44
+  best_single:
+    job_id: DR-001
+    name: dr047_direction_sample_h48_w0.535_a0.002_s06
+    seed: 6
+    H: 74.49
+    U: 72.29
+    S: 76.83
+    ZS: 81.75
+  partial_dr047:
+    seeds: [6, 7, 8, 9, 10, 11]
+    H_mean: 74.285
+    H_min: 74.08
+    H_max: 74.49
+    H_range: 0.41
+candidate_summary:
+  - candidate: DR047
+    config: direction_sample_h48_w0.535_a0.002
+    status: partial_only
+    completed_seeds: [6, 7, 8, 9, 10, 11]
+    planned_seeds: "6-15"
+    H_values: [74.49, 74.30, 74.47, 74.08, 74.12, 74.25]
+    H_mean: 74.285
+    H_min: 74.08
+    H_max: 74.49
+    H_range: 0.41
+promotion_decision: blocked
+promotion_reason: "owner stopped after 6/50 jobs; partial result is not confirmation evidence"

@@ -1,0 +1,13 @@
+schema_version: gtpj.evidence_routing.v1
+subject:
+  subject_id: "ATTEMPT-005"
+  subject_type: "attempt"
+  hypothesis_id: "IDEA-0003/TRIAL-001"
+current_state:
+  evidence_state: "stopped_repeat_unstable"
+  derived_from_transition_id: "ER-20260703-ATTEMPT005-003"
+  derived_from_transition_hash: "sha256:a5d8de5fae6a8e34c2a1030a692080fc231b2bc0dc79615c25aab489c0d3a450"
+transitions:
+  file: "TRANSITIONS.jsonl"
+  chain_head_transition_id: "ER-20260703-ATTEMPT005-003"
+  chain_head_hash: "sha256:a5d8de5fae6a8e34c2a1030a692080fc231b2bc0dc79615c25aab489c0d3a450"

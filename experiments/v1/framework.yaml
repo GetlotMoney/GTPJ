@@ -1,0 +1,17 @@
+schema_version: gtpj.framework.v2
+framework_id: FRAMEWORK-V1
+framework_version: v1
+registry_level: formal_peer
+derived_from_framework: none
+promoted_from_experiment: initial
+source_legacy_ref: initial
+framework_branch: framework/v1
+framework_tag: v1
+framework_commit: d20d1882a88fc6d7be70d2f3b0b198fbc9f2444e
+governance_source_commit: 709df05f5d4711891ba90f2276290f51ff0cf480
+origin_status: initial
+change_type: initial
+modules: ["CLIP backbone", "GPT text prototypes", "Text Adapter", "local visual branch", "AG-JEPA"]
+inherits: []
+does_not_inherit: []
+status: formal

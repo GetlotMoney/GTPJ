@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.gtpj/schemas/framework.schema.json",
+  "title": "GTPJ flat formal framework registry",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "framework_id",
+    "framework_version",
+    "registry_level",
+    "derived_from_framework",
+    "promoted_from_experiment",
+    "source_legacy_ref",
+    "framework_branch",
+    "framework_tag",
+    "framework_commit",
+    "governance_source_commit",
+    "origin_status",
+    "change_type",
+    "modules",
+    "inherits",
+    "does_not_inherit",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {"const": "gtpj.framework.v2"},
+    "framework_id": {"pattern": "^FRAMEWORK-V[0-9]+$"},
+    "framework_version": {"pattern": "^v[0-9]+$"},
+    "registry_level": {"const": "formal_peer"},
+    "derived_from_framework": {"pattern": "^(none|FRAMEWORK-V[0-9]+)$"},
+    "promoted_from_experiment": {"pattern": "^(initial|V[0-9]+-INNOVATION-[0-9]{3})$"},
+    "framework_branch": {"pattern": "^framework/v[0-9]+$"},
+    "framework_tag": {"pattern": "^v[0-9]+$"},
+    "framework_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "governance_source_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "origin_status": {"enum": ["initial", "confirmed_promoted", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]},
+    "change_type": {"enum": ["initial", "add_module", "replace_module", "architecture_change", "combo"]},
+    "modules": {"type": "array", "items": {"type": "string"}},
+    "inherits": {"type": "array", "items": {"type": "string"}},
+    "does_not_inherit": {"type": "array", "items": {"type": "string"}},
+    "status": {"enum": ["formal", "retired"]}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"framework_id": {"const": "FRAMEWORK-V1"}},
+        "required": ["framework_id"]
+      },
+      "then": {
+        "properties": {
+          "derived_from_framework": {"const": "none"},
+          "promoted_from_experiment": {"const": "initial"},
+          "origin_status": {"const": "initial"}
+        }
+      },
+      "else": {
+        "properties": {
+          "derived_from_framework": {"pattern": "^FRAMEWORK-V[0-9]+$"},
+          "promoted_from_experiment": {"pattern": "^V[0-9]+-INNOVATION-[0-9]{3}$"},
+          "origin_status": {"enum": ["confirmed_promoted", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]}
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

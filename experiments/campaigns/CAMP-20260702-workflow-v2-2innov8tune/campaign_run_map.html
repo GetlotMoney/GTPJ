@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>CAMP-20260702 Workflow v2 Framework</title>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial, sans-serif; margin: 24px; color: #1f2937; background: #f8fafc; }
+    h1, h2 { margin: 0 0 12px; }
+    section { margin: 0 0 24px; }
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; align-items: center; }
+    .box { border: 1px solid #94a3b8; background: #fff; border-radius: 6px; padding: 10px; min-height: 54px; }
+    .changed { border-color: #b45309; background: #fffbeb; }
+    .fixed { border-color: #047857; background: #ecfdf5; }
+    .arrow { text-align: center; color: #475569; font-weight: 700; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; }
+    code { background: #e5e7eb; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>CAMP-20260702 Workflow v2: 2 Innovation Probes + 8 Tune Jobs</h1>
+  <section>
+    <p>Scope: IDEA-0003 / TRIAL-001 Dynamic Residual Routing. This campaign changes only existing dynamic routing switches and direction-gate parameters.</p>
+  </section>
+  <section class="flow">
+    <div class="box fixed">Image batch<br><code>B</code></div>
+    <div class="arrow">-></div>
+    <div class="box fixed">Visual features</div>
+    <div class="arrow">-></div>
+    <div class="box fixed">BVSA scores<br><code>score_s2v</code>, <code>score_v2s</code></div>
+    <div class="box fixed">Class text prototypes<br><code>C</code></div>
+    <div class="arrow">-></div>
+    <div class="box fixed">PSE / ICSA text path</div>
+    <div class="arrow">-></div>
+    <div class="box changed">Dynamic direction gate<br><code>sample</code> / <code>class</code></div>
+    <div class="box changed">Score mix<br><code>w*s2v + (1-w)*v2s</code></div>
+    <div class="arrow">-></div>
+    <div class="box fixed">GZSL logits<br><code>[B, C]</code></div>
+    <div class="arrow">-></div>
+    <div class="box fixed">U / S / H / ZS</div>
+  </section>
+  <section>
+    <h2>Workstreams</h2>
+    <table>
+      <tr><th>Workstream</th><th>Work items</th><th>Meaning</th></tr>
+      <tr><td>Innovation probes</td><td>INNOV-001, INNOV-002</td><td>Existing TRIAL-001 switch probes, not full paper-derived innovations.</td></tr>
+      <tr><td>Direction tune</td><td>TUNE-001..TUNE-008</td><td>Narrow search over direction-gate hidden size, score weight, anchor strength, and sample/class mode.</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Hard Rules</h2>
+    <p>Seen/unseen split, label mapping, class order, metric semantics, and logits <code>[B（图片/样本数量）, C（类别数量）]</code> remain unchanged.</p>
+  </section>
+</body>
+</html>
+

@@ -1,0 +1,77 @@
+{
+  "schema_version": "gtpj.data_manifest.v1",
+  "experiment_id": "V5-ABLATION-005",
+  "dataset": "CUB",
+  "base_version": "v5",
+  "base_template_id": "MODEL-V5-TEMPLATE-V1",
+  "base_template_commit": "2f5fa5e631ef82658d4bac587cdfd17f3534cb35",
+  "base_config": "experiments/v5/config.yaml",
+  "base_config_sha256": "def1d44cdee7ed4add7797637baf36b5715fc351068e0c154ac7f634cf2b7b9e",
+  "data_identity_status": "server_preflight_required",
+  "split_identity": "继承 MODEL-V5-TEMPLATE-V1 的 CUB 规范，启动前必须核对服务器数据与划分身份",
+  "cache_fingerprint": null,
+  "files": {
+    "xlsa17_res101": {
+      "relative_path": "xlsa17/data/CUB/res101.mat",
+      "sha256": "9a97c71951f9ac9f5c3708e6e55386e53f3d433289ed5e87a18b4af2a1a0fca1",
+      "size_bytes": 96995981
+    },
+    "xlsa17_att_splits": {
+      "relative_path": "xlsa17/data/CUB/att_splits.mat",
+      "sha256": "d7f5b4c2cb7853acdce43a9e87607ceed30bdf18c60344be3a266de29b6751e3",
+      "size_bytes": 493894
+    },
+    "train_cls": {
+      "relative_path": "cache/CUB_train_features.pt",
+      "sha256": "a18cefc50ec541027598d742698622f7ddd2ec8687ba797ab1eeeacb743a4fe9",
+      "size_bytes": 21680339
+    },
+    "train_patches": {
+      "relative_path": "cache/CUB_train_patch_features.pt",
+      "sha256": "244dbf96109362306555c55cf718590a6ffd2f3c5c403127463aff86311aacc2",
+      "size_bytes": 6243583333
+    },
+    "train_labels": {
+      "relative_path": "cache/CUB_train_labels.pt",
+      "sha256": "b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666",
+      "size_bytes": 29449
+    },
+    "gpt55_sentences": {
+      "relative_path": "cache/CUB_gpt55_sentence_embeds.pt",
+      "sha256": "977fce2c525a9e758b62622cc81c88238cc01ea9c1aca4db8823db9fdd678462",
+      "size_bytes": 4302567
+    },
+    "test_seen_cls": {
+      "relative_path": "cache/CUB_test_seen_features.pt",
+      "sha256": "5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5",
+      "size_bytes": 5420327
+    },
+    "test_seen_labels": {
+      "relative_path": "cache/CUB_test_seen_labels.pt",
+      "sha256": "06f3f7057b6847fd912544ddb921d0ca3fca96d0888503f3fc87a52f98d3de14",
+      "size_bytes": 8285
+    },
+    "test_seen_patches": {
+      "relative_path": "cache/CUB_test_seen_patch_features.pt",
+      "sha256": "d1a21b3a4797ffa28115ffb22cc6d1e401453d605b99360c731d46e523a794ca",
+      "size_bytes": 1560675653
+    },
+    "test_unseen_cls": {
+      "relative_path": "cache/CUB_test_unseen_features.pt",
+      "sha256": "32c1b89edb72a94e27585060ac968f1afc99000a9bd8c42acee8469971fb107e",
+      "size_bytes": 9115953
+    },
+    "test_unseen_labels": {
+      "relative_path": "cache/CUB_test_unseen_labels.pt",
+      "sha256": "7fadd63d51f69cf09cc8107a132d28036b838649b75227a17656eac8640b9c59",
+      "size_bytes": 13159
+    },
+    "test_unseen_patches": {
+      "relative_path": "cache/CUB_test_unseen_patch_features.pt",
+      "sha256": "3ef523a1fe582fa2e1be88f3a975bda64e31a565e69fe001efec2f21fa3b1d77",
+      "size_bytes": 2625013135
+    }
+  },
+  "formal_evidence": true,
+  "not_confirmation_evidence": true
+}

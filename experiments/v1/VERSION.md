@@ -5,8 +5,10 @@ version: v1
 baseline_name: GTPJ-v1
 status: confirmed
 code_tag: v1
-parent_version: none
-parent_tag: none
+registry_level: formal_peer
+derived_from_framework: none
+source_tag: none
+promoted_from_experiment: initial
 change_type: initial_baseline
 based_on_trial: none
 inherits_code_from: none
@@ -15,6 +17,8 @@ ledger_source: initial
 ledger_source_commit: none
 code_source: initial
 config: experiments/v1/config.yaml
+framework_diagram: experiments/v1/framework_diagram.md
+module_glossary: experiments/v1/MODULES.md
 baseline_evidence: experiments/v1/baseline/
 ```
 
@@ -41,13 +45,22 @@ baseline_evidence: experiments/v1/baseline/
 - 未启用的候选模块属于 `idea_tree/`，不属于 v1 baseline config。
 - 第一版正式 GTPJ-v1 CUB seed=5 baseline：`H=73.93`，best epoch=26。
 
-## 版本树位置
+## 同级框架注册位置
 
 ```text
-parent_version: none
-children: none yet
-notes: v1 是当前版本树根节点。
+registry_level: formal_peer
+derived_from_framework: none
+notes: V1 是第一个同级正式框架。
 ```
+
+## Framework Diagram
+
+```text
+framework_diagram: framework_diagram.md
+module_glossary: MODULES.md
+```
+
+The version-level framework diagram explains the v1 forward path, key tensors, loss branches, GZSL hard-rule boundary, and effective 50-epoch staged schedule.
 
 ## Version Flow
 
@@ -57,11 +70,12 @@ flowchart TD
   V1 --> Baseline["experiments/v1/baseline"]
   Baseline --> Result["CUB seed=5 H=73.93"]
   Result --> Status["status: confirmed"]
-  V1 --> Future["version-level tune / ablation / confirmation"]
+  V1 --> Future["framework tune / ablation / innovation / confirmation"]
 ```
 
 ## 允许的实验类型
 
 - `tune/`
 - `ablation/`
+- `innovation/`
 - `confirmation/`
