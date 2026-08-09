@@ -10,6 +10,8 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -355,7 +357,42 @@ class V5GlobalOnlyEntryTest(unittest.TestCase):
 
 
 class V5GlobalOnlyLedgerTest(unittest.TestCase):
-    def test_three_seed_five_configs_are_identical_and_matrix_is_planned(self):
+    def test_parameter_matrix_passes_repository_validator(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "workflow" / "gtpj_workflow.py"),
+                "validate-parameter-matrix",
+                "--path",
+                str(EXPERIMENT_DIR / "PARAMETER_MATRIX.csv"),
+                "--expected-jobs",
+                "3",
+                "--require-ready",
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_experiment_base_passes_repository_validator(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "workflow" / "gtpj_workflow.py"),
+                "validate-experiment-base",
+                "--path",
+                str(EXPERIMENT_DIR),
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_three_seed_five_configs_are_identical_and_matrix_is_frozen(self):
         self.assertTrue(EXPERIMENT_DIR.is_dir(), "实验本地目录尚未创建")
         canonical = _unwrap_config(CANONICAL_CONFIG)
         configs = []
@@ -375,12 +412,21 @@ class V5GlobalOnlyLedgerTest(unittest.TestCase):
             newline="", encoding="utf-8"
         ) as stream:
             rows = list(csv.DictReader(stream))
-        self.assertEqual(["RUN-001", "RUN-002", "RUN-003"], [row["run_id"] for row in rows])
+        self.assertEqual(["RUN-001", "RUN-002", "RUN-003"], [row["job_id"] for row in rows])
         self.assertEqual(["5", "5", "5"], [row["seed"] for row in rows])
-        self.assertEqual(["global_only"] * 3, [row["score_path"] for row in rows])
-        self.assertEqual(["planned"] * 3, [row["status"] for row in rows])
+        self.assertEqual(
+            [{"score_path": "global_only"}] * 3,
+            [json.loads(row["changed_parameters"]) for row in rows],
+        )
+        self.assertEqual(["frozen"] * 3, [row["status"] for row in rows])
+        self.assertEqual(["", "RUN-001", "RUN-001"], [row["repeat_of"] for row in rows])
 
-    def test_pre_run_directory_contains_no_result_artifacts(self):
+    def test_pre_run_contains_no_training_authorization_or_result_artifacts(self):
+        experiment = yaml.safe_load(
+            (EXPERIMENT_DIR / "EXPERIMENT.yaml").read_text(encoding="utf-8")
+        )
+        self.assertIsNot(True, experiment.get("run_all_requested"))
+        self.assertIs(False, experiment["training_started"])
         for name in (
             "metrics.json",
             "model_best.pth",

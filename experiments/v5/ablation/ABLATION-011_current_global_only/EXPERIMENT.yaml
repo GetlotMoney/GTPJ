@@ -2,11 +2,20 @@ schema_version: gtpj.experiment.v1
 experiment_id: V5-ABLATION-011
 framework_id: FRAMEWORK-V5
 kind: ablation
-base_identity_kind: frozen_model_template
+base_identity_kind: framework_template
 base_template_id: MODEL-V5-TEMPLATE-V1
 base_template_tag: model/v5-template-v1
 base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
+historical_code_ref: none
+template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-011-current-global-only
-status: planned
+legacy_ref: none
+status: pre_run
+repeat_type: same_seed_repeat
+original_seed: 5
+repeat_count: 3
+not_confirmation_evidence: true
+research_question: 只保留当前 V5 全局分数路径时，性能相对完整母版如何变化
 score_path: global_only
 training_started: false

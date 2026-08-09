@@ -1,6 +1,6 @@
 # V5-ABLATION-011：current global-only
 
-结论先说：本目录只冻结“保留 PSE、ICSA、全局 logits 与文本拓扑损失，移除全部局部分支”的三次 seed=5 预运行草案；当前没有启动训练，也没有结果结论。
+结论先说：本目录只冻结“保留 PSE、ICSA、全局 logits 与文本拓扑损失，移除全部局部分支”的三次 seed=5 预运行计划；当前没有启动训练，也没有结果结论。
 
 - 母版：`MODEL-V5-TEMPLATE-V1@2f5fa5e631ef82658d4bac587cdfd17f3534cb35`
 - 分支：`exp/v5/ablation/ablation-011-current-global-only`

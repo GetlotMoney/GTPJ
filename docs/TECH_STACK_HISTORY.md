@@ -21,7 +21,7 @@
 
 ## 2026-08-09：MODEL-V5-ABLATION-011-GLOBAL-ONLY-V1（已完成，未训练）
 
-- 本次改的是哪个对象：V5 当前母版的 global-only 因果消融模型、独立训练入口和三行 seed=5 预运行草案；canonical 模型与训练入口未改。
+- 本次改的是哪个对象：V5 当前母版的 global-only 因果消融模型、独立训练入口和三行 seed=5 预运行冻结参数；canonical 模型与训练入口未改。
 - 目标问题：只把最终融合权重改成零，仍会构造局部分支、读取局部块并计算局部损失，无法回答“完全拿掉局部系统后，全局路线本身表现如何”。
 - 采用技术：先构造同一随机状态的 canonical donor，再只复制 PSE、ICSA、文本参数和 `logit_scale` 到 CLS-only 模型；训练损失只含 CE 与文本拓扑，入口只读取 CLS、标签、xlsa17 划分和 gpt55 句子文本。
 - 替换了什么：本消融对象内移除 BVSA、FGVD、SGMP、局部分数、local consistency、BMDD、MPP 与 negative loss；不替换 `model/MyModel.py` 和 `train_GTPJ_CUB.py`。
@@ -29,7 +29,7 @@
 - 选择原因：独立文件能把消融边界写死，避免在 canonical 母版继续叠加开关；donor 状态复制消除了模块构造顺序造成的随机初始化差异。
 - 已知限制：尚未启动 CUDA 正式训练，也未验证真实 CUB 缓存与服务器文件系统上的完整 50 epoch；当前结论只覆盖代码语义和固定小样例等价性。
 - 素材位置：`model/V5GlobalOnly.py`、`train_V5_ABLATION_011_CUB.py`、`tests/test_v5_global_only_ablation.py`、`experiments/v5/ablation/ABLATION-011_current_global_only/`。
-- 验证命令与结果：`conda run -n dvsr_gpu python -m unittest tests.test_v5_global_only_ablation tests.test_v5_template_contract tests.test_v5_checkpoint_converter -v` 共 30 项通过；其中专项 12 项通过，canonical V5 合同与转换回归 18 项通过。未启动训练。
+- 验证命令与结果：`conda run -n dvsr_gpu python -m unittest tests.test_v5_global_only_ablation tests.test_v5_template_contract tests.test_v5_checkpoint_converter -v` 共 32 项通过；其中专项 14 项通过，canonical V5 合同与转换回归 18 项通过；正式 30 列参数表和冻结母版绑定分别通过 `validate-parameter-matrix --require-ready` 与 `validate-experiment-base`。未启动训练。
 - 回退方式：回退本消融的本地 pre-run commit；冻结母版 `2f5fa5e`、canonical 配置和历史实验不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
