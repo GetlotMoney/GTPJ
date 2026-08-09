@@ -103,9 +103,19 @@ EXPERIMENT_CONFIG_KEYS = {
 }
 
 MODE_CONTRACTS = {
+    "full_baseline": {
+        "experiment_id": "V5-CONFIRM-004",
+        "idea_id": "none",
+        "ablation_disable_fgvd_geometry": False,
+        "lambda_local_ce": 0.0,
+        "lambda_confusion_contrast": 0.0,
+        "lambda_crop_distill": 0.0,
+        "crop_teacher_views": 0,
+    },
     "fgvd_off": {
         "experiment_id": "V5-ABLATION-004",
         "idea_id": "none",
+        "ablation_disable_fgvd_geometry": True,
         "lambda_local_ce": 0.0,
         "lambda_confusion_contrast": 0.0,
         "lambda_crop_distill": 0.0,
@@ -114,6 +124,7 @@ MODE_CONTRACTS = {
     "local_ce": {
         "experiment_id": "V5-INNOVATION-004",
         "idea_id": IDEA_ID,
+        "ablation_disable_fgvd_geometry": True,
         "lambda_local_ce": 0.1,
         "lambda_confusion_contrast": 0.0,
         "lambda_crop_distill": 0.0,
@@ -122,6 +133,7 @@ MODE_CONTRACTS = {
     "confusion_contrast": {
         "experiment_id": "V5-INNOVATION-005",
         "idea_id": IDEA_ID,
+        "ablation_disable_fgvd_geometry": True,
         "lambda_local_ce": 0.1,
         "lambda_confusion_contrast": 0.1,
         "lambda_crop_distill": 0.0,
@@ -130,6 +142,7 @@ MODE_CONTRACTS = {
     "crop_distill": {
         "experiment_id": "V5-INNOVATION-006",
         "idea_id": IDEA_ID,
+        "ablation_disable_fgvd_geometry": True,
         "lambda_local_ce": 0.1,
         "lambda_confusion_contrast": 0.0,
         "lambda_crop_distill": 0.05,
@@ -364,7 +377,6 @@ def load_config(path):
         "score_mode": "add",
         "dataset_split": "xlsa17/att_splits.mat",
         "evaluation_protocol": EVALUATION_PROTOCOL,
-        "ablation_disable_fgvd_geometry": True,
         "confusion_topk": 5,
         "confusion_margin": 0.1,
         "crop_distill_temp": 2.0,
@@ -469,7 +481,7 @@ def default_input_manifest_path():
     if not common.is_absolute():
         common = (ROOT / common).resolve()
     project_root = common.resolve().parent
-    return project_root / ".runtime" / "input_manifests" / "v5_cub_sha256.json"
+    return project_root / ".runtime" / "data_fingerprints" / "v5_cub_sha256.json"
 
 
 def _stage_boundaries(stages):
@@ -640,6 +652,8 @@ def _identity_packet(
     fingerprints,
     seenclasses,
     unseenclasses,
+    data_manifest_path,
+    data_manifest_sha256,
 ):
     return {
         "experiment_id": config_values["experiment_id"],
@@ -652,6 +666,8 @@ def _identity_packet(
         "config_sha256": config_hash,
         "input_files": input_records,
         "input_fingerprints": fingerprints,
+        "data_manifest_path": str(Path(data_manifest_path).resolve()),
+        "data_manifest_sha256": data_manifest_sha256,
         "seenclasses": seenclasses.detach().cpu().long().tolist(),
         "unseenclasses": unseenclasses.detach().cpu().long().tolist(),
         "evaluation_protocol": EVALUATION_PROTOCOL,
@@ -680,6 +696,7 @@ def run_training(
         else default_input_manifest_path()
     )
     cached_records = build_cached_records(input_paths, manifest_path)
+    manifest_hash = sha256_file(manifest_path)
     before_load_stats = capture_input_stats(input_paths)
 
     output_dir.mkdir(parents=True, exist_ok=False)
@@ -763,6 +780,8 @@ def run_training(
             fingerprints,
             seenclasses,
             unseenclasses,
+            manifest_path,
+            manifest_hash,
         )
         metrics_payload.update(identity)
         metrics_payload["status"] = "running"
@@ -778,13 +797,14 @@ def run_training(
         log.write(f"数据根目录：{Path(data_root).resolve()}")
         log.write(f"随机种子：{seed}；设备：{device}")
         log.write(f"开跑前可用物理内存：{available_memory / 1024**3:.2f} GiB")
+        fgvd_state = "关闭" if config.ablation_disable_fgvd_geometry else "启用"
         log.write(
-            "固定改动：关闭 FGVD 几何编码；其余训练日程与母版一致；"
+            f"FGVD 几何编码：{fgvd_state}；其余训练日程与母版一致；"
             f"local_ce={config.lambda_local_ce}；"
             f"confusion={config.lambda_confusion_contrast}；"
             f"crop_distill={config.lambda_crop_distill}"
         )
-        log.write(f"共享输入哈希清单：{manifest_path}")
+        log.write(f"共享输入哈希清单：{manifest_path}；SHA-256={manifest_hash}")
         for name, record in input_records.items():
             shape = f"；shape={record['shape']}；dtype={record['dtype']}" if "shape" in record else ""
             log.write(

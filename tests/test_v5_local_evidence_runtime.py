@@ -27,6 +27,7 @@ def canonical_values():
 
 def write_config(root, mode, **overrides):
     experiment_by_mode = {
+        "full_baseline": ("V5-CONFIRM-004", "none"),
         "fgvd_off": ("V5-ABLATION-004", "none"),
         "local_ce": ("V5-INNOVATION-004", "IDEA-0006"),
         "confusion_contrast": ("V5-INNOVATION-005", "IDEA-0006"),
@@ -43,7 +44,7 @@ def write_config(root, mode, **overrides):
         dataset_split="xlsa17/att_splits.mat",
         evaluation_protocol="standard_gzsl_u_s_h_zs",
         experiment_mode=mode,
-        ablation_disable_fgvd_geometry=True,
+        ablation_disable_fgvd_geometry=mode != "full_baseline",
         lambda_local_ce=0.0,
         lambda_confusion_contrast=0.0,
         confusion_topk=5,
@@ -70,6 +71,7 @@ def write_config(root, mode, **overrides):
 class V5LocalEvidenceRuntimeTest(unittest.TestCase):
     def test_checked_in_seed5_configs_load_with_expected_modes(self):
         paths = {
+            "full_baseline": ROOT / "experiments/v5/confirmation/CONFIRM-004_latest_code_best_framework/configs/RUN-001.yaml",
             "fgvd_off": ROOT / "experiments/v5/ablation/ABLATION-004_fgvd_geometry_effect/configs/RUN-001.yaml",
             "local_ce": ROOT / "experiments/v5/innovation/INNOVATION-004_local_ce_without_fgvd/configs/RUN-001.yaml",
             "confusion_contrast": ROOT / "experiments/v5/innovation/INNOVATION-005_confusion_attribute_contrast/configs/RUN-001.yaml",
@@ -80,13 +82,31 @@ class V5LocalEvidenceRuntimeTest(unittest.TestCase):
             self.assertEqual(mode, config.experiment_mode)
             self.assertEqual(5, config.random_seed)
 
-    def test_four_training_modes_have_exact_pre_registered_values(self):
+    def test_five_training_modes_have_exact_pre_registered_values(self):
         with tempfile.TemporaryDirectory() as tmp:
-            for mode in ("fgvd_off", "local_ce", "confusion_contrast", "crop_distill"):
+            for mode in (
+                "full_baseline",
+                "fgvd_off",
+                "local_ce",
+                "confusion_contrast",
+                "crop_distill",
+            ):
                 config, values, _ = TRAINER.load_config(write_config(tmp, mode))
                 self.assertEqual(mode, config.experiment_mode)
-                self.assertTrue(config.ablation_disable_fgvd_geometry)
+                self.assertEqual(
+                    mode != "full_baseline",
+                    config.ablation_disable_fgvd_geometry,
+                )
                 self.assertEqual(values["random_seed"], 5)
+
+    def test_full_baseline_disables_every_experimental_switch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config, _, _ = TRAINER.load_config(write_config(tmp, "full_baseline"))
+            self.assertFalse(config.ablation_disable_fgvd_geometry)
+            self.assertEqual(0.0, config.lambda_local_ce)
+            self.assertEqual(0.0, config.lambda_confusion_contrast)
+            self.assertEqual(0.0, config.lambda_crop_distill)
+            self.assertEqual(0, config.crop_teacher_views)
 
     def test_parameter_drift_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -156,8 +176,23 @@ class V5LocalEvidenceRuntimeTest(unittest.TestCase):
     def test_default_hash_manifest_is_in_project_runtime(self):
         path = TRAINER.default_input_manifest_path()
         self.assertEqual("v5_cub_sha256.json", path.name)
-        self.assertEqual("input_manifests", path.parent.name)
+        self.assertEqual("data_fingerprints", path.parent.name)
         self.assertEqual(".runtime", path.parent.parent.name)
+
+    def test_identity_packet_records_data_manifest_sha256(self):
+        packet = TRAINER._identity_packet(
+            "a" * 40,
+            {"experiment_id": "V5-CONFIRM-004", "idea_id": "none"},
+            "b" * 64,
+            {},
+            {},
+            torch.tensor([0]),
+            torch.tensor([1]),
+            Path("manifest.json"),
+            "c" * 64,
+        )
+        self.assertEqual("c" * 64, packet["data_manifest_sha256"])
+        self.assertTrue(packet["data_manifest_path"].endswith("manifest.json"))
 
     def test_atomic_write_retries_a_transient_windows_file_lock(self):
         with tempfile.TemporaryDirectory() as tmp:
