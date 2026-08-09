@@ -3,9 +3,11 @@ experiment:
   id: "V5-INNOVATION-008"
   name: "PSE 类别关系增强与 GZSL 自校准"
   kind: "innovation"
-  status: "rejected"
+  status: "candidate"
   evidence_mode: "formal"
   created_or_recorded_at: "2026-08-10T02:15:21+08:00"
+  redesign_status: "validation_pending"
+  redesign_runs: ["RUN-008", "RUN-009", "RUN-010"]
 version:
   base_version: "v5"
   base_code_tag: "model/v5-template-v1"

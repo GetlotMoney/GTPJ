@@ -108,6 +108,42 @@ class ClassPrototypeRelationAdapter(nn.Module):
         )
 
 
+class BoundedClassPrototypeRelationAdapter(nn.Module):
+    """从恒等映射开始，并把每个类别的实际修正量限制在给定比例内。"""
+
+    def __init__(self, dim, heads=1, residual_ratio=0.1, dropout=0.0):
+        super().__init__()
+        self.residual_ratio = float(residual_ratio)
+        if not 0.0 < self.residual_ratio <= 1.0:
+            raise ValueError("residual_ratio 必须位于 (0, 1]。")
+        self.layer_norm = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(
+            embed_dim=dim,
+            num_heads=int(heads),
+            dropout=float(dropout),
+            batch_first=True,
+        )
+        # 新模块刚加入时必须与基线完全相同，再由训练逐步学会修正。
+        with torch.no_grad():
+            self.attn.out_proj.weight.zero_()
+            self.attn.out_proj.bias.zero_()
+
+    def relation_correction(self, prototypes):
+        if prototypes.dim() != 2:
+            raise ValueError("类别原型必须是 [C, D]。")
+        base = F.normalize(prototypes, dim=-1)
+        tokens = self.layer_norm(base).unsqueeze(0)
+        relation, _ = self.attn(tokens, tokens, tokens, need_weights=False)
+        relation = relation.squeeze(0)
+        # clamp_min(1) 既保证修正范数不超过 1，又避免零初始化处出现巨大梯度。
+        direction = relation / relation.norm(dim=-1, keepdim=True).clamp_min(1.0)
+        return self.residual_ratio * direction
+
+    def forward(self, prototypes):
+        base = F.normalize(prototypes, dim=-1)
+        return F.normalize(base + self.relation_correction(base), dim=-1)
+
+
 class BoxRelationalEmbedding(nn.Module):
     """Precomputed 24x24 patch-grid relational geometry embedding."""
 
@@ -320,6 +356,7 @@ class GTPJ(nn.Module):
         seen_text_embeds,
         unseen_text_embeds,
         seen_sentence_embeds=None,
+        unseen_sentence_embeds=None,
     ):
         super().__init__()
         self.config = config
@@ -383,13 +420,18 @@ class GTPJ(nn.Module):
 
         self.pse_outer_ratio = float(config.pse_outer_ratio)
         self.pse_mode = str(getattr(config, "pse_mode", "legacy_sentence"))
-        if self.pse_mode not in {"legacy_sentence", "class_relation"}:
+        if self.pse_mode not in {
+            "legacy_sentence",
+            "class_relation",
+            "class_relation_safe",
+        }:
             raise ValueError(
-                "pse_mode 只能是 'legacy_sentence' 或 'class_relation'。"
+                "pse_mode 只能是 'legacy_sentence'、'class_relation' "
+                "或 'class_relation_safe'。"
             )
         self.pse_apply_unseen = bool(getattr(config, "pse_apply_unseen", False))
-        if self.pse_apply_unseen and self.pse_mode != "class_relation":
-            raise ValueError("pse_apply_unseen 只允许用于 class_relation 模式。")
+        if self.pse_mode == "class_relation_safe" and not self.pse_apply_unseen:
+            raise ValueError("class_relation_safe 必须对 seen/unseen 两组使用同一路径。")
         self.lambda_self_calibration = float(
             getattr(config, "lambda_self_calibration", 0.0)
         )
@@ -415,6 +457,28 @@ class GTPJ(nn.Module):
         self.seen_sentence_embeds = nn.Parameter(
             F.normalize(seen_sentence_embeds, dim=-1), requires_grad=False
         )
+        if unseen_sentence_embeds is not None:
+            if (
+                unseen_sentence_embeds.dim() != 3
+                or unseen_sentence_embeds.size(0) != unseen_ids.numel()
+                or unseen_sentence_embeds.size(-1) != self.dim_f
+            ):
+                raise ValueError(
+                    "unseen_sentence_embeds must have shape [C_unseen, M, D]."
+                )
+            self.unseen_sentence_embeds = nn.Parameter(
+                F.normalize(unseen_sentence_embeds, dim=-1), requires_grad=False
+            )
+        else:
+            self.unseen_sentence_embeds = None
+        if (
+            self.pse_apply_unseen
+            and self.pse_mode != "class_relation"
+            and self.unseen_sentence_embeds is None
+        ):
+            raise ValueError(
+                "pse_apply_unseen=True requires unseen_sentence_embeds."
+            )
         self.pse_module = ProgressiveSemanticSelfAttention(
             dim=self.dim_f,
             heads=int(config.pse_heads),
@@ -486,20 +550,84 @@ class GTPJ(nn.Module):
             finally:
                 torch.random.set_rng_state(cpu_rng_state)
 
-    def get_adapted_seen_text(self):
-        if self.pse_mode == "class_relation":
-            return self.class_pse_module(self.seen_text_embeds)
-        sentence_embeds = self.seen_sentence_embeds
+        if self.pse_mode == "class_relation_safe":
+            cpu_rng_state = torch.random.get_rng_state()
+            try:
+                self.class_pse_module = BoundedClassPrototypeRelationAdapter(
+                    dim=self.dim_f,
+                    heads=int(config.pse_heads),
+                    residual_ratio=float(config.pse_class_residual_ratio),
+                    dropout=float(config.pse_class_dropout),
+                )
+            finally:
+                torch.random.set_rng_state(cpu_rng_state)
+
+    def _adapt_sentence_prototypes(self, sentence_embeds):
         base = sentence_embeds.mean(dim=1)
         attn = self.pse_module(sentence_embeds).mean(dim=1)
         ratio = self.pse_outer_ratio
-        adapted = ratio * attn + (1.0 - ratio) * base
-        return F.normalize(adapted, dim=1)
+        return F.normalize(ratio * attn + (1.0 - ratio) * base, dim=1)
+
+    def _adapt_unseen_sentence_prototypes(self):
+        """共享 PSE，但不让新增 unseen 前向改变后续模块的随机数轨迹。"""
+        if self.unseen_sentence_embeds is None:
+            raise ValueError("unseen sentence prototypes are unavailable.")
+        cuda_devices = []
+        if self.unseen_sentence_embeds.is_cuda:
+            cuda_devices = [self.unseen_sentence_embeds.device.index]
+        with torch.random.fork_rng(devices=cuda_devices, enabled=self.training):
+            return self._adapt_sentence_prototypes(self.unseen_sentence_embeds)
+
+    def get_adapted_seen_text(self):
+        if self.pse_mode == "class_relation":
+            return self.class_pse_module(self.seen_text_embeds)
+        base = self._adapt_sentence_prototypes(self.seen_sentence_embeds)
+        if self.pse_mode == "class_relation_safe":
+            return self.class_pse_module(base)
+        return base
 
     def get_adapted_unseen_text(self):
         if self.pse_mode == "class_relation" and self.pse_apply_unseen:
             return self.class_pse_module(self.unseen_text_embeds)
+        if self.pse_apply_unseen:
+            base = self._adapt_unseen_sentence_prototypes()
+            if self.pse_mode == "class_relation_safe":
+                return self.class_pse_module(base)
+            return base
         return self.unseen_text_embeds
+
+    def prototype_relation_diagnostics(self):
+        """返回安全类别适配器的实际修正范数和原型旋转角。"""
+        if self.pse_mode != "class_relation_safe":
+            return None
+        was_training = self.training
+        self.eval()
+        try:
+            groups = {
+                "seen": self._adapt_sentence_prototypes(self.seen_sentence_embeds),
+                "unseen": self._adapt_sentence_prototypes(self.unseen_sentence_embeds),
+            }
+            diagnostics = {}
+            with torch.no_grad():
+                for name, base in groups.items():
+                    correction = self.class_pse_module.relation_correction(base)
+                    adapted = self.class_pse_module(base)
+                    base_n = F.normalize(base, dim=-1)
+                    cosine = (base_n * adapted).sum(dim=-1).clamp(-1.0, 1.0)
+                    angle = torch.rad2deg(torch.acos(cosine))
+                    diagnostics[name] = {
+                        "correction_norm_mean": float(
+                            correction.norm(dim=-1).mean().item()
+                        ),
+                        "correction_norm_max": float(
+                            correction.norm(dim=-1).max().item()
+                        ),
+                        "rotation_deg_mean": float(angle.mean().item()),
+                        "rotation_deg_max": float(angle.max().item()),
+                    }
+            return diagnostics
+        finally:
+            self.train(was_training)
 
     def _make_all_text(self, device, dtype):
         seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)

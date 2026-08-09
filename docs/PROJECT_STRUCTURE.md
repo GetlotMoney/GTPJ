@@ -85,7 +85,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
-| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；读取 YAML config，要求每个 RUN 使用不存在的独立输出目录，使用可恢复的独立 batch RNG 和数据指纹清单，固定训练完成后只评估一次测试集。 |
+| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；读取 YAML config，要求每个 RUN 使用不存在的独立输出目录，使用可恢复的独立 batch RNG 和数据指纹清单；支持正式测试只评一次，也支持完全不加载正式 test 缓存的类不重叠验证。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
 
@@ -200,7 +200,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | GTPJ 主模型实现；正式 V5 路径包含 PSE、FGVD、BVSA、ICSA、SGMP，本实验分支额外提供类别轴 PSE、未见原型共享权重和有界训练校准。 |
+| `model/MyModel.py` | GTPJ 主模型实现；正式 V5 路径包含 PSE、FGVD、BVSA、ICSA、SGMP，本实验分支额外保留第一版类别轴 PSE，并提供保留句子 PSE、seen/unseen 同路、零起点和修正范数限幅的安全类别关系模式。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：
@@ -221,6 +221,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
 | `tools/v5_evaluation.py` | V5 缓存评估与 calibrated stacking；支持只降低 seen logits，并强制 gamma 选择入口只接受 validation。 |
+| `tools/v5_cub_data.py` | 严格核对 CUB/xlsa17 标签与缓存顺序；为正式测试读取 seen/unseen 类，也可从 train_loc/val_loc 构造 100/50 类不重叠验证和每类固定 20% seen 图片留出。 |
 | `tools/v5_runtime.py` | V5 输入身份、原子数据指纹清单、checkpoint RNG 和续训身份检查。 |
 | `tools/reproducibility.py` | Python、NumPy、PyTorch 可复现设置和独立 batch generator。 |
 

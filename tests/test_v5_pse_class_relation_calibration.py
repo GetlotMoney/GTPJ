@@ -6,11 +6,14 @@ import tempfile
 from types import SimpleNamespace
 from unittest import mock
 
+import numpy as np
+import scipy.io as sio
 import torch
 import torch.nn.functional as F
 import yaml
 
 from model import MyModel as model_module
+from tools import v5_cub_data
 from tools import v5_evaluation
 from tools import v5_runtime
 
@@ -67,13 +70,15 @@ def _model_inputs():
     seen = torch.tensor([0, 2, 3, 5])
     unseen = torch.tensor([1, 4])
     seen_sentences = torch.randn(4, 3, 16)
-    unseen_text = torch.randn(2, 16)
+    unseen_sentences = torch.randn(2, 3, 16)
+    unseen_text = unseen_sentences.mean(dim=1)
     return (
         seen,
         unseen,
         seen_sentences.mean(dim=1),
         unseen_text,
         seen_sentences,
+        unseen_sentences,
     )
 
 
@@ -97,16 +102,44 @@ class _RecordingClassRelation(torch.nn.Module):
 class ClassPrototypeRelationAdapterTest(unittest.TestCase):
     @unittest.skipUnless(torch.cuda.is_available(), "需要 CUDA 验证真实设备边界")
     def test_gtpj_accepts_cuda_class_ids_during_validation(self) -> None:
-        seen, unseen, seen_text, unseen_text, seen_sentences = _model_inputs()
+        seen, unseen, seen_text, unseen_text, seen_sentences, unseen_sentences = _model_inputs()
         model = model_module.GTPJ(
-            _config(),
+            _config(mode="class_relation_safe", apply_unseen=True),
             seen.cuda(),
             unseen.cuda(),
             seen_text.cuda(),
             unseen_text.cuda(),
             seen_sentences.cuda(),
-        )
+            unseen_sentences.cuda(),
+        ).cuda()
         self.assertEqual(model.seenclass.device.type, "cuda")
+
+        model.train()
+        features = torch.randn(2, 577, 16, device="cuda")
+        output = model(features, is_train=True)
+        losses = model.compute_loss(
+            dict(output, batch_label=torch.tensor([0, 2], device="cuda"))
+        )
+        losses["loss"].backward()
+        self.assertTrue(torch.isfinite(losses["loss"]))
+
+        cache = {
+            "seen_cls": torch.randn(4, 16),
+            "seen_patches": torch.randn(4, 576, 16),
+            "seen_labels": seen.cpu(),
+            "unseen_cls": torch.randn(2, 16),
+            "unseen_patches": torch.randn(2, 576, 16),
+            "unseen_labels": unseen.cpu(),
+        }
+        metrics = v5_evaluation.evaluate_cached_v5(
+            model,
+            "cuda",
+            cache,
+            seen.cuda(),
+            unseen.cuda(),
+            batch_size=2,
+        )
+        self.assertEqual(len(metrics), 4)
 
     def test_one_class_change_affects_other_class_outputs(self) -> None:
         self.assertTrue(
@@ -142,7 +175,7 @@ class ClassPrototypeRelationAdapterTest(unittest.TestCase):
         )
 
     def test_gtpj_class_relation_mode_adapts_seen_class_prototypes(self) -> None:
-        seen, unseen, seen_text, unseen_text, seen_sentences = _model_inputs()
+        seen, unseen, seen_text, unseen_text, seen_sentences, _ = _model_inputs()
         model = model_module.GTPJ(
             _config(mode="class_relation"),
             seen,
@@ -165,7 +198,7 @@ class ClassPrototypeRelationAdapterTest(unittest.TestCase):
         )
 
     def test_shared_weights_process_seen_and_unseen_as_separate_groups(self) -> None:
-        seen, unseen, seen_text, unseen_text, seen_sentences = _model_inputs()
+        seen, unseen, seen_text, unseen_text, seen_sentences, _ = _model_inputs()
         try:
             model = model_module.GTPJ(
                 _config(mode="class_relation", apply_unseen=True),
@@ -187,10 +220,198 @@ class ClassPrototypeRelationAdapterTest(unittest.TestCase):
         self.assertEqual(tuple(seen_adapted.shape), (seen.numel(), 16))
         self.assertEqual(tuple(unseen_adapted.shape), (unseen.numel(), 16))
 
+    def test_bounded_adapter_starts_as_identity_and_never_exceeds_ratio(self) -> None:
+        adapter = model_module.BoundedClassPrototypeRelationAdapter(
+            dim=16,
+            heads=2,
+            residual_ratio=0.1,
+            dropout=0.0,
+        ).eval()
+        torch.manual_seed(20260810)
+        prototypes = torch.randn(7, 16)
+        base = F.normalize(prototypes, dim=-1)
+
+        with torch.no_grad():
+            initial = adapter(prototypes)
+            initial_correction = adapter.relation_correction(prototypes)
+        torch.testing.assert_close(initial, base, rtol=0.0, atol=1e-7)
+        torch.testing.assert_close(
+            initial_correction,
+            torch.zeros_like(initial_correction),
+            rtol=0.0,
+            atol=0.0,
+        )
+
+        with torch.no_grad():
+            torch.nn.init.normal_(adapter.attn.out_proj.weight, std=0.2)
+            adapter.attn.out_proj.bias.zero_()
+            correction = adapter.relation_correction(prototypes)
+            adapted = adapter(prototypes)
+            changed = prototypes.clone()
+            changed[0] += 5.0
+            changed_adapted = adapter(changed)
+
+        self.assertLessEqual(float(correction.norm(dim=1).max()), 0.100001)
+        cosine = (base * adapted).sum(dim=1).clamp(-1.0, 1.0)
+        angles = torch.rad2deg(torch.acos(cosine))
+        self.assertLessEqual(float(angles.max()), 5.75)
+        self.assertGreater(
+            float((adapted[1:] - changed_adapted[1:]).abs().max()),
+            0.0,
+            "安全适配器仍必须让一个类别的变化影响其他类别。",
+        )
+
+    def test_safe_mode_keeps_sentence_pse_and_processes_both_groups(self) -> None:
+        seen, unseen, seen_text, unseen_text, seen_sentences, unseen_sentences = _model_inputs()
+        model = model_module.GTPJ(
+            _config(mode="class_relation_safe", apply_unseen=True),
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        ).eval()
+
+        seen_base = model._adapt_sentence_prototypes(model.seen_sentence_embeds)
+        unseen_base = model._adapt_sentence_prototypes(model.unseen_sentence_embeds)
+        torch.testing.assert_close(model.get_adapted_seen_text(), seen_base, atol=1e-7, rtol=0.0)
+        torch.testing.assert_close(model.get_adapted_unseen_text(), unseen_base, atol=1e-7, rtol=0.0)
+
+    def test_shared_sentence_mode_changes_only_unseen_prototype_path(self) -> None:
+        seen, unseen, seen_text, unseen_text, seen_sentences, unseen_sentences = _model_inputs()
+        torch.manual_seed(77)
+        baseline = model_module.GTPJ(
+            _config(mode="legacy_sentence", apply_unseen=False),
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        ).eval()
+        torch.manual_seed(77)
+        shared = model_module.GTPJ(
+            _config(mode="legacy_sentence", apply_unseen=True),
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        ).eval()
+
+        torch.testing.assert_close(
+            baseline.get_adapted_seen_text(), shared.get_adapted_seen_text(), rtol=0.0, atol=0.0
+        )
+        torch.testing.assert_close(
+            baseline.get_adapted_unseen_text(), F.normalize(unseen_text, dim=1)
+        )
+        self.assertGreater(
+            float(
+                (
+                    shared.get_adapted_unseen_text()
+                    - baseline.get_adapted_unseen_text()
+                ).abs().max().detach()
+            ),
+            0.0,
+        )
+
+    def test_safe_adapter_initialization_does_not_shift_existing_parameters(self) -> None:
+        seen, unseen, seen_text, unseen_text, seen_sentences, unseen_sentences = _model_inputs()
+        torch.manual_seed(991)
+        baseline = model_module.GTPJ(
+            _config(mode="legacy_sentence", apply_unseen=True),
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        )
+        torch.manual_seed(991)
+        candidate = model_module.GTPJ(
+            _config(mode="class_relation_safe", apply_unseen=True),
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        )
+        candidate_state = candidate.state_dict()
+        for name, value in baseline.state_dict().items():
+            torch.testing.assert_close(value, candidate_state[name], rtol=0.0, atol=0.0)
+
+    def test_shared_unseen_sentence_forward_preserves_global_rng_trajectory(self) -> None:
+        seen, unseen, seen_text, unseen_text, seen_sentences, unseen_sentences = _model_inputs()
+        baseline_config = _config(mode="legacy_sentence", apply_unseen=False)
+        shared_config = _config(mode="legacy_sentence", apply_unseen=True)
+        baseline_config.pse_dropout = 0.5
+        shared_config.pse_dropout = 0.5
+
+        torch.manual_seed(141)
+        baseline = model_module.GTPJ(
+            baseline_config,
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        ).train()
+        torch.manual_seed(141)
+        shared = model_module.GTPJ(
+            shared_config,
+            seen,
+            unseen,
+            seen_text,
+            unseen_text,
+            seen_sentence_embeds=seen_sentences,
+            unseen_sentence_embeds=unseen_sentences,
+        ).train()
+
+        torch.manual_seed(9917)
+        baseline.get_adapted_seen_text()
+        baseline.get_adapted_unseen_text()
+        baseline_state = torch.random.get_rng_state()
+        baseline_next = torch.rand(5)
+
+        torch.manual_seed(9917)
+        shared.get_adapted_seen_text()
+        shared.get_adapted_unseen_text()
+        shared_state = torch.random.get_rng_state()
+        shared_next = torch.rand(5)
+
+        torch.testing.assert_close(baseline_state, shared_state, rtol=0.0, atol=0.0)
+        torch.testing.assert_close(baseline_next, shared_next, rtol=0.0, atol=0.0)
+
+        if torch.cuda.is_available():
+            baseline = baseline.cuda()
+            shared = shared.cuda()
+            torch.cuda.manual_seed(9917)
+            baseline.get_adapted_seen_text()
+            baseline.get_adapted_unseen_text()
+            baseline_cuda_state = torch.cuda.get_rng_state()
+            baseline_cuda_next = torch.rand(5, device="cuda")
+
+            torch.cuda.manual_seed(9917)
+            shared.get_adapted_seen_text()
+            shared.get_adapted_unseen_text()
+            shared_cuda_state = torch.cuda.get_rng_state()
+            shared_cuda_next = torch.rand(5, device="cuda")
+
+            torch.testing.assert_close(
+                baseline_cuda_state, shared_cuda_state, rtol=0.0, atol=0.0
+            )
+            torch.testing.assert_close(
+                baseline_cuda_next, shared_cuda_next, rtol=0.0, atol=0.0
+            )
+
 
 class SelfCalibrationLossTest(unittest.TestCase):
     def _model(self):
-        seen, unseen, seen_text, unseen_text, seen_sentences = _model_inputs()
+        seen, unseen, seen_text, unseen_text, seen_sentences, _ = _model_inputs()
         config = _config(
             mode="class_relation",
             apply_unseen=True,
@@ -345,6 +566,70 @@ class CalibratedStackingTest(unittest.TestCase):
             )
             self.assertEqual(cuda_metrics, raw)
 
+    def test_indexed_evaluation_matches_materialized_split_without_large_copies(self) -> None:
+        class ControlledModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.nclass = 4
+                self.register_buffer("seenclass", torch.tensor([0, 2]))
+                self.register_buffer("unseenclass", torch.tensor([1, 3]))
+
+            def forward(self, features, is_train=False):
+                del is_train
+                rows = {
+                    10: [10.0, 0.0, 0.0, 0.0],
+                    11: [0.0, 0.0, 10.0, 0.0],
+                    12: [10.0, 9.0, 0.0, 0.0],
+                    13: [0.0, 0.0, 0.0, 10.0],
+                }
+                return {
+                    "clip_S_pp": torch.tensor(
+                        [rows[index] for index in features[:, 0, 0].long().tolist()],
+                        device=features.device,
+                    )
+                }
+
+        # Shared cache is deliberately interleaved and contains unused rows.
+        shared_cls = torch.tensor([[99.0], [11.0], [12.0], [98.0], [10.0], [13.0]])
+        shared_patches = torch.zeros(6, 576, 1)
+        seen_positions = torch.tensor([4, 1])
+        unseen_positions = torch.tensor([2, 5])
+        seen_labels = torch.tensor([0, 2])
+        unseen_labels = torch.tensor([1, 3])
+        materialized = {
+            "seen_cls": shared_cls.index_select(0, seen_positions),
+            "seen_patches": shared_patches.index_select(0, seen_positions),
+            "seen_labels": seen_labels,
+            "unseen_cls": shared_cls.index_select(0, unseen_positions),
+            "unseen_patches": shared_patches.index_select(0, unseen_positions),
+            "unseen_labels": unseen_labels,
+        }
+
+        expected = v5_evaluation.evaluate_cached_v5(
+            ControlledModel(),
+            "cpu",
+            materialized,
+            [0, 2],
+            [1, 3],
+            batch_size=1,
+            calibrated_stacking_gamma=2.0,
+        )
+        actual = v5_evaluation.evaluate_indexed_cached_v5(
+            ControlledModel(),
+            "cpu",
+            cls_features=shared_cls,
+            patches=shared_patches,
+            seen_positions=seen_positions,
+            seen_labels=seen_labels,
+            unseen_positions=unseen_positions,
+            unseen_labels=unseen_labels,
+            seenclasses=[0, 2],
+            unseenclasses=[1, 3],
+            batch_size=1,
+            calibrated_stacking_gamma=2.0,
+        )
+        self.assertEqual(actual, expected)
+
     def test_gamma_is_selected_only_from_validation_labels(self) -> None:
         self.assertTrue(
             hasattr(v5_evaluation, "select_calibrated_stacking_gamma"),
@@ -368,6 +653,74 @@ class CalibratedStackingTest(unittest.TestCase):
             v5_evaluation.select_calibrated_stacking_gamma(
                 split_name="test", **arguments
             )
+
+
+class ClassDisjointValidationSplitTest(unittest.TestCase):
+    def test_split_is_class_disjoint_deterministic_and_holds_out_per_class(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gtpj-class-validation-") as temporary:
+            root = Path(temporary)
+            res101_path = root / "res101.mat"
+            split_path = root / "att_splits.mat"
+
+            # 四个模拟类别：0/1 是 pseudo-seen，2/3 是 pseudo-unseen。
+            labels = np.array(
+                [0] * 5 + [1] * 5 + [2] * 4 + [3] * 4,
+                dtype=np.int64,
+            )
+            train_loc = np.arange(0, 10, dtype=np.int64)
+            val_loc = np.arange(10, 18, dtype=np.int64)
+            # 故意交错 trainval 顺序，证明实现不是靠“前半段/后半段”猜位置。
+            trainval_loc = np.array(
+                [10, 0, 11, 1, 12, 2, 13, 3, 14, 4, 15, 5, 16, 6, 17, 7, 8, 9],
+                dtype=np.int64,
+            )
+            sio.savemat(res101_path, {"labels": (labels + 1).reshape(-1, 1)})
+            sio.savemat(
+                split_path,
+                {
+                    "train_loc": (train_loc + 1).reshape(-1, 1),
+                    "val_loc": (val_loc + 1).reshape(-1, 1),
+                    "trainval_loc": (trainval_loc + 1).reshape(-1, 1),
+                },
+            )
+            cache_labels = torch.from_numpy(labels[trainval_loc]).long()
+
+            first = v5_cub_data.build_v5_class_disjoint_validation_split(
+                res101_path,
+                split_path,
+                cache_labels,
+                holdout_fraction=0.2,
+                split_seed=20260810,
+            )
+            second = v5_cub_data.build_v5_class_disjoint_validation_split(
+                res101_path,
+                split_path,
+                cache_labels,
+                holdout_fraction=0.2,
+                split_seed=20260810,
+            )
+
+            self.assertEqual(first["original_seenclasses"].tolist(), [0, 1])
+            self.assertEqual(first["original_unseenclasses"].tolist(), [2, 3])
+            self.assertFalse(
+                torch.isin(
+                    first["original_seenclasses"], first["original_unseenclasses"]
+                ).any()
+            )
+            self.assertEqual(first["seen_val_positions"].numel(), 2)
+            self.assertEqual(first["train_positions"].numel(), 8)
+            self.assertEqual(first["unseen_val_positions"].numel(), 8)
+            self.assertEqual(first["seenclasses"].tolist(), [0, 1])
+            self.assertEqual(first["unseenclasses"].tolist(), [2, 3])
+            for key in (
+                "train_positions",
+                "seen_val_positions",
+                "unseen_val_positions",
+                "train_labels",
+                "seen_val_labels",
+                "unseen_val_labels",
+            ):
+                torch.testing.assert_close(first[key], second[key], rtol=0.0, atol=0.0)
 
 
 class TrainingEntryIsolationTest(unittest.TestCase):
@@ -401,6 +754,14 @@ class TrainingEntryIsolationTest(unittest.TestCase):
         self.assertNotIn("evaluate_cached_v5(", source[loop_start:loop_end])
         self.assertIn("evaluation_protocol", source)
         self.assertIn("test_once_after_training", source)
+        self.assertIn("class_disjoint_validation", source)
+        self.assertIn("build_v5_class_disjoint_validation_split", source)
+        self.assertIn("evaluate_indexed_cached_v5", source)
+        self.assertIn("train_sample_positions[indices]", source)
+        self.assertIn('"large_patch_cache_copies": 0', source)
+        self.assertNotIn("full_train_patches[train_positions]", source)
+        self.assertNotIn("full_train_patches[seen_val_positions]", source)
+        self.assertNotIn("full_train_patches[unseen_val_positions]", source)
 
     def test_unchanged_input_reuses_atomic_fingerprint_manifest(self) -> None:
         self.assertTrue(
@@ -496,6 +857,40 @@ class ExperimentConfigTest(unittest.TestCase):
         self.assertIsNone(e4["gamma"])
         self.assertEqual(e4["gamma_source"], "class_disjoint_validation")
         self.assertFalse(e4["test_tuning_allowed"])
+
+        effective_defaults = {
+            "evaluation_split": "test",
+            "validation_seen_holdout_fraction": 0.2,
+            "validation_split_seed": 20260810,
+        }
+        baseline_effective = {**effective_defaults, **baseline}
+        redesigned_cases = {
+            "R0_validation_legacy.yaml": {"evaluation_split"},
+            "R1_validation_shared_sentence_pse.yaml": {
+                "evaluation_split",
+                "pse_apply_unseen",
+            },
+            "R2_validation_safe_class_relation.yaml": {
+                "evaluation_split",
+                "pse_mode",
+                "pse_apply_unseen",
+            },
+        }
+        for name, expected_changes in redesigned_cases.items():
+            with self.subTest(redesign=name):
+                candidate = {**effective_defaults, **values(root / "configs" / name)}
+                actual_changes = {
+                    key
+                    for key in baseline_effective
+                    if candidate[key] != baseline_effective[key]
+                }
+                self.assertEqual(actual_changes, expected_changes)
+                self.assertEqual(
+                    candidate["evaluation_split"], "class_disjoint_validation"
+                )
+                self.assertEqual(candidate["lambda_self_calibration"], 0.0)
+                self.assertEqual(candidate["random_seed"], 5)
+                self.assertEqual(candidate["lr_stages"], baseline["lr_stages"])
 
 
 if __name__ == "__main__":

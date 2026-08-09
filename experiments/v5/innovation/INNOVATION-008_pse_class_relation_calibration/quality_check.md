@@ -53,3 +53,23 @@ confirmation_status: not_applicable
 ## 决策
 
 `PASS_REJECT_RESULT`：证据足以否决 E1；不支持继续 E2-E4，也不支持 promotion。
+
+## 2026-08-10 第二版开跑前检查
+
+```text
+scope: R0/R1/R2 class-disjoint validation
+decision: PASS_READY_TO_FREEZE
+formal_test_cache_loaded: false
+promotion_decision: not_applicable
+```
+
+- [x] 三组只改变声明的 PSE 路径，seed、训练轮数、学习率和 batch size 相同。
+- [x] pseudo-seen 与 pseudo-unseen 类别零重叠，训练图与验证图零重叠。
+- [x] 训练 CE 仍只使用 pseudo-seen 类。
+- [x] R2 初始输出等于 R1，修正范数不超过 `0.1`，旋转不超过约 `5.75°`。
+- [x] 验证运行不登记、读取或加载正式 test 缓存。
+- [x] 训练与评估逐 batch 按位置取数，不生成三份大 patch 缓存副本。
+- [x] 专项 20 项、合计 35 项相关测试、语法检查、项目校验、框架账本校验和边界检查通过。
+- [x] 独立 Reviewer 对最新按位置取数修复给出 `PASS`，确认指标、标签、类别轴和 test 边界未改变。
+
+以上检查通过并冻结 clean commit 后启动 RUN-008；这里的验证结果不能冒充正式测试或 promotion 证据。尚未做进程级内存峰值测量，R0 运行时继续观察；静态引用关系已确认只长期保留一份大缓存和当前 batch 的临时小副本。

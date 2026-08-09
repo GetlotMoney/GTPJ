@@ -13,6 +13,9 @@
 | RUN-005 | E4 验证集选 gamma 的推理校准 | innovation | skipped | {"checkpoint_from":"RUN-003","gamma":null,"gamma_source":"class_disjoint_validation"} | 5 |  |  | 只用验证划分确定 gamma 后复用 E2 checkpoint 并同时报告原始与校准分数 |  | skipped_after_e1_h_drop |  |
 | RUN-006 | E0 CUDA 修复后重跑 | innovation | failed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-001 | RUN-006 | 修复类别编号设备校验后重新建立 E0 公平基线 |  | failed_after_epoch_50_eval_device_mismatch |  |
 | RUN-007 | E0 评估设备修复后重跑 | innovation | completed | {"pse_mode":"legacy_sentence","pse_apply_unseen":false,"lambda_self_calibration":0.0} | 5 | RUN-006 | RUN-007 | 修复最终评估类别索引设备后重新建立 E0 公平基线 | 73.69 | fair_baseline |  |
+| RUN-008 | R0 类不重叠验证基线 | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":false} | 5 |  | RUN-008 | 在不接触正式测试集的 100/50 类划分上建立旧 PSE 验证基线 |  | pending_validation |  |
+| RUN-009 | R1 未见类共享句子 PSE | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"legacy_sentence","pse_apply_unseen":true} | 5 |  | RUN-009 | 只验证未见类也经过同一旧句子 PSE 是否改善组间一致性 |  | pending_validation |  |
+| RUN-010 | R2 安全类别关系增强 | innovation | planned | {"evaluation_split":"class_disjoint_validation","pse_mode":"class_relation_safe","pse_apply_unseen":true,"pse_class_residual_ratio":0.1} | 5 |  | RUN-010 | 在 R1 上增加限幅且从恒等映射开始的分组类别关系注意力 |  | pending_validation |  |
 
 ## 查重说明
 

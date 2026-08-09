@@ -15,7 +15,10 @@ import yaml
 
 from model.MyModel import GTPJ
 from tools.reproducibility import configure_reproducibility, make_batch_generator
-from tools.v5_cub_data import load_v5_cub_split
+from tools.v5_cub_data import (
+    build_v5_class_disjoint_validation_split,
+    load_v5_cub_split,
+)
 from tools.v5_runtime import (
     capture_rng_state,
     data_fingerprint_manifest_record,
@@ -29,6 +32,7 @@ from tools.v5_runtime import (
 )
 from tools.v5_evaluation import (
     evaluate_cached_v5,
+    evaluate_indexed_cached_v5,
     load_v5_test_cache,
     v5_test_cache_paths,
 )
@@ -85,6 +89,9 @@ V5_EXPERIMENT_CONFIG_DEFAULTS = {
     "pse_class_dropout": 0.0,
     "lambda_self_calibration": 0.0,
     "self_calibration_target": 0.05,
+    "evaluation_split": "test",
+    "validation_seen_holdout_fraction": 0.2,
+    "validation_split_seed": 20260810,
 }
 
 
@@ -136,6 +143,12 @@ def _load_config(path):
         raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
     if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
         raise ValueError("V5 固定使用 global + 0.2 * local。")
+    if values["evaluation_split"] not in {"test", "class_disjoint_validation"}:
+        raise ValueError(
+            "evaluation_split 只能是 'test' 或 'class_disjoint_validation'。"
+        )
+    if not 0.0 < float(values["validation_seen_holdout_fraction"]) < 1.0:
+        raise ValueError("validation_seen_holdout_fraction 必须位于 (0, 1)。")
     _validate_lr_stages(values["lr_stages"])
     return SimpleNamespace(**values), values, config_path
 
@@ -282,6 +295,7 @@ print_log(f"配置：{config_path}")
 print_log(f"配置 SHA-256：{config_hash}")
 print_log(f"代码 commit：{code_commit}")
 print_log(f"随机种子：{seed}")
+print_log(f"评估划分：{config.evaluation_split}")
 print_log(f"局部分支融合：global + {config.local_weight} * local")
 print_log(f"PyTorch/CUDA：{repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
 print_log("=" * 60)
@@ -293,29 +307,81 @@ input_paths = {
     "train_patches": TRAIN_PATCH_PATH,
     "train_labels": TRAIN_LABEL_PATH,
     "gpt55_sentences": GPT55_SENTENCE_PATH,
-    **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
 }
+if config.evaluation_split == "test":
+    input_paths.update(
+        {f"test_{name}": path for name, path in v5_test_cache_paths().items()}
+    )
 before_load_records = {name: input_record(path) for name, path in input_paths.items()}
-train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
+full_train_cls, full_train_patches, full_train_labels = _load_training_cache(
+    int(config.dim_f_clip)
+)
 sentence_embeds = _load_gpt55_sentences(
     int(config.num_class), int(config.dim_f_clip), config.device
 )
-test_cache = load_v5_test_cache()
-seenclasses, unseenclasses = load_v5_cub_split(
-    DATA_RES101_PATH,
-    DATA_SPLIT_PATH,
-    train_labels,
-    test_cache["seen_labels"],
-    test_cache["unseen_labels"],
-    config.device,
-)
+validation_split = None
+if config.evaluation_split == "test":
+    evaluation_cache = load_v5_test_cache()
+    seenclasses, unseenclasses = load_v5_cub_split(
+        DATA_RES101_PATH,
+        DATA_SPLIT_PATH,
+        full_train_labels,
+        evaluation_cache["seen_labels"],
+        evaluation_cache["unseen_labels"],
+        config.device,
+    )
+    train_cls = full_train_cls
+    train_patches = full_train_patches
+    train_labels = full_train_labels
+    train_sample_positions = None
+    evaluation_index = None
+    model_sentence_embeds = sentence_embeds
+else:
+    validation_split = build_v5_class_disjoint_validation_split(
+        DATA_RES101_PATH,
+        DATA_SPLIT_PATH,
+        full_train_labels,
+        holdout_fraction=float(config.validation_seen_holdout_fraction),
+        split_seed=int(config.validation_split_seed),
+    )
+    train_positions = validation_split["train_positions"]
+    seen_val_positions = validation_split["seen_val_positions"]
+    unseen_val_positions = validation_split["unseen_val_positions"]
+    # 保留一份共享大缓存；训练和验证只在每个 batch 临时按位置取数据。
+    train_cls = full_train_cls
+    train_patches = full_train_patches
+    train_labels = validation_split["train_labels"]
+    train_sample_positions = train_positions
+    evaluation_cache = None
+    evaluation_index = {
+        "seen_positions": seen_val_positions,
+        "seen_labels": validation_split["seen_val_labels"],
+        "unseen_positions": unseen_val_positions,
+        "unseen_labels": validation_split["unseen_val_labels"],
+    }
+    seenclasses = validation_split["seenclasses"].to(config.device)
+    unseenclasses = validation_split["unseenclasses"].to(config.device)
+    model_sentence_embeds = sentence_embeds[
+        validation_split["original_class_order"].to(sentence_embeds.device)
+    ]
+    config.num_class = int(model_sentence_embeds.size(0))
+    print_log(
+        "类不重叠验证："
+        f"pseudo-seen={seenclasses.numel()} 类，"
+        f"pseudo-unseen={unseenclasses.numel()} 类，"
+        f"训练图片={len(train_labels)}，seen 留出={len(evaluation_index['seen_labels'])}，"
+        f"unseen 验证={len(evaluation_index['unseen_labels'])}。"
+    )
 input_tensors = {
-    "train_cls": train_cls,
-    "train_patches": train_patches,
-    "train_labels": train_labels,
+    "train_cls": full_train_cls,
+    "train_patches": full_train_patches,
+    "train_labels": full_train_labels,
     "gpt55_sentences": sentence_embeds,
-    **{f"test_{name}": tensor for name, tensor in test_cache.items()},
 }
+if config.evaluation_split == "test":
+    input_tensors.update(
+        {f"test_{name}": tensor for name, tensor in evaluation_cache.items()}
+    )
 input_records = {
     name: input_record(path, input_tensors.get(name))
     for name, path in input_paths.items()
@@ -338,6 +404,7 @@ print_log(
     f"{fingerprint_manifest_record['path']} | "
     f"sha256={fingerprint_manifest_record['sha256']}"
 )
+del input_tensors
 
 # 与历史 V5 一致：数据与缓存准备完成后重置随机状态，再初始化模型。
 repro_state = configure_reproducibility(
@@ -345,7 +412,7 @@ repro_state = configure_reproducibility(
     strict_determinism=False,
     deterministic_warn_only=True,
 )
-text_embeds = sentence_embeds.mean(dim=1)
+text_embeds = model_sentence_embeds.mean(dim=1)
 
 model = GTPJ(
     config,
@@ -353,7 +420,8 @@ model = GTPJ(
     unseenclasses,
     seen_text_embeds=text_embeds[seenclasses],
     unseen_text_embeds=text_embeds[unseenclasses],
-    seen_sentence_embeds=sentence_embeds[seenclasses],
+    seen_sentence_embeds=model_sentence_embeds[seenclasses],
+    unseen_sentence_embeds=model_sentence_embeds[unseenclasses],
 ).to(config.device)
 
 stages = config.lr_stages
@@ -473,7 +541,10 @@ if iters_per_epoch <= 0:
     raise ValueError("训练样本数小于 batch_size，无法完成一个训练 step。")
 
 print_log(f"训练计划：{len(stages)} 段，共 {total_epochs} 个 epoch。")
-print_log(f"训练缓存：CLS={tuple(train_cls.shape)}，patch={tuple(train_patches.shape)}。")
+print_log(
+    f"共享训练缓存：CLS={tuple(train_cls.shape)}，patch={tuple(train_patches.shape)}；"
+    f"本轮训练样本={len(train_labels)}。"
+)
 
 for epoch in range(start_epoch, total_epochs + 1):
     target_stage = _stage_for_epoch(epoch, boundaries)
@@ -493,8 +564,13 @@ for epoch in range(start_epoch, total_epochs + 1):
             len(train_labels), generator=batch_generator
         )[: int(config.batch_size)]
         batch_labels = train_labels[indices].to(config.device)
-        cls_batch = train_cls[indices].to(config.device).float().unsqueeze(1)
-        patch_batch = train_patches[indices].to(config.device).float()
+        cache_indices = (
+            indices
+            if train_sample_positions is None
+            else train_sample_positions[indices]
+        )
+        cls_batch = train_cls[cache_indices].to(config.device).float().unsqueeze(1)
+        patch_batch = train_patches[cache_indices].to(config.device).float()
         features = torch.cat([cls_batch, patch_batch], dim=1)
 
         output = model(features, is_train=True)
@@ -515,12 +591,31 @@ for epoch in range(start_epoch, total_epochs + 1):
     )
     save_checkpoint(epoch)
 
-seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_cached_v5(
-    model,
-    config.device,
-    test_cache,
-    seenclasses,
-    unseenclasses,
+if evaluation_index is None:
+    seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_cached_v5(
+        model,
+        config.device,
+        evaluation_cache,
+        seenclasses,
+        unseenclasses,
+    )
+else:
+    seen_acc, unseen_acc, harmonic, zsl_acc = evaluate_indexed_cached_v5(
+        model,
+        config.device,
+        cls_features=train_cls,
+        patches=train_patches,
+        seen_positions=evaluation_index["seen_positions"],
+        seen_labels=evaluation_index["seen_labels"],
+        unseen_positions=evaluation_index["unseen_positions"],
+        unseen_labels=evaluation_index["unseen_labels"],
+        seenclasses=seenclasses,
+        unseenclasses=unseenclasses,
+    )
+evaluation_protocol = (
+    "test_once_after_training"
+    if config.evaluation_split == "test"
+    else "class_disjoint_validation_once_after_training"
 )
 reported_metrics = {
     "U": unseen_acc,
@@ -528,8 +623,24 @@ reported_metrics = {
     "H": harmonic,
     "ZS": zsl_acc,
     "epoch": total_epochs,
-    "evaluation_protocol": "test_once_after_training",
+    "evaluation_protocol": evaluation_protocol,
+    "evaluation_split": config.evaluation_split,
 }
+if validation_split is not None:
+    reported_metrics["validation_split"] = {
+        "pseudo_seen_classes": int(seenclasses.numel()),
+        "pseudo_unseen_classes": int(unseenclasses.numel()),
+        "seen_holdout_fraction": float(config.validation_seen_holdout_fraction),
+        "split_seed": int(config.validation_split_seed),
+        "train_images": int(len(train_labels)),
+        "seen_validation_images": int(len(evaluation_index["seen_labels"])),
+        "unseen_validation_images": int(len(evaluation_index["unseen_labels"])),
+        "formal_test_cache_loaded": False,
+        "large_patch_cache_copies": 0,
+    }
+prototype_diagnostics = model.prototype_relation_diagnostics()
+if prototype_diagnostics is not None:
+    reported_metrics["prototype_relation"] = prototype_diagnostics
 torch.save(model.state_dict(), log_dir / "model_final.pth")
 save_checkpoint(
     total_epochs,
@@ -538,6 +649,8 @@ save_checkpoint(
 )
 
 print_log("训练完成。")
+if prototype_diagnostics is not None:
+    print_log(f"类别关系修正诊断：{prototype_diagnostics}")
 print_log(
     f"最终 epoch={reported_metrics['epoch']}，U={reported_metrics['U'] * 100:.2f}%，"
     f"S={reported_metrics['S'] * 100:.2f}%，H={reported_metrics['H'] * 100:.2f}%，"

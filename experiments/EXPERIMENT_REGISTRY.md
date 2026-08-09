@@ -44,4 +44,4 @@ Project: GTPJ
 |---|---|---|---|---|---|
 | `CONFIRM-001_v1_seed5` | `v1` | `confirmation` | keep | `experiments/v1/confirmation/CONFIRM-001_v1_seed5` | H=73.77, delta_H=-0.16; Warehouse artifacts registered. |
 | `CONFIRM-001_local_v3_054_min3` | `v3` | `confirmation` | confirmed_config | `experiments/v3/confirmation/CONFIRM-001_local_v3_054_min3` | Server min3 H=74.46/74.42/74.47, confirmed_H=74.47, H_mean=74.45; confirmed config under v3. Historical `v4` tag is config-only, not a formal framework version. |
-| `INNOVATION-008_pse_class_relation_calibration` | `v5` | `innovation` | rejected | `experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration` | E1 H=66.92，比公平 E0 低 6.77；按停止条件不再运行 E2-E4。 |
+| `INNOVATION-008_pse_class_relation_calibration` | `v5` | `innovation` | candidate | `experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration` | 第一版 E1 已否决；第二版改为 R0/R1/R2 类不重叠验证。 |
