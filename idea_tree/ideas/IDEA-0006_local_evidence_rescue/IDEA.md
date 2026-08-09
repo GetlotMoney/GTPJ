@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0006
 title: 局部证据校准与全局候选纠错
-status: candidate
+status: weakened
 source_type: observation
 source_ref: V5-CONFIRM-003@8dd1b5ac10fdacc19aecfb0307c53077dd46bd66
 source_status: verified
@@ -58,9 +58,20 @@ FGVD、BVSA 局部分数、局部训练损失和最终候选类决策。
 
 ## 阻塞点
 
-方案 5 依赖方案 2～4 的 checkpoint，因此必须最后运行。
+局部分支单独 H 仍只有 `2.27–3.30`，现有监督没有把它训练成可靠分类器；固定 top-k
+重排又产生了更多误伤，因此本路线不进入 promotion。
 
 ## 决策规则
 
 先比较 seed 5 的 H、local-alone、rescue 和 harm；只有改善方向明确的方案再补
 seed 17/29。若局部能力和最终 H 都没有提升，停止局部路线并采用 global-only。
+
+## 运行结果与决定
+
+- FGVD-off：`H=74.1625`，与完整模型均值只差 `-0.0658 H`，按预设标准删除 FGVD。
+- 最佳局部方案是混淆难负类监督：三种子平均 `H=74.1770`，相对各自 global
+  平均 `+0.2542 H`，但仍比完整模型均值低 `0.0513 H`。
+- local CE、裁剪自蒸馏没有明确收益；固定 top-k 重排三次都降低 GZSL H。
+
+因此 IDEA-0006 标为 `weakened`：保留“局部可做小幅残差纠错”的观察，不再把当前
+局部分支包装成已成立的论文创新，也不改动正式 V5 母版。

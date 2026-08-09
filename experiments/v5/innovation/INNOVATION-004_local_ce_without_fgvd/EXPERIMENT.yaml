@@ -11,5 +11,5 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-004-local-ce-without-fgvd
 legacy_ref: IDEA-0006
-status: planned
+status: completed
 research_question: FGVD-off 后增加局部 CE 能否提高局部可靠性和最终 H

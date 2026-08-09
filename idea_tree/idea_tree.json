@@ -297,41 +297,64 @@
       "idea_id": "IDEA-0006",
       "idea_dir": "idea_tree/ideas/IDEA-0006_local_evidence_rescue/",
       "title": "局部证据校准与全局候选纠错",
-      "status": "candidate",
+      "status": "weakened",
       "source_type": "observation",
       "source_ref": "V5-CONFIRM-003@8dd1b5ac10fdacc19aecfb0307c53077dd46bd66",
       "source_status": "verified",
       "global_score": 76.0,
-      "core_summary": "",
+      "core_summary": "删除无独立价值的 FGVD，并用局部直接监督学习只负责纠正全局混淆类别的残差证据。",
       "version_scores": {
         "v5": {
-          "score": 86.0,
+          "score": 68.0,
           "applicability": "needs_adaptation",
-          "stage": "candidate",
-          "rationale": "",
-          "blockers": []
+          "stage": "rejected",
+          "rationale": "五组实验已完成。混淆难负类方案三种子平均 H=74.1770，虽相对各自 global 平均提高 0.2542 H，但仍比完整模型均值低 0.0513 H；local-only H 仅 2.27–3.30，top-k 重排三次均降低 GZSL H，因此不进入 promotion。",
+          "blockers": [
+            "局部分支单独分类能力仍很弱，现有局部监督与重排均未超过完整模型"
+          ]
         }
       },
       "base_versions": [
         "v5"
       ],
       "based_on_modules": [],
-      "target_component": "",
-      "hypothesis": "",
+      "target_component": "FGVD、BVSA 局部分数、局部训练损失和最终候选类决策",
+      "hypothesis": "先删除 FGVD，再用直接分类、全局混淆难负类或裁剪 teacher 训练局部分支，并把局部限制为全局候选内的残差纠错，可增加 rescue 并控制 harm。",
       "expected_effect": {
-        "U": "",
-        "S": "",
-        "H": ""
+        "U": "提高或至少不降低 unseen 准确率",
+        "S": "避免以同量级 seen 下降交换 unseen 提升",
+        "H": "超过完整模型均值并在多种子下保持方向一致"
       },
-      "implementation_scope": "",
-      "risk": "",
-      "compatibility": "",
-      "transfer_notes": "",
-      "priority": 0.86,
+      "implementation_scope": "V5 局部实验入口只增加 FGVD bypass、三种局部监督和固定 top-k 重排；不改变 CUB 划分、CLIP 特征、50 epoch 日程或 U/S/H/ZS 口径。",
+      "risk": "局部监督可能只改变 U/S 平衡；裁剪 teacher 视角有限；global top-k 内重排仍可能误伤原本正确的全局预测。",
+      "compatibility": "所有新增权重为零且 FGVD bypass 关闭时保持 V5 母版路径；实验结果不自动改动母版。",
+      "transfer_notes": "当前证据只适用于 V5/CUB；若迁移到其他版本，必须重新验证类别轴、局部分数尺度和互补性。",
+      "priority": 0.68,
       "linked_trials": [],
       "linked_versions": [],
-      "linked_experiments": [],
-      "evidence": []
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-004_local_ce_without_fgvd",
+        "experiments/v5/innovation/INNOVATION-005_confusion_attribute_contrast",
+        "experiments/v5/innovation/INNOVATION-006_crop_self_distillation",
+        "experiments/v5/innovation/INNOVATION-007_topk_local_reranking"
+      ],
+      "evidence": [
+        {
+          "type": "ablation",
+          "ref": "experiments/v5/ablation/ABLATION-004_fgvd_geometry_effect/result.md",
+          "note": "FGVD-off seed5 H=74.1625，与完整模型均值只差 -0.0658 H，支持删除 FGVD 做简化。"
+        },
+        {
+          "type": "experiment",
+          "ref": "experiments/v5/innovation/INNOVATION-005_confusion_attribute_contrast/result.md",
+          "note": "最佳方案三种子平均 H=74.1770；相对各自 global 平均 +0.2542 H，但未超过完整模型。"
+        },
+        {
+          "type": "experiment",
+          "ref": "experiments/v5/innovation/INNOVATION-007_topk_local_reranking/result.md",
+          "note": "三个固定 top-k 重排的 GZSL H 均下降，因此拒绝该推理路线。"
+        }
+      ]
     }
   ]
 }

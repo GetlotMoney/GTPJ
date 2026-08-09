@@ -11,5 +11,5 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-006-crop-self-distillation
 legacy_ref: IDEA-0006
-status: planned
+status: completed
 research_question: 真实裁剪 CLS teacher 能否提高局部证据稳定性和最终 H

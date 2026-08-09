@@ -2,13 +2,13 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：V5 局部互补性预注册方案
+来源：V5-INNOVATION-007 三个来源重排结果
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | top-5 重排 V5-INNOVATION-004 | innovation | frozen | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-004"} | 5 |  |  | 固定应用于对应 seed 5 checkpoint |  |  |  |
-| RUN-002 | top-5 重排 V5-INNOVATION-005 | innovation | frozen | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-005"} | 5 |  |  | 固定应用于对应 seed 5 checkpoint |  |  |  |
-| RUN-003 | top-5 重排 V5-INNOVATION-006 | innovation | frozen | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-006"} | 5 |  |  | 固定应用于对应 seed 5 checkpoint |  |  |  |
+| RUN-001 | top-5 重排 V5-INNOVATION-004 | innovation | completed | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-004"} | 5 |  | V5-INNOVATION-007/RUN-001 | 固定应用于对应 seed 5 checkpoint | 74.16581917363062 | reject_no_h_gain |  |
+| RUN-002 | top-5 重排 V5-INNOVATION-005 | innovation | completed | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-005"} | 5 |  | V5-INNOVATION-007/RUN-002 | 固定应用于对应 seed 5 checkpoint | 74.14271414354848 | reject_no_h_gain |  |
+| RUN-003 | top-5 重排 V5-INNOVATION-006 | innovation | completed | {"k":5,"residual_cap":0.25,"source_experiment":"V5-INNOVATION-006"} | 5 |  | V5-INNOVATION-007/RUN-003 | 固定应用于对应 seed 5 checkpoint | 73.81448912537134 | reject_no_h_gain |  |
 
 ## 查重说明
 

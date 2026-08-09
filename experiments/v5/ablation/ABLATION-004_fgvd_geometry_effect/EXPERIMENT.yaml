@@ -11,5 +11,5 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/ablation/ablation-004-fgvd-geometry-effect
 legacy_ref: exp/v5/ablation/ablation-004-fgvd-geometry-effect@ab51e36
-status: planned
+status: completed
 research_question: 只跳过 FGVD 几何编码时，最终 H 是否持平或提高

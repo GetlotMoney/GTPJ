@@ -11,5 +11,5 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-005-confusion-attribute-contrast
 legacy_ref: IDEA-0006
-status: planned
+status: completed
 research_question: 全局混淆难负类监督能否增加局部 rescue 并减少 harm

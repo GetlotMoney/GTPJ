@@ -407,6 +407,8 @@ dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框�
 `train.py` 负责四个训练方案，`rerank.py` 负责第五个只推理方案。
 输入哈希复用工具为 `tools/v5_input_manifest_cache.py`，top-k 纯函数为
 `tools/v5_topk_local_rerank.py`。这些文件只属于 V5 局部证据实验，不是新的正式母版入口。
+五个实验目录各自保存 `result.md`、`quality_check.md` 和 `evidence/ARTIFACTS.md`；
+训练日志与 checkpoint 仍只放在项目内 `.runtime/runs/v5/local_evidence_rescue/`，不进入 Git。
 
 必须更新本文件的情况：
 

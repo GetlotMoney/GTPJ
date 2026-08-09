@@ -11,5 +11,5 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-007-topk-local-reranking
 legacy_ref: IDEA-0006
-status: planned
+status: completed
 research_question: 局部证据只在全局 top-5 内有界重排时能否增加 rescue 并控制 harm
