@@ -34,6 +34,7 @@ cache/
 .agent-state/
 experiments/.agent-state/
 .gtpj_runtime/
+.runtime/
 .gtpj/local_paths.yaml
 .gtpj/locks/
 

@@ -14,11 +14,12 @@ import torch
 import torch.optim as optim
 import yaml
 
-from model.MyModel import GTPJ
+from model.MyModel import GTPJ, cancel_pse_qk_weight_decay
 from tools.reproducibility import configure_reproducibility
 from tools.v5_cub_data import load_v5_cub_split
 from tools.v5_runtime import (
     capture_rng_state,
+    data_fingerprint_manifest_record,
     input_fingerprints,
     input_record,
     restore_rng_state,
@@ -54,6 +55,8 @@ V5_CONFIG_KEYS = {
     "pse_dropout",
     "pse_inner_ratio",
     "pse_outer_ratio",
+    "pse_attention_mode",
+    "pse_qk_no_decay",
     "tf_common_dim",
     "tf_heads",
     "tf_dropout",
@@ -94,6 +97,12 @@ def _parse_args():
         default=None,
         help="同一 V5 母版产生的完整 checkpoint；不支持 auto、重启或微调猜测。",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="本次 RUN 的独立输出目录；目录必须为空或尚未创建。",
+    )
     return parser.parse_args()
 
 
@@ -118,6 +127,12 @@ def _load_config(path):
         raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
     if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
         raise ValueError("V5 固定使用 global + 0.2 * local。")
+    variant = (values["pse_attention_mode"], values["pse_qk_no_decay"])
+    allowed_variants = {("uniform", False), ("learned", True)}
+    if variant not in allowed_variants:
+        raise ValueError(
+            "本实验只接受 (uniform, false) 或 (learned, true) 两种 PSE 设置。"
+        )
     _validate_lr_stages(values["lr_stages"])
     return SimpleNamespace(**values), values, config_path
 
@@ -229,9 +244,15 @@ _require_clean_code_tree()
 code_commit = _current_code_commit()
 
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_dir = Path("./train_log/CUB")
+log_dir = (
+    args.output_dir.resolve()
+    if args.output_dir is not None
+    else Path("./train_log/CUB").resolve()
+)
+if log_dir.exists() and any(log_dir.iterdir()):
+    raise RuntimeError(f"本次 RUN 的输出目录不是空目录：{log_dir}")
 log_dir.mkdir(parents=True, exist_ok=True)
-log_path = log_dir / f"training_log_CUB_{current_time}.txt"
+log_path = log_dir / "training.log"
 
 
 def print_log(message):
@@ -298,6 +319,7 @@ input_records = {
 }
 validate_stable_input_records(before_load_records, input_records)
 run_input_fingerprints = input_fingerprints(input_records)
+data_manifest_record = data_fingerprint_manifest_record()
 for name, record in input_records.items():
     tensor_summary = ""
     if "shape" in record:
@@ -305,6 +327,11 @@ for name, record in input_records.items():
     print_log(
         f"输入 {name}: {record['path']} | sha256={record['sha256']} | "
         f"size={record['size_bytes']}{tensor_summary}"
+    )
+if data_manifest_record is not None:
+    print_log(
+        f"数据哈希清单：{data_manifest_record['path']} | "
+        f"sha256={data_manifest_record['sha256']}"
     )
 
 # 与历史 V5 一致：数据与缓存准备完成后重置随机状态，再初始化模型。
@@ -323,6 +350,8 @@ model = GTPJ(
     unseen_text_embeds=text_embeds[unseenclasses],
     seen_sentence_embeds=sentence_embeds[seenclasses],
 ).to(config.device)
+initial_pse_diagnostics = model.pse_diagnostics()
+print_log(f"PSE 初始诊断：{initial_pse_diagnostics}")
 
 stages = config.lr_stages
 boundaries = _stage_boundaries(stages)
@@ -425,6 +454,8 @@ for epoch in range(start_epoch, total_epochs + 1):
         output = model(features, is_train=True)
         losses = model.compute_loss(dict(output, batch_label=batch_labels))
         losses["loss"].backward()
+        if bool(config.pse_qk_no_decay):
+            cancel_pse_qk_weight_decay(model.pse_module, weight_decay=1e-4)
         optimizer.step()
         epoch_loss += float(losses["loss"].item())
 
@@ -473,6 +504,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 "config_sha256": config_hash,
                 "input_files": input_records,
                 "input_fingerprints": run_input_fingerprints,
+                "data_fingerprint_manifest": data_manifest_record,
                 "rng_state": capture_rng_state(),
                 "seenclasses": seenclasses.detach().cpu().long().tolist(),
                 "unseenclasses": unseenclasses.detach().cpu().long().tolist(),
@@ -489,4 +521,21 @@ print_log(
     f"最佳 epoch={best_metrics['epoch']}，U={best_metrics['U'] * 100:.2f}%，"
     f"S={best_metrics['S'] * 100:.2f}%，H={best_metrics['H'] * 100:.2f}%，"
     f"ZS={best_metrics['ZS'] * 100:.2f}%。"
+)
+final_pse_diagnostics = model.pse_diagnostics()
+print_log(f"PSE 最终诊断：{final_pse_diagnostics}")
+result = {
+    "status": "completed",
+    "code_commit": code_commit,
+    "config_path": str(config_path),
+    "config_sha256": config_hash,
+    "seed": seed,
+    "best_metrics": best_metrics,
+    "pse_diagnostics_initial": initial_pse_diagnostics,
+    "pse_diagnostics_final": final_pse_diagnostics,
+    "data_fingerprint_manifest": data_manifest_record,
+}
+(log_dir / "result.yaml").write_text(
+    yaml.safe_dump(result, allow_unicode=True, sort_keys=False),
+    encoding="utf-8",
 )

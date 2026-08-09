@@ -56,11 +56,24 @@ def fgvd_select_patches(F_p, K=64):
 
 
 class ProgressiveSemanticSelfAttention(nn.Module):
-    """Sentence-level self-attention inside Progressive Semantic Enhancement."""
+    """Sentence-level attention inside Progressive Semantic Enhancement."""
 
-    def __init__(self, dim, heads=1, dropout=0.5, inner_ratio=0.5):
+    def __init__(
+        self,
+        dim,
+        heads=1,
+        dropout=0.5,
+        inner_ratio=0.5,
+        attention_mode="learned",
+    ):
         super().__init__()
         self.inner_ratio = float(inner_ratio)
+        self.attention_mode = str(attention_mode)
+        if self.attention_mode not in {"learned", "uniform"}:
+            raise ValueError(
+                "PSE attention_mode must be 'learned' or 'uniform'; "
+                f"got {self.attention_mode!r}."
+            )
         self.attn = nn.MultiheadAttention(
             embed_dim=dim,
             num_heads=int(heads),
@@ -71,11 +84,91 @@ class ProgressiveSemanticSelfAttention(nn.Module):
         self.dropout = nn.Dropout(float(dropout))
         self.layer_norm = nn.LayerNorm(dim)
 
+    def _uniform_attention(self, x):
+        """Use fixed 1/M attention while retaining V/out projections and dropout."""
+        batch, tokens, dim = x.shape
+        heads = self.attn.num_heads
+        head_dim = dim // heads
+        _, _, value_weight = self.attn.in_proj_weight.chunk(3, dim=0)
+        if self.attn.in_proj_bias is None:
+            value_bias = None
+        else:
+            _, _, value_bias = self.attn.in_proj_bias.chunk(3, dim=0)
+        value = F.linear(x, value_weight, value_bias)
+        value = value.view(batch, tokens, heads, head_dim).transpose(1, 2)
+        weights = x.new_full((batch, heads, tokens, tokens), 1.0 / tokens)
+        weights = F.dropout(
+            weights,
+            p=float(self.attn.dropout),
+            training=self.training,
+        )
+        context = torch.matmul(weights, value)
+        context = context.transpose(1, 2).contiguous().view(batch, tokens, dim)
+        return F.linear(
+            context,
+            self.attn.out_proj.weight,
+            self.attn.out_proj.bias,
+        )
+
     def forward(self, x):
-        attn_out, _ = self.attn(x, x, x, need_weights=False)
+        if self.attention_mode == "uniform":
+            attn_out = self._uniform_attention(x)
+        else:
+            attn_out, _ = self.attn(x, x, x, need_weights=False)
         attn_out = self.dropout(self.proj(attn_out))
         mixed = self.inner_ratio * attn_out + (1.0 - self.inner_ratio) * x
         return self.layer_norm(2.0 * mixed)
+
+    @torch.no_grad()
+    def diagnostics(self, x):
+        """Return Q/K/V norms and evaluation-time attention statistics."""
+        q_weight, k_weight, v_weight = self.attn.in_proj_weight.chunk(3, dim=0)
+        tokens = x.size(1)
+        if self.attention_mode == "uniform":
+            entropy = 1.0
+            max_weight = 1.0 / tokens
+        else:
+            was_training = self.attn.training
+            self.attn.eval()
+            _, weights = self.attn(
+                x,
+                x,
+                x,
+                need_weights=True,
+                average_attn_weights=False,
+            )
+            self.attn.train(was_training)
+            weights = weights.clamp_min(torch.finfo(weights.dtype).tiny)
+            entropy = float(
+                (-(weights * weights.log()).sum(dim=-1) / np.log(tokens))
+                .mean()
+                .item()
+            )
+            max_weight = float(weights.max(dim=-1).values.mean().item())
+        return {
+            "attention_mode": self.attention_mode,
+            "q_weight_norm": float(q_weight.norm().item()),
+            "k_weight_norm": float(k_weight.norm().item()),
+            "v_weight_norm": float(v_weight.norm().item()),
+            "normalized_attention_entropy": entropy,
+            "mean_max_attention_weight": max_weight,
+        }
+
+
+def cancel_pse_qk_weight_decay(pse_module, weight_decay):
+    """Cancel Adam's coupled L2 term only for PSE Q/K slices."""
+    coefficient = float(weight_decay)
+    if coefficient <= 0:
+        return
+    dim = pse_module.attn.embed_dim
+    for parameter in (
+        pse_module.attn.in_proj_weight,
+        pse_module.attn.in_proj_bias,
+    ):
+        if parameter is not None and parameter.grad is not None:
+            parameter.grad[: 2 * dim].add_(
+                parameter.data[: 2 * dim], alpha=-coefficient
+            )
 
 
 class BoxRelationalEmbedding(nn.Module):
@@ -366,6 +459,7 @@ class GTPJ(nn.Module):
             heads=int(config.pse_heads),
             dropout=float(config.pse_dropout),
             inner_ratio=float(config.pse_inner_ratio),
+            attention_mode=str(getattr(config, "pse_attention_mode", "learned")),
         )
 
         tf_common_dim = int(config.tf_common_dim)
@@ -430,6 +524,9 @@ class GTPJ(nn.Module):
 
     def get_adapted_unseen_text(self):
         return self.unseen_text_embeds
+
+    def pse_diagnostics(self):
+        return self.pse_module.diagnostics(self.seen_sentence_embeds)
 
     def _make_all_text(self, device, dtype):
         seen_text = self.get_adapted_seen_text().to(device=device, dtype=dtype)
