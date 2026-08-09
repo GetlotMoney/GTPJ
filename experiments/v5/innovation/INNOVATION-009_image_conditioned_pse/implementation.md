@@ -23,6 +23,7 @@
 ## 最低验证
 
 - 8 句权重和为 1；
+- CUDA 类别编号在 CPU logits 上评估时会先统一到 CPU，避免跨设备索引；
 - 均匀权重严格退化到 PSE 均值；
 - 固定 patches、只改变 CLS 时 local logits 不变；
 - train/eval 类别轴分别为 seen/all；

@@ -14,7 +14,7 @@ template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-009-image-conditioned-pse
 legacy_ref: none
 status: planned
-planned_runs: 1
+planned_runs: 2
 seed: 5
 formal_evidence: true
 not_confirmation_evidence: true

@@ -88,8 +88,8 @@ def _per_class_accuracy(labels, predictions, classes):
 
 
 def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_size=64):
-    seenclasses = torch.as_tensor(seenclasses, dtype=torch.long)
-    unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long)
+    seenclasses = torch.as_tensor(seenclasses, dtype=torch.long, device="cpu")
+    unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long, device="cpu")
     if seenclasses.dim() != 1 or unseenclasses.dim() != 1:
         raise ValueError("seenclasses 和 unseenclasses 必须是一维全局类别编号。")
     if seenclasses.unique().numel() != seenclasses.numel():
@@ -101,10 +101,8 @@ def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_s
     expected_classes = getattr(model, "nclass", None)
     if expected_classes is not None:
         combined = torch.cat([seenclasses, unseenclasses]).sort().values
-        expected = torch.arange(
-            int(expected_classes), dtype=torch.long, device=combined.device
-        )
-        if not torch.equal(combined, expected):
+        expected = torch.arange(int(expected_classes), dtype=torch.long)
+        if not torch.equal(combined.cpu(), expected):
             raise ValueError("seen/unseen 类别没有完整覆盖模型的全局类别轴。")
     _validate_cache_split(
         "seen", cache["seen_cls"], cache["seen_patches"], cache["seen_labels"]

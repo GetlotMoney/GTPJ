@@ -7,6 +7,7 @@
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
 | RUN-001 | image-conditioned-PSE-seed5 | innovation | failed | {"interaction_mode":"image_conditioned_pse","text_source":"gpt56_8sent"} | 5 |  | RUN-001 | 验证全局图像选择8句话是否优于V5的ICSA |  | process_failed |  |
+| RUN-002 | image-conditioned-PSE-seed5-evalfix | innovation | frozen | {"interaction_mode":"image_conditioned_pse","text_source":"gpt56_8sent"} | 5 | RUN-001 |  | RUN-001首次评估因CPU/CUDA索引设备不一致失败；修复后保持同参数重跑 |  |  |  |
 
 ## 查重说明
 

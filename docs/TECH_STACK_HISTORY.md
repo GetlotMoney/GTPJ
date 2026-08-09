@@ -17,7 +17,20 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
-| 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1` | 已实现待跑 | `V5-INNOVATION-009` 已让全局图像为每个候选类别选择 8 句话，同时保留原频域 Top-K 与 BVSA 局部分支；尚无训练结果。 |
+| 图像条件 PSE 候选 | `MODEL-V5-ICPSE-V1.1` | 已修复待重跑 | `V5-INNOVATION-009` 已让全局图像为每个候选类别选择 8 句话，并修复首次评估的 CPU/CUDA 索引设备错误；尚无完整训练结果。 |
+
+## 2026-08-10：MODEL-V5-ICPSE-V1.1（已修复待重跑）
+
+- 本次改的是哪个对象：只改 `V5-INNOVATION-009` 的评估入口与回归测试，不改方法结构、训练参数或 V5 母版 Tag。
+- 目标问题：`RUN-001` 完成第 1 个 epoch 后，CPU logits 被 CUDA `unseenclasses` 索引，首次 ZS 评估退出。
+- 采用技术：在评估入口把 seen/unseen 全局类别编号统一到 CPU；新增“CUDA 类别编号 + CPU logits”真实回归测试。
+- 替换了什么：只替换类别编号所在设备，不改变类别顺序、argmax、U/S/H/ZS 公式或标签映射。
+- 实际可见效果：原 CPU 评估语义测试与新增 CUDA 跨设备回归测试均通过；`RUN-001` 失败记录保留，`RUN-002` 将用相同配置重跑。
+- 选择原因：`_predict` 明确返回 CPU logits，因此让索引同在 CPU 是最小且与已验证修法一致的处理。
+- 已知限制：修复只证明评估可以继续，完整 50 epoch 指标仍需服务器 `RUN-002` 完成后确认。
+- 素材位置：`tools/v5_evaluation.py`、`tests/test_v5_template_contract.py`、`experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/`。
+- 验证命令与结果：`conda run -n dvsr_gpu python -m unittest -v tests.test_v5_template_contract.V5TemplateContractTest.test_v5_evaluation_semantics tests.test_v5_template_contract.V5TemplateContractTest.test_v5_evaluation_accepts_cuda_class_ids_with_cpu_logits`，2/2 通过；独立只读复核为 `PASS`。
+- 回退方式：回退本修复提交；`RUN-001` 失败日志与收据继续保留，不覆盖。
 
 ## 2026-08-10：MODEL-V5-ICPSE-V1（已实现待跑）
 
