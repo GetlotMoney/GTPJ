@@ -18,7 +18,7 @@ planned_runs: 1
 seed: 5
 formal_evidence: true
 not_confirmation_evidence: true
-formal_training_started: false
+formal_training_started: true
 research_question: 只让全局图像为每个候选类别选择8句话，是否已经足以提高GZSL的H
 comparison_reference: FRAMEWORK-V5 confirmed_H=74.44 and FRAMEWORK-V3 CONFIRM-001 confirmed_H=74.47
 only_method_change: image_conditioned_pse_sentence_selection
