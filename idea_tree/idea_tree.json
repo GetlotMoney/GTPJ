@@ -292,6 +292,65 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0012",
+      "idea_dir": "idea_tree/ideas/IDEA-0012_pse_vsce_bidirectional_interaction/",
+      "title": "PSE 与 VSCE 双向交互",
+      "status": "selected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-10",
+      "source_status": "local_heuristic",
+      "global_score": 82.0,
+      "core_summary": "让 PSE 保留的 8 个增强句子与全局图像、Top-K 32 局部区域建立统一匹配表，再用双向 logsumexp 同时生成句子权重和区域权重。",
+      "version_scores": {
+        "v5": {
+          "score": 84.0,
+          "applicability": "direct",
+          "stage": "selected",
+          "rationale": "V5 已有 PSE、全局与局部 CLIP 特征、频域 Top-K 和固定融合；VSCE 可在不改变类别轴、seen/unseen 划分和损失口径的前提下替换 ICSA 与独立 BVSA。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "V5 PSE",
+        "CLIP global/local visual features",
+        "FGVD frequency Top-K",
+        "V5 loss package"
+      ],
+      "target_component": "V5 的 PSE 输出与视觉—语义交互路径",
+      "hypothesis": "如果类别判别句子与局部证据互相依赖，那么对每个图像—候选类别使用同一张 8×33 匹配表，同时选择句子和区域，应该比实验 A 的单向句子选择产生更一致的局部贡献，并可能提高 H。",
+      "expected_effect": {
+        "U": "类别相关区域选择可能帮助未见类，但必须由正式运行验证。",
+        "S": "目标是在增强局部证据时不明显损伤已见类。",
+        "H": "与实验 A 和同口径 V5 比较；一次运行只能给出首轮信号。"
+      },
+      "implementation_scope": "V5-INNOVATION-010 使用每类 8 句话，PSE 保留 8 个输出，局部视觉继续 Top-K 32；用 CLIP 尺度余弦建立 [B,C,8,33] 匹配表，经两个固定方向的 logsumexp 和 Softmax 生成句子/区域权重；删除 ICSA 和独立 BVSA，不新增全局/局部 CE，不改变 V5 其他损失、训练日程和评估语义。",
+      "risk": "匹配表会增加时间和显存；句子或区域权重可能塌缩或保持均匀；类别广播错误会让不同类别共享权重；一次运行无法判断随机波动。",
+      "compatibility": "不修改 MODEL-V5-TEMPLATE-V1；实验 B 从母版独立分叉，不继承实验 A，保持类别顺序、标签映射、seen/unseen 划分、logits 形状与 U/S/H/ZS 口径不变。",
+      "transfer_notes": "当前只评估 v5；后续框架若改变句子数、Top-K、CLIP 尺度、类别轴或损失输入，必须重新检查两个归一化方向。",
+      "priority": 0.84,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "V5-INNOVATION-010",
+        "experiments/v5/innovation/INNOVATION-010_pse_vsce"
+      ],
+      "evidence": [
+        {
+          "type": "owner_hypothesis",
+          "ref": "owner:2026-08-10",
+          "note": "Owner 明确要求比较图像条件 PSE 与 PSE+VSCE 双向交互，两项实验使用相同 8 句话、Top-K、训练参数、损失和重复次数。"
+        },
+        {
+          "type": "experiment_plan",
+          "ref": "experiments/v5/innovation/INNOVATION-010_pse_vsce",
+          "note": "计划一次 seed=5、50 epoch 的 RUN-001；当前没有训练结果。"
+        }
+      ]
     }
   ]
 }

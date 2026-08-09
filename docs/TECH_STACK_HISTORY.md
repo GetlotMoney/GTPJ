@@ -11,12 +11,26 @@
 
 | 对象 | 当前版本 | 状态 | 实际内容 |
 |---|---|---|---|
-| 工作流 | `SYS-WORKFLOW-V5` | 已完成 | 同级框架各有只读母版，四类实验从准确母版 commit 独立分叉；旧 Trial 正式 runner 已退役。 |
+| 工作流 | `SYS-WORKFLOW-V6` | 已完成 | 一个运行前提交、一张参数表、一次开跑检查、独立 RUN 目录和一次结果回填；只读母版与四类实验结构继续沿用。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、V0 母版状态、四类实验数量和 V5 消融阻塞。 |
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地候选 | 已只保留 577-token、PSE、FGVD、BVSA、ICSA、SGMP 和固定 0.2 融合路线；36 项直接测试和 251 项工作流测试通过，等待最终复审，尚未冻结。 |
+| V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
+| VSCE 双向交互候选 | `MODEL-V5-VSCE-V1` | 已实现待跑 | `V5-INNOVATION-010` 已用一张 8×33 匹配表同时选择句子和 Top-K32 区域；尚无训练结果。 |
+
+## 2026-08-10：MODEL-V5-VSCE-V1（已实现待跑）
+
+- 本次改的是哪个对象：`V5-INNOVATION-010` 的视觉—语义交互路线，不是正式 V5 母版。
+- 目标问题：V5 的句子选择和局部区域选择分散在 ICSA 与独立 BVSA 中，无法直接检验两者是否围绕同一视觉证据协同工作。
+- 采用技术：PSE 保留每类 8 个增强句子；全局特征与频域 Top-K 32 局部区域共同构成 33 个视觉位置；用 CLIP 尺度余弦建立 `[B,C,8,33]` 匹配表，沿两个方向固定做 `logsumexp + Softmax`，分别得到句子权重和区域权重；最终仍为 `global + 0.2 × local`。
+- 替换了什么：只在独立实验分支替换 ICSA 与独立 BVSA 的交互职责；不改母版，不继承实验 A 的代码。
+- 实际可见效果：代码、配置、单行参数表、框架图与句子/区域诊断已完成；服务器 `RUN-001` 尚未完成，不能填写提升结论。
+- 选择原因：同一张匹配表能直接检验“语义选择”和“区域选择”是否互相支持，并让实验 A/B 只保留一个核心交互差异。
+- 已知限制：匹配表会增加时间和显存；权重可能塌缩或接近均匀；一次 seed=5 运行不能证明提升超过训练波动。
+- 素材位置：`idea_tree/ideas/IDEA-0012_pse_vsce_bidirectional_interaction/`、`experiments/v5/innovation/INNOVATION-010_pse_vsce/`。
+- 验证命令与结果：`dvsr_gpu` 下 15 项目标 unittest 全部通过，包含真实 CUDA 类别轴与 helper clean gate；真实尺寸 CUDA 前后向得到匹配表 `[1,200,8,33]`；Python 编译、账本校验和差异检查通过；独立只读审核在修正 BMDD 尺度、拓扑输入、诊断对齐与非有限值停止后给出 `APPROVE`。真实全量训练仍待服务器 `RUN-001`。
+- 回退方式：放弃实验分支 `exp/v5/innovation/innovation-010-pse-vsce` 即可；`MODEL-V5-TEMPLATE-V1`、实验 A、历史 V5 结果和 Tag 均不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）
 
