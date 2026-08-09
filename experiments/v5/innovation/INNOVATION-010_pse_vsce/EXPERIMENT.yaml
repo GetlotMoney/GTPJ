@@ -13,7 +13,7 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-010-pse-vsce
 legacy_ref: IDEA-0012
-status: planned
+status: completed
 planned_runs: 1
 not_confirmation_evidence: true
-formal_training_started: false
+formal_training_started: true

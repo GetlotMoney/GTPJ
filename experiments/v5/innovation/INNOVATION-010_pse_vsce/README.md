@@ -4,18 +4,22 @@
 experiment_id: V5-INNOVATION-010
 idea_id: IDEA-0012
 framework: FRAMEWORK-V5
-status: planned
+status: completed_not_keep
 branch: exp/v5/innovation/innovation-010-pse-vsce
 base_template: MODEL-V5-TEMPLATE-V1
 base_template_tag: model/v5-template-v1
 base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 parameter_matrix: PARAMETER_MATRIX.md
-planned_run: RUN-001
+completed_run: RUN-001
+run_commit: 79caa199df67f81a04372a47bd054536e75d1319
+decision: reject
 ```
 
 ## 先说结论
 
-本实验只回答一个问题：用同一张“8 个句子 × 33 个视觉位置”的匹配表，同时选择句子和局部区域，是否比实验 A 只用全局图像选择句子更能提高 GZSL 的调和平均指标 `H`。
+`RUN-001` 已完整跑完 50 个 epoch，最佳结果出现在第 1 个 epoch：`U/S/H/ZS=47.04/78.81/58.92/75.78`。`H` 比 V5 的重复均值基线 `74.44` 低 `15.52` 个百分点，也比实验 A 的成功运行 `59.41` 低 `0.49` 个百分点，因此本实验结论是 `reject`：不保留、不进入确认实验，也不晋级为新框架。
+
+这只有一个 seed=5 运行，不能用来估计重复训练波动；不过当前差距已经足以回答本轮最小问题：统一 VSCE 双向交互没有带来更高的 `H`。完整指标、诊断和证据哈希见 [result.md](result.md)，证据完整性检查见 [quality_check.md](quality_check.md)。
 
 这里的 33 个视觉位置是 `1` 个全局特征加 `32` 个频域 Top-K 局部区域。实验 B 从 V5 干净母版独立开始，不继承实验 A 的实现。
 
@@ -127,6 +131,13 @@ final_logits       = global_logits + 0.2 × local_logits
 - 同时报告相对 V5 和实验 A 的 `ΔU/ΔS/ΔH/ΔZS`，不能只挑 H。
 - 只有一次运行时，结论只能写“首轮有效或无效信号”，不能声称提升已经超过重复训练波动。
 - 若 B 的 H 没有超过 A，或额外时间/显存明显上升而收益很小，优先保留更简单的 A。
+
+## 实际判定
+
+- 运行本身成功结束，指标、诊断、耗时、显存和模型大小均可从服务器封口证据追溯。
+- 句子与区域权重在训练后期更尖锐，但 `H` 从第 1 轮的 `58.92` 降到第 50 轮的 `48.44`，集中度提高没有转化为更好的 GZSL 平衡。
+- 最佳轮真实类别均值中，局部分数经 `0.2` 融合后只给最终分数增加约 `0.44%`，局部分支贡献很弱。
+- B 比 A 更省时间和显存，但精度没有超过 A，更远低于 V5；因此计算成本不是主要阻断，方法效果才是。
 
 ## Code Flow Diagram
 

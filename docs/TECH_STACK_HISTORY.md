@@ -17,7 +17,7 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支 `framework/v5-template-v1`、Tag `model/v5-template-v1` 和 commit `2f5fa5e` 一致；服务器 U/S/H/ZS 待确认。 |
-| VSCE 双向交互候选 | `MODEL-V5-VSCE-V1` | 已实现待跑 | `V5-INNOVATION-010` 已用一张 8×33 匹配表同时选择句子和 Top-K32 区域；尚无训练结果。 |
+| VSCE 双向交互候选 | `MODEL-V5-VSCE-V1` | 已完成未保留 | `V5-INNOVATION-010/RUN-001` 最佳 H=58.92，低于 V5 15.52 个百分点，结论 reject。 |
 
 ## 2026-08-10：SYS-WORKFLOW-V6.1（已完成）
 
@@ -32,17 +32,17 @@
 - 验证命令与结果：新 V5 格式与原无换行旧格式两项定向测试 2/2 通过。
 - 回退方式：回退本次 helper 提交；训练产物与原始日志不受影响，可人工按 JSON 入账。
 
-## 2026-08-10：MODEL-V5-VSCE-V1（已实现待跑）
+## 2026-08-10：MODEL-V5-VSCE-V1（已完成，未保留）
 
 - 本次改的是哪个对象：`V5-INNOVATION-010` 的视觉—语义交互路线，不是正式 V5 母版。
 - 目标问题：V5 的句子选择和局部区域选择分散在 ICSA 与独立 BVSA 中，无法直接检验两者是否围绕同一视觉证据协同工作。
 - 采用技术：PSE 保留每类 8 个增强句子；全局特征与频域 Top-K 32 局部区域共同构成 33 个视觉位置；用 CLIP 尺度余弦建立 `[B,C,8,33]` 匹配表，沿两个方向固定做 `logsumexp + Softmax`，分别得到句子权重和区域权重；最终仍为 `global + 0.2 × local`。
 - 替换了什么：只在独立实验分支替换 ICSA 与独立 BVSA 的交互职责；不改母版，不继承实验 A 的代码。
-- 实际可见效果：代码、配置、单行参数表、框架图与句子/区域诊断已完成；服务器 `RUN-001` 尚未完成，不能填写提升结论。
+- 实际可见效果：服务器 `RUN-001` 已完整跑完 50 个 epoch，最佳 `U/S/H/ZS=47.04/78.81/58.92/75.78`，最佳轮为第 1 轮；H 比 V5 重复均值低 15.52 个百分点、比实验 A 的成功运行低 0.49 个百分点，因此不保留、不确认、不晋级。
 - 选择原因：同一张匹配表能直接检验“语义选择”和“区域选择”是否互相支持，并让实验 A/B 只保留一个核心交互差异。
-- 已知限制：匹配表会增加时间和显存；权重可能塌缩或接近均匀；一次 seed=5 运行不能证明提升超过训练波动。
+- 已知限制：只有一次 seed=5 运行，不能估计重复训练波动；聚合诊断缺少原图叠加，不能证明区域选择在语义上合理；服务器没有生成 `artifact_manifest.json`，所以只保留真实目录和逐文件哈希，不作为 promotion 证据。
 - 素材位置：`idea_tree/ideas/IDEA-0012_pse_vsce_bidirectional_interaction/`、`experiments/v5/innovation/INNOVATION-010_pse_vsce/`。
-- 验证命令与结果：`dvsr_gpu` 下 15 项目标 unittest 全部通过，包含真实 CUDA 类别轴与 helper clean gate；真实尺寸 CUDA 前后向得到匹配表 `[1,200,8,33]`；Python 编译、账本校验和差异检查通过；独立只读审核在修正 BMDD 尺度、拓扑输入、诊断对齐与非有限值停止后给出 `APPROVE`。真实全量训练仍待服务器 `RUN-001`。
+- 验证命令与结果：开跑前 `dvsr_gpu` 下 15 项目标 unittest 全部通过，真实尺寸 CUDA 前后向得到匹配表 `[1,200,8,33]`，独立只读审核结论为 `APPROVE`；服务器结束收据为 `returncode=0`，封口日志 SHA-256 为 `b6bd5fb3d6c90d4528212956b22885534ec310cb9fa537a3ee7d5bb2de29f13e`，最终指标、模型、显存与诊断均已回填。结果回填后参数表、框架账本、仓库边界和差异检查通过。
 - 回退方式：放弃实验分支 `exp/v5/innovation/innovation-010-pse-vsce` 即可；`MODEL-V5-TEMPLATE-V1`、实验 A、历史 V5 结果和 Tag 均不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地候选）

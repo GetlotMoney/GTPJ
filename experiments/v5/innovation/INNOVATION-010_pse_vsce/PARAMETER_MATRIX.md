@@ -2,11 +2,11 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：由 owner 2026-08-10 选择 IDEA-0012；A/B 相同条件的单次最小闭环，当前未启动。
+来源：已从服务器 RUN-001 的启动/结束收据、封口日志与 final_metrics.json 回填；原始证据保留在 Warehouse。
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | PSE+VSCE双向句子区域交互 | innovation | frozen | {"interaction_mode":"pse_vsce","text_source":"gpt56_8sent"} | 5 |  |  | 与实验A保持训练条件一致：seed5、50epoch，仅比较VSCE双向交互 |  |  |  |
+| RUN-001 | PSE+VSCE双向句子区域交互 | innovation | completed | {"interaction_mode":"pse_vsce","text_source":"gpt56_8sent"} | 5 |  | RUN-001 | 与实验A保持训练条件一致：seed5、50epoch，仅比较VSCE双向交互 | 58.917815 | reject |  |
 
 ## 查重说明
 
