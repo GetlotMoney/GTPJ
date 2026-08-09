@@ -2,11 +2,15 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：V5-CONFIRM-004 最新代码完整框架复现预跑计划
+来源：V5-CONFIRM-004 最新代码完整框架五次独立复现结果
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 最新代码完整框架复现 seed 5 | confirmation | frozen | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 |  | V5-CONFIRM-004/RUN-001 | 验证最新代码能否恢复历史最好框架约 74.4 H |  | pending |  |
+| RUN-001 | 最新代码完整框架复现 seed 5 第 1 次 | confirmation | completed | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 |  | V5-CONFIRM-004/RUN-001 | 验证最新代码能否恢复历史最好框架约 74.4 H | 74.12490355680482 | not_restored_continue |  |
+| RUN-002 | 最新代码完整框架复现 seed 5 第 2 次 | confirmation | completed | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 | RUN-001 | V5-CONFIRM-004/RUN-002 | 未命中后按相同条件独立重启 | 74.17542393024217 | not_restored_continue |  |
+| RUN-003 | 最新代码完整框架复现 seed 5 第 3 次 | confirmation | completed | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 | RUN-001 | V5-CONFIRM-004/RUN-003 | 未命中后按相同条件独立重启 | 74.19406830495885 | not_restored_continue |  |
+| RUN-004 | 最新代码完整框架复现 seed 5 第 4 次 | confirmation | completed | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 | RUN-001 | V5-CONFIRM-004/RUN-004 | 未命中后按相同条件独立重启 | 74.13743143911037 | not_restored_continue |  |
+| RUN-005 | 最新代码完整框架复现 seed 5 第 5 次 | confirmation | completed | {"code_policy":"latest","ablation_disable_fgvd_geometry":false,"lambda_local_ce":0.0,"lambda_confusion_contrast":0.0,"lambda_crop_distill":0.0} | 5 | RUN-001 | V5-CONFIRM-004/RUN-005 | 第五次同条件独立重启并按硬上限收口 | 74.1856073701434 | not_restored_hard_cap_reached |  |
 
 ## 查重说明
 

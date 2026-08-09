@@ -7,7 +7,7 @@
 | 调参 | 1 | `tune/INDEX.md` |
 | 消融 | 2 | `ablation/INDEX.md` |
 | 创新 | 5 | `innovation/INDEX.md` |
-| 确认 | 0 | `confirmation/INDEX.md` |
+| 确认 | 1 | `confirmation/INDEX.md` |
 
 ## 调参实验
 
@@ -36,4 +36,4 @@
 
 | Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |
 |---|---|---|---|---|---|---|
-| - | none | 暂无 | - | - | - | - |
+| `V5-CONFIRM-004` | completed | 最新代码完整框架五次最高 H=74.1941，未恢复到约 74.4 | `experiments/v5/confirmation/CONFIRM-004_latest_code_best_framework/PARAMETER_MATRIX.md` | `trial003-main100-091..095` | `experiments/v5/confirmation/CONFIRM-004_latest_code_best_framework` | - |
