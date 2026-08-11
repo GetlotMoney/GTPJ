@@ -1,0 +1,29 @@
+# V5-INNOVATION-011 planned config sketch.
+# This file is a lightweight planning snapshot, not a runnable implementation config yet.
+base_version: v5
+base_template_tag: model/v5-template-v1
+seed: 5
+text_source: gpt56_8sent
+sentence_roles:
+  local_parts:
+    - beak
+    - head_features
+    - body_plumage
+    - wings
+    - tail
+    - legs
+  global_description: overall_appearance
+  unique_discriminative: unique_discriminative_features
+framework_candidate: clean_v6
+remove_modules:
+  - fgvd_frequency_topk
+  - icsa
+  - bvsa
+  - sgmp
+  - bmdd
+  - topology_loss
+  - global_auxiliary_loss
+  - local_auxiliary_loss
+losses:
+  - main_classification_ce
+status: planned_not_runnable

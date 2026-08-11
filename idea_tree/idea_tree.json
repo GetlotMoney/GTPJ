@@ -292,6 +292,167 @@
           "note": "ATTEMPT-017 最高单次 H=75.11；ATTEMPT-018 对该候选完成 5 次 exact repeat，best H=74.71、mean H=74.58，未还原且已到 hard cap；trial decision=revise，promotion blocked。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0011",
+      "idea_dir": "idea_tree/ideas/IDEA-0011_image_conditioned_pse/",
+      "title": "图像条件 PSE 选句",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-10:8句图像条件PSE实验A",
+      "source_status": "local_heuristic",
+      "global_score": 62.0,
+      "core_summary": "保留 PSE 和原局部分支，只让全局图像对 8 句话生成句子权重，检验“全局选句”是否足够。",
+      "version_scores": {
+        "v5": {
+          "score": 62.0,
+          "applicability": "direct",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-009/RUN-002 已完成，H=59.405826，明显低于 V5 参考和当前实验 B；单 run 结果显示旧局部分支和图像条件选句不足以证明路线有效。",
+          "blockers": [
+            "RUN-002 H=59.405826；相对 V5 参考 H=74.44 大幅下降，结论为 reject/not_keep。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE",
+        "BVSA",
+        "FGVD Top-K"
+      ],
+      "target_component": "V5 全局文本原型构造与局部分支融合",
+      "hypothesis": "如果全局图像能稳定判断 8 句话中哪些部位更重要，则图像条件类别原型应优于固定平均原型，并改善 GZSL H。",
+      "expected_effect": {
+        "U": "希望提升 unseen transfer，但实际 RUN-002 U=47.921973。",
+        "S": "希望保持 seen 判别，但实际 RUN-002 S=78.128189。",
+        "H": "实际 RUN-002 H=59.405826，未达到保留标准。"
+      },
+      "implementation_scope": "从 V5 模板独立分支，删除 ICSA，把 PSE 保留为 8 个增强句子；每幅图像、每个候选类别生成 8 个句子权重；局部分支继续使用原 BVSA 和频域 Top-K。",
+      "risk": "仍保留 V5 的频域 Top-K、BVSA 和原损失，无法隔离旧模块对新选句机制的干扰。",
+      "compatibility": "不改变数据划分、类别顺序、CLIP 骨干、训练参数和 U/S/H/ZS 评估口径。",
+      "transfer_notes": "该思路作为“全局选句”证据保留，但不作为后续 V6 干净框架的默认模块；V6 候选应删除旧频域/拓扑/辅助损失干扰后重测。",
+      "priority": 0.62,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-009_image_conditioned_pse"
+      ],
+      "evidence": [
+        {
+          "type": "experiment",
+          "ref": "experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/result.md",
+          "note": "RUN-002 completed/reject：U=47.921973, S=78.128189, H=59.405826, ZS=76.428151。"
+        }
+      ]
+    },
+    {
+      "idea_id": "IDEA-0012",
+      "idea_dir": "idea_tree/ideas/IDEA-0012_pse_vsce/",
+      "title": "PSE + VSCE 双向句子区域匹配",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-10:8句PSE+VSCE实验B",
+      "source_status": "local_heuristic",
+      "global_score": 61.0,
+      "core_summary": "用同一张 8 句 × 图像全局/Top-K 区域匹配表，同时生成句子权重和局部区域权重，检验统一句子—区域匹配是否优于实验 A。",
+      "version_scores": {
+        "v5": {
+          "score": 61.0,
+          "applicability": "direct",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-010/RUN-001 已完成，H=58.917815，低于实验 A 成功 run，也明显低于 V5 参考；该组合不保留。",
+          "blockers": [
+            "RUN-001 H=58.917815；相对 V5 参考 H=74.44 大幅下降，且低于实验 A RUN-002。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE",
+        "VSCE",
+        "FGVD Top-K"
+      ],
+      "target_component": "V5 全局原型选择与局部区域选择统一交互路径",
+      "hypothesis": "如果 8 句话和局部区域能互相选择，语义选择和局部证据选择应同时更稳定，从而提升 H。",
+      "expected_effect": {
+        "U": "实际 RUN-001 U=47.043979。",
+        "S": "实际 RUN-001 S=78.809130。",
+        "H": "实际 RUN-001 H=58.917815，未达到保留标准。"
+      },
+      "implementation_scope": "从 V5 模板独立分支，删除 ICSA 和独立 BVSA，保留 PSE 与频域 Top-K；VSCE 同时产生句子权重、局部区域权重、全局分数和局部分数。",
+      "risk": "仍保留频域 Top-K 和部分 V5 训练栈，不能排除旧模块/损失与新交互机制互相干扰。",
+      "compatibility": "不改变数据划分、类别顺序、CLIP 骨干、训练参数和 U/S/H/ZS 评估口径。",
+      "transfer_notes": "该实验支持重新设计更干净的 V6 候选：去掉频域解耦、拓扑和旧辅助损失，仅验证句子—区域交互本身。",
+      "priority": 0.61,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-010_pse_vsce"
+      ],
+      "evidence": [
+        {
+          "type": "experiment",
+          "ref": "experiments/v5/innovation/INNOVATION-010_pse_vsce/result.md",
+          "note": "RUN-001 completed/reject：U=47.043979, S=78.809130, H=58.917815, ZS=75.780660。"
+        }
+      ]
+    },
+    {
+      "idea_id": "IDEA-0013",
+      "idea_dir": "idea_tree/ideas/IDEA-0013_clean_v6_candidate/",
+      "title": "干净 V6 框架候选",
+      "status": "selected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-11:删除旧模块和旧损失，验证干净新框架",
+      "source_status": "local_heuristic",
+      "global_score": 78.0,
+      "core_summary": "把 8 句话作为 6 个局部部位、1 个独特判别特征、1 个全局描述，删除 V5 旧频域/拓扑/多辅助损失干扰，用干净的句子—区域匹配框架先证明核心机制是否合理。",
+      "version_scores": {
+        "v5": {
+          "score": 78.0,
+          "applicability": "needs_adaptation",
+          "stage": "selected",
+          "rationale": "009/010 在保留旧频域 Top-K、BVSA/VSCE替换、拓扑和多辅助损失等 V5 训练栈时均显著掉点；下一步应从最小原理出发，构建只含核心交互与主分类损失的干净候选。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "CLIP visual/text encoder",
+        "8 sentence semantic slots",
+        "PSE",
+        "clean sentence-region matching"
+      ],
+      "target_component": "新一代干净 GZSL 图像—语义交互框架",
+      "hypothesis": "去掉旧频域解耦、BVSA、ICSA、SGMP、BMDD、拓扑损失和局部辅助损失后，只用 CLIP、8句语义槽位、PSE、区域匹配和最终分类损失，可以更清楚判断新框架本身是否合理。",
+      "expected_effect": {
+        "U": "目标是避免旧模块带来的 unseen 大幅下降。",
+        "S": "目标是用主分类损失保持 seen 判别，不额外堆辅助损失。",
+        "H": "首轮只验证框架合理性和是否超过训练波动，再谈多 seed 稳定性。"
+      },
+      "implementation_scope": "计划新建 V5-INNOVATION-011：相同数据划分、CLIP 骨干、8句话、训练 seed/epoch；删除频域解耦/Top-K、ICSA、BVSA、SGMP、BMDD、拓扑损失和全局/局部辅助损失，只保留最终融合分数的主分类损失。8句话固定解释为 6个局部部位、1个独特判别特征、1个全局描述。",
+      "risk": "过度简化可能降低短期指标；但它能回答旧模块是否干扰了框架判断这个核心问题。",
+      "compatibility": "在确认前仍登记为 V5 innovation candidate，不提前占用正式 FRAMEWORK-V6、长期 V6 tag 或主线入口。",
+      "transfer_notes": "若单 run 有效，再做重复训练和必要消融；若确认稳定，才按 promotion 规则注册正式同级框架 V6。",
+      "priority": 0.78,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate"
+      ],
+      "evidence": [
+        {
+          "type": "planning",
+          "ref": "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/README.md",
+          "note": "planned：干净 V6 候选先作为 V5 innovation 记录，尚未实现或训练。"
+        }
+      ]
     }
   ]
 }

@@ -37,8 +37,9 @@
 | `V5-INNOVATION-006` | 1 | completed | `experiments/v5/innovation/INNOVATION-006_crop_self_distillation/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-007` | 3 | completed | `experiments/v5/innovation/INNOVATION-007_topk_local_reranking/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-008` | 10 | rejected | `experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/PARAMETER_MATRIX.md` |
-| `V5-INNOVATION-009` | 2 | completed | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` |
-| `V5-INNOVATION-010` | 1 | completed | `experiments/v5/innovation/INNOVATION-010_pse_vsce/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-009` | 2 | rejected | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-010` | 1 | rejected | `experiments/v5/innovation/INNOVATION-010_pse_vsce/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-011` | 1 | planned | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-001` | 5 | pre_run | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-002` | 5 | planned | `experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-003` | 3 | completed | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/PARAMETER_MATRIX.md` |

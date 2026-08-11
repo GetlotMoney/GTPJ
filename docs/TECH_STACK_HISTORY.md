@@ -20,6 +20,20 @@
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
 | 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；取消专用控制器、三路审核、多层收据、二次冻结等固定门槛。 |
+| 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 计划中 | 先登记为 `V5-INNOVATION-011`，删除旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句句子—区域交互和主分类损失。 |
+
+## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（计划中）
+
+- 本次改的是哪个对象：下一代干净 GZSL 模型框架候选，不是正式 V6 框架。
+- 目标问题：V5-INNOVATION-009/010 在保留旧频域、旧局部分支、拓扑和多辅助损失时均显著掉点，无法判断新句子交互机制本身是否合理。
+- 采用技术：8 句话固定为 6 个局部部位、1 个独特判别特征、1 个全局描述；保留 CLIP、PSE、句子—区域匹配和主分类损失。
+- 替换了什么：计划删除 FGVD/频域 Top-K、ICSA、BVSA、SGMP、BMDD、拓扑损失、global/local 辅助损失。
+- 实际可见效果：GitHub 先新增 `V5-INNOVATION-011_clean_v6_candidate` 计划目录；尚未实现、尚未训练，不能作为正式 V6 结果引用。
+- 选择原因：先用最小干净路径验证框架合理性，避免旧模块干扰导致继续堆复杂实验。
+- 已知限制：单 seed 首跑只能判断是否值得继续；若有效，仍需重复训练和确认后才能 promotion 为 `FRAMEWORK-V6`。
+- 素材位置：`idea_tree/ideas/IDEA-0013_clean_v6_candidate/IDEA.md`、`experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`。
+- 验证命令与结果：本次只做账本登记；后续实现会按代码规则跑机器测试和两轮不同子 Agent 审核。
+- 回退方式：删除 planned 实验目录和 IDEA-0013 记录；不影响已完成的 V5 实验结果、Tag 或 checkpoint。
 
 ## 2026-08-08：SYS-WORKFLOW-V6（已完成）
 

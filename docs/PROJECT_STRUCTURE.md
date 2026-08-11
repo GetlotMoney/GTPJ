@@ -45,6 +45,9 @@ idea_tree/                 # 创意来源、评分、排序
 正式实验只有一层：tune、ablation、innovation、confirmation 都写入目标 `experiments/vX/`。
 旧 module trial 和 Attempt 目录保留为历史证据，通过 `legacy_ref` 回指，不再承担新实验主账本职责。
 
+干净 V6 这类“准备升级成新框架”的想法，在确认前仍先登记为所属框架的 innovation。例如当前入口是
+`experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`；只有实现、训练、重复验证并通过 promotion 后，才创建正式 `experiments/v6/`、`FRAMEWORK-V6` 和对应 Tag。
+
 版本规则：
 
 ```text

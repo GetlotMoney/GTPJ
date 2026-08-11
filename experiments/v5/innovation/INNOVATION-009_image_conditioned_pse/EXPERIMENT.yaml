@@ -12,8 +12,8 @@ template_registry_commit: 4f29e99bb1a940afa66bb66f8150c379c2d0af7f
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-009-image-conditioned-pse
-legacy_ref: none
-status: completed
+legacy_ref: IDEA-0011
+status: rejected
 planned_runs: 2
 seed: 5
 formal_evidence: true
