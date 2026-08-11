@@ -1,0 +1,11 @@
+{
+  "schema_version": "gtpj.review_binding.v1",
+  "reviewed_commit": "2a099cc9571ea0d25fd3278d141168cb788ae0da",
+  "review_tier": "strict-3",
+  "decisions": ["pass", "pass", "pass"],
+  "reviewers": [
+    "/root/r5_recovery_audit",
+    "/root/scientific_semantics_review",
+    "/root/release_reliability_review"
+  ]
+}

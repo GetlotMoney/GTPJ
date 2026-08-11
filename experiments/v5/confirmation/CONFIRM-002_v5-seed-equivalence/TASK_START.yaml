@@ -1,0 +1,36 @@
+task_id: V5-CONFIRM-002
+date: 2026-08-08
+owner_request: 修复同 seed 初始化差异后，在服务器两张 GPU 上完整复跑五次
+router:
+  task_type: confirmation
+  enters_idea_tree: false
+version:
+  base_version: v5
+  base_template_id: MODEL-V5-TEMPLATE-V1
+  base_template_tag: model/v5-template-v1
+  base_template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+  experiment_binding: EXPERIMENT.yaml
+experiment_planning:
+  evidence_summary: 老V5五次H均值74.462，未修复干净V5五次H均值74.270；零步检查证明初始化随机序列已对齐
+  candidate_decision: 五个seed=5任务全部跑完，只报告完整分布，不用单次最好值提前停止
+  budget: 五次训练，两张GPU按2+2+1三波执行
+  stop_condition: 任一任务硬失败或收到STOP后不再发下一波
+workflow_mode: server_frozen_runner
+agents:
+  activation_mode: role_only
+  agent_instance_mode: role_only
+  formal_runtime_backend: server_detached_role_only
+  thread_creation_allowed: false
+  owner_monitor_mode: true
+  owner_visible_reporting: true
+  report_channel: current_conversation
+  report_interval_minutes: 15
+  gpu_lock_required: true
+hard_gates:
+  parameter_matrix: pass
+  data_identity: pass
+  code_identity: pass
+  server_gpu_preflight: required_at_launch
+  independent_review: pass
+reviewed_candidate_commit: 2a099cc9571ea0d25fd3278d141168cb788ae0da
+review_decision: pass

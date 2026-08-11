@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>V5-INNOVATION-010 · PSE + VSCE 双向交互</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --paper: #fffdf8;
+      --ink: #1f2a2e;
+      --muted: #627176;
+      --line: #cbd4d0;
+      --blue: #255f85;
+      --blue-soft: #e6f0f6;
+      --green: #2f715c;
+      --green-soft: #e6f2ed;
+      --gold: #9a6a21;
+      --gold-soft: #f7edd8;
+      --red: #944f4a;
+      --red-soft: #f7e8e5;
+      --shadow: 0 14px 34px rgba(31, 42, 46, .10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(37,95,133,.10), transparent 32%),
+        radial-gradient(circle at 88% 18%, rgba(47,113,92,.09), transparent 28%),
+        var(--bg);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      line-height: 1.6;
+    }
+    main { width: min(1180px, calc(100% - 32px)); margin: 28px auto 56px; }
+    header {
+      padding: 34px 38px;
+      border: 1px solid rgba(37,95,133,.18);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(255,253,248,.98), rgba(230,240,246,.82));
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { color: var(--blue); font-weight: 800; letter-spacing: .08em; }
+    h1 { margin: 8px 0 10px; font-size: clamp(28px, 4vw, 48px); line-height: 1.15; }
+    h2 { margin: 0 0 16px; font-size: 22px; }
+    p { margin: 8px 0; }
+    .subtitle { max-width: 850px; color: var(--muted); font-size: 17px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .chip { padding: 5px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); font-size: 13px; }
+    section {
+      margin-top: 20px;
+      padding: 26px;
+      border: 1px solid rgba(31,42,46,.10);
+      border-radius: 20px;
+      background: rgba(255,253,248,.94);
+      box-shadow: 0 8px 24px rgba(31,42,46,.06);
+    }
+    .flow { display: grid; gap: 14px; }
+    .sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: white;
+    }
+    .card strong { display: block; margin-bottom: 6px; }
+    .text { border-color: #aac5d5; background: var(--blue-soft); }
+    .vision { border-color: #acd0c1; background: var(--green-soft); }
+    .match { border: 2px solid var(--gold); background: var(--gold-soft); }
+    .output { border-color: #b8c4c7; }
+    .loss { border-color: #ddb6b0; background: var(--red-soft); }
+    .arrow { text-align: center; color: var(--muted); font-size: 24px; line-height: 1; }
+    .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .merge { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; }
+    .plus { align-self: center; font-weight: 900; font-size: 22px; color: var(--blue); }
+    code, pre { font-family: Consolas, "SFMono-Regular", monospace; }
+    code { padding: 1px 5px; border-radius: 5px; background: rgba(31,42,46,.07); }
+    pre {
+      overflow-x: auto;
+      margin: 10px 0 0;
+      padding: 16px;
+      border-radius: 12px;
+      color: #f4f7f7;
+      background: #203036;
+      line-height: 1.55;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--blue); background: var(--blue-soft); }
+    .note { padding: 14px 16px; border-left: 4px solid var(--red); border-radius: 10px; background: var(--red-soft); }
+    .status { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+    .metric { padding: 14px; text-align: center; border-radius: 12px; background: var(--green-soft); border: 1px solid #acd0c1; }
+    .metric b { display: block; font-size: 20px; color: var(--green); }
+    footer { margin-top: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+    @media (max-width: 760px) {
+      .sources, .split, .merge, .status { grid-template-columns: 1fr; }
+      .plus { text-align: center; }
+      header, section { padding: 20px; border-radius: 16px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">V5-INNOVATION-010 · IDEA-0012</div>
+    <h1>PSE + VSCE 双向交互</h1>
+    <p class="subtitle">用同一张句子—视觉匹配表，同时决定“哪句话更重要”和“哪个局部区域更重要”，再按 V5 固定方式融合全局与局部分数。</p>
+    <div class="chips">
+      <span class="chip">8 句话</span>
+      <span class="chip">Top-K 32</span>
+      <span class="chip">logsumexp</span>
+      <span class="chip">global + 0.2 × local</span>
+      <span class="chip">seed 5 · 50 epoch</span>
+      <span class="chip">当前状态：计划中</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>一眼看懂整条路径</h2>
+    <div class="flow">
+      <div class="sources">
+        <div class="card text">
+          <strong>文本路线</strong>
+          每类 8 句话 → CLIP 文本编码 → PSE 句间增强 → 保留 <code>[C,8,768]</code>
+        </div>
+        <div class="card vision">
+          <strong>图像路线</strong>
+          CLIP 视觉编码 → 全局特征 <code>[B,768]</code> + 频域 Top-K 32 <code>[B,32,768]</code>
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="card match">
+        <strong>统一 VSCE 匹配表</strong>
+        对每幅图像和每个候选类别，计算 8 个句子与 1+32 个视觉位置的 CLIP 尺度余弦匹配，得到 <code>[B,C,8,33]</code>。
+      </div>
+      <div class="arrow">↓</div>
+      <div class="split">
+        <div class="card text">
+          <strong>句子方向</strong>
+          对 33 个视觉位置做 <code>logsumexp</code>，再在 8 个句子上 Softmax，得到图像条件类别原型。
+        </div>
+        <div class="card vision">
+          <strong>区域方向</strong>
+          对 8 个句子做 <code>logsumexp</code>，再在 32 个局部区域上 Softmax，得到类别相关局部视觉特征。
+        </div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="merge">
+        <div class="card output"><strong>全局分数</strong>CLIP scale × cosine（全局图像，图像条件类别原型）</div>
+        <div class="plus">+</div>
+        <div class="card output"><strong>0.2 × 局部分数</strong>原始 cosine（类别相关局部视觉，同一类别原型），不乘 CLIP scale</div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="card loss">
+        <strong>最终出口</strong>
+        <code>final_logits = global_logits + 0.2 × local_logits</code>；主 CE 与 consistency、topology、BMDD、MPP、negative semantic loss 全部沿用 V5，不新增 global/local CE。Topology 继续读取 seen-PSE / unseen-raw 静态输入，BMDD 使用未缩放余弦量级的双向分数。
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>固定公式</h2>
+    <pre>M[b,c,m,n] = CLIP_scale × cosine(T[c,m], V[b,n])
+
+sentence_weight = softmax_m(logsumexp_n M)
+prototype       = Σ_m sentence_weight × T
+
+region_weight   = softmax_n(logsumexp_m M[..., local_regions])
+local_visual    = Σ_n region_weight × R
+
+global_logits   = CLIP_scale × cosine(global_visual, prototype)
+local_logits    = cosine(local_visual, prototype)
+final_logits    = global_logits + 0.2 × local_logits</pre>
+    <p>没有额外可调温度。匹配表与全局 logits 使用 CLIP 尺度；局部 logits 有意保持原始余弦量级，以匹配实验 A/V5。8 句话、Top-K 32 和两个 <code>logsumexp</code> 方向都不根据测试结果搜索。</p>
+  </section>
+
+  <section>
+    <h2>关键张量</h2>
+    <table>
+      <thead><tr><th>张量</th><th>形状</th><th>普通话解释</th></tr></thead>
+      <tbody>
+        <tr><td><code>text_sentence</code></td><td><code>[C,8,768]</code></td><td>PSE 增强后仍保留的 8 个句子。</td></tr>
+        <tr><td><code>match_table</code></td><td><code>[B,C,8,33]</code></td><td>每句话与全局及 32 个局部区域的匹配。</td></tr>
+        <tr><td><code>sentence_weight</code></td><td><code>[B,C,8]</code></td><td>当前图像面对当前候选类别时，各句话的重要程度。</td></tr>
+        <tr><td><code>region_weight</code></td><td><code>[B,C,32]</code></td><td>当前候选类别面对当前图像时，各局部区域的重要程度。</td></tr>
+        <tr><td><code>prototype</code></td><td><code>[B,C,768]</code></td><td>由当前图像决定的类别文本原型。</td></tr>
+        <tr><td><code>local_visual</code></td><td><code>[B,C,768]</code></td><td>由当前类别决定的局部视觉特征。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>运行后必须看到什么</h2>
+    <div class="status">
+      <div class="metric"><b>U / S / H / ZS</b>完整四项指标</div>
+      <div class="metric"><b>8 + 32 权重</b>熵、集中度与样例</div>
+      <div class="metric"><b>时间 / 显存</b>相对实验 A 的增量</div>
+      <div class="metric"><b>参数 / 模型</b>参数量与最佳模型大小</div>
+    </div>
+    <p class="note"><strong>结论边界：</strong>当前只计划一次 RUN-001。它能完成首轮 A/B 对照，但不能单独证明提升已经超过重复训练波动，也不能作为 confirmation 或 promotion 证据。</p>
+  </section>
+
+  <section>
+    <h2>与实验 A 的唯一核心差异</h2>
+    <table>
+      <thead><tr><th>对象</th><th>实验 A</th><th>实验 B</th></tr></thead>
+      <tbody>
+        <tr><td>句子选择</td><td>只由全局图像选择 8 句话</td><td>由全局+Top-K 局部共同匹配后选择</td></tr>
+        <tr><td>局部选择</td><td>保留原局部分支</td><td>由同一 VSCE 表生成区域权重</td></tr>
+        <tr><td>代码来源</td><td colspan="2">都从 MODEL-V5-TEMPLATE-V1 独立开始，B 不继承 A</td></tr>
+        <tr><td>其他条件</td><td colspan="2">8 句话、Top-K 32、seed、50 epoch、损失与 0.2 融合全部相同</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>权威文字记录：framework_diagram.md · 实际行为以实现后的代码、测试和 RUN-001 证据为准。</footer>
+</main>
+</body>
+</html>

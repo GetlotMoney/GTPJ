@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V5-INNOVATION-008 第二版框架图</title>
+<style>
+:root { color-scheme: dark; --bg:#0b1020; --panel:#151d33; --line:#7dd3fc; --text:#e7eefc; --muted:#a9b7d0; --good:#6ee7b7; --warn:#fbbf24; }
+* { box-sizing:border-box; }
+body { margin:0; background:radial-gradient(circle at top,#172554 0,#0b1020 48%); color:var(--text); font:16px/1.6 system-ui,"Microsoft YaHei",sans-serif; }
+main { max-width:1180px; margin:auto; padding:42px 24px 64px; }
+h1 { margin:0 0 8px; font-size:32px; }
+.lead { color:var(--muted); margin:0 0 30px; }
+.flow { display:grid; grid-template-columns:1fr 46px 1fr 46px 1fr; align-items:stretch; gap:12px; }
+.stage { background:rgba(21,29,51,.94); border:1px solid #2f4268; border-radius:18px; padding:22px; box-shadow:0 18px 45px rgba(0,0,0,.25); }
+.stage h2 { margin:0 0 15px; font-size:19px; color:var(--line); }
+.card { background:#0e1629; border:1px solid #33476e; border-radius:12px; padding:13px 14px; margin:10px 0; }
+.card strong { color:#fff; }
+.arrow { display:flex; align-items:center; justify-content:center; color:var(--line); font-size:34px; }
+.safe { border-color:#2b8a6e; box-shadow:inset 0 0 0 1px rgba(110,231,183,.18); }
+.safe strong { color:var(--good); }
+section { margin-top:28px; background:rgba(21,29,51,.88); border:1px solid #2f4268; border-radius:18px; padding:22px; }
+table { width:100%; border-collapse:collapse; }
+th,td { padding:11px 12px; text-align:left; border-bottom:1px solid #2c3c5d; }
+th { color:var(--line); }
+code { color:var(--good); }
+.note { color:var(--muted); }
+@media(max-width:850px){ .flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);height:34px} }
+</style>
+</head>
+<body>
+<main>
+  <h1>对称、限幅的 PSE 类别关系验证</h1>
+  <p class="lead">第二版只回答三个问题：旧基线怎样、未见类走同一旧 PSE 怎样、再加安全类别关系注意力怎样。</p>
+  <div class="flow">
+    <div class="stage">
+      <h2>1. 独立验证数据</h2>
+      <div class="card"><strong>100 个 pseudo-seen 类</strong><br>每类固定留出 20% 图片评估 S</div>
+      <div class="card"><strong>50 个 pseudo-unseen 类</strong><br>使用 xlsa17 val_loc 评估 U / ZS</div>
+      <div class="card">正式 test 缓存不加载</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stage">
+      <h2>2. 对称文本路径</h2>
+      <div class="card"><strong>seen：</strong>7 句 → 旧句子 PSE → 基础原型</div>
+      <div class="card"><strong>unseen：</strong>7 句 → 同一个旧句子 PSE → 基础原型</div>
+      <div class="card">两组分开运行；unseen 前向恢复 RNG，不打乱后续 dropout</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stage safe">
+      <h2>3. 安全类别关系</h2>
+      <div class="card"><strong>零起点：</strong>初始输出与 R1 完全相同</div>
+      <div class="card"><strong>硬限幅：</strong>每类修正范数 ≤ 0.1</div>
+      <div class="card"><strong>共享权重：</strong>seen / unseen 分组注意</div>
+      <div class="card">CE 仍只使用 seen 列</div>
+    </div>
+  </div>
+  <section>
+    <h2>三组对照</h2>
+    <table>
+      <thead><tr><th>组别</th><th>seen</th><th>unseen</th><th>类别关系</th></tr></thead>
+      <tbody>
+        <tr><td>R0</td><td>旧句子 PSE</td><td>原始句子均值</td><td>无</td></tr>
+        <tr><td>R1</td><td>旧句子 PSE</td><td>同一个旧句子 PSE</td><td>无</td></tr>
+        <tr><td>R2</td><td>旧句子 PSE</td><td>同一个旧句子 PSE</td><td>限幅、零起点、两组分开</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>限幅公式</h2>
+    <p><code>correction = 0.1 × relation / max(norm(relation), 1)</code></p>
+    <p class="note">因此修正量不会再出现第一版“配置写 0.1，实际平均达到原型 2.94 倍”的问题。训练校准和推理加分均不属于本轮。</p>
+  </section>
+</main>
+</body>
+</html>

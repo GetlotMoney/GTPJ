@@ -2,6 +2,7 @@
 
 ```yaml
 standard_id: SYS-WORKFLOW-V5
+execution_standard: SYS-WORKFLOW-V6
 ledger_id: DATA-FRAMEWORK-TEMPLATE-V1
 status: active
 effective_date: 2026-08-06
@@ -11,6 +12,8 @@ canonical_entry: docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 ```
 
 ## 一句话规则
+
+结构仍采用本文件定义的“正式框架平级、每框架四类实验、只读母版”规则；实验怎么实际开跑改由 `SYS-WORKFLOW-V6` 五步短流程管理。一个实验只需要一个运行前提交、一张参数表、一次开跑检查、独立 RUN 目录和一次结果回填。旧的专用控制器、Git bundle、多层收据、永久 claim、三路审核和二次冻结不再是默认要求。
 
 所有已经确定的正式框架都在同一层，也都拥有正式版本号、长期分支和冻结 Tag。框架之间可以保留“从哪个正式框架演变而来”的历史连线，但这条线只表示来源，不表示包含、上下级或目录嵌套。
 

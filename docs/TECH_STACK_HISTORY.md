@@ -6,6 +6,7 @@
 - `UI-*`：人看的页面与图。
 - `DATA-*`：台账、表格和结构化数据格式。
 - `MODEL-*`：模型代码框架。
+- `DOC-*`：教程、说明书和其他文档交付物。
 
 ## 当前版本一览
 
@@ -17,6 +18,48 @@
 | 模型 | `MODEL-GTPJ-V5` | 未改动 | 本次不改模型、训练和评估语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
 | V5 干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 均锁定到 `2f5fa5e`；本地等价和三轮审核通过，服务器 U/S/H/ZS 待确认。 |
+| 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
+| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；取消专用控制器、三路审核、多层收据、二次冻结等固定门槛。 |
+
+## 2026-08-08：SYS-WORKFLOW-V6（已完成）
+
+- 本次改的是哪个对象：实验从计划到服务器训练再到结果回填的执行流程。
+- 目标问题：一次约一小时的训练，曾因专用控制器、双 GPU 锁、三波调度、Git bundle、永久编号、多层收据、制品哈希、三路审核和二次冻结，额外消耗约两小时准备与审核时间。
+- 采用技术：五步短流程——唯一实验提交、配置与参数表、一次开跑检查、直接训练到独立 RUN 目录、一次结果回填；审核按真实影响选择 0 或 1 次，发现阻断后才升级。
+- 替换了什么：替换 `SYS-WORKFLOW-V5` 默认的多 agents/runtime/receipt/strict-3 执行门；旧工具和旧证据原地保留，只作历史兼容或确有风险时按需启用。
+- 实际可见效果：参数实验准备上限 10 分钟；涉及代码或评估改动上限 30 分钟。正式论文实验也不再自动增加文件层级或审核轮数。
+- 选择原因：可复现的核心来自准确代码、配置、数据、种子、评估口径和完整结果；其余行政式步骤没有按比例提高科学可信度。
+- 已知限制：旧 helper 和旧测试仍保留兼容入口，看到旧命令不代表新实验必须执行；后续只在真实重复问题出现时再做代码级瘦身，不先重构整套 helper。
+- 素材位置：`AGENTS.md`、`docs/workflow/START_HERE.md`、`docs/workflow/WORKFLOW_KERNEL.md`、`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`、`docs/workflow/playbooks/confirmation.md`。
+- 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；本次是文档规范收缩，不运行训练或全量测试。
+- 回退方式：回退本次文档修改即可恢复旧默认门；不会改模型、训练代码、历史实验、分支、Tag、日志或 checkpoint。
+
+
+## 2026-08-08：DOC-GTPJ-CODE-TUTORIAL-V1（已完成）
+
+- 本次改的是哪个对象：GTPJ 初学者代码教程。
+- 目标问题：模型、训练和工具代码缺少一个从 PyTorch 基础到完整数据流的连续阅读入口；教程若不注明源码范围，还会被误当成正式实验母版说明。
+- 采用技术：六篇编号 Markdown 教程；总目录统一入口；首次出现的张量缩写同步解释维度含义；首页明确教程解释仓库根目录代码，正式 V5 新实验仍以 `model/v5-template-v1`、commit `2f5fa5e` 和 `experiments/v5/TEMPLATE.yaml` 为准。
+- 替换了什么：这是第一版正式教程，不替换模型、训练入口或实验规范；它替换散落阅读代码、没有统一说明的做法。
+- 实际可见效果：读者可按 01 至 05 顺序学习 PyTorch 基础、框架全貌、模型、训练和工具代码，并从教程首页进入当前框架注册页面。
+- 选择原因：教程与代码放在同一仓库，能随源码一起检查链接、行号和版本边界。
+- 已知限制：教程讲解仓库根目录代码，不是冻结母版的逐行副本；源码增删行后，教程中的辅助行号需要重新检查。
+- 素材位置：`docs/tutorial/00_README.md` 至 `docs/tutorial/05_tools_explained.md`。
+- 验证命令与结果：教程内部链接全部存在；训练教程登记的 1017 行与 `train_GTPJ_CUB.py` 实际行数一致；`python workflow/gtpj_workflow.py validate`、`validate-framework-ledgers`、`validate-workflow-consistency` 和 `audit-boundary` 全部通过；`python -m unittest tests.test_gtpj_workflow` 共 251 项全部通过。
+- 回退方式：回退本次文档提交；不会改变模型、配置、实验账本或历史结果。
+
+## 2026-08-08：UI-FRAMEWORK-SNAPSHOT-V1（已归档）
+
+- 本次改的是哪个对象：2026-08-04 生成的两份旧框架说明页面（原 `GTPJ_UI-FRAMEWORK-V1_CURRENT.html` 和 `experiments/GTPJ_framework_overview.html`）。
+- 目标问题：旧文件名含“CURRENT”，且一份页面放在 `experiments/`，会和当前正式入口 `UI-FRAMEWORK-REGISTRY-V3` 竞争。
+- 采用技术：把两页移动到 `docs/diagrams/archive/`，统一归类为 `UI-FRAMEWORK-SNAPSHOT-V1`，页首标明历史快照并回链 V3 当前入口。
+- 替换了什么：停止把两份 8 月 4 日页面当作当前入口；不替换 V3 页面。
+- 实际可见效果：项目只剩一个当前框架注册入口，同时仍能回看旧版模型路径和成绩说明。
+- 选择原因：保留历史比直接删除安全，明确归档比让多个页面都叫“当前”更容易理解。
+- 已知限制：历史快照中的数值和状态只代表 2026-08-04，不会自动随参数矩阵更新。
+- 素材位置：`docs/diagrams/archive/GTPJ_UI-FRAMEWORK-SNAPSHOT-V1_COMPACT_2026-08-04.html`、`docs/diagrams/archive/GTPJ_UI-FRAMEWORK-SNAPSHOT-V1_FULL_2026-08-04.html`。
+- 验证命令与结果：两份 HTML 的 `html`、`body` 标签完整；两页都有“历史快照”提示，且到 `GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` 的相对链接均可解析；项目结构账本已经登记归档目录。
+- 回退方式：回退本次文档提交，可恢复原文件名和位置；机器台账和实验结果不受影响。
 
 ## 2026-08-07：MODEL-V5-TEMPLATE-V1（本地已冻结）
 
