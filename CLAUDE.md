@@ -1,16 +1,16 @@
 # Claude Code 项目入口
 
-## 审核分层
+## 当前审核规则
 
-- 以审核包 `10_final_decision.md` 中的 `review_tier` 和 `claude_rounds_required` 为准。
-- `review-1` 只做第 1 轮；`strict-3` 才做 3 轮。
-- Claude Code 审核前必须已有 `02_codex_named_thread_pre_review.md`，且命名 Codex 审核任务已归档并记录 `lifecycle: completed_archived`。
+- 普通账本、说明文档和已审核代码支持的普通参数修改，只做机器检查。
+- 实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，机器验证后必须完成 2 轮不同 Reviewer 的只读审核。
+- Claude Code 可以作为其中一轮 Reviewer；如果没有 Claude，就用不同的只读 Codex 子 Agent。旧 `review-1`、`strict-3` 和 Claude 审核包只用于历史回查或 owner 明确要求的特殊审计。
 
 本文件是 Claude Code 的项目级只读上下文。它用于让 Claude 快速理解 GTPJ 的稳定规则，不能替代当前 diff、测试、workflow validate 或实验 artifact 证据。
 
 ## 默认角色
 
-- Claude Code 是只读审核者，不直接修改文件。
+- Claude Code 是可选只读审核者，不直接修改文件。
 - Codex 负责实现、修复、反驳和重跑验证。
 - 任何结论必须引用当前仓库文件、命令输出或 Warehouse artifact 记录，不能依赖隐藏聊天记忆。
 

@@ -16,7 +16,7 @@
 
 默认不要求：专用控制器、双层 GPU 锁、固定波次调度、Git bundle、永久 claim、多层收据、逐文件制品哈希、三路审核、命名线程、`agent_runtime.yaml`、状态迁移链或第二个 final freeze commit。它们只有在当前实验确实出现对应风险时才允许按需使用，并要说明解决了什么真实问题。
 
-审核规则：机器测试优先；只改文档/参数默认 0 次独立审核；改模型、训练、数据或评估默认 1 次独立审核；只有未解决阻断或范围扩大才升级。任何审核都不能为了凑轮数重复检查。
+审核规则：机器测试优先；只改账本、说明文档或已审核代码支持的普通参数时，默认 0 次独立审核；任何实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，目标测试通过后固定 2 轮不同子 Agent 只读审核。两轮绑定同一份最终代码，不能为了省事沿用旧审核结论。
 
 时间规则：参数实验准备不超过 10 分钟；代码或评估实验准备不超过 30 分钟。达到上限仍不能训练时，停止扩建流程，报告唯一阻断和最小修复。
 
@@ -125,7 +125,7 @@ Owner 简单口令优先按下列映射解释：
 - 如果 owner 只说“用工作流”但没有说明是哪一种，必须先问清楚；不能把服务器冻结训练当成动态多 agents 工作流，也不能把动态多 agents 工作流偷偷降级成离线训练。
 - 如果 owner 已经说“开启多agents智能体工作流”“多agents智能体工作流，开始”“跑N轮”或“做N轮实验”，它不是模糊的“用工作流”。Coordinator 必须按 `live_multi_agent_monitor` 执行，不得反复确认规范，不得只写 planning gate 后停止。只有运行模式仍冲突、侧边栏干净状态未确认且无法验证、硬门失败、或 push / 删除 / 覆盖数据 / 密钥等安全边界动作，才允许再问一次。
 
-代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只豁免训练运行期的命名线程创建；它不能豁免代码、workflow、helper、模板或训练配置生成逻辑的 AI 交叉审核。此类改动必须先在专用代码审核分支完成，审核包通过后才能进入 `pre-run freeze commit`。如果改动已经在旧脏分支上发生，本轮正式启动必须阻断，除非重新从干净基线切分支并迁移最小 diff。
+代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只豁免训练运行期的命名线程创建；它不能豁免实验代码、workflow、helper、模板或训练配置生成逻辑的审核。此类改动必须在正式训练前完成机器验证和两轮不同子 Agent 只读审核：第 1 轮找实现、接口、shape、梯度、数据与评估错误；修复、重测并由第 1 轮 Reviewer 复核通过后，第 2 轮检查同一份最终代码的反例、隐藏耦合、回归和测试盲区。如果第 2 轮导致代码再次修改，两轮都重来。
 
 没有显式 `--debug-smoke` 或 `--formal` 时必须阻断。选择 `--formal` 时必须提供并通过
 `agent_runtime.yaml`；选择 `--debug-smoke` 时结果只能证明工程链路可运行，不能回填为正式证据。
@@ -355,15 +355,13 @@ python workflow\gtpj_workflow.py monitor-workflow --run-dir <run_dir> --report-n
 ## 免 owner 日常参与的 AI 交叉审核
 
 Owner 不参与日常代码审核。重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion
-或论文 claim 相关改动，必须按 `review_tier` 完成 Claude Code 与 Codex 分层交叉审核，并通过：
+或论文 claim 相关改动，必须先跑机器验证，再完成两轮不同子 Agent 的对抗式只读审核。
 
 ```text
-python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
+Round 1 -> 修复/重测/Round 1 复核 -> Round 2 -> unresolved_blockers: 0
 ```
 
-`fast` 只允许低风险轻量修补；普通 workflow/helper/template 修补走 `review-1`；会污染正式实验结论、
-训练入口、评估语义、promotion、baseline 或 paper claim 的改动必须走 `strict-3`。
-机器验证永远必跑，Claude Code 必须只读；Codex 可以实现、修复、重跑验证和记录 rebuttal。
-Claude Code 因连接拒绝、超时或空输出没有形成结论时，该调用不算审核轮次；允许按相同 tier 使用彼此独立的只读 Codex Reviewer 作为备用。备用证据必须记录真实 reviewer instance id、独立上下文和 `claude_code_unavailable` 原因，不能把 Codex 伪装成 Claude，也不能降低轮数。
-审核包 blocked 时，不能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+每轮最少记录 reviewer、reviewed_code_id、reviewed_extra_files、files_reviewed、machine_test_ref、发现、unresolved_blockers、decision 和 uncovered_scope；第 2 轮另记录 previous_round_ref。旧 `fast`、`review-1`、`strict-3` 和 `validate-ai-cross-review` 只用于历史审核包或 owner 明确要求的特殊审计，不再作为新实验代码的默认门槛。
+旧 helper 兼容字段名仍可能出现：`review_tier`。
+任一轮 blocked 时，不能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
 push、删除、远端发布和破坏性迁移仍然需要 owner 明确授权。

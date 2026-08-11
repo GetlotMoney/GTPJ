@@ -1,27 +1,32 @@
 # AI 交叉审核协议
 
-> 当前规则：审核轮数按真实影响决定，不再固定三路。只改文档、参数或不改变训练语义时，机器检查通过即可；改模型、训练入口、数据划分或评估语义时，默认 1 次独立只读审核。只有这次审核发现未解决阻断、影响范围扩大，或 owner 明确要求时，才增加第 2 次或第 3 次。`strict-3` 和完整 evidence pack 只保留给历史兼容或明确的特殊审计，不再是正式论文实验的默认门槛。
+> 当前规则：只改账本、说明文档或已审核代码支持的普通参数，机器检查通过即可；任何实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，目标测试通过后必须完成 2 轮不同子 Agent 的对抗式只读审核。旧 `review-1`、`strict-3` 和完整 Claude Code evidence pack 只保留给历史兼容或 owner 当前明确要求的特殊审计，不再是普通新实验代码的默认门槛。
 
 机器测试仍不能省：目标测试、配置检查和真实最小样例优先于 Reviewer 数量。审核总耗时不得超过训练准备上限；参数实验 10 分钟、代码或评估实验 30 分钟，超时后只处理唯一真实阻断，不继续增加审核层。
 
-本协议定义 GTPJ 中代码、workflow、helper、模板、训练入口、评估语义和实验结论相关改动的 AI 审核门。目标不是增加仪式感，而是让重要改动在被信任前，先经过机器验证、命名 Codex 线程预审和必要的 Claude Code 只读审核。
+本协议定义 GTPJ 中代码、workflow、helper、模板、训练入口、评估语义和实验结论相关改动的 AI 审核门。目标不是增加仪式感，而是让重要改动在被信任前，先经过机器验证和两轮独立反方检查。
 
 ## 不可跳过规则
 
-- 机器验证永远必须运行。`run-ai-cross-review` 在没有验证命令时必须失败。
-- Claude Code 只读审核，不改文件、不启动训练、不 push、不删除用户数据。若 Claude Code 已登录但连续出现连接拒绝、超时或空输出，这些失败不算审核轮次；改用彼此独立的只读 Codex Reviewer，每轮必须记录真实 reviewer instance id、独立上下文和 `fallback_reason: claude_code_unavailable`，不得伪装成 Claude。
+- 机器验证永远必须运行。
+- 两轮 Reviewer 都只读，不改文件、不启动训练、不 push、不删除用户数据。Claude Code 可以作为其中一轮 Reviewer；Claude 不可用时，直接使用不同的只读 Codex 子 Agent，不把失败调用算作审核轮次。
 - Codex 负责实现、修复、反驳、重跑验证和写回证据。
 - owner 不参与日常审核；但 push、删除、远端发布、破坏性迁移、密钥处理和用户数据操作仍必须等待 owner 明确授权。
-- `--skip-claude` 只能生成 blocked 证据包，不能当作正式通过。
-- Claude 备用路线不是 `--skip-claude`：它仍需完成对应 tier 的 1 或 3 个独立只读审核轮次，且每轮 verdict 都必须为 pass。每轮必须使用不同的真实 reviewer instance id，并列出实际看过的文件和运行过的命令；校验器会拒绝占位名称、重复审核者、空证据，以及与实际审核来源不一致的最终说明。
-- `00_task.md`、`02_review_brief.md` 和 `10_final_decision.md` 的审核档位与轮数必须完全一致；高风险任务固定为 `strict-3 / 3`，不能只改最终文件把三轮降成一轮。
-- 每轮只能有一个顶层 `reviewer` 和一个顶层 `verdict`。把支持字段藏在正文里、写两个相互冲突的 verdict，或用未知 provider 都会被拒绝。Reviewer instance id 是运行环境留下的身份声明，不是密码学签名；正式证据还必须保留创建/归档结果和主助手收到的原始审核输出，离线校验只负责检查结构与交叉一致性。
-- 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须先在专用代码审核分支完成本协议。
-- 如果改动已经先发生在旧脏分支，后补切分支只能算草稿隔离；正式 Runner 前必须重新从干净基线切专用分支，迁移最小 diff，通过本协议和机器验证后再做 `pre-run freeze commit`。
+- 第 1 轮主动寻找实现、接口、shape、梯度、数据与评估错误；实现者修复、重跑测试并由第 1 轮 Reviewer 复核通过后，才能启动第 2 轮。
+- 第 2 轮必须检查同一份最终代码，并从反方立场寻找反例、隐藏耦合、回归和测试盲区。若第 2 轮导致代码再次修改，原两轮结论失效，仍由这两个 Reviewer 按第 1 轮 -> 第 2 轮重新检查。
+- 两轮必须绑定同一个 `reviewed_code_id`，并绑定相同的 `reviewed_extra_files`。两轮都明确通过、`unresolved_blockers: 0` 且机器测试通过，代码才算完成并允许进入正式训练。
+- 代码审核不被 `server_frozen_runner` 豁免。服务器 detached 训练可以不创建运行期命名线程，但代码、workflow、helper、模板或训练配置生成逻辑的改动仍必须完成本协议。
 
 ## 审核分层
 
-`review_tier` 只有三档：
+当前新实验默认只分两类：
+
+```text
+docs_or_parameter_only: 0 轮外部 Reviewer，机器检查通过即可
+experiment_code_change: 2 轮不同子 Agent 只读审核
+```
+
+旧 helper 和旧审核包仍可能出现下面三个兼容字段：
 
 ```text
 fast: 0 轮只读外部 Reviewer
@@ -29,16 +34,17 @@ review-1: 1 轮 Claude Code；Claude 不可用时为 1 个独立 Codex Reviewer
 strict-3: 3 轮 Claude Code；Claude 不可用时为 3 个彼此独立的 Codex Reviewer
 ```
 
-使用规则：
+兼容使用规则：
 
-- `fast` 只允许 `risk_level: low` 的普通文档或轻量 workflow 修补；仍必须有机器验证通过和命名 Codex 线程预审通过。
-- `review-1` 用于普通 workflow/helper/template 修补，不直接改变正式实验结论、训练入口、评估语义、promotion 或论文 claim。
-- `strict-3` 只用于会污染正式实验结论的改动，包括训练入口、forward/loss/evaluation、data/split/label/class order/logits/metric、Runner、Warehouse、confirmation、promotion、baseline claim 和论文 claim。
-- `risk_level: high` 或 scope/title/reason 中出现正式实验结论风险时，低于 `strict-3` 必须被 helper 拦截。
+- `fast` 只用于普通说明文档、账本和低风险轻量说明修补。
+- `review-1` 和 `strict-3` 是历史审核包字段；新实验代码默认不靠这两个词决定轮数，而是直接执行两轮不同子 Agent 审核。
+- owner 明确要求特殊审计时，可以继续使用旧完整 evidence pack；此时仍必须保证机器验证通过、Reviewer 只读、发现已修复、最终结论不伪装。
 
-## 命名 Codex 线程预审
+## 旧完整审核包兼容：命名 Codex 线程预审
 
-Claude Code 之前必须先创建或绑定一个命名 Codex 线程做只读预审。该线程只检查当前 diff、验证证据和结论风险，不改文件、不启动训练。
+只有 owner 当前明确要求 Claude Code 或旧完整 evidence pack 时，才需要先创建或绑定一个命名 Codex 线程做只读预审。普通新实验代码审核直接使用两轮不同子 Agent 只读记录即可，不为了形式创建命名线程。
+
+旧完整包里，Claude Code 之前必须先创建或绑定一个命名 Codex 线程做只读预审。该线程只检查当前 diff、验证证据和结论风险，不改文件、不启动训练。
 
 预审完成后必须立刻归档该线程，并写入：
 

@@ -34,22 +34,25 @@
 
 ## 2. 最小审查轮次
 
-每个创新代码改动至少包含四轮审查：
+每个创新代码改动先按最小闭环走，不默认堆四个长期审核包：
 
 ```text
-Review 0: idea/source-intent review
-Review 1: design/interface review
-Review 2: code diff pre-run review
-Review 3: post-run evidence review
+实现前：确认 idea/source intent 和 design/interface 是否足够清楚
+代码完成后：两轮不同子 Agent 只读审核
+训练结束后：回填结果和质量检查
 ```
 
-重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion 或论文 claim 相关改动，还必须执行
-`docs/workflow/protocols/ai_cross_review_protocol.md` 的 Claude Code + Codex 分层交叉审核。该审核不需要 owner
-参与日常判断，但必须按 `review_tier` 保留 review pack 并通过：
+其中代码完成后的两轮是硬门：
 
 ```text
-python workflow/gtpj_workflow.py validate-ai-cross-review --path <review_pack>
+Round 1: 主动找实现、接口、shape、梯度、数据与评估错误
+修复、重测，并由 Round 1 Reviewer 复核通过
+Round 2: 检查同一份最终代码，专找反例、隐藏耦合、回归和测试盲区
+两轮都 pass 且 unresolved_blockers: 0 后，才允许正式训练
 ```
+
+旧 Review 0-3 文件可以继续用于历史 trial、特殊审计或 promotion 前补充证据，但不再是普通新创新实验的默认门槛。
+详细代码审核边界见 `docs/workflow/protocols/ai_cross_review_protocol.md`。
 
 ### Review 0: Idea / Source Intent
 
@@ -95,23 +98,21 @@ interface_precheck.md
 
 如果本轮为 `blocked`，Implementer 不得开始代码改动。
 
-### Review 2: Code Diff Pre-Run
+### Review 2：代码两轮审核，正式训练前硬门
 
-代码完成后、正式训练前，至少由以下只读 reviewers 独立检查：
+代码完成后、正式训练前，至少由两个不同只读 Reviewer 顺序检查：
 
-- Interface Checker：代码是否满足接口契约和 baseline-off 等价；
-- Quality Checker：diff 是否越界、config 是否完整、最小验证是否可执行；
-- Reviewer：实现是否符合 idea/source intent，是否有明显遗漏或污染风险。
+- 第 1 轮：代码是否满足接口契约、baseline-off 等价、shape、梯度、数据/评估边界和最小验证。
+- 第 2 轮：同一份最终代码是否存在反例、隐藏耦合、回归、测试盲区或与 idea/source intent 不一致。
 
 输出文件：
 
 ```text
 review_round_1.md
-interface_check.md
-quality_check.md
+review_round_2.md
 ```
 
-任一角色给出 blocking issue 时，Runner 不得启动正式训练。修复后必须重新记录一轮 review。
+任一角色给出 blocking issue 时，Runner 不得启动正式训练。修复后必须重跑机器验证；如果第 2 轮后代码又变，两轮审核都重新开始。
 
 ### Review 3: Post-Run Evidence
 
@@ -125,7 +126,6 @@ quality_check.md
 输出文件：
 
 ```text
-review_round_2.md
 agent_summary.md
 ```
 
@@ -197,7 +197,7 @@ Coordinator 是最终 GitHub 账本 writer，但不得绕过 reviewer 结论。
 - Implementer diff 超出声明的 writable file set；
 - baseline-off switch 或 switch-off 等价不清；
 - seen/unseen、class order、label mapping、logits shape 或 metric semantics 不清；
-- Review 2 存在 blocking issue；
+- 代码两轮审核存在 blocking issue；
 - 修代码后没有重新 review；
 - 没有 pre-run freeze commit；
 - worktree 不干净却启动正式 run。
@@ -253,7 +253,7 @@ memory_sources:
 verified_against_current_repo:
 ```
 
-`agent_summary.md` 必须汇总四轮 review 的结论，并说明是否有命名线程、长期角色 thread 是否复用、长期角色记忆是否加载、
+`agent_summary.md` 必须汇总代码两轮审核、结果检查和必要补充 review 的结论，并说明是否有命名线程、长期角色 thread 是否复用、长期角色记忆是否加载、
 哪些文件被独立审查、哪些 blocking issue 已解决。
 
 ## 8. 与其他协议的关系

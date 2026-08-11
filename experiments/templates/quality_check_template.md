@@ -46,10 +46,11 @@ transition_id:
 
 ## AI 交叉审核
 
-- [ ] 重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动已按 `review_tier` 创建分层 AI 交叉审核包。
-- [ ] Claude Code 审核保持只读，Codex 的修复、rebuttal 和重跑验证已记录。
-- [ ] 已运行 `validate-ai-cross-review --path <review_pack>`，且 `unresolved_blocking_issues: 0`。
-- [ ] 若审核包 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+- [ ] 实验代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动已完成 2 轮不同子 Agent 对抗式只读审核。
+- [ ] 两轮绑定同一份最终代码，Reviewer 只读，Codex 的修复、反驳和重跑验证已记录。
+- [ ] 两轮 `decision: pass`，且 `unresolved_blocking_issues: 0`。
+- [ ] 若任一轮 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+- [ ] 历史兼容字段 `review_tier` 和旧命令 `validate-ai-cross-review` 只用于旧审核包或特殊审计；普通新实验代码以两轮子 Agent 审核记录为准。
 
 ## Promotion Gate（升版门槛，仅正式提升 vX 时填写）
 

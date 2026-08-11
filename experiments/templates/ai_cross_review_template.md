@@ -1,4 +1,10 @@
-# AI 交叉审核证据包模板
+# AI 交叉审核记录模板
+
+当前默认规则：普通账本、说明文档和已审核代码支持的普通参数修改，只做机器检查；实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，机器验证后必须完成 2 轮不同子 Agent 的对抗式只读审核。
+
+旧 `review_tier: fast | review-1 | strict-3`、`claude_rounds_required` 和 Claude round 文件只用于历史审核包或 owner 明确要求的特殊审计；普通新实验代码不为了形式创建完整 Claude 包。
+
+旧完整包兼容文件名保留：`05_claude_review_round_1.md`、`09_claude_review_round_3.md`、`10_final_decision.md`。
 
 ## 00_task.md（任务说明）
 
@@ -10,13 +16,14 @@ risk_level: low | medium | high
 validation_profile: default-core | custom-debug | custom-full-equivalent
 owner_participation: not_required
 review_required: true
-review_tier: fast | review-1 | strict-3
-claude_rounds_required: 0 | 1 | 3
+review_tier: fast | review-1 | strict-3  # legacy optional
+claude_rounds_required: 0 | 1 | 3        # legacy optional
+review_rounds_required: 0 | 2
 review_reason:
 acceptance_gates:
 - machine_gates_passed: true
-- codex_named_thread_pre_review: pass
-- claude_rounds_required:
+- reviewers_are_different: true
+- rounds_completed:
 - unresolved_blocking_issues: 0
 ```
 
@@ -90,12 +97,16 @@ status: verified | supported | assumption | unproven | false
 evidence_ref:
 ```
 
-## 05_claude_review_round_1.md（Claude 第 1 轮只读审核）
+## review_round_1.md（第 1 轮只读审核）
 
 ```text
 round: 1
-reviewer: claude_code
-claude_code_read_only: true
+reviewer_id:
+reviewer_read_only: true
+reviewed_code_id:
+reviewed_extra_files:
+files_reviewed:
+machine_test_ref:
 inputs_checked:
 verdict: pass | needs_fix | blocked
 blocking_issues:
@@ -104,24 +115,29 @@ unsupported_claims:
 missing_validation:
 ```
 
-## 06_codex_response_round_1.md（Codex 第 1 轮回应）
+## codex_response_round_1.md（第 1 轮回应）
 
 ```text
 round: 1
 reviewer: codex
-addressed_claude_findings:
+addressed_reviewer_findings:
 fixes_applied:
 rejected_findings_with_evidence:
 validation_rerun:
 remaining_blocking_issues:
 ```
 
-## 07_claude_review_round_2.md（Claude 第 2 轮只读审核）
+## review_round_2.md（第 2 轮只读审核）
 
 ```text
 round: 2
-reviewer: claude_code
-claude_code_read_only: true
+reviewer_id:
+reviewer_read_only: true
+previous_round_ref:
+reviewed_code_id:
+reviewed_extra_files:
+files_reviewed:
+machine_test_ref:
 inputs_checked:
 verdict: pass | needs_fix | blocked
 blocking_issues:
@@ -130,19 +146,19 @@ unsupported_claims:
 missing_validation:
 ```
 
-## 08_codex_response_round_2.md（Codex 第 2 轮回应）
+## codex_response_round_2.md（第 2 轮导致修改时填写）
 
 ```text
 round: 2
 reviewer: codex
-addressed_claude_findings:
+addressed_reviewer_findings:
 fixes_applied:
 rejected_findings_with_evidence:
 validation_rerun:
 remaining_blocking_issues:
 ```
 
-## 09_claude_review_round_3.md（Claude 第 3 轮只读审核）
+## 09_claude_review_round_3.md（旧完整审核包兼容，普通新实验不填）
 
 ```text
 round: 3
@@ -162,10 +178,11 @@ missing_validation:
 ai_cross_review_status: pass | blocked
 owner_participation: not_required
 review_tier: fast | review-1 | strict-3
-rounds_completed: 0 | 1 | 3
+reviewers_are_different: true
+rounds_completed: 0 | 2
 claude_rounds_required: 0 | 1 | 3
 claude_rounds_completed: 0 | 1 | 3
-claude_code_read_only: true
+claude_code_read_only: true | false
 codex_named_thread_pre_review: pass
 codex_named_thread_lifecycle: completed_archived
 codex_fixes_or_rebuttals_recorded: true

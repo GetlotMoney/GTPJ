@@ -22,7 +22,7 @@
 - 两张 GPU 只做简单分配；只有真实并发冲突时才使用一把 GPU 锁，不固定三波调度。
 - 不做启动收据、结束收据、永久 claim 的多层套娃。一个不可覆盖的 `RUN-xxx` 目录和一份运行记录即可。
 - 只固定代码、配置、数据/划分、种子、评估口径和完整结果；制品哈希只用于需要长期保留的最终模型或关键日志，不逐文件堆哈希。
-- 只改参数或文档时不另开 Reviewer；改模型、训练、数据或评估时默认 1 次独立审核。发现真实争议后才升级。
+- 只改账本、说明文档或已审核代码支持的普通参数时不另开 Reviewer；任何实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，目标测试通过后固定做 2 轮不同子 Agent 的对抗式只读审核。
 
 准备耗时上限：参数实验 10 分钟；代码或评估实验 30 分钟。超过上限时不得继续新增门槛，只处理唯一真实阻断并向 owner 说明。
 
@@ -54,7 +54,7 @@ owner 不需要背 `workflow_mode`、`agent_runtime.yaml` 或线程字段。下�
 
 明确入口硬规则：owner 已经说出 `开启多agents智能体工作流`、`多agents智能体工作流，开始`、`跑N轮` 或 `做N轮实验` 时，Coordinator 必须把它当作执行授权，而不是只做规划。只有四类情况允许再问一次：运行模式仍然不明、侧边栏干净状态从未确认且工具无法验证、硬门失败、或动作涉及 push / 删除 / 覆盖数据 / 密钥等安全边界。除此之外，不得反复确认规范、不得把“开始/跑N轮”降级成 `pre_run_planned` 后停止。
 
-代码审核硬规则：代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只说明训练运行期不创建命名线程；凡是修改代码、workflow、helper、模板或训练配置生成逻辑，仍必须先切专用代码审核分支，再执行命名 Codex 线程预审、Claude Code 只读审核、机器验证和 `validate-ai-cross-review`。在旧脏分支上先改后补切，只能视为草稿，不能进入 `pre-run freeze commit` 或正式 Runner。
+代码审核硬规则：代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只说明训练运行期不创建命名线程；凡是修改实验代码、workflow/helper、模板或训练配置生成逻辑，机器验证后必须由两个不同子 Agent 依次做只读审核。第 1 轮找实现和接口错误，修复并复核通过后，第 2 轮再检查同一份最终代码的反例、耦合、回归和测试盲区；任一轮后代码再变，两轮都重来。
 
 通用话规划入口：
 
@@ -333,32 +333,30 @@ formal_pending = 正式表格中有 subject 行
 
 ## 7. 免 owner 日常参与的 AI 交叉审核
 
-重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动，默认不需要 owner 参与日常审核。
+重要代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动，默认不需要 owner 参与日常审核，但必须完成机器验证和两轮不同子 Agent 的对抗式只读审核。
 
-改动必须按 `review_tier` 走 Claude Code + Codex 分层交叉审核：
+当前默认规则：
 
 ```text
 机器验证永远必跑
-Codex 命名线程 预审并关闭 -> Claude Code 只读审核 -> Codex 回应/重跑验证
-fast: 0 轮 Claude，仅低风险轻量修补
-review-1: 1 轮 Claude，普通 workflow/helper/template 修补
-strict-3: 3 轮 Claude，训练入口、评估语义、正式实验结论、promotion、baseline 或论文 claim 风险
-validate-ai-cross-review -> 通过后才信任改动
+Round 1：不同子 Agent 只读审查实现、接口、shape、梯度、数据和评估边界
+修复并重跑测试；Round 1 Reviewer 复核通过
+Round 2：第二个子 Agent 只读审查同一份最终代码，专找反例、隐藏耦合、回归和测试盲区
+两轮都 pass 且 unresolved_blockers: 0 -> 才能正式训练
 ```
 
-Claude Code 若因连接拒绝、超时或空输出没有给出有效结论，该调用不算审核轮次。此时按同一 tier 改用彼此独立的只读 Codex Reviewer；每轮必须留下真实实例 id、独立上下文和失败原因，不能把 Codex 写成 Claude，也不能用 `--skip-claude` 冒充通过。
+旧 `review-1`、`strict-3`、Claude Code 审核包和 `validate-ai-cross-review` 只用于回查历史或 owner 明确要求的特殊审计；普通新实验代码审核不再为了形式创建完整审核包。
+旧 helper 兼容字段名仍可能出现：`review_tier`。
 
-正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。通过包必须包含：
+正式通过条件记录在 `docs/workflow/protocols/ai_cross_review_protocol.md`。最小记录必须包含：
 
 ```text
 owner_participation: not_required
-rounds_completed: 3
-claude_code_read_only: true
+rounds_completed: 2
+reviewers_are_different: true
 machine_gates_passed: true
 unresolved_blocking_issues: 0
 ```
-
-使用备用审核时，`claude_code_read_only: false`，并改为记录 `independent_codex_fallback_read_only: true`。
 
 ## 8. 命名线程
 

@@ -14,11 +14,12 @@
 
 固定保留的科学边界只有：准确 Git commit、配置快照、数据/划分身份、种子、评估口径、完整 U/S/H/ZS 和不覆盖历史结果。其余机制按真实风险选择，不得为了“更正式”自动叠加。
 
-审核改为按影响决定：
+审核使用下面的最小固定规则：
 
-- 只改文档、参数表或不改变训练语义：机器检查即可，默认不另开 Reviewer。
-- 改模型、训练入口、数据划分或评估语义：目标测试通过后，默认只做 1 次独立只读审核。
-- 只有审核发现未解决争议、跨模块影响扩大，或 owner 明确要求时，才增加第 2 次或第 3 次审核。
+- 普通说明文档、账本值，或已审核代码明确支持的普通超参数/seed 修改，只要不改 schema、解析/生成逻辑、数据/划分、评估语义、工作流门槛，也不打开未审核代码路径，就只做机器检查。
+- 任何实验代码修改，包括模型、训练、数据、评估、loss、forward、workflow/helper、模板和训练配置生成逻辑，目标测试通过后必须完成 2 轮不同子 Agent 的对抗式只读审核。
+- 第 1 轮主动找实现、接口、shape、梯度、数据与评估错误；实现者修复、重跑测试并由第 1 轮 Reviewer 复核通过后，才能启动第 2 轮。
+- 第 2 轮检查同一份最终代码，专门找反例、隐藏耦合、回归和测试盲区。若第 2 轮导致代码再次修改，原两轮结论失效，仍按第 1 轮 -> 第 2 轮重新检查。
 
 时间上限：纯参数实验从计划到开始训练不超过 10 分钟；涉及代码或评估改动不超过 30 分钟。超过上限时停止增加流程，只汇报并处理唯一真实阻断。正式论文实验也使用这套短流程；论文严谨性来自完整实验设计和结果，不来自更多文件层级。
 
@@ -61,15 +62,11 @@
 
 ## AI 审核规范
 
-- 重要代码修改、workflow/helper/template 修改、训练入口、评估语义、实验结论、promotion 或论文 claim 相关决策，默认不要求 owner 参与日常审核，但必须按 `review_tier` 分层执行 AI 交叉审核。
-- 机器验证永远优先且永远必跑；AI 审核不能替代测试、workflow validate、audit-boundary、schema 或 helper gate。
-- Codex 负责实现、修复、反驳和重跑验证；Claude Code 只读审查，不直接改文件、不启动训练、不执行 push/delete/发布。
-- `fast`：0 轮 Claude Code，只允许低风险轻量文档或 workflow 修补；仍必须有机器验证和命名 Codex 线程预审。
-- `review-1`：1 轮 Claude Code，用于普通 workflow/helper/template 修补，不直接污染正式实验结论。
-- `strict-3`：3 轮 Claude Code，只用于训练入口、评估语义、正式实验结论、promotion、baseline 或论文 claim 等会污染正式结论的改动。
-- Claude Code 前必须先创建或绑定命名 Codex 线程做只读预审；预审完成后立刻归档，并在 evidence pack 记录真实 `thread_id`、UI 显示名和结构化 `archive_result`。
-- 代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只表示训练运行期不创建命名线程；一旦修改代码、workflow、helper 或模板，仍必须先切专用代码审核分支，完成命名 Codex 线程预审、Claude Code 只读审核和 `validate-ai-cross-review`。
-- AI 交叉审核必须留下中文 evidence pack，并通过 `python workflow\gtpj_workflow.py validate-ai-cross-review --path <review_pack>` 后，才能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
+- 机器验证永远先跑；两轮审核不能替代测试、schema、边界检查或真实最小样例。
+- Implementer 是唯一代码 writer；两个 Reviewer 都只读，不改文件、不启动正式训练。
+- 每轮最少记录：`round`、`reviewer_id`、`reviewed_code_id`、`reviewed_extra_files`、`files_reviewed`、`machine_test_ref`、发现、`unresolved_blockers`、`decision` 和 `uncovered_scope`；第 2 轮另写 `previous_round_ref`。
+- 正式训练开始前，Coordinator 必须确认两轮来自不同子 Agent、顺序正确、绑定同一份最终代码、`decision: pass` 且 `unresolved_blockers: 0`。缺一项就停止，不拿旧审核结论顶替。
+- 默认复用当前任务输出或现有实验质量记录，不创建命名审核线程、完整审核包或额外审核层。旧的 `review-1`、`strict-3` 和 Claude Code 审核包只用于回查历史，除非 owner 当前明确要求特殊审计。
 - push、删除、远端发布、破坏性迁移、密钥处理或用户数据操作仍然必须等待 owner 明确授权。
 
 ## 流程设计原则
@@ -100,7 +97,7 @@
 11. 严格命名 agents：左侧命名 Codex 线程显示名必须按 `<subject_id> | <Role Label>`，例如 `ATTEMPT-007 | Runner Monitor`；禁止使用 Herschel、Galileo、Feynman 等随机英文昵称。
 12. 跑实验：Runner 串行锁 GPU；GitHub 只记轻量账本；raw logs、checkpoint、generated figures 和 cache 进 Warehouse/Research，不进 GitHub。
 13. 收结果：`live_multi_agent_monitor` 运行中必须持续汇报每个新增 completed job，使用 `monitor-workflow --report-new-completions --activity-log <attempt_dir>\AGENT_ACTIVITY.md` 或等价证据写入；每条至少记录 `job_id`、H/U/S/ZS、当前 best、H>=75/H>=76、证据位置和下一步。closeout 时写 `manifest.yaml`、`result.yaml`、`result.md`、`quality_check.md`、`agent_summary.md`、`AGENT_ACTIVITY.md`；复现必须是 `repeat_type: exact_repeat`，锁定 `original_seed`、原始 config、代码 commit、数据/缓存、训练日程和评估口径，不允许换 seed 或换任何参数；默认 `max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`。必须声明 `restore_target_H`；`near_miss_tolerance_H` 只能用于记录“接近但未还原”。复现结果必须分成 `best_hit`、`near_miss_not_restored` 和 `stable_confirm`：`best_hit` 只看任一 clean repeat 是否真正达到原水平，回答“有没有还原”；`near_miss_not_restored` 只能说明实验有效果、还有希望，不能停止、不能 confirmation；`stable_confirm` 才看 mean/min/max/range，回答“能不能作为稳定 confirmed / promotion / baseline 证据”。`seed_sweep` / `score_search` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不能冒充复现。
-14. 做审核：普通 workflow 修补走 `review-1`，正式结论污染风险走 `strict-3`；所有机器验证照跑。
+14. 做审核：代码修改在机器验证后依次完成两轮不同子 Agent 的对抗式只读审核；两轮绑定同一份最终代码，全部通过后才允许正式训练。
 15. 收尾清理：Runner 仍有 running/pending job 时，当前阶段 active 左侧命名线程必须保持可见；只有 closeout/handoff 完成、输出已入账后，才报告 `keep / archive / unknown agents`，归档 completed threads，记录 `archive_result`，左侧栏只保留当前 active agents。
 
 ## 仓库规则
