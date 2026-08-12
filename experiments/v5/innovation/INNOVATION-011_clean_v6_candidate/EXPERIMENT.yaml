@@ -13,7 +13,14 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-011-clean-v6-candidate
 legacy_ref: IDEA-0013
-status: pre_run
+status: candidate
 planned_runs: 1
 not_confirmation_evidence: true
-formal_training_started: false
+formal_training_started: true
+completed_runs: 1
+result_evidence_level: valid_single_run
+pre_start_receipt_present: false
+single_run_H: 61.156446573601244
+innovation_outcome: continue_clean_framework
+confirmation_status: not_started
+promotion_status: blocked_pending_confirmation

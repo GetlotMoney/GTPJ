@@ -3,7 +3,7 @@
 ```text
 experiment_id: V5-INNOVATION-011
 idea_id: IDEA-0013
-status: pre_run
+status: candidate
 base_version: v5
 formal_v6_status: not_created
 ```
@@ -37,3 +37,7 @@ formal_v6_status: not_created
 ## V6 记录放在哪里
 
 现在不创建正式 `experiments/v6/`，也不打 V6 tag。它先作为 `FRAMEWORK-V5` 下的创新候选记录在本目录。只有后续实现、训练、重复验证并确认值得升级后，才注册正式 `FRAMEWORK-V6`。
+
+## RUN-001 结论
+
+seed 5 的 50 epoch 单次运行已完成，最佳 epoch 为 1，`U/S/H/ZS=48.543394/82.624918/61.156447/76.156127`。`H` 高于 009/010 判断线 `59.4058`，但低于 V5 重复均值 `74.44`，所以当前决定是继续修改干净框架，不追加本计划外的训练，也不创建正式 V6。

@@ -405,7 +405,7 @@
       "idea_id": "IDEA-0013",
       "idea_dir": "idea_tree/ideas/IDEA-0013_clean_v6_candidate/",
       "title": "干净 V6 框架候选",
-      "status": "selected",
+      "status": "testing",
       "source_type": "user",
       "source_ref": "owner:2026-08-11:删除旧模块和旧损失，验证干净新框架",
       "source_status": "local_heuristic",
@@ -415,8 +415,8 @@
         "v5": {
           "score": 78.0,
           "applicability": "needs_adaptation",
-          "stage": "selected",
-          "rationale": "009/010 在保留旧频域 Top-K、BVSA/VSCE替换、拓扑和多辅助损失等 V5 训练栈时均显著掉点；下一步应从最小原理出发，构建只含核心交互与主分类损失的干净候选。",
+          "stage": "trialing",
+          "rationale": "RUN-001 的 H=61.156447，高于 009/010 判断线 59.4058，但仍低于 V5 重复均值 74.44；干净闭环值得继续修改，尚不足以确认或晋级。",
           "blockers": []
         }
       },
@@ -447,9 +447,9 @@
       ],
       "evidence": [
         {
-          "type": "planning",
-          "ref": "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/README.md",
-          "note": "implementation：干净 V6 候选先作为 V5 innovation 记录，独立实现中，尚未训练。"
+          "type": "experiment",
+          "ref": "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/result.md",
+          "note": "RUN-001 valid_single_run：U=48.543394, S=82.624918, H=61.156447, ZS=76.156127；继续修改，不晋级 V6。"
         }
       ]
     }
