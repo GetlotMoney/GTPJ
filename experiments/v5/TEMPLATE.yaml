@@ -1,10 +1,10 @@
 schema_version: gtpj.framework_template.v1
 framework_id: FRAMEWORK-V5
-template_id: MODEL-V5-TEMPLATE-V1
-template_status: frozen
-template_branch: framework/v5-template-v1
-template_tag: model/v5-template-v1
-template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
+template_id: MODEL-V5-TEMPLATE-V2
+template_status: confirmed
+template_branch: framework/v5-template-v2
+template_tag: model/v5-template-v2
+template_commit: f78458d5d043b6cdb1d6f94110eec43f7ea8b2f5
 source_framework_tag: v5
 source_framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
 behavior_contract: docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md
