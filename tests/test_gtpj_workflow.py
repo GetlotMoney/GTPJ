@@ -1480,6 +1480,24 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("版本适配说明", v1_view)
         self.assertIn("IDEA-0001_token_router/IDEA.md", v1_view)
 
+    def test_idea_view_errors_reject_stale_status_and_version_stage(self) -> None:
+        idea = self._write_selected_idea_files()
+        data = {
+            "project": "GTPJ",
+            "version": "test",
+            "current_version": "v1",
+            "ideas": [idea],
+        }
+        self.module.write_idea_views(data)
+        self.assertEqual([], self.module.idea_view_errors(data))
+
+        idea["status"] = "testing"
+        idea["version_scores"]["v1"]["stage"] = "trialing"
+        errors = self.module.idea_view_errors(data)
+
+        self.assertTrue(any("idea_tree/INDEX.md is stale" in item for item in errors))
+        self.assertTrue(any("idea_tree/versions/v1.md is stale" in item for item in errors))
+
     def test_todo_status_reports_queue_state(self) -> None:
         code, stdout, stderr = self._run_main("todo-status")
 
@@ -5407,6 +5425,35 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(0, code)
         self.assertEqual("", stderr)
         self.assertEqual("frozen", self.module.read_parameter_matrix(matrix_path)[0]["status"])
+
+    def test_parameter_matrix_actual_changes_records_removed_keys(self) -> None:
+        self._write(
+            "base.yaml",
+            "random_seed:\n  value: 5\nalpha:\n  value: 0.1\nold_module:\n  value: true\n",
+        )
+        self._write(
+            "candidate.yaml",
+            "random_seed:\n  value: 7\nalpha:\n  value: 0.2\nnew_temperature:\n  value: 0.07\n",
+        )
+
+        changes = self.module.parameter_matrix_actual_changes(
+            self.repo / "base.yaml", self.repo / "candidate.yaml"
+        )
+
+        self.assertEqual(
+            {
+                "alpha": "0.2",
+                "new_temperature": "0.07",
+                "old_module": "<removed>",
+            },
+            changes,
+        )
+        errors = self.module.parameter_matrix_changed_parameter_errors(
+            {"job_id": "RUN-001", "changed_parameters": '{"alpha":"0.2","new_temperature":"0.07"}'},
+            baseline_config_path=self.repo / "base.yaml",
+            config_path=self.repo / "candidate.yaml",
+        )
+        self.assertTrue(any("old_module" in item and "<removed>" in item for item in errors))
 
     def test_record_module_attempt_resolves_head_to_the_frozen_commit(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"

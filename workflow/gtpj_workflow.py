@@ -2526,6 +2526,9 @@ def cmd_validate(_: argparse.Namespace) -> int:
 
     idea_tree = json.loads(read_text(REPO_ROOT / "idea_tree" / "idea_tree.json"))
     current_version, ideas = validate_idea_tree_data(idea_tree)
+    stale_idea_views = idea_view_errors(idea_tree)
+    if stale_idea_views:
+        raise WorkflowError("Idea view validation failed:\n" + "\n".join(stale_idea_views))
 
     idea_index = read_text(REPO_ROOT / "idea_tree" / "INDEX.md")
     version_docs: dict[str, str] = {}
@@ -10370,7 +10373,7 @@ def idea_core_summary(idea: dict) -> str:
     return target or "待补充核心机制。"
 
 
-def write_idea_index(data: dict) -> None:
+def render_idea_index(data: dict) -> str:
     current_version = data.get("current_version", "v1")
     ideas = sorted(
         data.get("ideas", []),
@@ -10416,10 +10419,16 @@ def write_idea_index(data: dict) -> None:
             "",
         ]
     )
-    (REPO_ROOT / "idea_tree" / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
+    return "\n".join(lines)
 
 
-def write_idea_version_doc(data: dict, version: str) -> None:
+def write_idea_index(data: dict) -> None:
+    (REPO_ROOT / "idea_tree" / "INDEX.md").write_text(
+        render_idea_index(data), encoding="utf-8"
+    )
+
+
+def render_idea_version_doc(data: dict, version: str) -> str:
     ideas = sorted(
         [
             idea
@@ -10469,15 +10478,35 @@ def write_idea_version_doc(data: dict, version: str) -> None:
             "",
         ]
     )
+    return "\n".join(lines)
+
+
+def write_idea_version_doc(data: dict, version: str) -> None:
     version_path = REPO_ROOT / "idea_tree" / "versions" / f"{version}.md"
     version_path.parent.mkdir(parents=True, exist_ok=True)
-    version_path.write_text("\n".join(lines), encoding="utf-8")
+    version_path.write_text(render_idea_version_doc(data, version), encoding="utf-8")
 
 
 def write_idea_views(data: dict) -> None:
     write_idea_index(data)
     for version in idea_versions(data):
         write_idea_version_doc(data, version)
+
+
+def idea_view_errors(data: dict) -> list[str]:
+    errors: list[str] = []
+    index_path = REPO_ROOT / "idea_tree" / "INDEX.md"
+    if not index_path.exists():
+        errors.append("Missing idea view: idea_tree/INDEX.md")
+    elif read_text(index_path) != render_idea_index(data):
+        errors.append("idea_tree/INDEX.md is stale; regenerate it from idea_tree.json")
+    for version in idea_versions(data):
+        version_path = REPO_ROOT / "idea_tree" / "versions" / f"{version}.md"
+        if not version_path.exists():
+            errors.append(f"Missing idea version view: {rel(version_path)}")
+        elif read_text(version_path) != render_idea_version_doc(data, version):
+            errors.append(f"{rel(version_path)} is stale; regenerate it from idea_tree.json")
+    return errors
 
 
 def find_idea_record(data: dict, idea_id: str) -> dict:
@@ -15251,11 +15280,15 @@ def parameter_matrix_actual_changes(
 ) -> dict[str, str]:
     baseline_values = read_config_values(baseline_config_path)
     config_values = read_config_values(config_path)
-    return {
-        key: value
-        for key, value in config_values.items()
-        if key != "random_seed" and baseline_values.get(key) != value
-    }
+    changes: dict[str, str] = {}
+    for key in sorted(set(baseline_values) | set(config_values)):
+        if key == "random_seed":
+            continue
+        if key not in config_values:
+            changes[key] = "<removed>"
+        elif baseline_values.get(key) != config_values[key]:
+            changes[key] = config_values[key]
+    return changes
 
 
 def parameter_matrix_changed_parameter_errors(

@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | clean-v6-candidate-seed5 | innovation | completed | {"region_temperature":"0.07"} | 5 |  | RUN-001 | 用最小干净框架验证8句句子—区域交互本身是否合理 | 61.156446573601244 | continue_clean_framework | 1dec9d21bc9e717ca481c8392fd121b2fc828a88545ddaba49d6459a82c1a328 |
+| RUN-001 | clean-v6-candidate-seed5 | innovation | completed | {"consist_dynamic_gamma":"<removed>","consist_temp":"<removed>","fgvd_select_k":"<removed>","icsa_hidden":"<removed>","icsa_ratio":"<removed>","lambda_bmdd":"<removed>","lambda_consist":"<removed>","lambda_mpp":"<removed>","lambda_neg":"<removed>","lambda_topo_pearson":"<removed>","local_weight":"<removed>","msdn_temp":"<removed>","pse_dropout":"<removed>","pse_heads":"<removed>","pse_inner_ratio":"<removed>","pse_outer_ratio":"<removed>","region_temperature":"0.07","score_mode":"<removed>","sgmp_hidden":"<removed>","sgmp_neg_margin":"<removed>","sgmp_topk":"<removed>","text_source":"<removed>","tf_common_dim":"<removed>","tf_dropout":"<removed>","tf_heads":"<removed>","weight_s2v":"<removed>"} | 5 |  | RUN-001 | 用最小干净框架验证8句句子—区域交互本身是否合理 | 61.156446573601244 | continue_clean_framework | 1dec9d21bc9e717ca481c8392fd121b2fc828a88545ddaba49d6459a82c1a328 |
 
 ## 查重说明
 
