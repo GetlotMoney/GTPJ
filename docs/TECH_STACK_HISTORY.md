@@ -60,7 +60,7 @@
 - 选择原因：先用最小干净路径验证框架合理性，避免旧模块干扰导致继续堆复杂实验。
 - 已知限制：单 seed 首跑只能判断是否值得继续；若有效，仍需重复训练和确认后才能 promotion 为 `FRAMEWORK-V6`。
 - 素材位置：`idea_tree/ideas/IDEA-0013_clean_v6_candidate/IDEA.md`、`experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`。
-- 验证命令与结果：新模型专项 11 项通过；数据身份、评估和 checkpoint 复用能力另有 19 项专项通过。正式训练前仍需对最终冻结提交完成两轮不同子 Agent 只读审核。
+- 验证命令与结果：新模型专项 14 项通过；数据身份、评估和 checkpoint 复用能力另有 19 项专项通过。正式训练前仍需对最终冻结提交完成两轮不同子 Agent 只读审核。
 - 回退方式：回退实验实现/冻结提交或放弃该实验分支；保留 IDEA 与历史账本，不影响已完成的 V5 实验结果、Tag 或 checkpoint。
 
 ## 2026-08-08：SYS-WORKFLOW-V6（已完成，2026-08-11 更新代码审核规则）

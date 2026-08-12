@@ -4757,7 +4757,17 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
         git_show(f"{template_commit}:{template_ledger_path}", check=False),
         git_show(f"{registry_commit}:{template_ledger_path}", check=False),
     }
-    if actual_template_ledger and actual_template_ledger not in accepted_template_ledgers:
+    registry_is_ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", registry_commit, "HEAD"],
+        cwd=REPO_ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).returncode == 0
+    if registry_is_ancestor:
+        accepted_template_ledgers = {
+            git_show(f"{registry_commit}:{template_ledger_path}", check=False)
+        }
+    if actual_template_ledger not in accepted_template_ledgers:
         raise WorkflowError(
             "experiment branch framework TEMPLATE.yaml must match either its "
             "template starting ledger or the recorded registry ledger"

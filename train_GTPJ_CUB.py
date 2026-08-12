@@ -74,7 +74,7 @@ def _parse_args():
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=None,
+        required=True,
         help="RUN 独立输出目录；必须在启动前不存在。",
     )
     parser.add_argument(
@@ -125,6 +125,9 @@ def _validate_lr_stages(stages):
             raise ValueError(f"lr_stages 第 {index} 段的 lr/epochs 必须大于 0。")
         if float(stage["eta_min"]) < 0:
             raise ValueError(f"lr_stages 第 {index} 段的 eta_min 不能小于 0。")
+    total_epochs = sum(int(stage["epochs"]) for stage in stages)
+    if total_epochs != 50:
+        raise ValueError(f"本实验训练总 epoch 必须等于 50，实际为 {total_epochs}。")
 
 
 def _current_code_commit():
@@ -211,20 +214,25 @@ def _new_scheduler(optimizer, stage):
     )
 
 
+def _prepare_output_dir(path):
+    log_dir = Path(path).resolve()
+    if log_dir.exists():
+        raise FileExistsError(f"RUN 输出目录已存在：{log_dir}")
+    log_dir.mkdir(parents=True, exist_ok=False)
+    return log_dir
+
+
+def _should_save_best(harmonic, best_h, best_metrics):
+    return int(best_metrics.get("epoch", 0)) == 0 or harmonic > best_h
+
+
 args = _parse_args()
 config, config_values, config_path = _load_config(args.config)
 config_hash = sha256_file(config_path)
 _require_clean_code_tree()
 code_commit = _current_code_commit()
 
-if args.output_dir is None:
-    log_dir = Path("./train_log/CUB")
-    log_dir.mkdir(parents=True, exist_ok=True)
-else:
-    log_dir = args.output_dir.resolve()
-    if log_dir.exists():
-        raise FileExistsError(f"RUN 输出目录已存在：{log_dir}")
-    log_dir.mkdir(parents=True, exist_ok=False)
+log_dir = _prepare_output_dir(args.output_dir)
 log_path = log_dir / "training.log"
 fingerprint_manifest_path = (
     args.fingerprint_manifest.resolve()
@@ -463,7 +471,7 @@ for epoch in range(start_epoch, total_epochs + 1):
         f"avg_loss={epoch_loss / iters_per_epoch:.4f}"
     )
 
-    if harmonic > best_h:
+    if _should_save_best(harmonic, best_h, best_metrics):
         best_h = harmonic
         best_metrics = {
             "U": unseen_acc,

@@ -3,8 +3,10 @@
 import importlib.util
 from pathlib import Path
 import re
+import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 import torch
 import yaml
@@ -222,6 +224,47 @@ class CleanInnovation011Test(unittest.TestCase):
         try:
             temporary.write_text(yaml.safe_dump(raw), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "多出"):
+                module._load_config(temporary)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def test_training_requires_a_new_run_output_directory(self):
+        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
+        spec = importlib.util.spec_from_loader("innovation_011_output_dir", loader=None)
+        module = importlib.util.module_from_spec(spec)
+        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+
+        with mock.patch("sys.argv", ["train_GTPJ_CUB.py", "--config", str(CONFIG_PATH)]):
+            with self.assertRaises(SystemExit):
+                module._parse_args()
+
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            existing = Path(temporary_dir)
+            with self.assertRaisesRegex(FileExistsError, "输出目录已存在"):
+                module._prepare_output_dir(existing)
+
+    def test_first_zero_h_evaluation_is_still_saved(self):
+        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
+        spec = importlib.util.spec_from_loader("innovation_011_best_save", loader=None)
+        module = importlib.util.module_from_spec(spec)
+        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+
+        self.assertTrue(module._should_save_best(0.0, 0.0, {"epoch": 0}))
+        self.assertFalse(module._should_save_best(0.0, 0.0, {"epoch": 1}))
+        self.assertTrue(module._should_save_best(0.1, 0.0, {"epoch": 1}))
+
+    def test_training_schedule_is_locked_to_fifty_epochs(self):
+        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
+        spec = importlib.util.spec_from_loader("innovation_011_schedule", loader=None)
+        module = importlib.util.module_from_spec(spec)
+        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        raw = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
+        raw["lr_stages"]["value"][0]["epochs"] = 19
+        temporary = ROOT / ".runtime" / "test_innovation_011_bad_schedule.yaml"
+        temporary.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            temporary.write_text(yaml.safe_dump(raw), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "总 epoch 必须等于 50"):
                 module._load_config(temporary)
         finally:
             temporary.unlink(missing_ok=True)
