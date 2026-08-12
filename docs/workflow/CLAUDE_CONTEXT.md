@@ -3,11 +3,12 @@
 ## 当前审核规则
 
 - 机器验证永远优先于模型意见。
-- 普通账本、说明文档和已审核代码支持的普通参数修改，只做机器检查。
-- 实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，机器验证后必须完成 2 轮不同 Reviewer 的只读审核。
-- Claude Code 可以作为其中一轮 Reviewer；如果没有 Claude，就用不同的只读 Codex 子 Agent。旧 `review-1`、`strict-3` 和 Claude 审核包只用于历史回查或 owner 明确要求的特殊审计。
+- 任何代码修改固定由两个不同的只读子 Agent 依次做两轮对抗式审核。
+- 第 1 轮查实现、接口、shape、梯度、数据与评估边界；修复、重测并复核通过后，第 2 轮查反例、隐藏耦合、回归和测试盲区。
+- 两轮必须绑定同一个最终 `reviewed_code_id`，均为 `pass` 且未解决阻断为 0。
+- Claude Code 只有在被明确选为某一轮子 Agent Reviewer 时才参与；连接失败或空输出不算完成该轮，也不能冒充另一个 Reviewer。
 
-本文件是 GTPJ 给 Claude Code 的轻量共享上下文。它只记录稳定规则，当前事实仍以本次审核包、仓库文件、验证命令和实验 artifact 为准。
+本文件是 GTPJ 给 Claude Code 的轻量共享上下文。它只记录稳定规则，当前事实仍以任务说明、仓库文件、代码 diff、验证命令和实验 artifact 为准。
 
 ## 项目目标
 
@@ -16,7 +17,7 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 ## 核心硬规则
 
 - 机器验证优先于模型意见。
-- Claude Code 只读审核，Codex 负责实现和修复；Claude 不是唯一审核工具。
+- Claude Code 只读审核，Codex 负责实现和修复。
 - 正式实验不能绕过 `agent_runtime.yaml`、`validate-agent-runtime`、`multi-agent-preflight` 和 cleanup 记录。
 - raw artifacts 不能进入 GitHub；GitHub 只记录 artifact id、URI、sha256、size、config、manifest、result 和 quality。
 - exact repeat 必须固定原始 seed；正式复现必须写 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`。同一候选无论是否还原成功都最多 5 次；多 seed / `seed_sweep` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不算 exact repeat。
@@ -25,11 +26,9 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 
 ## Claude 快速审核策略
 
-默认使用 focused 审核：
-
-- 先读 `CLAUDE.md` 和本文件。
-- 再读审核包中的 `02_review_brief.md`、`02_focused_diff.md`、`03_validation.md`、`04_claims.md`。
-- 只在 focused diff 不足以定位阻断问题时读取完整 `02_diff.patch`。
+- 先读 `CLAUDE.md`、本文件、`docs/workflow/protocols/ai_cross_review_protocol.md` 和本轮任务说明。
+- 阅读完整审核范围、代码 diff 和机器测试结果。
+- 第 2 轮另读第 1 轮结论、修复说明，并确认 `reviewed_code_id` 未变。
 
 默认使用 blocking-only 审核：
 

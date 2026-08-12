@@ -502,21 +502,20 @@ GitHub 远端应设置保护规则：
 
 ## 本地 skill 和 GitHub 的同步
 
-GitHub 文档是 GTPJ workflow 规范的权威来源。本地 Codex skill 只是执行副本：
+GitHub 仓库规则是 GTPJ workflow 的唯一事实来源。本地 Codex Skill 只是一个轻量入口：
 
 ```text
 C:\Users\Administrator\.codex\skills\gtpj-workflow
 ```
 
-修改 workflow 规范时必须同步两边：
+修改 workflow 规范时：
 
 1. 先更新 GitHub 文档。
-2. 再同步更新本地 `gtpj-workflow` skill 的 `SKILL.md` 或 `references/`。
-3. 运行 skill 校验。
-4. 运行仓库验证。
-5. 用户明确要求后再提交推送。
+2. 只有入口文件路径变化时，才更新本地 `gtpj-workflow/SKILL.md`。
+3. 运行 Skill 入口校验和仓库验证。
+4. 用户明确要求后再提交推送。
 
-如果 GitHub 文档和本地 skill 冲突，以 GitHub 文档为准。
+本机 Skill 不再镜像整套 `references/`。历史副本可以保留回查，但不参与当前规则校验；发生冲突时始终以 GitHub 仓库为准。
 
 你刚才说的“不同版本的创意权重不一样”属于创意树细则，所以主更新位置是：
 

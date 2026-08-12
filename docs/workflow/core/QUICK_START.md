@@ -38,7 +38,7 @@ docs/workflow/WORKFLOW_KERNEL.md
 | `按这个计划开多agents工作流` | 解释为 `live_multi_agent_monitor`；通过 agent_runtime 和 preflight 后才能启动正式 Runner。 |
 | `按这个计划服务器冻结跑` | 解释为 `server_frozen_runner`；训练运行期不创建命名线程，走服务器 detached gate。若涉及代码/helper/template 改动，先完成代码审核门。 |
 
-代码审核不被 `server_frozen_runner` 豁免：改代码、workflow、helper、模板或训练配置生成逻辑时，必须先切专用代码审核分支，再做命名 Codex 线程预审、Claude Code 只读审核、机器验证和 `validate-ai-cross-review`。Claude 连接失败时调用不算一轮，按原轮数改用带真实实例 id 的独立只读 Codex Reviewer 备用，不得伪装成 Claude 或降级轮数。
+代码审核不被 `server_frozen_runner` 豁免：改代码、workflow、helper、模板或训练配置生成逻辑时，先跑机器验证，再由两个不同的只读子 Agent 依次做两轮对抗式审核。第 1 轮问题修复、重测并复核通过后才能开始第 2 轮；两轮绑定同一个最终 `reviewed_code_id`，都通过后才允许正式训练。
 
 | 用户短语 | 路由 |
 |---|---|

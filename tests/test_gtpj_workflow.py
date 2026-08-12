@@ -51,38 +51,13 @@ class WorkflowHelperTest(unittest.TestCase):
         self.module.REPO_ROOT = self.repo
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH = self.repo / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent.mkdir(parents=True, exist_ok=True)
-        skill_reference_dir = self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / "references"
-        skill_reference_dir.mkdir(parents=True, exist_ok=True)
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
-            "GitHub documentation is canonical\n"
-            "local skill mirrors the repository rules\n"
+            "GitHub 仓库规则是唯一事实来源\n"
             "docs/workflow/START_HERE.md\n"
             "docs/workflow/WORKFLOW_KERNEL.md\n"
-            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n"
-            "framework/vX\n"
-            "RUN-xxx\n"
-            "compatibility identifiers\n"
-            "same GitHub truth source\n"
-            "开启多agents智能体工作流\n"
-            "不得反复确认\n"
-            "files_reviewed\n"
-            "report-new-completions\n"
-            "代码审核不被 `server_frozen_runner` 豁免\n"
-            + CONFIRMATION_RULE_MARKERS_TEXT,
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n",
             encoding="utf-8",
         )
-        for reference_name in ["start_here.md", "workflow_kernel.md", "quick_start.md"]:
-            (skill_reference_dir / reference_name).write_text(
-                "代码审核不被 `server_frozen_runner` 豁免\n",
-                encoding="utf-8",
-            )
-        for reference_path in self.module.CONFIRMATION_RULE_SKILL_REFERENCE_FILES:
-            path = self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / reference_path
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if not path.exists():
-                path.write_text(CONFIRMATION_RULE_MARKERS_TEXT, encoding="utf-8")
-            elif CONFIRMATION_RULE_MARKERS_TEXT not in path.read_text(encoding="utf-8"):
-                path.write_text(path.read_text(encoding="utf-8") + "\n" + CONFIRMATION_RULE_MARKERS_TEXT, encoding="utf-8")
         self.module.CANONICAL_BASELINES = {
             "v1": {
                 "name": "GTPJ-v1",
@@ -2604,11 +2579,6 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "experiments/templates/experiment_README_template.md",
         ]:
             self._write(path, "母版规则尚未同步。\n")
-        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
-            "GitHub documentation is canonical\n",
-            encoding="utf-8",
-        )
-
         errors = self.module.immutable_template_language_errors()
 
         for marker in [
@@ -8030,6 +8000,14 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("missing review file: 09_claude_review_round_3.md", stderr)
 
+    def test_run_ai_cross_review_command_is_retired(self) -> None:
+        code, stdout, stderr = self._run_main("run-ai-cross-review")
+
+        self.assertEqual("", stdout)
+        self.assertEqual(2, code)
+        self.assertIn("invalid choice", stderr)
+
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_creates_three_round_pack_with_fake_claude(self) -> None:
         self._write(
             "fake_claude.py",
@@ -8116,6 +8094,7 @@ decision:
         self.assertIn("codex_named_thread_pre_review: pass", final_text)
         self.assertIn("unresolved_blocking_issues: 0", final_text)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_review_one_creates_one_claude_round(self) -> None:
         self._write(
             "fake_claude.py",
@@ -8164,6 +8143,7 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("rounds=1", stdout)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_fast_uses_no_claude_rounds(self) -> None:
         self._write(
             "fake_claude.py",
@@ -8210,6 +8190,7 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("rounds=0", stdout)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_rejects_missing_machine_validation(self) -> None:
         code, stdout, stderr = self._run_main(
             "run-ai-cross-review",
@@ -8229,6 +8210,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("requires machine validation", stderr)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_missing_pre_review_blocks_pack(self) -> None:
         validation_command = f'"{sys.executable}" -c "print(123)"'
 
@@ -8253,6 +8235,7 @@ decision:
         final_text = (self.repo / "docs/agent_reviews/missing-pre-review/10_final_decision.md").read_text(encoding="utf-8")
         self.assertIn("codex_named_thread_pre_review: blocked", final_text)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_rejects_high_risk_non_strict_tier(self) -> None:
         validation_command = self._custom_full_validation_command()
 
@@ -8278,6 +8261,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("requires --review-tier strict-3", stderr)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_rejects_weak_custom_full_equivalent_validation(self) -> None:
         code, stdout, stderr = self._run_main(
             "run-ai-cross-review",
@@ -8299,6 +8283,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("custom-full-equivalent validation missing core gates", stderr)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_rejects_formal_result_file_non_strict_tier(self) -> None:
         self._write("experiments/v1/confirmation/result.yaml", "H: 75.0\n")
 
@@ -8322,6 +8307,7 @@ decision:
         self.assertEqual(1, code)
         self.assertIn("requires --review-tier strict-3", stderr)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_rejects_unstructured_pre_review_archive_result(self) -> None:
         validation_command = f'"{sys.executable}" -c "print(123)"'
 
@@ -8355,28 +8341,19 @@ decision:
         self.assertIn("archive_result_confirms_completion: false", pre_review_text)
 
     def test_validate_ai_cross_review_rejects_handwritten_bad_archive_result(self) -> None:
-        validation_command = f'"{sys.executable}" -c "print(123)"'
-
-        code, stdout, stderr = self._run_main(
-            "run-ai-cross-review",
-            "--path",
-            "docs/agent_reviews/handwritten-bad-close",
-            "--slug",
-            "handwritten-bad-close",
-            "--review-tier",
-            "fast",
-            "--risk-level",
-            "low",
-            "--no-default-validation",
-            "--validation-command",
-            validation_command,
-            *self._passing_codex_pre_review_args(),
-        )
-
-        self.assertEqual("", stderr)
-        self.assertEqual(0, code, stdout)
+        pack_dir = "docs/agent_reviews/handwritten-bad-close"
+        self._write_valid_ai_cross_review_pack(pack_dir)
         self._write(
-            "docs/agent_reviews/handwritten-bad-close/02_codex_named_thread_pre_review.md",
+            f"{pack_dir}/00_task.md",
+            "task_id: TEST\nrisk_level: medium\nreview_tier: review-1\nclaude_rounds_required: 1\n",
+        )
+        self._write(
+            f"{pack_dir}/02_review_brief.md",
+            "risk_level: medium\nreview_tier: review-1\nclaude_rounds_required: 1\n",
+        )
+        self._write(f"{pack_dir}/02_focused_diff.md", "changed files\n")
+        self._write(
+            f"{pack_dir}/02_codex_named_thread_pre_review.md",
             "codex_named_thread_pre_review: pass\n"
             "named_thread_required: true\n"
             "thread_id: thread-test-001\n"
@@ -8389,17 +8366,28 @@ decision:
             "blocking_issues:\n"
             "notes: forged marker should not pass validation\n",
         )
+        self._write(
+            f"{pack_dir}/10_final_decision.md",
+            "ai_cross_review_status: pass\nowner_participation: not_required\n"
+            "review_tier: review-1\nclaude_rounds_required: 1\nrounds_completed: 1\n"
+            "claude_rounds_completed: 1\nclaude_code_read_only: true\n"
+            "codex_named_thread_pre_review: pass\n"
+            "codex_named_thread_lifecycle: completed_archived\n"
+            "codex_fixes_or_rebuttals_recorded: true\nmachine_gates_passed: true\n"
+            "unresolved_blocking_issues: 0\n",
+        )
 
         code, stdout, stderr = self._run_main(
             "validate-ai-cross-review",
             "--path",
-            "docs/agent_reviews/handwritten-bad-close",
+            pack_dir,
         )
 
         self.assertEqual("", stdout)
         self.assertEqual(1, code)
         self.assertIn("archive_result must include matching thread id", stderr)
 
+    @unittest.skip("run-ai-cross-review 生成入口已退役；仅保留历史包只读校验")
     def test_run_ai_cross_review_skip_claude_blocks_pack(self) -> None:
         validation_command = self._custom_full_validation_command()
 
@@ -8429,8 +8417,8 @@ decision:
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nskill 镜像\nactive docs\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nSkill 入口\nGitHub 现行文档\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
         self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
         self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
@@ -8440,7 +8428,7 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n代码审核不被 `server_frozen_runner` 豁免\n",
+            "round: 1 | 2\nreviewer_id\nreviewed_code_id\nreviewed_extra_files\nprevious_round_ref\nfrozen_run_commit\nfreeze_equivalence: pass\nfiles_reviewed\nmachine_test_ref\nunresolved_blockers: 0\ndecision: pass | blocked\nuncovered_scope\n第 2 轮不能与第 1 轮并行\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
@@ -8463,9 +8451,9 @@ decision:
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nfiles_reviewed:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "round: 1\nround: 2\nreviewer_id\nreviewed_code_id\nreviewed_extra_files\nprevious_round_ref\nfrozen_run_commit\nfreeze_equivalence: pass\nfiles_reviewed\nmachine_test_ref\nunresolved_blockers: 0\ndecision: pass | blocked\nuncovered_scope\n",
         )
-        self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
+        self._write("experiments/templates/quality_check_template.md", "reviewed_code_id\nreviewed_extra_files\n第 1 轮\n第 2 轮\nfrozen_run_commit\nfreeze_equivalence: pass\nunresolved_blockers: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "历史兼容\n只读\n不得作为新实验入口\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
@@ -8480,8 +8468,8 @@ decision:
     def test_validate_workflow_consistency_rejects_stale_ai_review_phrase(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreview_tier\nreview-1\nstrict-3\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n重复 3 轮\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreview_tier\nreview-1\nstrict-3\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nskill 镜像\nactive docs\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
+        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n重复 3 轮\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nSkill 入口\nGitHub 现行文档\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
         self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
         self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
         self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
@@ -8491,7 +8479,7 @@ decision:
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
             "docs/workflow/protocols/ai_cross_review_protocol.md",
-            "owner_participation: not_required\nclaude_code_read_only: true\nreview_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\nrun-ai-cross-review\nvalidate-ai-cross-review\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n代码审核不被 `server_frozen_runner` 豁免\n",
+            "round: 1 | 2\nreviewer_id\nreviewed_code_id\nreviewed_extra_files\nprevious_round_ref\nfrozen_run_commit\nfreeze_equivalence: pass\nfiles_reviewed\nmachine_test_ref\nunresolved_blockers: 0\ndecision: pass | blocked\nuncovered_scope\n第 2 轮不能与第 1 轮并行\n",
         )
         self._write(
             "docs/workflow/protocols/module_template_selection.md",
@@ -8510,9 +8498,9 @@ decision:
         self._write("experiments/templates/agent_summary_template.md", "multi_agent_preflight:\nformal_runner_allowed:\nagent_output_refs:\nfiles_reviewed:\nagent_cleanup:\nai_cross_review:\n")
         self._write(
             "experiments/templates/ai_cross_review_template.md",
-            "review_tier\nfast\nreview-1\nstrict-3\n02_codex_named_thread_pre_review.md\ncompleted_archived\narchive_result_confirms_completion\nvalidation_profile\nclaude_rounds_required\n02_review_brief.md\n02_focused_diff.md\nprompt_profile\nblocking-only\n05_claude_review_round_1.md\n09_claude_review_round_3.md\n10_final_decision.md\nowner_participation: not_required\nunresolved_blocking_issues: 0\n",
+            "round: 1\nround: 2\nreviewer_id\nreviewed_code_id\nreviewed_extra_files\nprevious_round_ref\nfrozen_run_commit\nfreeze_equivalence: pass\nfiles_reviewed\nmachine_test_ref\nunresolved_blockers: 0\ndecision: pass | blocked\nuncovered_scope\n",
         )
-        self._write("experiments/templates/quality_check_template.md", "review_tier\nvalidate-ai-cross-review\nunresolved_blocking_issues: 0\n")
+        self._write("experiments/templates/quality_check_template.md", "reviewed_code_id\nreviewed_extra_files\n第 1 轮\n第 2 轮\nfrozen_run_commit\nfreeze_equivalence: pass\nunresolved_blockers: 0\n")
         self._write("experiments/templates/run_receipt_template.yaml", "schema_version: gtpj.run_receipt.v0\nmulti_agent_preflight:\nagent_output_refs:\n")
         self._write("experiments/templates/TRIAL_ATTEMPTS_template.md", "历史兼容\n只读\n不得作为新实验入口\n")
         self._write("experiments/templates/modules/README.md", "standard_gzsl_module_framework_template.py\nstandard_gzsl_training_template.py\ncomposite_module_template.py\narchitecture_change_template.md\nstrict_template_entry\nU, S, H, ZS\n训练入口模式\n不允许改变\n")
@@ -8534,6 +8522,21 @@ decision:
         self.assertIn("repeat_type: exact_repeat", stdout)
         self.assertIn("docs/workflow/WORKFLOW_KERNEL.md", stdout)
         self.assertIn("experiments/templates/run_receipt_template.yaml", stdout)
+
+    def test_local_gtpj_workflow_skill_accepts_thin_router(self) -> None:
+        self.assertEqual([], self.module.local_gtpj_workflow_skill_errors())
+
+    def test_local_gtpj_workflow_skill_rejects_missing_canonical_entrypoint(self) -> None:
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
+            "GitHub 仓库规则是唯一事实来源\n"
+            "docs/workflow/START_HERE.md\n"
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n",
+            encoding="utf-8",
+        )
+
+        errors = self.module.local_gtpj_workflow_skill_errors()
+
+        self.assertTrue(any("docs/workflow/WORKFLOW_KERNEL.md" in error for error in errors), errors)
 
     def test_list_workflow_files_groups_manifest_entries(self) -> None:
         self._write_minimal_workflow_manifest()
