@@ -5455,6 +5455,57 @@ log:v1:module_trial:TRIAL-001:attempt-001
         )
         self.assertTrue(any("old_module" in item and "<removed>" in item for item in errors))
 
+    def test_parameter_matrix_actual_changes_records_removed_list(self) -> None:
+        self._write(
+            "base.yaml",
+            "random_seed:\n  value: 5\nlr_stages:\n  value:\n  - lr: 0.001\n    epochs: 20\n",
+        )
+        self._write("candidate.yaml", "random_seed:\n  value: 5\n")
+
+        changes = self.module.parameter_matrix_actual_changes(
+            self.repo / "base.yaml", self.repo / "candidate.yaml"
+        )
+
+        self.assertEqual({"lr_stages": "<removed>"}, changes)
+
+    def test_parameter_matrix_actual_changes_records_nested_list_change(self) -> None:
+        self._write(
+            "base.yaml",
+            "random_seed:\n  value: 5\nlr_stages:\n  value:\n  - lr: 0.001\n    epochs: 20\n",
+        )
+        self._write(
+            "candidate.yaml",
+            "random_seed:\n  value: 5\nlr_stages:\n  value:\n  - lr: 0.001\n    epochs: 10\n",
+        )
+
+        changes = self.module.parameter_matrix_actual_changes(
+            self.repo / "base.yaml", self.repo / "candidate.yaml"
+        )
+
+        self.assertEqual({"lr_stages": '[{"epochs":10,"lr":0.001}]'}, changes)
+        errors = self.module.parameter_matrix_changed_parameter_errors(
+            {"job_id": "RUN-001", "changed_parameters": "{}"},
+            baseline_config_path=self.repo / "base.yaml",
+            config_path=self.repo / "candidate.yaml",
+        )
+        self.assertTrue(any("lr_stages" in item for item in errors))
+
+    def test_parameter_matrix_actual_changes_normalizes_numeric_list_spelling(self) -> None:
+        self._write(
+            "base.yaml",
+            "lr_stages:\n  value:\n  - lr: 0.001\n    epochs: 20\n    eta_min: 1e-5\n",
+        )
+        self._write(
+            "candidate.yaml",
+            "lr_stages:\n  value:\n  - lr: 1.0e-3\n    epochs: 20\n    eta_min: 1.0e-05\n",
+        )
+
+        changes = self.module.parameter_matrix_actual_changes(
+            self.repo / "base.yaml", self.repo / "candidate.yaml"
+        )
+
+        self.assertEqual({}, changes)
+
     def test_record_module_attempt_resolves_head_to_the_frozen_commit(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         attempt_dir = f"{trial_dir}/attempts/ATTEMPT-001"

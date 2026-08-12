@@ -27,6 +27,8 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 
+import yaml
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOCAL_GTPJ_WORKFLOW_SKILL_PATH = Path.home() / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
@@ -15267,6 +15269,8 @@ def parameter_matrix_frozen_digest(row: dict[str, str]) -> str:
 
 
 def parameter_value_text(value: object) -> str:
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     if isinstance(value, bool):
         return "true" if value else "false"
     if value is None:
@@ -15274,12 +15278,44 @@ def parameter_value_text(value: object) -> str:
     return str(value)
 
 
+def normalize_parameter_value(value: object) -> object:
+    if isinstance(value, list):
+        return [normalize_parameter_value(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): normalize_parameter_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, str):
+        text = value.strip()
+        if re.fullmatch(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", text):
+            return float(text) if any(marker in text.lower() for marker in (".", "e")) else int(text)
+    return value
+
+
+def read_parameter_config_values(config_path: Path) -> dict[str, str]:
+    if not config_path.exists():
+        raise WorkflowError(f"Missing config file: {rel(config_path)}")
+    try:
+        data = yaml.safe_load(read_text(config_path))
+    except yaml.YAMLError as exc:
+        raise WorkflowError(f"Invalid YAML config: {rel(config_path)}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise WorkflowError(f"Config must be a top-level object: {rel(config_path)}")
+    values: dict[str, str] = {}
+    for key, entry in data.items():
+        if not isinstance(key, str) or not isinstance(entry, dict) or "value" not in entry:
+            continue
+        values[key] = parameter_value_text(normalize_parameter_value(entry["value"]))
+    return values
+
+
 def parameter_matrix_actual_changes(
     baseline_config_path: Path,
     config_path: Path,
 ) -> dict[str, str]:
-    baseline_values = read_config_values(baseline_config_path)
-    config_values = read_config_values(config_path)
+    baseline_values = read_parameter_config_values(baseline_config_path)
+    config_values = read_parameter_config_values(config_path)
     changes: dict[str, str] = {}
     for key in sorted(set(baseline_values) | set(config_values)):
         if key == "random_seed":
