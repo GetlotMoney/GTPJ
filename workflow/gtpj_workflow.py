@@ -4121,7 +4121,11 @@ def current_template_runtime_alignment_errors() -> list[str]:
         for entry in templates
         if str(entry[1].get("main_runtime_status", "")) == "active"
     ]
-    if not active_templates and not any(entry[2] for entry in templates):
+    if (
+        not immutable_template_standard_is_active()
+        and not active_templates
+        and not any(entry[2] for entry in templates)
+    ):
         return []
     if len(active_templates) != 1:
         active_paths = ", ".join(rel(item[0]) for item in active_templates) or "none"

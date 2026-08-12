@@ -1960,6 +1960,27 @@ log:v1:module_trial:TRIAL-001:attempt-001
             any("must use confirmed or frozen status" in item for item in errors)
         )
 
+    def test_active_standard_cannot_remove_all_runtime_markers(self) -> None:
+        self._write_clean_template()
+        template_path = self.repo / "experiments/v1/TEMPLATE.yaml"
+        template_text = template_path.read_text(encoding="utf-8")
+        template_text = template_text.replace(
+            "main_runtime_status: active",
+            "main_runtime_status: inactive",
+        ).replace(
+            "runtime_files:\n  - train_GTPJ_CUB.py\n",
+            "",
+        )
+        template_path.write_text(template_text, encoding="utf-8")
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+
+        errors = self.module.current_template_runtime_alignment_errors()
+
+        self.assertTrue(any("exactly one runtime template" in item for item in errors))
+
     def test_runtime_template_does_not_follow_idea_tree_view(self) -> None:
         self._write_clean_template()
         idea_tree = json.loads((self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
