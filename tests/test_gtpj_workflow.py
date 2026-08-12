@@ -2097,7 +2097,6 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "legacy_ref: none\n"
             "status: planned\n",
         )
-
         with self.assertRaisesRegex(
             self.module.WorkflowError,
             "id/tag/commit must match TEMPLATE.yaml",
@@ -2133,7 +2132,6 @@ log:v1:module_trial:TRIAL-001:attempt-001
             "legacy_ref: none\n"
             "status: planned\n",
         )
-
         binding = self.module.require_ready_experiment_base(experiment_dir)
         ledger_errors = self.module.experiment_binding_errors(
             version="v1",
@@ -2151,6 +2149,87 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual("MODEL-V1-TEMPLATE-V1", binding["base_template_id"])
         self.assertEqual(registry_commit, binding["template_registry_commit"])
         self.assertEqual([], ledger_errors)
+
+    def test_ready_experiment_base_accepts_registry_ledger_merged_after_fork(self) -> None:
+        template_commit, registry_commit = self._write_clean_template_registry()
+        self._git("switch", "-c", "exp/v1/tune/tune-001-clean", template_commit)
+        self._git("merge", "--no-ff", registry_commit, "-m", "sync governance registry")
+        experiment_dir = self.repo / "experiments/v1/tune/TUNE-001_clean"
+        self._write(
+            "schemas/experiment.schema.json",
+            json.dumps(
+                {"type": "object", "required": [], "properties": {}},
+                indent=2,
+            )
+            + "\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-001_clean/EXPERIMENT.yaml",
+            "schema_version: gtpj.experiment.v1\n"
+            "experiment_id: V1-TUNE-001\n"
+            "framework_id: FRAMEWORK-V1\n"
+            "kind: tune\n"
+            "base_identity_kind: framework_template\n"
+            "base_template_id: MODEL-V1-TEMPLATE-V1\n"
+            "base_template_tag: model/v1-template-v1\n"
+            f"base_template_commit: {template_commit}\n"
+            f"template_registry_commit: {registry_commit}\n"
+            "historical_code_ref: none\n"
+            "template_binding_status: ready\n"
+            "experiment_branch: exp/v1/tune/tune-001-clean\n"
+            "legacy_ref: none\n"
+            "status: planned\n",
+        )
+        self._git("add", "experiments/v1/tune/TUNE-001_clean/EXPERIMENT.yaml")
+
+        binding = self.module.require_ready_experiment_base(experiment_dir)
+
+        self.assertEqual(registry_commit, binding["template_registry_commit"])
+
+    def test_ready_experiment_base_rejects_unregistered_template_ledger_change(self) -> None:
+        template_commit, registry_commit = self._write_clean_template_registry()
+        self._git("switch", "-c", "exp/v1/tune/tune-001-clean", template_commit)
+        self._git("merge", "--no-ff", registry_commit, "-m", "sync governance registry")
+        experiment_dir = self.repo / "experiments/v1/tune/TUNE-001_clean"
+        self._write(
+            "schemas/experiment.schema.json",
+            json.dumps(
+                {"type": "object", "required": [], "properties": {}},
+                indent=2,
+            )
+            + "\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-001_clean/EXPERIMENT.yaml",
+            "schema_version: gtpj.experiment.v1\n"
+            "experiment_id: V1-TUNE-001\n"
+            "framework_id: FRAMEWORK-V1\n"
+            "kind: tune\n"
+            "base_identity_kind: framework_template\n"
+            "base_template_id: MODEL-V1-TEMPLATE-V1\n"
+            "base_template_tag: model/v1-template-v1\n"
+            f"base_template_commit: {template_commit}\n"
+            f"template_registry_commit: {registry_commit}\n"
+            "historical_code_ref: none\n"
+            "template_binding_status: ready\n"
+            "experiment_branch: exp/v1/tune/tune-001-clean\n"
+            "legacy_ref: none\n"
+            "status: planned\n",
+        )
+        self._git("add", "experiments/v1/tune/TUNE-001_clean/EXPERIMENT.yaml")
+        template_path = self.repo / "experiments/v1/TEMPLATE.yaml"
+        template_path.write_text(
+            template_path.read_text(encoding="utf-8") + "experiment_tampering: true\n",
+            encoding="utf-8",
+        )
+        self._git("add", "experiments/v1/TEMPLATE.yaml")
+        self._git("commit", "-m", "tamper with template ledger")
+
+        with self.assertRaisesRegex(
+            self.module.WorkflowError,
+            "must match either its template starting ledger or the recorded registry ledger",
+        ):
+            self.module.require_ready_experiment_base(experiment_dir)
 
     def test_clean_template_names_must_match_version_and_template_number(self) -> None:
         commit = self._git("rev-parse", "HEAD").stdout.strip()
