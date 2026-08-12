@@ -1921,6 +1921,45 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertTrue(any("train_GTPJ_CUB.py" in item for item in errors))
         self.assertTrue(any(template_commit in item for item in errors))
 
+    def test_detached_head_still_checks_runtime_alignment(self) -> None:
+        template_commit = self._write_clean_template()
+        self._commit_all("record clean template metadata")
+        self._git("switch", "--detach", "HEAD")
+
+        self.assertEqual([], self.module.current_template_runtime_alignment_errors())
+
+        self._write("train_GTPJ_CUB.py", "print('detached accumulated code')\n")
+        errors = self.module.current_template_runtime_alignment_errors()
+
+        self.assertTrue(any("train_GTPJ_CUB.py" in item for item in errors))
+        self.assertTrue(any(template_commit in item for item in errors))
+
+    def test_runtime_active_marker_counts_legacy_templates(self) -> None:
+        self._write_clean_template()
+        legacy_path = self.repo / "experiments/v2/TEMPLATE.yaml"
+        legacy_path.parent.mkdir(parents=True, exist_ok=True)
+        legacy_path.write_text(
+            "template_status: legacy_frozen\n"
+            "main_runtime_status: active\n",
+            encoding="utf-8",
+        )
+
+        errors = self.module.current_template_runtime_alignment_errors()
+        self.assertTrue(any("found 2" in item for item in errors))
+
+        template_path = self.repo / "experiments/v1/TEMPLATE.yaml"
+        template_path.write_text(
+            template_path.read_text(encoding="utf-8").replace(
+                "main_runtime_status: active",
+                "main_runtime_status: inactive",
+            ),
+            encoding="utf-8",
+        )
+        errors = self.module.current_template_runtime_alignment_errors()
+        self.assertTrue(
+            any("must use confirmed or frozen status" in item for item in errors)
+        )
+
     def test_runtime_template_does_not_follow_idea_tree_view(self) -> None:
         self._write_clean_template()
         idea_tree = json.loads((self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))

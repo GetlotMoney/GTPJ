@@ -4098,17 +4098,15 @@ def framework_template_identity_errors(
 def current_template_runtime_alignment_errors() -> list[str]:
     """Keep governance branches on the current clean template runtime."""
     branch = current_branch()
-    if not branch or branch.startswith(("exp/", "dev/", "framework/")):
+    if branch.startswith(("exp/", "dev/", "framework/")):
         return []
 
     template_paths = sorted((REPO_ROOT / "experiments").glob("v[0-9]*/TEMPLATE.yaml"))
-    clean_templates: list[tuple[Path, dict[str, object], list[str]]] = []
+    templates: list[tuple[Path, dict[str, object], list[str]]] = []
     for template_path in template_paths:
         template_text = read_text(template_path)
         template_data = parse_shallow_yaml_text(template_text)
-        if str(template_data.get("template_status", "")) not in {"confirmed", "frozen"}:
-            continue
-        clean_templates.append(
+        templates.append(
             (
                 template_path,
                 template_data,
@@ -4116,13 +4114,15 @@ def current_template_runtime_alignment_errors() -> list[str]:
             )
         )
 
-    if not clean_templates:
+    if not templates:
         return []
     active_templates = [
         entry
-        for entry in clean_templates
+        for entry in templates
         if str(entry[1].get("main_runtime_status", "")) == "active"
     ]
+    if not active_templates and not any(entry[2] for entry in templates):
+        return []
     if len(active_templates) != 1:
         active_paths = ", ".join(rel(item[0]) for item in active_templates) or "none"
         return [
@@ -4131,6 +4131,11 @@ def current_template_runtime_alignment_errors() -> list[str]:
         ]
 
     template_path, template_data, runtime_files = active_templates[0]
+    template_status = str(template_data.get("template_status", ""))
+    if template_status not in {"confirmed", "frozen"}:
+        return [
+            f"{rel(template_path)}: active runtime template must use confirmed or frozen status"
+        ]
     if not runtime_files:
         return [f"{rel(template_path)}: active runtime template must list runtime_files"]
     template_commit = str(template_data.get("template_commit", ""))
