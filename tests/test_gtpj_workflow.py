@@ -5506,6 +5506,61 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual({}, changes)
 
+    def test_parameter_matrix_actual_changes_reads_unwrapped_yaml_values(self) -> None:
+        self._write(
+            "base.yaml",
+            "version: v1\n"
+            "alpha: 0.1\n"
+            "stages:\n"
+            "- epochs: 20\n"
+            "optimizer:\n"
+            "  mode: add\n"
+            "  momentum: 0.9\n",
+        )
+        self._write(
+            "candidate.yaml",
+            "version: v1\n"
+            "alpha: 0.2\n"
+            "stages:\n"
+            "- epochs: 10\n"
+            "optimizer:\n"
+            "  mode: add\n"
+            "  momentum: 0.8\n",
+        )
+
+        changes = self.module.parameter_matrix_actual_changes(
+            self.repo / "base.yaml", self.repo / "candidate.yaml"
+        )
+
+        self.assertEqual(
+            {
+                "alpha": 0.2,
+                "optimizer": {"mode": "add", "momentum": 0.8},
+                "stages": [{"epochs": 10}],
+            },
+            changes,
+        )
+        self.assertEqual(
+            [],
+            self.module.parameter_matrix_changed_parameter_errors(
+                {
+                    "job_id": "RUN-001",
+                    "changed_parameters": json.dumps(changes, sort_keys=True),
+                },
+                baseline_config_path=self.repo / "base.yaml",
+                config_path=self.repo / "candidate.yaml",
+            ),
+        )
+
+    def test_parameter_matrix_actual_changes_rejects_non_string_top_level_key(self) -> None:
+        self._write("base.yaml", "alpha: 0.1\n")
+        self._write("candidate.yaml", "1: changed\n")
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "non-string top-level parameter key"):
+            self.module.parameter_matrix_actual_changes(
+                self.repo / "base.yaml", self.repo / "candidate.yaml"
+            )
+
     def test_parameter_matrix_actual_changes_preserves_yaml_scalar_types(self) -> None:
         cases = [
             ("true", "false", False, "false"),

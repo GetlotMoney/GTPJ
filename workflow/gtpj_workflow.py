@@ -15345,10 +15345,13 @@ def read_parameter_config_values(config_path: Path) -> dict[str, object]:
         raise WorkflowError(f"Config must be a top-level object: {rel(config_path)}")
     values: dict[str, object] = {}
     for key, entry in data.items():
-        if not isinstance(key, str) or not isinstance(entry, dict) or "value" not in entry:
-            continue
+        if not isinstance(key, str):
+            raise WorkflowError(
+                f"Config contains a non-string top-level parameter key: {key!r}"
+            )
+        raw_value = entry["value"] if isinstance(entry, dict) and "value" in entry else entry
         normalized = normalize_parameter_value(
-            entry["value"], value_path=f"{key}.value"
+            raw_value, value_path=f"{key}.value"
         )
         if normalized == "<removed>":
             raise WorkflowError(
