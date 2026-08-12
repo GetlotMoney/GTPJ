@@ -6,6 +6,7 @@
 - `UI-*`：人看的页面与图。
 - `DATA-*`：台账、表格和结构化数据格式。
 - `MODEL-*`：模型代码框架。
+- `CONTENT-*`：论文或其他正文内容。
 - `DOC-*`：教程、说明书和其他文档交付物。
 
 ## 当前版本一览
@@ -15,15 +16,28 @@
 | 工作流 | `SYS-WORKFLOW-V7` | 已完成 | 治理/文档分支的当前 CUB 运行文件必须与正式干净母版一致；实验分支仍从准确母版 commit 独立分叉。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
-| 模型 | `MODEL-GTPJ-V5-MAIN-ALIGN-V1` | 审核中 | 主线 CUB 模型与配置恢复到 V1；运行身份检查按大文件规则修复后，登记为 V2 母版候选，不改模型数学语义。 |
+| 模型 | `MODEL-GTPJ-V5-MAIN-ALIGN-V1` | 已完成 | 主线 CUB 模型与配置恢复到 V1；运行身份和 GPU 评估设备边界修复后，冻结为 V2 母版，不改模型数学语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 当前干净母版候选 | `MODEL-V5-TEMPLATE-V2` | 待两轮审核 | 候选代码提交 `f78458d5d043b6cdb1d6f94110eec43f7ea8b2f5`；模型数学逻辑沿用 V1，只修正正式运行身份检查。 |
+| V5 当前干净母版 | `MODEL-V5-TEMPLATE-V2` | 本地已冻结 | 分支、Tag、commit 均锁定到 `fb4b29b04087640890a532f105cb527d3a8c461b`；模型数学逻辑沿用 V1，只修正正式运行身份与 GPU 评估设备边界。 |
 | V5 历史干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 仍锁定到 `2f5fa5e`，没有移动或覆盖。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
-| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，实验代码固定两轮不同子 Agent 对抗式只读审核。 |
+| Git 管理关系图 | `UI-GIT-GOVERNANCE-MAP-V1` | 已完成 | 三页本地 HTML 区分管理分支、正式模型框架、母版、实验、PR、Tag，并展示本地与 GitHub 当前同步缺口。 |
+| PLVSE 论文正文 | `CONTENT-PLVSE-V1` | 已完成 | 保存双语正文及交错排版 Markdown；不代表模型或工作流版本。 |
+| PLVSE PDF 交付物 | `DOC-PLVSE-PDF-V1` | 已完成 | 保存同一正文的多种公式与双语排版 PDF；当前物理文件名保留历史 `CONTENT-PAPER-V1` 前缀。 |
+| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，代码修改固定两轮不同子 Agent 对抗式只读审核。 |
 | 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 实现中 | 先登记为 `V5-INNOVATION-011`，删除 PSE、旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句直接匹配和主分类损失。 |
 
-## 2026-08-13：MODEL-GTPJ-V5-MAIN-ALIGN-V1 / SYS-WORKFLOW-V7（审核中）
+## 2026-08-13：CONTENT-PLVSE-V1 / DOC-PLVSE-PDF-V1（已完成）
+
+- 本次改的是哪个对象：`CONTENT-PLVSE-V1` 是论文正文；`DOC-PLVSE-PDF-V1` 是由该正文生成的 PDF 交付物，二者不与 `MODEL-*` 或 `SYS-*` 共用版本号。
+- 目标问题：把本地已有的 PLVSE 正文和渲染结果正式归入项目，避免散落在项目外或与代码提交混在一起。
+- 采用技术：Markdown 保存可编辑正文；PDF 保存双语、交错排版和不同公式渲染的现有输出。
+- 替换了什么：不替换模型、训练或工作流；只替代“论文资料未纳入项目目录”的状态。
+- 实际可见效果与选择原因：正文和交付件统一位于 `docs/paper/`，可以随项目回查；当前文件保留生成时的 `CONTENT-PAPER-V1` 旧名，版本映射以本条为准，避免为了改名破坏已有引用。
+- 已知限制与素材位置：多个 PDF 是同一正文的排版变体，不表示多个内容版本；素材均在 `docs/paper/`。
+- 验证与回退：文件已纳入独立文档提交并通过 `git diff --check`；回退该文档提交即可移除，不影响代码、实验账本或训练结果。
+
+## 2026-08-13：MODEL-GTPJ-V5-MAIN-ALIGN-V1 / SYS-WORKFLOW-V7（已完成）
 
 - 本次改的是哪个对象：主线当前 CUB 运行代码，以及防止它再次混入实验代码的最小校验。
 - 目标问题：正式干净母版已经冻结在 `2f5fa5e`，但 GitHub 主线仍保留历史动态路由和旧兼容层，导致新治理分支继续携带一份很长的累积模型。
@@ -33,7 +47,7 @@
 - 选择原因：主线只保存当前干净底稿，实验变化只留在各自分支，才能避免后续实验相互叠加。
 - 已知限制：当前干净母版只保证 CUB；`train_GTPJ_AWA2.py` 和 `train_GTPJ_SUN.py` 仍是历史入口，不在本次兼容范围内。
 - 素材位置：`experiments/v5/TEMPLATE.yaml`、`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*.py`、`workflow/gtpj_workflow.py`。
-- 验证命令与结果：V5 专项测试已扩展到 44 项并通过；workflow 全量测试和最终结构命令会在 V2 母版指针登记后重跑；两轮只读审核结果在本次分支完成后填写。
+- 验证命令与结果：V5 专项 45 项、workflow 259 项和最终结构命令全部通过；两名不同 Reviewer 对最终提交 `378ed95` 按第 1 轮→第 2 轮顺序审核，均为 `pass`、阻断为 0；冻结后再次核对分支、Tag、账本与运行文件。
 - 回退方式：回退本次提交即可恢复修复前主线副本；历史 Tag、母版提交、实验结果和 checkpoint 均不受影响。
 
 ## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（实现中）
@@ -62,6 +76,18 @@
 - 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；本次是文档规范收缩，不运行训练或全量测试。
 - 回退方式：回退本次文档修改即可恢复旧默认门；不会改模型、训练代码、历史实验、分支、Tag、日志或 checkpoint。
 
+## 2026-08-08：UI-GIT-GOVERNANCE-MAP-V1（已完成）
+
+- 本次改的是哪个对象：人看的 Git 分支、Tag、新旧管理框架和污染边界说明图。
+- 目标问题：管理工作流、正式模型框架、临时 PR 分支、实验分支和历史 Tag 被混在一起理解，容易误以为“分支或 Tag 多就会污染 main”。
+- 采用技术：单文件自包含 HTML；分三页展示正确逻辑关系、2026-08-08 本地与 GitHub 实查引用、污染判断与安全处理顺序；不依赖服务或外部脚本。
+- 替换了什么：不替换当前框架注册页 `UI-FRAMEWORK-REGISTRY-V3`；补充它未覆盖的 Git 物理引用和远端同步关系。
+- 实际可见效果：一页可同时看清 `SYS-WORKFLOW-V5` 属于 `main`、未来新正式模型才建立平级 `framework/vN`、实验从只读母版独立分叉，以及 PR #2 合并会和不会带来什么。
+- 选择原因：把“研究逻辑结构”和“Git 真实引用”分页后，既避免重新画成无限嵌套树，也能直观看出本地 36 条分支、GitHub 13 条分支和缺失母版 Tag 的同步现状。
+- 已知限制：第二页是 2026-08-08 的静态快照，分支、Tag、PR 或远端 main 变化后需要重新实查更新；它不是机器事实源，也不执行清理或合并。
+- 素材位置：`docs/diagrams/GTPJ_GIT_GOVERNANCE_MAP_UI-V1.html`。
+- 验证命令与结果：HTML 的 `html`、`body` 标签各一组，三页和三个切换按钮完整；4 个本地链接全部存在；使用 Edge 以 1440×2000 渲染三页并完成截图复核；`python workflow/gtpj_workflow.py validate` 与 `git diff --check` 通过。`validate-remote` 按预期拒绝当前未同步状态，并准确报告 GitHub `main=08e5ecb`、本地 `main=88896d3`。
+- 回退方式：回退本次 HTML、项目结构登记和本条版本记录；模型、实验、分支、Tag、PR 与远端 main 均不受影响。
 
 ## 2026-08-08：DOC-GTPJ-CODE-TUTORIAL-V1（已完成）
 

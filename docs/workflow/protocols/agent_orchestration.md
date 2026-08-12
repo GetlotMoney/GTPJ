@@ -105,22 +105,23 @@ uncovered_scope:
 
 - Owner Entry Reviewer：`START_HERE.md`、`QUICK_START.md`、`WORKFLOW_KERNEL.md`。
 - Runtime Gate Reviewer：`AGENT_RUNTIME_HARD_GATE.md`、`agent_orchestration.md`、`TASK_START_CARD.md`。
-- Consistency Reviewer：`workflow/gtpj_workflow.py`、`tests/test_gtpj_workflow.py`、本地 `gtpj-workflow` skill 镜像。
+- Consistency Reviewer：`workflow/gtpj_workflow.py`、`tests/test_gtpj_workflow.py`、本地 `gtpj-workflow` 轻量入口。
 
-Coordinator 负责整合和写入最终补丁，但不能把一个角色的结论复制成多个输出，也不能漏掉 active docs、helper tests、skill mirror 三个同步面。
+Coordinator 负责整合和写入最终补丁，但不能把一个角色的结论复制成多个输出。规则修改至少核对 GitHub 现行文档、helper 测试和本机 Skill 入口是否仍指向正确文件。
 
-## 本地 Skill 镜像目录
+## 本地 Skill 入口
 
-本地 skill 必须镜像 GitHub 权威目录：
+本地 Skill 只保存入口说明，不复制 GitHub 规则正文：
 
 ```text
-C:\Users\Administrator\.codex\skills\gtpj-workflow\references\agents/
-|-- README.md
-|-- shared_roles/
-`-- by_experiment/
+C:\Users\Administrator\.codex\skills\gtpj-workflow\SKILL.md
+  -> AGENTS.md
+  -> docs/workflow/START_HERE.md
+  -> docs/workflow/WORKFLOW_KERNEL.md
+  -> docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md
 ```
 
-如果 GitHub 文档和本地 skill 冲突，以 GitHub 文档为准。
+旧 `references/` 只作历史回查，不参与现行校验。发生冲突时，以 GitHub 仓库规则为准。
 
 ## 活上下文分类
 

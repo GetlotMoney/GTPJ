@@ -2,7 +2,9 @@
 
 ## 2026-08-08 实验短流程（最高优先级）
 
-本节覆盖本文件后面仍保留的旧复杂条款。旧的 `agent_runtime.yaml`、命名线程、三轮审核、Git bundle、多层收据、永久 claim、专用控制器和二次冻结，只用于回查已经发生的历史实验，今后不再作为普通实验或论文实验的默认门槛。
+本节覆盖本文件后面仍保留的旧复杂条款。旧的多层 `agent_runtime.yaml`、命名线程、三轮审核、Git bundle、多层收据、永久 claim、专用控制器和二次冻结，只用于回查已经发生的历史实验，今后不再作为普通实验或论文实验的整套默认流程。但凡真正启动正式 Runner，仍必须使用本文件后面规定的当前最小版 `agent_runtime.yaml`，并通过对应的运行前检查；本句不豁免正式训练安全门。
+
+普通问答、Git 状态查询、分支比较、概念解释，以及不改变 workflow 门槛、schema、解析/生成逻辑、训练/评估含义的纯文字修正，不属于实验启动流程：直接完成必要的只读检查或最小修改，不生成实验计划、启动卡或状态机。这个豁免只去掉与当前动作无关的实验启动仪式，不豁免代码/规则审核；凡是会改变开跑条件、数据或评估含义、结果认定方式的规则修改，仍按代码修改处理。只有真的要创建实验、改训练/评估含义、冻结运行、启动训练、记录正式结果或晋级版本时，才进入后面的实验步骤。需要计划时只写到能开工为止：简单任务不单列计划，中等任务最多 3 步。
 
 一次新实验默认只走五步：
 
@@ -16,10 +18,13 @@
 
 审核使用下面的最小固定规则：
 
-- 普通说明文档、账本值，或已审核代码明确支持的普通超参数/seed 修改，只要不改 schema、解析/生成逻辑、数据/划分、评估语义、工作流门槛，也不打开未审核代码路径，就只做机器检查。
-- 任何实验代码修改，包括模型、训练、数据、评估、loss、forward、workflow/helper、模板和训练配置生成逻辑，目标测试通过后必须完成 2 轮不同子 Agent 的对抗式只读审核。
-- 第 1 轮主动找实现、接口、shape、梯度、数据与评估错误；实现者修复、重跑测试并由第 1 轮 Reviewer 复核通过后，才能启动第 2 轮。
-- 第 2 轮检查同一份最终代码，专门找反例、隐藏耦合、回归和测试盲区。若第 2 轮导致代码再次修改，原两轮结论失效，仍按第 1 轮 -> 第 2 轮重新检查。
+- 普通说明文档、账本值，或已审核代码明确支持的普通超参数/seed 修改，只要不改 schema、解析/生成逻辑、数据/划分、评估语义、工作流门槛，也不打开未审核代码路径，就只做机器检查。其他配置、模板和工作流规则修改按代码修改处理。
+- 任何代码修改，包括模型、训练、数据、评估、workflow、helper、模板和训练配置生成逻辑，目标测试通过后必须完成 2 轮对抗式只读审核。
+- 两轮必须由两个不同的子 Agent 依次完成，不能由主助手自审代替，也不能让同一个子 Agent 重复充当两轮。
+- 第 1 轮主动寻找实现、接口、shape、梯度、数据与评估错误；实现者修复、重跑测试并由第 1 轮 Reviewer 复核通过后，才能启动第 2 轮。
+- 第 2 轮必须检查同一份最终代码，并从反方立场寻找反例、隐藏耦合、回归和测试盲区。若第 2 轮导致被审核代码再次修改，原两轮结论失效，仍由这两个 Reviewer 按第 1 轮 → 第 2 轮重新检查，不增加第三个 Reviewer。
+- 两轮都绑定同一个 `reviewed_code_id`（准确 commit；尚未提交时使用包含 staged/unstaged tracked diff 的 SHA-256），并绑定相同的 `reviewed_extra_files`（范围内 untracked 或仓库外文件的排序后路径与 SHA-256）；两轮都明确通过、阻断问题为 0 且机器测试通过，代码才算完成并允许进入正式训练。
+- 正式 Runner 最终只能使用已冻结的 `commit:<sha>`。若两轮先审核的是 diff，freeze 后由 Coordinator 只读确认提交内容与已审核 diff/额外文件完全一致，并记录 `freeze_equivalence: pass`；不一致就重新审核，不能拿旧结论开跑。
 
 时间上限：纯参数实验从计划到开始训练不超过 10 分钟；涉及代码或评估改动不超过 30 分钟。超过上限时停止增加流程，只汇报并处理唯一真实阻断。正式论文实验也使用这套短流程；论文严谨性来自完整实验设计和结果，不来自更多文件层级。
 
@@ -58,6 +63,8 @@
 - 先说结论，再说关键原因。
 - 复杂任务在编辑前先给简短计划。
 - 直接说明不确定性和风险。
+- 论文英文写作优先复用 owner 指定的本地参考论文中已经出现的句型、术语和连接方式；在项目事实一致的前提下改写或组合，不擅自换成参考论文未使用的陌生表达。
+- 论文摘要默认贴近指定参考论文的篇幅，只说明核心问题、主要方法和有证据的结论；删除重复解释与次要模块，不为显得完整而扩写。
 - 交付流程图、框架图、代码路径图或实验链路图时，默认额外生成一个可本地打开的 HTML 文件，并在回复中用 `file:///D:/.../xxx.html` 的绝对本地链接给 owner。Markdown/Mermaid 可以作为仓库权威记录，但不能替代 owner 可直接打开的 HTML 视图。
 
 ## AI 审核规范
@@ -66,7 +73,7 @@
 - Implementer 是唯一代码 writer；两个 Reviewer 都只读，不改文件、不启动正式训练。
 - 每轮最少记录：`round`、`reviewer_id`、`reviewed_code_id`、`reviewed_extra_files`、`files_reviewed`、`machine_test_ref`、发现、`unresolved_blockers`、`decision` 和 `uncovered_scope`；第 2 轮另写 `previous_round_ref`。
 - 正式训练开始前，Coordinator 必须确认两轮来自不同子 Agent、顺序正确、绑定同一份最终代码、`decision: pass` 且 `unresolved_blockers: 0`。缺一项就停止，不拿旧审核结论顶替。
-- 默认复用当前任务输出或现有实验质量记录，不创建命名审核线程、完整审核包或额外审核层。旧的 `review-1`、`strict-3` 和 Claude Code 审核包只用于回查历史，除非 owner 当前明确要求特殊审计。
+- 默认复用当前任务输出或现有实验质量记录，不创建命名审核线程、完整审核包或额外审核层。旧的 `review-1`、`strict-3`、Claude Code 审核包只用于回查历史，除非 owner 当前明确要求特殊审计。
 - push、删除、远端发布、破坏性迁移、密钥处理或用户数据操作仍然必须等待 owner 明确授权。
 
 ## 流程设计原则
@@ -144,11 +151,11 @@
 - `persistent_thread` 只在角色需要跨多个 workflow 连续追踪、owner 明确要求可见长期线程，或长周期 campaign 的 Coordinator/Monitor 需要跨天连续上下文时启用。线程上下文可能压缩或漂移，所以任何结论进入正式 evidence 前仍必须回到 repo、log、artifact 或 Research 验证。
 - `role_only` 表示一个主 agent 按 Coordinator、Runner、Quality Checker 等角色清单串行执行；如果结果进入正式证据，必须显式声明 `formal_runtime_backend: server_detached_role_only`，并在 `agent_summary.md` 里说明为什么没有启动真实多 agents。
 - `real_multi_agent` 表示启动或委派独立 agent / reviewer / checker，保留独立输入、发现和结论；如果当前环境没有真实 multi-agent 工具，不能把顺序角色扮演写成 `real_multi_agent`。
-- `real_multi_agent` 必须分文件复核：每个只读角色要在自己的输出里写 `files_reviewed`、`decision` 和 `uncovered_scope`，并指向独立 output file。入口规则、hard gate、helper 测试和本地 skill 镜像必须分别有人看，不能由一个上下文代替全部检查。
+- `real_multi_agent` 必须分文件复核：每个只读角色要在自己的输出里写 `files_reviewed`、`decision` 和 `uncovered_scope`，并指向独立 output file。入口规则、hard gate 和 helper 测试必须分别有人看；本机 Skill 只核对入口路径，不再镜像整套规则。
 - `role_only_with_independent_sequential_review` 不是第三种 activation mode，只能写在 `agents.tool_support.fallback_mode`；它不能用于 promotion、正式 best 结论或 owner 已明确要求真实多 agents 的任务，除非 owner 明确接受 debug/smoke 降级。
 - owner 明确要求多 agents、启动真实 Runner、产出正式 evidence、任务修改模型/forward/loss/eval/数据流语义、涉及接口/评估/label mapping/seen-unseen split/class order/logits shape/metric semantics 风险、结果异常有争议、promotion 前复核、结论会影响论文实验路线或 baseline 选择时，必须使用 `real_multi_agent`。
 - 窄范围 rerun / confirmation 准备、训练前候选 triage、只读解释、配置查看、debug/smoke 或不改变结论的账本格式整理时，可以使用 `role_only`，但必须记录代执行的角色和升级条件；debug/smoke 结果不能进入 keep、best、promotion 或 confirmation evidence。
-- Runner 永远串行并锁 GPU；Implementer 是同一代码路径唯一 writer；Coordinator 是最终 GitHub 账本唯一写入者；Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行。
+- Runner 永远串行并锁 GPU；Implementer 是同一代码路径唯一 writer；Coordinator 是最终 GitHub 账本唯一写入者；Reader/Planner、Log Analyst、Quality Checker、Result Analyst、Reviewer 默认只读，可并行，但代码审核第 2 轮必须等待第 1 轮问题修复、重测和复核通过后再开始。
 - Agent 不能把隐藏聊天记忆当实验事实源。Codex memory 或历史会话摘要只能用于定位，必须回到当前 repo、日志或 artifact 验证后才能写入结果、质量门或 promotion 证据。
 - `agent_summary.md` 必须记录 `activation_mode`、`agent_instance_mode`、`agent_instance_type`、`lifecycle`、`persistent_thread_id`（如启用）、`named_thread_reason`、`independence_scope`、`output_locations`、`memory_used`、`memory_sources` 和 `verified_against_current_repo`。
 - 如果 owner 对 agent 模式提出异议，先暂停真实 run，修正启动卡或升级为 `real_multi_agent` 后再继续。

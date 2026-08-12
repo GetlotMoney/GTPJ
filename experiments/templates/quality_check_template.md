@@ -46,11 +46,13 @@ transition_id:
 
 ## AI 交叉审核
 
-- [ ] 实验代码、workflow/helper/template、训练入口、评估语义、实验结论或 promotion 相关改动已完成 2 轮不同子 Agent 对抗式只读审核。
-- [ ] 两轮绑定同一份最终代码，Reviewer 只读，Codex 的修复、反驳和重跑验证已记录。
-- [ ] 两轮 `decision: pass`，且 `unresolved_blocking_issues: 0`。
-- [ ] 若任一轮 blocked，本轮未进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
-- [ ] 历史兼容字段 `review_tier` 和旧命令 `validate-ai-cross-review` 只用于旧审核包或特殊审计；普通新实验代码以两轮子 Agent 审核记录为准。
+- [ ] 代码修改已先完成目标机器测试。
+- [ ] 第 1 轮和第 2 轮由两个不同的只读子 Agent 依次完成，没有并行抢跑。
+- [ ] 两轮 `reviewed_code_id` 相同并对应最终代码。
+- [ ] 两轮 `reviewed_extra_files` 相同，并覆盖范围内 untracked 或仓库外文件。
+- [ ] 第 2 轮引用第 1 轮结论；若第 2 轮促成代码修改，已重新执行两轮。
+- [ ] 正式 Runner 使用的 `frozen_run_commit` 与已审核内容等价，并记录 `freeze_equivalence: pass`。
+- [ ] 两轮均 `decision: pass`，且 `unresolved_blockers: 0`；否则本轮没有进入正式 Runner 或正式结论。
 
 ## Promotion Gate（升版门槛，仅正式提升 vX 时填写）
 

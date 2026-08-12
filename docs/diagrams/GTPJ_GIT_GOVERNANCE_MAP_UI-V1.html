@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTPJ Git 分支、Tag 与新旧管理框架全景图</title>
+  <style>
+    :root {
+      --ink: #182232;
+      --muted: #5d6978;
+      --line: #d8e0e8;
+      --panel: #ffffff;
+      --page: #f3f6f9;
+      --blue: #285cc4;
+      --blue-soft: #eaf1ff;
+      --green: #16735a;
+      --green-soft: #e6f7f1;
+      --amber: #9a6110;
+      --amber-soft: #fff4d9;
+      --red: #b43c43;
+      --red-soft: #ffebed;
+      --purple: #7650b5;
+      --purple-soft: #f2ebff;
+      --gray-soft: #edf1f4;
+      --shadow: 0 10px 28px rgba(33, 53, 79, .09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header {
+      color: #fff;
+      background: linear-gradient(135deg, #162a48 0%, #234b83 58%, #2f6d9a 100%);
+      padding: 30px max(24px, calc((100vw - 1440px) / 2));
+    }
+    header h1 { margin: 0 0 8px; font-size: clamp(24px, 3vw, 38px); line-height: 1.25; }
+    header p { margin: 0; color: #dce9fa; max-width: 1100px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .badge { padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.22); font-size: 13px; }
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 24px; }
+    .answer-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+    .answer { background: var(--panel); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); border-top: 4px solid var(--blue); }
+    .answer:nth-child(2) { border-color: var(--green); }
+    .answer:nth-child(3) { border-color: var(--amber); }
+    .answer strong { display: block; font-size: 17px; margin-bottom: 5px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+    .tabs button { border: 1px solid var(--line); color: var(--ink); background: #fff; border-radius: 10px; padding: 9px 15px; cursor: pointer; font: inherit; }
+    .tabs button.on { color: #fff; background: var(--blue); border-color: var(--blue); }
+    .page { display: none; }
+    .page.on { display: block; }
+    .section { background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); padding: 22px; margin: 0 0 18px; }
+    .section h2 { margin: 0 0 6px; font-size: 22px; }
+    .section h3 { margin: 22px 0 10px; font-size: 17px; }
+    .lead { color: var(--muted); margin: 0 0 18px; }
+    .legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .legend-card { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfe; }
+    .legend-card b { display: block; margin-bottom: 4px; color: #243c61; }
+    code { font-family: Consolas, "SFMono-Regular", monospace; font-size: .92em; background: #eef2f7; padding: 2px 5px; border-radius: 5px; word-break: break-all; }
+    .lane { border: 1px solid var(--line); border-radius: 15px; overflow: hidden; margin: 14px 0; }
+    .lane-title { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-weight: 700; background: #e9eef5; }
+    .lane-body { padding: 18px; background: #fbfcfe; }
+    .flow { display: flex; align-items: stretch; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .arrow { align-self: center; font-size: 25px; color: #7b8796; padding: 0 2px; }
+    .arrow.provenance { color: var(--purple); }
+    .node { min-width: 190px; max-width: 280px; flex: 1 1 210px; padding: 14px 15px; border: 2px solid var(--blue); background: var(--blue-soft); border-radius: 13px; }
+    .node.green { border-color: var(--green); background: var(--green-soft); }
+    .node.amber { border-color: var(--amber); background: var(--amber-soft); }
+    .node.red { border-color: var(--red); background: var(--red-soft); }
+    .node.purple { border-color: var(--purple); background: var(--purple-soft); }
+    .node.gray { border-color: #8994a2; background: var(--gray-soft); }
+    .node h4 { margin: 0 0 5px; font-size: 16px; }
+    .node p { margin: 3px 0; color: #3f4d5d; font-size: 13px; }
+    .node .big { font-size: 20px; font-weight: 750; color: #152d52; }
+    .frameworks { display: grid; grid-template-columns: repeat(7, minmax(42px, auto)); align-items: center; gap: 8px; }
+    .frameworks .node { min-width: 0; max-width: none; }
+    .tiny { color: var(--muted); font-size: 12px; }
+    .callout { border-left: 5px solid var(--blue); background: var(--blue-soft); padding: 13px 15px; border-radius: 0 11px 11px 0; margin: 14px 0; }
+    .callout.warn { border-color: var(--amber); background: var(--amber-soft); }
+    .callout.danger { border-color: var(--red); background: var(--red-soft); }
+    .callout.ok { border-color: var(--green); background: var(--green-soft); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat { border-radius: 14px; padding: 16px; background: #f7f9fc; border: 1px solid var(--line); }
+    .stat strong { display: block; font-size: 28px; line-height: 1.15; color: var(--blue); }
+    .stat span { color: var(--muted); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #edf2f8; color: #2a3c55; }
+    tr:last-child td { border-bottom: 0; }
+    .yes { color: var(--red); font-weight: 700; }
+    .no { color: var(--green); font-weight: 700; }
+    .conditional { color: var(--amber); font-weight: 700; }
+    .ref-list { margin: 0; padding-left: 20px; }
+    .ref-list li { margin: 5px 0; }
+    details { margin-top: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fafcff; }
+    summary { cursor: pointer; padding: 12px 14px; font-weight: 700; color: #29466f; }
+    .details-body { padding: 0 14px 14px; }
+    .details-body code { display: inline-block; margin: 2px 0; }
+    .step-list { counter-reset: step; display: grid; gap: 10px; }
+    .step { counter-increment: step; display: grid; grid-template-columns: 38px 1fr; gap: 11px; align-items: start; }
+    .step::before { content: counter(step); width: 32px; height: 32px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font-weight: 700; }
+    footer { color: var(--muted); padding: 8px 0 28px; font-size: 13px; }
+    @media (max-width: 980px) {
+      .answer-strip, .legend, .stats, .cols { grid-template-columns: 1fr 1fr; }
+      .frameworks { grid-template-columns: 1fr; }
+      .frameworks .arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    @media (max-width: 650px) {
+      .wrap { padding: 14px; }
+      .answer-strip, .legend, .stats, .cols { grid-template-columns: 1fr; }
+      .section { padding: 16px; }
+      th, td { padding: 9px 7px; font-size: 13px; }
+    }
+    @media print {
+      .tabs { display: none; }
+      .page { display: block !important; page-break-before: always; }
+      .page:first-of-type { page-break-before: auto; }
+      body { background: #fff; }
+      .section { box-shadow: none; border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GTPJ Git 分支、Tag 与新旧管理框架全景图</h1>
+    <p>把“模型框架”“管理工作流”“实验开发线”“PR 临时线”和“历史标签”彻底分开。图中 Git 状态来自 2026-08-08 的本地仓库与 GitHub 远端实查。</p>
+    <div class="badges">
+      <span class="badge">图版本：UI-GIT-GOVERNANCE-MAP-V1</span>
+      <span class="badge">当前管理规则：SYS-WORKFLOW-V5</span>
+      <span class="badge">只读说明图：不会触发合并、删除或推送</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="answer-strip" aria-label="三个直接答案">
+      <div class="answer"><strong>新管理框架不是模型分支</strong><span><code>SYS-WORKFLOW-V5</code> 应放在 <code>main</code> 的文档、工作流和台账里。</span></div>
+      <div class="answer"><strong>新正式模型框架才有独立分支</strong><span>创新确认后才建立例如 <code>framework/v6</code>、Tag <code>v6</code> 和只读母版。</span></div>
+      <div class="answer"><strong>分支和 Tag 存在本身不污染</strong><span>真正会改代码的是 merge（合并）、cherry-pick（挑提交）或从错误代码起点继续实验。</span></div>
+    </section>
+
+    <nav class="tabs" aria-label="图页切换">
+      <button class="on" data-page="logic">① 正确框架关系</button>
+      <button data-page="actual">② 当前真实 Git 状态</button>
+      <button data-page="safety">③ 会不会污染与下一步</button>
+    </nav>
+
+    <section id="logic" class="page on">
+      <article class="section">
+        <h2>先从 Git 的四个基本东西看</h2>
+        <p class="lead">把它们当成“照片”和“书签”，就不会再被名字绕晕。</p>
+        <div class="legend">
+          <div class="legend-card"><b>Commit（提交）= 一张代码快照</b>例如 <code>2f5fa5e</code>，内容一旦形成就不会自己变化。</div>
+          <div class="legend-card"><b>Branch（分支）= 可移动书签</b>它指向某个提交；继续提交时，书签会向前移动。</div>
+          <div class="legend-card"><b>Tag（标签）= 固定书签</b>用来给正式框架或母版定名；按规范创建后不再移动。</div>
+          <div class="legend-card"><b>PR（合并请求）= 待审搬运单</b>它只是请求把一条分支的提交合入 <code>main</code>；草稿状态不会自动合并。</div>
+        </div>
+      </article>
+
+      <article class="section">
+        <h2>完整正确结构：管理、框架、母版、实验四层分开</h2>
+        <p class="lead">下面每一层负责不同的事。纵向是“谁登记谁”，不是代码自动继承；横向的 V1、V2、V3、V5 是平级正式框架。</p>
+
+        <div class="lane">
+          <div class="lane-title">A. 管理控制层：只管全局规则和总账</div>
+          <div class="lane-body">
+            <div class="flow">
+              <div class="node gray"><h4>旧 GitHub main</h4><p class="big">08e5ecb</p><p>当前云端主入口，仍停在 2026-06-30。</p></div>
+              <div class="arrow">→</div>
+              <div class="node amber"><h4>PR #2 草稿分支</h4><p><code>codex/docs-framework-tutorial-sync</code></p><p>临时搬运线，不是模型框架。</p></div>
+              <div class="arrow">→</div>
+              <div class="node green"><h4>目标 main 管理层</h4><p><code>SYS-WORKFLOW-V5</code></p><p><code>DATA-FRAMEWORK-TEMPLATE-V1</code></p><p><code>UI-FRAMEWORK-REGISTRY-V3</code></p></div>
+            </div>
+            <div class="callout warn"><b>重点：</b>“新管理框架”就是右侧这些规则和台账，它不是 <code>framework/v6</code>。PR #2 只是把这些内容送到 GitHub <code>main</code> 的临时通道。</div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">B. 正式模型框架层：全部平级，箭头只记录历史来源</div>
+          <div class="lane-body">
+            <div class="frameworks">
+              <div class="node purple"><h4>FRAMEWORK-V1</h4><p><code>framework/v1</code></p><p>Tag：<code>v1</code></p></div>
+              <div class="arrow provenance">←</div>
+              <div class="node purple"><h4>FRAMEWORK-V2</h4><p><code>framework/v2</code></p><p>来源：V1</p></div>
+              <div class="arrow provenance">←</div>
+              <div class="node purple"><h4>FRAMEWORK-V3</h4><p><code>framework/v3</code></p><p>来源：V2</p></div>
+              <div class="arrow provenance">←</div>
+              <div class="node purple"><h4>FRAMEWORK-V5</h4><p><code>framework/v5</code></p><p>来源：V3；当前 active</p></div>
+            </div>
+            <p class="tiny">读法是“V5 的历史来源是 V3”，不是“V5 文件夹套在 V3 里面”。历史 <code>v4</code> 只是一枚 config-only（仅配置快照）Tag，不登记为正式框架。</p>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">C. 只读母版层：每个实验都从同一张干净底稿复制</div>
+          <div class="lane-body">
+            <div class="flow">
+              <div class="node gray"><h4>V1 母版 V0</h4><p><code>legacy_frozen</code></p><p>只回查，不开新实验。</p></div>
+              <div class="node gray"><h4>V2 母版 V0</h4><p><code>legacy_frozen</code></p><p>只回查，不开新实验。</p></div>
+              <div class="node gray"><h4>V3 母版 V0</h4><p><code>legacy_frozen</code></p><p>只回查，不开新实验。</p></div>
+              <div class="node green"><h4>V5 干净母版 V1</h4><p><code>framework/v5-template-v1</code></p><p>Tag：<code>model/v5-template-v1</code></p><p>Commit：<code>2f5fa5e</code></p></div>
+            </div>
+            <div class="callout ok"><b>不会叠代码的关键：</b>V5 的每项新实验都从 <code>2f5fa5e</code> 单独复制一次；实验结束后只把结果账本写回 <code>main</code>，实验代码不并回母版。</div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-title">D. 四类实验层：每项实验一条独立开发线</div>
+          <div class="lane-body">
+            <div class="flow">
+              <div class="node"><h4>TUNE 调参</h4><p><code>exp/v5/tune/...</code></p><p>只找参数，不生成新框架。</p></div>
+              <div class="node"><h4>ABLATION 消融</h4><p><code>exp/v5/ablation/...</code></p><p>关掉既有模块看影响。</p></div>
+              <div class="node"><h4>INNOVATION 创新</h4><p><code>exp/v5/innovation/...</code></p><p>候选阶段没有正式框架 Tag。</p></div>
+              <div class="node"><h4>CONFIRM 确认</h4><p><code>exp/v5/confirmation/...</code></p><p>重复验证，不生成新框架。</p></div>
+            </div>
+          </div>
+        </div>
+
+        <h3>未来真的出现“新模型框架”时怎么走</h3>
+        <div class="flow">
+          <div class="node amber"><h4>V5 创新候选</h4><p><code>exp/v5/innovation/V5-INNOVATION-xxx</code></p><p>无 <code>v6</code> Tag；不改 V5 母版。</p></div>
+          <div class="arrow">→</div>
+          <div class="node amber"><h4>确认 + 接纳</h4><p>证据通过，明确同意晋级。</p></div>
+          <div class="arrow">→</div>
+          <div class="node green"><h4>新正式 FRAMEWORK-V6</h4><p><code>framework/v6</code> + Tag <code>v6</code></p><p>与 V1/V2/V3/V5 平级。</p></div>
+          <div class="arrow">→</div>
+          <div class="node green"><h4>V6 只读母版</h4><p><code>framework/v6-template-v1</code></p><p>Tag <code>model/v6-template-v1</code></p></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="actual" class="page">
+      <article class="section">
+        <h2>2026-08-08 当前真实 Git 状态</h2>
+        <p class="lead">这是实查值，不是规范设想。它解释了为什么你本地看起来很多，而 GitHub 又没有完全跟上。</p>
+        <div class="stats">
+          <div class="stat"><strong>36</strong><span>本地分支总数</span></div>
+          <div class="stat"><strong>13</strong><span>GitHub 远端分支总数</span></div>
+          <div class="stat"><strong>9 / 7</strong><span>本地 / GitHub Tag 数</span></div>
+          <div class="stat"><strong>119</strong><span>本地 main 比 GitHub main 多的提交</span></div>
+        </div>
+        <div class="callout danger"><b>同步结论：</b>本地和 GitHub 还没有完全同步。PR #2 的头部比 GitHub <code>main</code> 多 120 个提交；而且 GitHub 还没有任何 <code>framework/*</code> 正式框架分支，也没有 V5 干净母版 Tag。</div>
+      </article>
+
+      <div class="cols">
+        <article class="section">
+          <h2>本地：36 条分支</h2>
+          <table>
+            <thead><tr><th>类别</th><th>数量</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td><code>main</code></td><td>1</td><td>当前本地总管理线，提交 <code>88896d3</code>。</td></tr>
+              <tr><td><code>framework/*</code></td><td>5</td><td>V1、V2、V3、V5 历史来源分支，加 V5 干净母版分支。</td></tr>
+              <tr><td><code>exp/*</code></td><td>5</td><td>历史确认实验和当前 V5 局部分支消融实验。</td></tr>
+              <tr><td><code>codex/*</code></td><td>18</td><td>文档、审核、修复、冻结过程分支；多数是历史工作线。</td></tr>
+              <tr><td><code>dev/*</code></td><td>6</td><td>旧 Trial 开发分支，保留历史来源。</td></tr>
+              <tr><td><code>promote/*</code></td><td>1</td><td>旧 V3→V4 过程分支；V4 现已明确不是正式框架。</td></tr>
+            </tbody>
+          </table>
+          <p class="tiny">这些分支“看起来多”属于列表杂乱，不等于它们已经进入当前模型代码。</p>
+        </article>
+
+        <article class="section">
+          <h2>GitHub：13 条分支</h2>
+          <table>
+            <thead><tr><th>类别</th><th>数量</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td><code>main</code></td><td>1</td><td>仍是 <code>08e5ecb</code>，停在 2026-06-30。</td></tr>
+              <tr><td><code>framework/*</code></td><td>0</td><td>正式框架分支尚未推到 GitHub。</td></tr>
+              <tr><td><code>exp/*</code></td><td>2</td><td>V1 确认和 V5 局部分支消融。</td></tr>
+              <tr><td><code>codex/*</code></td><td>4</td><td>包括当前 PR #2 的临时分支。</td></tr>
+              <tr><td><code>dev/*</code></td><td>6</td><td>旧 Trial 开发历史。</td></tr>
+            </tbody>
+          </table>
+          <p class="tiny">合并 PR #2 只会移动 GitHub <code>main</code>；不会自动把本地的 <code>framework/*</code> 分支或缺失 Tag 一起上传。</p>
+        </article>
+      </div>
+
+      <article class="section">
+        <h2>需要时展开看完整分支名</h2>
+        <p class="lead">日常不必盯着全部名称；排查历史或准备清理时再展开。</p>
+        <details>
+          <summary>本地 36 条分支完整清单</summary>
+          <div class="details-body cols">
+            <div>
+              <h3>当前、正式框架与实验</h3>
+              <ul class="ref-list">
+                <li><code>main</code></li>
+                <li><code>framework/v1</code></li>
+                <li><code>framework/v2</code></li>
+                <li><code>framework/v3</code></li>
+                <li><code>framework/v5</code></li>
+                <li><code>framework/v5-template-v1</code></li>
+                <li><code>exp/v1-confirm-001-v1-seed5</code></li>
+                <li><code>exp/v2-confirm-001-v2-seed5</code></li>
+                <li><code>exp/v2-confirm-5x-quick-rerun</code></li>
+                <li><code>exp/v3-confirm-001-local-v3-054-min3</code></li>
+                <li><code>exp/v5/ablation/ablation-001-local-branch-effect</code></li>
+                <li><code>promote/v3-to-v4-local-v3-054</code></li>
+              </ul>
+              <h3>旧 dev Trial 分支</h3>
+              <ul class="ref-list">
+                <li><code>dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly</code></li>
+                <li><code>dev/v2-idea-0002-trial-001-attempt-002-strict-conditional-jepa</code></li>
+                <li><code>dev/v2-idea-0002-trial-001-fae-memory-jepa</code></li>
+                <li><code>dev/v2-idea-0002-trial-002-strict-conditional-jepa</code></li>
+                <li><code>dev/v3-idea-0002-trial-003-conditional-bvsa-text</code></li>
+                <li><code>dev/v5-idea-0003-trial-001-dynamic-routing</code></li>
+              </ul>
+            </div>
+            <div>
+              <h3>codex 工作过程分支</h3>
+              <ul class="ref-list">
+                <li><code>codex/attempt017-server-frozen-escape100</code></li>
+                <li><code>codex/attempt019-local-ablation</code></li>
+                <li><code>codex/backup-workflow-docs-before-simplify-20260701-225608</code></li>
+                <li><code>codex/before-workflow-freeze-20260703</code></li>
+                <li><code>codex/cv-workflow-adapter</code></li>
+                <li><code>codex/docs-framework-tutorial-sync</code></li>
+                <li><code>codex/dr035-exact-repeat-20260703</code></li>
+                <li><code>codex/framework-ledger-redesign</code></li>
+                <li><code>codex/gtpj-vdt-self-attn-validation</code></li>
+                <li><code>codex/minimal-safe-maintenance</code></li>
+                <li><code>codex/research-workflow-redesign</code></li>
+                <li><code>codex/review-parameter-matrix-final</code></li>
+                <li><code>codex/review-parameter-matrix-governance</code></li>
+                <li><code>codex/snapshot-workflow-before-slimming-20260712</code></li>
+                <li><code>codex/sync-experiment-progress</code></li>
+                <li><code>codex/v5-clean-template</code></li>
+                <li><code>codex/v5-strict-template-rebuild-confirmation</code></li>
+                <li><code>codex/workflow-closeout-speed-fixes</code></li>
+              </ul>
+            </div>
+          </div>
+        </details>
+        <details>
+          <summary>GitHub 13 条远端分支完整清单</summary>
+          <div class="details-body cols">
+            <ul class="ref-list">
+              <li><code>main</code></li>
+              <li><code>codex/attempt017-server-frozen-escape100</code></li>
+              <li><code>codex/docs-framework-tutorial-sync</code></li>
+              <li><code>codex/sync-experiment-progress</code></li>
+              <li><code>codex/workflow-closeout-speed-fixes</code></li>
+              <li><code>exp/v1-confirm-001-v1-seed5</code></li>
+              <li><code>exp/v5/ablation/ablation-001-local-branch-effect</code></li>
+            </ul>
+            <ul class="ref-list">
+              <li><code>dev/v1-idea-0001-trial-001-clip-a-self-residual-seenonly</code></li>
+              <li><code>dev/v2-idea-0002-trial-001-attempt-002-strict-conditional-jepa</code></li>
+              <li><code>dev/v2-idea-0002-trial-001-fae-memory-jepa</code></li>
+              <li><code>dev/v2-idea-0002-trial-002-strict-conditional-jepa</code></li>
+              <li><code>dev/v3-idea-0002-trial-003-conditional-bvsa-text</code></li>
+              <li><code>dev/v5-idea-0003-trial-001-dynamic-routing</code></li>
+            </ul>
+          </div>
+        </details>
+      </article>
+
+      <article class="section">
+        <h2>Tag 现状：固定书签不等于代码混入</h2>
+        <div class="cols">
+          <div>
+            <h3>GitHub 已有 7 枚</h3>
+            <ul class="ref-list">
+              <li>正式框架历史：<code>v1</code>、<code>v2</code>、<code>v3</code>、<code>v5</code></li>
+              <li>历史特殊项：<code>v4</code>（只代表旧配置快照，不是正式框架）</li>
+              <li>旧 Trial：<code>trial/v1/.../trial-001</code>、<code>trial/v2/.../trial-001</code></li>
+            </ul>
+          </div>
+          <div>
+            <h3>只在本地的 2 枚</h3>
+            <ul class="ref-list">
+              <li><code>model/v5-template-v1</code> → <code>2f5fa5e</code>：V5 新实验真正需要的干净母版 Tag。</li>
+              <li><code>trial/v2/idea-0002/trial-002</code>：旧 Trial 历史 Tag。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout"><b>Tag 的作用：</b>它只告诉你“这张代码快照叫什么”。Tag 不会把那张快照复制进 <code>main</code>，也不会因为数量多就改变模型。</div>
+      </article>
+
+      <article class="section">
+        <h2>PR #2 现在处于哪里</h2>
+        <div class="flow">
+          <div class="node gray"><h4>GitHub main</h4><p><code>08e5ecb</code></p></div>
+          <div class="arrow">+ 119</div>
+          <div class="node green"><h4>本地 main</h4><p><code>88896d3</code></p><p>新管理规则和实验历史都在这里。</p></div>
+          <div class="arrow">+ 1</div>
+          <div class="node amber"><h4>PR #2 头部</h4><p><code>4838a1d</code></p><p>新增教程与旧页面归档。</p></div>
+        </div>
+        <div class="callout warn"><b>所以“合并 PR #2”真正表示：</b>把这条 120 提交的整段历史送入 GitHub <code>main</code>。它不会把所有旧分支本身塞进 <code>main</code>，但会把这 120 个提交中实际改过的文件内容带过去，因此必须按文件边界审清后再合并。</div>
+      </article>
+    </section>
+
+    <section id="safety" class="page">
+      <article class="section">
+        <h2>到底什么会污染？</h2>
+        <p class="lead">这里的“污染”指：错误代码进入正式管理线或母版，导致后续实验从不干净的起点继续。</p>
+        <table>
+          <thead><tr><th>动作</th><th>会污染吗</th><th>普通话解释</th><th>正确做法</th></tr></thead>
+          <tbody>
+            <tr><td>旧分支继续存在</td><td class="no">不会</td><td>只是多一个可回看的书签；主要问题是列表显得乱。</td><td>先标历史，再单独做分支清理审计。</td></tr>
+            <tr><td>旧 Tag 继续存在</td><td class="no">不会</td><td>只是固定指向旧快照；它不会自己进入 <code>main</code>。</td><td>保留并写清“正式、母版、Trial、历史特殊项”。</td></tr>
+            <tr><td>合并错误实验代码到母版</td><td class="yes">会</td><td>以后每项实验都会从带旧实验改动的底稿开始。</td><td>实验代码永不并回 <code>framework/vX-template-vN</code>。</td></tr>
+            <tr><td>实验 B 从实验 A 分支继续开</td><td class="yes">会</td><td>B 会偷偷带上 A 的代码，无法判断到底谁起作用。</td><td>A、B 都从同一个准确母版 commit 独立开。</td></tr>
+            <tr><td>只把实验结果账本合入 main</td><td class="no">不会</td><td>只更新参数、日志引用和结论，不改变母版代码。</td><td>先检查 diff 只含账本和文档。</td></tr>
+            <tr><td>移动或重建正式 Tag</td><td class="yes">会破坏追踪</td><td>同一个名字突然指到另一张代码快照，旧实验无法复现。</td><td>正式 Tag 创建后永不移动。</td></tr>
+            <tr><td>确认后的创新建立 V6</td><td class="no">规范执行时不会</td><td>它成为平级新框架，不回头改 V5。</td><td>新建 <code>framework/v6</code>、<code>v6</code> 和独立 V6 母版。</td></tr>
+            <tr><td>现在直接合并 PR #2</td><td class="conditional">需先审核</td><td>分支数量不会污染，但 120 个提交的文件改动范围很大。</td><td>保持草稿，先审 <code>origin/main..PR头部</code> 的内容边界。</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="section">
+        <h2>我建议的安全处理顺序</h2>
+        <p class="lead">先把唯一入口定稳，再处理历史枝叶；不要在同一次操作里同时迁移管理体系和删除旧分支。</p>
+        <div class="step-list">
+          <div class="step"><div><b>先保持 PR #2 为草稿。</b>现在不合并，避免在还没看清 120 个提交内容边界时移动 GitHub <code>main</code>。</div></div>
+          <div class="step"><div><b>审核“会进入 main 的文件”。</b>重点看工作流、台账、文档、模型、配置、训练入口分别改了什么；分支名数量不作为判断依据。</div></div>
+          <div class="step"><div><b>确认新的唯一管理入口。</b>让 GitHub <code>main</code> 只承担总管理；正式模型框架、母版、实验代码继续保持各自分支边界。</div></div>
+          <div class="step"><div><b>单独同步必要引用。</b>PR 合并不会上传本地 <code>framework/*</code> 分支和 <code>model/v5-template-v1</code> Tag；是否上传要另列清单再执行。</div></div>
+          <div class="step"><div><b>最后才整理旧分支。</b>把旧 <code>codex/*</code>、<code>dev/*</code>、<code>promote/*</code> 分成“必须保留历史”和“可删除远端书签”两类；删除前先证明提交仍能由 Tag、main 历史或归档引用找到。</div></div>
+        </div>
+      </article>
+
+      <article class="section">
+        <h2>最终应保持的干净形态</h2>
+        <div class="flow">
+          <div class="node green"><h4>一个总管理入口</h4><p><code>main</code></p><p>规则、总索引、实验结果账本</p></div>
+          <div class="arrow">+</div>
+          <div class="node purple"><h4>若干平级正式框架</h4><p><code>framework/v1</code> … <code>framework/vN</code></p><p>只作正式历史身份</p></div>
+          <div class="arrow">+</div>
+          <div class="node green"><h4>每框架一份只读母版</h4><p><code>framework/vX-template-vN</code></p><p>所有实验共同干净起点</p></div>
+          <div class="arrow">+</div>
+          <div class="node"><h4>每项实验一条临时线</h4><p><code>exp/vX/type/id</code></p><p>结束后代码不并回母版</p></div>
+        </div>
+        <div class="callout ok"><b>一句话收口：</b>你的老分支和 Tag 可以作为历史证据继续存在；新管理体系放进 <code>main</code>；只有确认后的新模型才升级成平级正式框架分支。这样既不丢历史，也不会无限嵌套，更不会让实验代码互相叠加。</div>
+      </article>
+    </section>
+
+    <footer>
+      事实来源：本地 <code>git for-each-ref</code>、<code>git rev-list</code>，GitHub <code>git ls-remote</code> 与 PR #2 状态，以及
+      <a href="../workflow/FRAMEWORK_EXPERIMENT_STANDARD.md">框架实验规范</a>、
+      <a href="../workflow/protocols/git_policy.md">Git 规范</a>、
+      <a href="../workflow/protocols/versioning.md">版本规范</a>、
+      <a href="GTPJ_FRAMEWORK_REGISTRY_UI-V3.html">当前框架注册页</a>。
+    </footer>
+  </main>
+
+  <script>
+    const buttons = [...document.querySelectorAll('.tabs button')];
+    const pages = [...document.querySelectorAll('.page')];
+    const activate = (id, shouldScroll) => {
+      const button = buttons.find(item => item.dataset.page === id) || buttons[0];
+      buttons.forEach(item => item.classList.toggle('on', item === button));
+      pages.forEach(page => page.classList.toggle('on', page.id === button.dataset.page));
+      history.replaceState(null, '', '#view=' + button.dataset.page);
+      if (shouldScroll) window.scrollTo({top: document.querySelector('.tabs').offsetTop - 12, behavior: 'smooth'});
+    };
+    buttons.forEach(button => button.addEventListener('click', () => activate(button.dataset.page, true)));
+    const initial = location.hash.startsWith('#view=') ? location.hash.slice(6) : '';
+    activate(initial || 'logic', false);
+  </script>
+</body>
+</html>

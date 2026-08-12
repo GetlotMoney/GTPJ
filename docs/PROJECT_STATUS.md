@@ -2,6 +2,17 @@
 
 Date: 2026-08-08
 
+## 2026-08-13 V5 主线与干净母版更新
+
+当前 V5 新实验起点已更新为 `MODEL-V5-TEMPLATE-V2`：本地分支
+`framework/v5-template-v2`、Tag `model/v5-template-v2` 和代码提交
+`fb4b29b04087640890a532f105cb527d3a8c461b` 完全一致。模型、损失、配置和评估含义沿用
+V1；V2 只修正大文件身份清单复用和 GPU 评估设备边界。旧 V1 仍冻结在 `2f5fa5e`，没有移动。
+
+主线运行文件已恢复为干净 V5；治理、文档和 detached HEAD 校验会逐个比较 11 个运行文件，
+实验分支仍从准确母版独立修改。V5 专项 45 项、workflow 259 项和结构命令全部通过，两轮不同
+Reviewer 对同一最终提交均为 `pass`、阻断为 0。本次没有启动正式训练，也没有复跑服务器 U/S/H/ZS。
+
 ## 2026-08-08 V5 局部分支消融结果
 
 `V5-ABLATION-001` 已完成 FULL 与 GLOBAL_ONLY 在 seed 5、17、29 的三组配对。FULL 的 H 为 `74.17/74.05/74.12`，平均 `74.11`；GLOBAL_ONLY 为 `73.92/74.14/74.03`，平均 `74.03`。局部分支的同种子 H 差值是 `+0.25/-0.09/+0.09`，平均仅 `+0.08`，方向不稳定。
@@ -34,7 +45,7 @@ Date: 2026-08-08
 | 真实运行 | `PARAMETER_MATRIX.csv` | 每一行记录一套参数、一个 seed、一次状态和结果。 |
 
 V1、V2、V3 继续使用 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本，只解释过去，不能启动新实验。
-V5 已改用 `MODEL-V5-TEMPLATE-V1 / frozen`；局部分支消融已经从该准确母版重新绑定，旧 Attempt 只保留为规划来源。
+V5 当前新实验改用 `MODEL-V5-TEMPLATE-V2 / frozen`；历史局部分支消融仍保留它当时准确绑定的 V1，旧 Attempt 只保留为规划来源。
 
 ## Current Active Mainline
 

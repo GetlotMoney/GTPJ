@@ -1,193 +1,41 @@
-# AI 交叉审核记录模板
+# 两轮对抗式代码审核记录模板
 
-当前默认规则：普通账本、说明文档和已审核代码支持的普通参数修改，只做机器检查；实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，机器验证后必须完成 2 轮不同子 Agent 的对抗式只读审核。
-
-旧 `review_tier: fast | review-1 | strict-3`、`claude_rounds_required` 和 Claude round 文件只用于历史审核包或 owner 明确要求的特殊审计；普通新实验代码不为了形式创建完整 Claude 包。
-
-旧完整包兼容文件名保留：`05_claude_review_round_1.md`、`09_claude_review_round_3.md`、`10_final_decision.md`。
-
-## 00_task.md（任务说明）
+本模板只提供最小字段。审核记录可直接写进当前任务输出或现有实验质量记录，不要求复制成一套新文件。
 
 ```text
-task_id:
-task_title:
-scope:
-risk_level: low | medium | high
-validation_profile: default-core | custom-debug | custom-full-equivalent
-owner_participation: not_required
-review_required: true
-review_tier: fast | review-1 | strict-3  # legacy optional
-claude_rounds_required: 0 | 1 | 3        # legacy optional
-review_rounds_required: 0 | 2
-review_reason:
-acceptance_gates:
-- machine_gates_passed: true
-- reviewers_are_different: true
-- rounds_completed:
-- unresolved_blocking_issues: 0
-```
+reviewed_code_id: commit:<40位SHA> | diff_sha256:<64位SHA>
+reviewed_extra_files: [] | <排序后的 path=SHA256>
+machine_test_ref:
+frozen_run_commit:            # 正式训练必填
+freeze_equivalence: pass      # 正式训练必填
 
-## 01_codex_actions.md（Codex 行为记录）
-
-```text
-codex_role: implementer
-changed_files:
-intended_behavior:
-out_of_scope:
-risk_notes:
-```
-
-## 02_diff.patch（代码差异）
-
-```text
-填写 git diff 或 git diff --cached 输出。
-```
-
-## 02_codex_named_thread_pre_review.md（Codex 命名线程预审）
-
-```text
-codex_named_thread_pre_review: pass | blocked
-named_thread_required: true
-thread_id:
-thread_title:
-lifecycle: completed_archived
-archived_before_claude: true
-archive_result_confirms_completion: true
-archive_result:
-verdict: pass | needs_fix | blocked
-blocking_issues:
-notes:
-```
-
-## 02_focused_diff.md（聚焦差异）
-
-```text
-prompt_profile: focused
-完整 diff 保留在 02_diff.patch；Claude Code 默认读取本文件。
-```
-
-## 02_review_brief.md（审核简报）
-
-```text
-prompt_profile: focused | full
-review_mode: blocking-only | full
-review_tier: fast | review-1 | strict-3
-claude_rounds_required: 0 | 1 | 3
-validation_profile: default-core | custom-debug | custom-full-equivalent
-changed_files:
-machine_gates_passed:
-default_inputs:
-```
-
-## 03_validation.md（机器验证）
-
-```text
-commands_run:
-machine_gates_passed: true | false
-failed_commands:
-not_run:
-reason_if_not_run:
-```
-
-## 04_claims.md（关键结论）
-
-```text
-claim:
-status: verified | supported | assumption | unproven | false
-evidence_ref:
-```
-
-## review_round_1.md（第 1 轮只读审核）
-
-```text
 round: 1
 reviewer_id:
-reviewer_read_only: true
-reviewed_code_id:
-reviewed_extra_files:
+previous_round_ref: not_applicable
 files_reviewed:
-machine_test_ref:
-inputs_checked:
-verdict: pass | needs_fix | blocked
-blocking_issues:
-non_blocking_issues:
-unsupported_claims:
-missing_validation:
-```
+findings:
+unresolved_blockers: 0
+decision: pass | blocked
+uncovered_scope:
 
-## codex_response_round_1.md（第 1 轮回应）
-
-```text
-round: 1
-reviewer: codex
-addressed_reviewer_findings:
-fixes_applied:
-rejected_findings_with_evidence:
-validation_rerun:
-remaining_blocking_issues:
-```
-
-## review_round_2.md（第 2 轮只读审核）
-
-```text
 round: 2
 reviewer_id:
-reviewer_read_only: true
 previous_round_ref:
-reviewed_code_id:
-reviewed_extra_files:
 files_reviewed:
-machine_test_ref:
-inputs_checked:
-verdict: pass | needs_fix | blocked
-blocking_issues:
-non_blocking_issues:
-unsupported_claims:
-missing_validation:
+findings:
+unresolved_blockers: 0
+decision: pass | blocked
+uncovered_scope:
 ```
 
-## codex_response_round_2.md（第 2 轮导致修改时填写）
+硬规则：
 
-```text
-round: 2
-reviewer: codex
-addressed_reviewer_findings:
-fixes_applied:
-rejected_findings_with_evidence:
-validation_rerun:
-remaining_blocking_issues:
-```
+- 两个 `reviewer_id` 必须不同，Reviewer 只读；
+- 第 2 轮必须晚于第 1 轮问题修复、重测和复核；
+- 两轮必须检查同一个 `reviewed_code_id`；
+- 两轮必须记录相同的 `reviewed_extra_files`，不得漏掉范围内 untracked 或仓库外文件；
+- 第 2 轮若促成代码修改，原记录失效，仍由这两个 Reviewer 按顺序重来；
+- 正式 Runner 只使用 `frozen_run_commit`；其内容必须与已审核身份等价，否则两轮重来；
+- 两轮未全部 `pass` 或 `unresolved_blockers` 不为 0 时，禁止正式训练。
 
-## 09_claude_review_round_3.md（旧完整审核包兼容，普通新实验不填）
-
-```text
-round: 3
-reviewer: claude_code
-claude_code_read_only: true
-inputs_checked:
-verdict: pass | needs_fix | blocked
-blocking_issues:
-non_blocking_issues:
-unsupported_claims:
-missing_validation:
-```
-
-## 10_final_decision.md（最终决定）
-
-```text
-ai_cross_review_status: pass | blocked
-owner_participation: not_required
-review_tier: fast | review-1 | strict-3
-reviewers_are_different: true
-rounds_completed: 0 | 2
-claude_rounds_required: 0 | 1 | 3
-claude_rounds_completed: 0 | 1 | 3
-claude_code_read_only: true | false
-codex_named_thread_pre_review: pass
-codex_named_thread_lifecycle: completed_archived
-codex_fixes_or_rebuttals_recorded: true
-machine_gates_passed: true | false
-unresolved_blocking_issues: 0
-accepted_by: machine_gates_plus_ai_cross_review
-blocked_reason:
-```
+旧 `review_tier`、`review-1`、`strict-3` 和 `validate-ai-cross-review` 只用于历史审核包回查。

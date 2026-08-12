@@ -129,8 +129,11 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/TECH_STACK_HISTORY.md` | 系统、界面、数据、模型和文档版本的技术演进记录。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
+| `docs/reviews/*.zip` 与同名 `.sha256` | 已发生的历史审核包压缩归档；展开副本只留本机并由 `.gitignore` 忽略，不再作为现行审核入口。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
+| `docs/diagrams/GTPJ_GIT_GOVERNANCE_MAP_UI-V1.html` | Git 分支、Tag、新旧管理框架和污染边界的三页说明图；同时展示 2026-08-08 本地与 GitHub 引用实查快照。 |
 | `docs/diagrams/archive/` | 已停止作为当前入口的历史页面；页面必须标明快照日期并回链当前入口。 |
+| `docs/paper/` | PLVSE 论文正文与 PDF 交付目录。逻辑版本分别为 `CONTENT-PLVSE-V1` 与 `DOC-PLVSE-PDF-V1`；当前文件沿用生成时的 `CONTENT-PAPER-V1` 历史文件名，后续版本按对象前缀命名。 |
 | `docs/tutorial/00_README.md` | GTPJ 代码教程唯一入口，说明教程对应的源码范围、阅读顺序和正式母版边界。 |
 | `docs/DATA_SETUP.md` | 数据集、本地缓存、大文件不入 Git 的说明。 |
 | `docs/superpowers/plans/<日期>-<主题>.md` | 需要跨分支、占用 GPU 或影响正式结论的任务计划，记录已核实事实、最小方案、验收和回退。 |

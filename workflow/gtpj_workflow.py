@@ -63,16 +63,6 @@ CONFIRMATION_RULE_REPO_SYNC_FILES = [
     "experiments/templates/quality_check_template.md",
     "experiments/templates/run_receipt_template.yaml",
 ]
-CONFIRMATION_RULE_SKILL_REFERENCE_FILES = [
-    "references/workflow_kernel.md",
-    "references/playbooks/confirmation.md",
-    "references/experiment_protocol.md",
-    "references/autonomous_research_campaign.md",
-    "references/mixed_experiment_campaign_protocol.md",
-    "references/promotion.md",
-    "references/playbooks/mixed_campaign.md",
-    "references/playbooks/tune.md",
-]
 FORBIDDEN_PATTERNS = [
     "D" + "VSR-Lab",
     "TUNE-" + "024",
@@ -790,14 +780,7 @@ def read_text_at_commit(commit: str, relative_path: str) -> str:
 
 
 def confirmation_rule_sync_paths() -> list[Path]:
-    paths = [REPO_ROOT / path_text for path_text in CONFIRMATION_RULE_REPO_SYNC_FILES]
-    if LOCAL_GTPJ_WORKFLOW_SKILL_PATH.exists():
-        paths.append(LOCAL_GTPJ_WORKFLOW_SKILL_PATH)
-        skill_root = LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent
-        references_dir = skill_root / "references"
-        if references_dir.exists():
-            paths.extend(skill_root / path_text for path_text in CONFIRMATION_RULE_SKILL_REFERENCE_FILES)
-    return paths
+    return [REPO_ROOT / path_text for path_text in CONFIRMATION_RULE_REPO_SYNC_FILES]
 
 
 def confirmation_policy_for_profile(
@@ -2425,8 +2408,13 @@ def cmd_validate(_: argparse.Namespace) -> int:
         "validate-trial-meta",
         "standard_gzsl_training_template.py",
         "module_scope: composite",
-        "validate-ai-cross-review",
-        "unresolved_blocking_issues: 0",
+        "reviewed_code_id",
+        "reviewed_extra_files",
+        "第 1 轮",
+        "第 2 轮",
+        "frozen_run_commit",
+        "freeze_equivalence: pass",
+        "unresolved_blockers: 0",
     ]:
         if marker not in quality_template:
             raise WorkflowError(f"quality_check_template.md missing checkpoint retention marker: {marker}")
@@ -4098,17 +4086,15 @@ def framework_template_identity_errors(
 def current_template_runtime_alignment_errors() -> list[str]:
     """Keep governance branches on the current clean template runtime."""
     branch = current_branch()
-    if not branch or branch.startswith(("exp/", "dev/", "framework/")):
+    if branch.startswith(("exp/", "dev/", "framework/")):
         return []
 
     template_paths = sorted((REPO_ROOT / "experiments").glob("v[0-9]*/TEMPLATE.yaml"))
-    clean_templates: list[tuple[Path, dict[str, object], list[str]]] = []
+    templates: list[tuple[Path, dict[str, object], list[str]]] = []
     for template_path in template_paths:
         template_text = read_text(template_path)
         template_data = parse_shallow_yaml_text(template_text)
-        if str(template_data.get("template_status", "")) not in {"confirmed", "frozen"}:
-            continue
-        clean_templates.append(
+        templates.append(
             (
                 template_path,
                 template_data,
@@ -4116,13 +4102,19 @@ def current_template_runtime_alignment_errors() -> list[str]:
             )
         )
 
-    if not clean_templates:
+    if not templates:
         return []
     active_templates = [
         entry
-        for entry in clean_templates
+        for entry in templates
         if str(entry[1].get("main_runtime_status", "")) == "active"
     ]
+    if (
+        not immutable_template_standard_is_active()
+        and not active_templates
+        and not any(entry[2] for entry in templates)
+    ):
+        return []
     if len(active_templates) != 1:
         active_paths = ", ".join(rel(item[0]) for item in active_templates) or "none"
         return [
@@ -4131,6 +4123,11 @@ def current_template_runtime_alignment_errors() -> list[str]:
         ]
 
     template_path, template_data, runtime_files = active_templates[0]
+    template_status = str(template_data.get("template_status", ""))
+    if template_status not in {"confirmed", "frozen"}:
+        return [
+            f"{rel(template_path)}: active runtime template must use confirmed or frozen status"
+        ]
     if not runtime_files:
         return [f"{rel(template_path)}: active runtime template must list runtime_files"]
     template_commit = str(template_data.get("template_commit", ""))
@@ -8720,32 +8717,26 @@ def local_gtpj_workflow_skill_errors() -> list[str]:
         errors.append(f"missing local gtpj-workflow skill mirror: {skill_path}")
         return errors
     text = read_text(skill_path)
-    required_marker = "代码审核不被 `server_frozen_runner` 豁免"
+    frontmatter = ""
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) == 3:
+            frontmatter = parts[1]
     for marker in [
-        "GitHub documentation is canonical",
-        "local skill mirrors the repository rules",
+        "只在用户直接选择本 Skill 或明确要求启动 GTPJ 实验时使用",
+        "普通 Git 查询、解释和文字修改不用",
+    ]:
+        if marker not in frontmatter:
+            errors.append(f"local gtpj-workflow skill frontmatter missing narrow trigger: {marker}")
+    for marker in [
+        "GitHub 仓库规则是唯一事实来源",
+        "本机 Skill 只负责导航，不复制规则正文",
         "docs/workflow/START_HERE.md",
         "docs/workflow/WORKFLOW_KERNEL.md",
         "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
-        "framework/vX",
-        "RUN-xxx",
-        "compatibility identifiers",
-        "same GitHub truth source",
-        "开启多agents智能体工作流",
-        "不得反复确认",
-        "files_reviewed",
-        "report-new-completions",
-        required_marker,
     ]:
         if marker not in text:
-            errors.append(f"local gtpj-workflow skill mirror missing marker: {marker}")
-    for ref_name in ["start_here.md", "workflow_kernel.md", "quick_start.md"]:
-        ref_path = skill_path.parent / "references" / ref_name
-        if not ref_path.exists():
-            errors.append(f"local gtpj-workflow skill reference missing: references/{ref_name}")
-            continue
-        if required_marker not in read_text(ref_path):
-            errors.append(f"local gtpj-workflow skill reference references/{ref_name} missing marker: {required_marker}")
+            errors.append(f"local gtpj-workflow skill router missing marker: {marker}")
     return errors
 
 
@@ -8779,8 +8770,6 @@ def flat_framework_language_errors() -> list[str]:
         REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md",
         REPO_ROOT / "docs" / "workflow",
         REPO_ROOT / "experiments" / "templates",
-        LOCAL_GTPJ_WORKFLOW_SKILL_PATH,
-        LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent / "references",
     ]
     candidates: set[Path] = set()
     for root in roots:
@@ -8859,7 +8848,6 @@ def immutable_template_language_errors() -> list[str]:
         REPO_ROOT / "docs" / "workflow" / "protocols" / "versioning.md": core_markers,
         REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers,
         REPO_ROOT / "experiments" / "templates" / "experiment_README_template.md": core_markers[1:3],
-        LOCAL_GTPJ_WORKFLOW_SKILL_PATH: core_markers,
         REPO_ROOT / "README.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
         REPO_ROOT / "AGENTS.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
         REPO_ROOT / "docs" / "PROJECT_STATUS.md": [
@@ -8889,7 +8877,6 @@ def immutable_template_language_errors() -> list[str]:
         REPO_ROOT / "docs" / "PROJECT_STRUCTURE.md",
         REPO_ROOT / "docs" / "workflow" / "protocols" / "parameter_matrix_protocol.md",
         REPO_ROOT / "workflow" / "README.md",
-        LOCAL_GTPJ_WORKFLOW_SKILL_PATH,
     }
     manifest_path = workflow_manifest_path()
     if manifest_path.exists():
@@ -8977,9 +8964,10 @@ def workflow_consistency_errors() -> list[str]:
         "docs/workflow/START_HERE.md": [
             "formal_runner_allowed",
             "multi_agent_preflight",
-            "review_tier",
-            "review-1",
-            "strict-3",
+            "reviewed_code_id",
+            "第 1 轮",
+            "第 2 轮",
+            "对抗式",
             "正文必须使用中文",
             "框架记录只跟",
             "formal_pending",
@@ -8994,9 +8982,10 @@ def workflow_consistency_errors() -> list[str]:
         "docs/workflow/WORKFLOW_KERNEL.md": [
             "multi-agent-preflight",
             "formal_evidence_allowed",
-            "review_tier",
-            "review-1",
-            "strict-3",
+            "reviewed_code_id",
+            "第 1 轮",
+            "第 2 轮",
+            "对抗式",
             "文档语言硬规则",
             "框架记录绑定",
             "formal_pending",
@@ -9007,8 +8996,8 @@ def workflow_consistency_errors() -> list[str]:
             "files_reviewed",
             "独立输出文件",
             "allow/block/propose",
-            "skill 镜像",
-            "active docs",
+            "Skill 入口",
+            "GitHub 现行文档",
             "helper 测试",
             "report-new-completions",
             "代码审核不被 `server_frozen_runner` 豁免",
@@ -9044,24 +9033,19 @@ def workflow_consistency_errors() -> list[str]:
             "report-new-completions",
         ],
         "docs/workflow/protocols/ai_cross_review_protocol.md": [
-            "owner_participation: not_required",
-            "claude_code_read_only: true",
-            "review_tier",
-            "fast",
-            "review-1",
-            "strict-3",
-            "02_codex_named_thread_pre_review.md",
-            "completed_archived",
-            "archive_result_confirms_completion",
-            "validation_profile",
-            "claude_rounds_required",
-            "run-ai-cross-review",
-            "validate-ai-cross-review",
-            "02_review_brief.md",
-            "02_focused_diff.md",
-            "prompt_profile",
-            "blocking-only",
-            "代码审核不被 `server_frozen_runner` 豁免",
+            "round: 1 | 2",
+            "reviewer_id",
+            "reviewed_code_id",
+            "reviewed_extra_files",
+            "previous_round_ref",
+            "frozen_run_commit",
+            "freeze_equivalence: pass",
+            "files_reviewed",
+            "machine_test_ref",
+            "unresolved_blockers: 0",
+            "decision: pass | blocked",
+            "uncovered_scope",
+            "第 2 轮不能与第 1 轮并行",
         ],
         "docs/workflow/protocols/module_template_selection.md": [
             "feature_adapter_template.py",
@@ -9100,29 +9084,28 @@ def workflow_consistency_errors() -> list[str]:
             "ai_cross_review:",
         ],
         "experiments/templates/quality_check_template.md": [
-            "review_tier",
-            "validate-ai-cross-review",
-            "unresolved_blocking_issues: 0",
+            "reviewed_code_id",
+            "reviewed_extra_files",
+            "第 1 轮",
+            "第 2 轮",
+            "frozen_run_commit",
+            "freeze_equivalence: pass",
+            "unresolved_blockers: 0",
         ],
         "experiments/templates/ai_cross_review_template.md": [
-            "review_tier",
-            "fast",
-            "review-1",
-            "strict-3",
-            "02_codex_named_thread_pre_review.md",
-            "completed_archived",
-            "archive_result_confirms_completion",
-            "validation_profile",
-            "claude_rounds_required",
-            "02_review_brief.md",
-            "02_focused_diff.md",
-            "prompt_profile",
-            "blocking-only",
-            "05_claude_review_round_1.md",
-            "09_claude_review_round_3.md",
-            "10_final_decision.md",
-            "owner_participation: not_required",
-            "unresolved_blocking_issues: 0",
+            "round: 1",
+            "round: 2",
+            "reviewer_id",
+            "reviewed_code_id",
+            "reviewed_extra_files",
+            "previous_round_ref",
+            "frozen_run_commit",
+            "freeze_equivalence: pass",
+            "files_reviewed",
+            "machine_test_ref",
+            "unresolved_blockers: 0",
+            "decision: pass | blocked",
+            "uncovered_scope",
         ],
         "experiments/templates/run_receipt_template.yaml": ["schema_version: gtpj.run_receipt.v0", "multi_agent_preflight:", "agent_output_refs:"],
         "experiments/templates/TRIAL_ATTEMPTS_template.md": ["历史兼容", "只读", "不得作为新实验入口"],
@@ -12098,7 +12081,7 @@ Review 1: interface_precheck.md
 Review 2: review_round_1.md + interface_check.md + quality_check.md
 Review 3: review_round_2.md + agent_summary.md
 activation_mode: real_multi_agent
-ai_cross_review: 重要代码/决策改动必须执行；使用 validate-ai-cross-review 校验
+ai_cross_review: 代码修改必须由两个不同的只读子 Agent 依次完成两轮对抗式审核，并绑定同一 reviewed_code_id
 ```
 
 ## Promotion Gate
@@ -18618,37 +18601,6 @@ def build_parser() -> argparse.ArgumentParser:
     validate_ai_cross_review = sub.add_parser("validate-ai-cross-review", help="校验 Claude/Codex 分层 AI 交叉审核证据包")
     validate_ai_cross_review.add_argument("--path", required=True)
     validate_ai_cross_review.set_defaults(func=cmd_validate_ai_cross_review)
-
-    run_ai_cross_review = sub.add_parser("run-ai-cross-review", help="生成证据包并按 review_tier 调用 Claude Code 只读审核")
-    run_ai_cross_review.add_argument("--slug", default="")
-    run_ai_cross_review.add_argument("--path", default="")
-    run_ai_cross_review.add_argument("--task-id", default="")
-    run_ai_cross_review.add_argument("--task-title", default="")
-    run_ai_cross_review.add_argument("--scope", default="current git diff")
-    run_ai_cross_review.add_argument("--risk-level", default="medium", choices=["low", "medium", "high"])
-    run_ai_cross_review.add_argument("--review-reason", default="")
-    run_ai_cross_review.add_argument("--risk-notes", default="")
-    run_ai_cross_review.add_argument("--prompt-profile", default="focused", choices=["focused", "full"])
-    run_ai_cross_review.add_argument("--review-mode", default="blocking-only", choices=["blocking-only", "full"])
-    run_ai_cross_review.add_argument("--review-tier", default="review-1", choices=sorted(AI_CROSS_REVIEW_TIER_ROUNDS))
-    run_ai_cross_review.add_argument(
-        "--validation-profile",
-        default="default-core",
-        choices=["default-core", "custom-debug", "custom-full-equivalent"],
-    )
-    run_ai_cross_review.add_argument("--codex-pre-review-thread-id", default="")
-    run_ai_cross_review.add_argument("--codex-pre-review-thread-title", default="")
-    run_ai_cross_review.add_argument("--codex-pre-review-lifecycle", default="completed_archived", choices=["completed_archived"])
-    run_ai_cross_review.add_argument("--codex-pre-review-archive-result", default="")
-    run_ai_cross_review.add_argument("--codex-pre-review-verdict", default="blocked", choices=["pass", "needs_fix", "blocked"])
-    run_ai_cross_review.add_argument("--codex-pre-review-notes", default="")
-    run_ai_cross_review.add_argument("--validation-command", action="append", default=[])
-    run_ai_cross_review.add_argument("--no-default-validation", action="store_true")
-    run_ai_cross_review.add_argument("--claude-command", default="claude")
-    run_ai_cross_review.add_argument("--claude-command-arg", action="append", default=[])
-    run_ai_cross_review.add_argument("--skip-claude", action="store_true")
-    run_ai_cross_review.add_argument("--overwrite", action="store_true")
-    run_ai_cross_review.set_defaults(func=cmd_run_ai_cross_review)
 
     validate_trial_meta = sub.add_parser("validate-trial-meta", help="校验 module trial meta 的 scope/affects 分流")
     validate_trial_meta.add_argument("--path", default="")

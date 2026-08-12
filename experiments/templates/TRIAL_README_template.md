@@ -149,7 +149,7 @@ Review 1: interface_precheck.md
 Review 2: review_round_1.md + interface_check.md + quality_check.md
 Review 3: review_round_2.md + agent_summary.md
 activation_mode: real_multi_agent
-ai_cross_review: 重要代码/决策改动必须执行；使用 validate-ai-cross-review 校验
+ai_cross_review: 代码修改必须由两个不同的只读子 Agent 依次完成两轮对抗式审核，并绑定同一 reviewed_code_id
 ```
 
 ## Promotion Gate（升版门槛）

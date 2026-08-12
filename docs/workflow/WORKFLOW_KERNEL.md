@@ -16,11 +16,20 @@
 
 默认不要求：专用控制器、双层 GPU 锁、固定波次调度、Git bundle、永久 claim、多层收据、逐文件制品哈希、三路审核、命名线程、`agent_runtime.yaml`、状态迁移链或第二个 final freeze commit。它们只有在当前实验确实出现对应风险时才允许按需使用，并要说明解决了什么真实问题。
 
-审核规则：机器测试优先；只改账本、说明文档或已审核代码支持的普通参数时，默认 0 次独立审核；任何实验代码、模型、训练、数据、loss、eval、workflow/helper、模板或训练配置生成逻辑改动，目标测试通过后固定 2 轮不同子 Agent 只读审核。两轮绑定同一份最终代码，不能为了省事沿用旧审核结论。
+审核规则：机器测试优先。普通说明文档、账本值，或已审核代码明确支持的普通超参数/seed 修改，只要不改 schema、解析/生成逻辑、数据/划分、评估语义、工作流门槛，也不打开未审核代码路径，就默认 0 次独立审核；其他配置、模板和工作流规则修改按代码修改处理。任何代码修改，包括模型、训练、数据、评估、workflow、helper、模板和训练配置生成逻辑，都固定执行下面 2 轮对抗式只读审核：
+
+1. 第 1 轮由子 Agent A 检查需求对应、实现正确性、接口、shape、梯度、数据与评估边界，并主动尝试证明代码有错。实现者修复并重跑机器测试后，由 A 复核到通过。
+2. 第 2 轮由不同的子 Agent B 检查与第 1 轮相同的最终代码，重点寻找反例、隐藏耦合、回归、测试盲区和结论污染。
+
+同一个子 Agent 不能计算为两轮，主助手自审不能替代子 Agent。其他只读角色可以并行，但第 2 轮必须等待第 1 轮问题修复、重测和 A 复核通过后再启动。若第 2 轮导致被审核代码改变，两轮都要针对最终代码重新执行；仍使用 A、B，不增加第三个 Reviewer。
+
+两轮必须绑定同一个 `reviewed_code_id`：有冻结提交时写准确 commit；尚未提交时写包含 staged/unstaged tracked diff 的 SHA-256，并用 `reviewed_extra_files` 记录范围内 untracked 或仓库外文件的排序后路径与 SHA-256。每轮至少记录 `round`、`reviewer_id`、`reviewed_code_id`、`reviewed_extra_files`、`files_reviewed`、`machine_test_ref`、发现、`unresolved_blockers`、`decision` 和 `uncovered_scope`；第 2 轮另写 `previous_round_ref`。两轮都为 `decision: pass`、`unresolved_blockers: 0` 后，代码才允许正式训练。记录复用当前任务输出或现有实验质量记录，默认不新建审核包。
+
+正式 Runner 最终只能绑定已冻结的 `commit:<sha>`。若两轮先审核 diff，freeze 后由 Coordinator 只读确认该 commit 的审核范围内容与已审核 diff、`reviewed_extra_files` 完全一致，并记录 `frozen_run_commit` 和 `freeze_equivalence: pass`；staging/commit 漏文件、夹带代码或内容变化都会使旧审核失效。影响运行的额外文件必须进入 commit 或已有的数据/配置冻结身份，否则阻断。
 
 时间规则：参数实验准备不超过 10 分钟；代码或评估实验准备不超过 30 分钟。达到上限仍不能训练时，停止扩建流程，报告唯一阻断和最小修复。
 
-本文件后续保留的 V5 多 agents、receipt 和 strict-3 规则只用于历史兼容，不再覆盖本节。
+旧的 V5 多 agents、receipt、`review-1`、`strict-3` 和 Claude Code 审核包只用于历史回查，不再作为新代码入口。
 
 ## 0. 框架与实验对象
 
@@ -125,7 +134,7 @@ Owner 简单口令优先按下列映射解释：
 - 如果 owner 只说“用工作流”但没有说明是哪一种，必须先问清楚；不能把服务器冻结训练当成动态多 agents 工作流，也不能把动态多 agents 工作流偷偷降级成离线训练。
 - 如果 owner 已经说“开启多agents智能体工作流”“多agents智能体工作流，开始”“跑N轮”或“做N轮实验”，它不是模糊的“用工作流”。Coordinator 必须按 `live_multi_agent_monitor` 执行，不得反复确认规范，不得只写 planning gate 后停止。只有运行模式仍冲突、侧边栏干净状态未确认且无法验证、硬门失败、或 push / 删除 / 覆盖数据 / 密钥等安全边界动作，才允许再问一次。
 
-代码审核不被 `server_frozen_runner` 豁免。`server_frozen_runner` 只豁免训练运行期的命名线程创建；它不能豁免实验代码、workflow、helper、模板或训练配置生成逻辑的审核。此类改动必须在正式训练前完成机器验证和两轮不同子 Agent 只读审核：第 1 轮找实现、接口、shape、梯度、数据与评估错误；修复、重测并由第 1 轮 Reviewer 复核通过后，第 2 轮检查同一份最终代码的反例、隐藏耦合、回归和测试盲区。如果第 2 轮导致代码再次修改，两轮都重来。
+代码审核不被 `server_frozen_runner` 豁免。代码、workflow、helper、模板或训练配置生成逻辑改动必须完成两轮不同子 Agent 的对抗式只读审核，两轮绑定同一个最终 `reviewed_code_id` 并通过后，才能进入 `pre-run freeze commit` 或正式 Runner。
 
 没有显式 `--debug-smoke` 或 `--formal` 时必须阻断。选择 `--formal` 时必须提供并通过
 `agent_runtime.yaml`；选择 `--debug-smoke` 时结果只能证明工程链路可运行，不能回填为正式证据。
@@ -224,7 +233,7 @@ owner_visible_reporting: true
 - 每轮 workflow 结束或阶段结束时，Coordinator 必须先确认已完成 agents 的结论写入
   `agent_summary.md` / `AGENT_ACTIVITY.md` / result / quality / issues / memory 等正式位置，
   然后关闭这些已完成 agents。左侧栏默认只保留当前阶段仍在工作的 active agents。
-- 多 agents 必须分文件复核：每个只读角色都要记录 `files_reviewed`、独立输出文件、allow/block/propose 结论和未覆盖范围。Coordinator 不能用一个上下文一次性“看过所有文件”来冒充独立复核，也不能漏掉 skill 镜像、active docs、helper 测试三类同步面。
+- 多 agents 必须分文件复核：每个只读角色都要记录 `files_reviewed`、独立输出文件、allow/block/propose 结论和未覆盖范围。Coordinator 不能用一个上下文一次性“看过所有文件”来冒充独立复核；规则改动要同时核对 GitHub 现行文档、helper 测试和本机 Skill 入口。
 - 左侧栏命名线程 显示名必须严格按 `<subject_id> | <Role Label>` 命名，例如 `ATTEMPT-007 | Runner Monitor`、`ATTEMPT-007 | Interface Checker`、`ATTEMPT-007 | Evidence Quality Checker`。
 - 禁止使用与任务无关的随机英文昵称，例如 `Herschel`、`Galileo`、`Feynman`、`Bohr`；只写 `Runner` / `Quality` 这种泛名也不合格。
 - 角色名要清晰，例如 `运行监控 (Runner Monitor)`、`日志分析 (Log Analyst)`、`证据质量检查 (Evidence Quality Checker)`、`结果比较 (Result Comparator)`。
@@ -352,16 +361,8 @@ python workflow\gtpj_workflow.py monitor-workflow --run-dir <run_dir> --report-n
 
 如果都不满足，不进入日常 workflow。
 
-## 免 owner 日常参与的 AI 交叉审核
+## 免 owner 日常参与的两轮代码审核
 
-Owner 不参与日常代码审核。重要代码、workflow/helper/template、训练入口、评估语义、实验结论、promotion
-或论文 claim 相关改动，必须先跑机器验证，再完成两轮不同子 Agent 的对抗式只读审核。
+Owner 不参与日常代码审核。Implementer 完成机器验证后，先交给只读子 Agent A 做第 1 轮；问题关闭并重测后，再交给不同的只读子 Agent B 做第 2 轮。两轮必须针对同一份最终代码，且都为 `pass`、未解决阻断为 0。任何一项不满足时，不能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
 
-```text
-Round 1 -> 修复/重测/Round 1 复核 -> Round 2 -> unresolved_blockers: 0
-```
-
-每轮最少记录 reviewer、reviewed_code_id、reviewed_extra_files、files_reviewed、machine_test_ref、发现、unresolved_blockers、decision 和 uncovered_scope；第 2 轮另记录 previous_round_ref。旧 `fast`、`review-1`、`strict-3` 和 `validate-ai-cross-review` 只用于历史审核包或 owner 明确要求的特殊审计，不再作为新实验代码的默认门槛。
-旧 helper 兼容字段名仍可能出现：`review_tier`。
-任一轮 blocked 时，不能进入正式 Runner、keep/best、confirmation、promotion、baseline 或 paper claim。
-push、删除、远端发布和破坏性迁移仍然需要 owner 明确授权。
+旧的 `review_tier`、`fast`、`review-1`、`strict-3` 与 `validate-ai-cross-review` 只用于读取历史审核包，不用于决定新代码的审核轮数。push、删除、远端发布和破坏性迁移仍然需要 owner 明确授权。
