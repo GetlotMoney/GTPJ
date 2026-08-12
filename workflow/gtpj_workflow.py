@@ -15289,19 +15289,6 @@ ParameterConfigLoader.add_implicit_resolver(
 )
 
 
-def parameter_value_text(value: object) -> str:
-    try:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
-    except (TypeError, ValueError) as exc:
-        raise WorkflowError(f"Parameter value cannot be represented as canonical JSON: {exc}") from exc
-
-
 def normalize_parameter_value(value: object, *, value_path: str = "value") -> object:
     if value is None or isinstance(value, (str, bool, int)):
         return value
@@ -15330,7 +15317,24 @@ def normalize_parameter_value(value: object, *, value_path: str = "value") -> ob
     )
 
 
-def read_parameter_config_values(config_path: Path) -> dict[str, str]:
+def parameter_values_equal(left: object, right: object) -> bool:
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, list):
+        assert isinstance(right, list)
+        return len(left) == len(right) and all(
+            parameter_values_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right)
+        )
+    if isinstance(left, dict):
+        assert isinstance(right, dict)
+        return left.keys() == right.keys() and all(
+            parameter_values_equal(left[key], right[key]) for key in left
+        )
+    return left == right
+
+
+def read_parameter_config_values(config_path: Path) -> dict[str, object]:
     if not config_path.exists():
         raise WorkflowError(f"Missing config file: {rel(config_path)}")
     try:
@@ -15339,29 +15343,36 @@ def read_parameter_config_values(config_path: Path) -> dict[str, str]:
         raise WorkflowError(f"Invalid YAML config: {rel(config_path)}: {exc}") from exc
     if not isinstance(data, dict):
         raise WorkflowError(f"Config must be a top-level object: {rel(config_path)}")
-    values: dict[str, str] = {}
+    values: dict[str, object] = {}
     for key, entry in data.items():
         if not isinstance(key, str) or not isinstance(entry, dict) or "value" not in entry:
             continue
-        values[key] = parameter_value_text(
-            normalize_parameter_value(entry["value"], value_path=f"{key}.value")
+        normalized = normalize_parameter_value(
+            entry["value"], value_path=f"{key}.value"
         )
+        if normalized == "<removed>":
+            raise WorkflowError(
+                f"Config parameter {key}.value uses reserved parameter-matrix marker <removed>"
+            )
+        values[key] = normalized
     return values
 
 
 def parameter_matrix_actual_changes(
     baseline_config_path: Path,
     config_path: Path,
-) -> dict[str, str]:
+) -> dict[str, object]:
     baseline_values = read_parameter_config_values(baseline_config_path)
     config_values = read_parameter_config_values(config_path)
-    changes: dict[str, str] = {}
+    changes: dict[str, object] = {}
     for key in sorted(set(baseline_values) | set(config_values)):
         if key == "random_seed":
             continue
         if key not in config_values:
             changes[key] = "<removed>"
-        elif baseline_values.get(key) != config_values[key]:
+        elif key not in baseline_values or not parameter_values_equal(
+            baseline_values[key], config_values[key]
+        ):
             changes[key] = config_values[key]
     return changes
 
@@ -15382,17 +15393,15 @@ def parameter_matrix_changed_parameter_errors(
         return [f"{row.get('job_id')} changed_parameters must be a JSON object"]
     try:
         declared = {
-            key: value
-            if isinstance(value, str)
-            else parameter_value_text(
-                normalize_parameter_value(value, value_path=f"changed_parameters.{key}")
+            key: normalize_parameter_value(
+                value, value_path=f"changed_parameters.{key}"
             )
             for key, value in declared_raw.items()
         }
     except WorkflowError as exc:
         return [f"{row.get('job_id')} changed_parameters is invalid: {exc}"]
     actual = parameter_matrix_actual_changes(baseline_config_path, config_path)
-    if declared != actual:
+    if not parameter_values_equal(declared, actual):
         return [
             f"{row.get('job_id')} changed_parameters does not match the actual config diff; "
             f"declared={json.dumps(declared, ensure_ascii=False, sort_keys=True)} "

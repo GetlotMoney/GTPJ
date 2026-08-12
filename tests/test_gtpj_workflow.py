@@ -5442,14 +5442,14 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual(
             {
-                "alpha": "0.2",
-                "new_temperature": "0.07",
+                "alpha": 0.2,
+                "new_temperature": 0.07,
                 "old_module": "<removed>",
             },
             changes,
         )
         errors = self.module.parameter_matrix_changed_parameter_errors(
-            {"job_id": "RUN-001", "changed_parameters": '{"alpha":"0.2","new_temperature":"0.07"}'},
+            {"job_id": "RUN-001", "changed_parameters": '{"alpha":0.2,"new_temperature":0.07}'},
             baseline_config_path=self.repo / "base.yaml",
             config_path=self.repo / "candidate.yaml",
         )
@@ -5482,7 +5482,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
             self.repo / "base.yaml", self.repo / "candidate.yaml"
         )
 
-        self.assertEqual({"lr_stages": '[{"epochs":10,"lr":0.001}]'}, changes)
+        self.assertEqual({"lr_stages": [{"epochs": 10, "lr": 0.001}]}, changes)
         errors = self.module.parameter_matrix_changed_parameter_errors(
             {"job_id": "RUN-001", "changed_parameters": "{}"},
             baseline_config_path=self.repo / "base.yaml",
@@ -5508,10 +5508,18 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
     def test_parameter_matrix_actual_changes_preserves_yaml_scalar_types(self) -> None:
         cases = [
-            ("false", '"false"', '"false"'),
-            ("null", '"null"', '"null"'),
+            ("true", "false", False, "false"),
+            ("0", "false", False, 0),
+            ("false", "0", 0, False),
+            ("0", "true", True, 1),
+            ("true", "1", 1, True),
+            ("false", '"false"', "false", False),
+            ("1", "null", None, "null"),
+            ("null", '"null"', "null", None),
+            ("1", "0.07", 0.07, "0.07"),
+            ("1", '"0.07"', "0.07", 0.07),
         ]
-        for baseline_value, candidate_value, expected_value in cases:
+        for baseline_value, candidate_value, expected_value, wrong_value in cases:
             with self.subTest(candidate_value=candidate_value):
                 self._write("base.yaml", f"typed_value:\n  value: {baseline_value}\n")
                 self._write("candidate.yaml", f"typed_value:\n  value: {candidate_value}\n")
@@ -5521,12 +5529,36 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 )
 
                 self.assertEqual({"typed_value": expected_value}, changes)
+                valid_errors = self.module.parameter_matrix_changed_parameter_errors(
+                    {
+                        "job_id": "RUN-001",
+                        "changed_parameters": json.dumps({"typed_value": expected_value}),
+                    },
+                    baseline_config_path=self.repo / "base.yaml",
+                    config_path=self.repo / "candidate.yaml",
+                )
+                self.assertEqual([], valid_errors)
                 errors = self.module.parameter_matrix_changed_parameter_errors(
-                    {"job_id": "RUN-001", "changed_parameters": "{}"},
+                    {
+                        "job_id": "RUN-001",
+                        "changed_parameters": json.dumps({"typed_value": wrong_value}),
+                    },
                     baseline_config_path=self.repo / "base.yaml",
                     config_path=self.repo / "candidate.yaml",
                 )
                 self.assertTrue(any("typed_value" in item for item in errors))
+
+        self._write("base.yaml", "random_seed:\n  value: 5\n")
+        self._write(
+            "candidate.yaml",
+            "random_seed:\n  value: 5\noptional_value:\n  value: null\n",
+        )
+        self.assertEqual(
+            {"optional_value": None},
+            self.module.parameter_matrix_actual_changes(
+                self.repo / "base.yaml", self.repo / "candidate.yaml"
+            ),
+        )
 
     def test_parameter_matrix_actual_changes_rejects_nested_yaml_date(self) -> None:
         self._write("base.yaml", "schedule:\n  value: []\n")

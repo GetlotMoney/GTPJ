@@ -10,9 +10,6 @@ import unittest
 
 import torch
 
-from tools.convert_v5_checkpoint import convert_state_dict
-from tools.v5_evaluation import evaluate_cached_v5, load_v5_test_cache
-
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_METADATA = ROOT / "experiments" / "v5" / "TEMPLATE.yaml"
@@ -50,16 +47,31 @@ def _template_text(path: str) -> str:
     return result.stdout
 
 
-def _load_active_v5_model_class():
-    source = _template_text("model/MyModel.py")
+def _load_active_v5_module(path: str, module_name: str):
+    source = _template_text(path)
     with tempfile.TemporaryDirectory(prefix="gtpj-v5-template-") as temporary:
-        source_path = Path(temporary) / "active_v5_model.py"
+        source_path = Path(temporary) / Path(path).name
         source_path.write_text(source, encoding="utf-8")
-        spec = importlib.util.spec_from_file_location("gtpj_active_v5_model", source_path)
+        spec = importlib.util.spec_from_file_location(module_name, source_path)
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return module.GTPJ
+        return module
+
+
+def _load_active_v5_model_class():
+    return _load_active_v5_module("model/MyModel.py", "gtpj_active_v5_model").GTPJ
+
+
+ACTIVE_V5_CHECKPOINT_CONVERTER = _load_active_v5_module(
+    "tools/convert_v5_checkpoint.py", "gtpj_active_v5_checkpoint_converter"
+)
+ACTIVE_V5_EVALUATION = _load_active_v5_module(
+    "tools/v5_evaluation.py", "gtpj_active_v5_evaluation"
+)
+convert_state_dict = ACTIVE_V5_CHECKPOINT_CONVERTER.convert_state_dict
+evaluate_cached_v5 = ACTIVE_V5_EVALUATION.evaluate_cached_v5
+load_v5_test_cache = ACTIVE_V5_EVALUATION.load_v5_test_cache
 
 
 LEGACY_V5_KEYS = {
@@ -483,6 +495,16 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
 
 
 class V5TemplateContractTest(unittest.TestCase):
+    def test_v5_contract_tools_are_loaded_from_registered_template(self) -> None:
+        self.assertNotEqual(
+            Path(convert_state_dict.__code__.co_filename).resolve(),
+            (ROOT / "tools" / "convert_v5_checkpoint.py").resolve(),
+        )
+        self.assertNotEqual(
+            Path(evaluate_cached_v5.__code__.co_filename).resolve(),
+            (ROOT / "tools" / "v5_evaluation.py").resolve(),
+        )
+
     def test_v5_config_contains_only_canonical_keys(self) -> None:
         _check_v5_config_contains_only_canonical_keys()
 
