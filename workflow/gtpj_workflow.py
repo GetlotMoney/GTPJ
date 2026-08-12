@@ -15268,36 +15268,73 @@ def parameter_matrix_frozen_digest(row: dict[str, str]) -> str:
     return parameter_matrix_sha256(payload)
 
 
+class ParameterConfigLoader(yaml.SafeLoader):
+    """Safe YAML loader whose float grammar also accepts values such as 1e-5."""
+
+
+PARAMETER_CONFIG_FLOAT_PATTERN = re.compile(
+    r"""^(?:
+        [-+]?(?:[0-9][0-9_]*)\.(?:[0-9_]*)?(?:[eE][-+]?[0-9]+)?
+        |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+]?[0-9]+)
+        |[-+]?\.(?:[0-9_]+)(?:[eE][-+]?[0-9]+)?
+        |[-+]?\.(?:inf|Inf|INF)
+        |\.(?:nan|NaN|NAN)
+    )$""",
+    re.VERBOSE,
+)
+ParameterConfigLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:float",
+    PARAMETER_CONFIG_FLOAT_PATTERN,
+    list("-+0123456789."),
+)
+
+
 def parameter_value_text(value: object) -> str:
-    if isinstance(value, (list, dict)):
-        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if value is None:
-        return "null"
-    return str(value)
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise WorkflowError(f"Parameter value cannot be represented as canonical JSON: {exc}") from exc
 
 
-def normalize_parameter_value(value: object) -> object:
+def normalize_parameter_value(value: object, *, value_path: str = "value") -> object:
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise WorkflowError(f"Config parameter {value_path} contains a non-finite float")
+        return 0.0 if value == 0 else value
     if isinstance(value, list):
-        return [normalize_parameter_value(item) for item in value]
+        return [
+            normalize_parameter_value(item, value_path=f"{value_path}[{index}]")
+            for index, item in enumerate(value)
+        ]
     if isinstance(value, dict):
+        for key in value:
+            if not isinstance(key, str):
+                raise WorkflowError(
+                    f"Config parameter {value_path} contains a non-string mapping key: {key!r}"
+                )
         return {
-            str(key): normalize_parameter_value(item)
-            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+            key: normalize_parameter_value(value[key], value_path=f"{value_path}.{key}")
+            for key in sorted(value)
         }
-    if isinstance(value, str):
-        text = value.strip()
-        if re.fullmatch(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", text):
-            return float(text) if any(marker in text.lower() for marker in (".", "e")) else int(text)
-    return value
+    raise WorkflowError(
+        f"Config parameter {value_path} uses unsupported YAML value type "
+        f"{type(value).__name__}; quote date-like values explicitly"
+    )
 
 
 def read_parameter_config_values(config_path: Path) -> dict[str, str]:
     if not config_path.exists():
         raise WorkflowError(f"Missing config file: {rel(config_path)}")
     try:
-        data = yaml.safe_load(read_text(config_path))
+        data = yaml.load(read_text(config_path), Loader=ParameterConfigLoader)
     except yaml.YAMLError as exc:
         raise WorkflowError(f"Invalid YAML config: {rel(config_path)}: {exc}") from exc
     if not isinstance(data, dict):
@@ -15306,7 +15343,9 @@ def read_parameter_config_values(config_path: Path) -> dict[str, str]:
     for key, entry in data.items():
         if not isinstance(key, str) or not isinstance(entry, dict) or "value" not in entry:
             continue
-        values[key] = parameter_value_text(normalize_parameter_value(entry["value"]))
+        values[key] = parameter_value_text(
+            normalize_parameter_value(entry["value"], value_path=f"{key}.value")
+        )
     return values
 
 
@@ -15341,7 +15380,17 @@ def parameter_matrix_changed_parameter_errors(
         return [f"{row.get('job_id')} changed_parameters is not valid JSON"]
     if not isinstance(declared_raw, dict):
         return [f"{row.get('job_id')} changed_parameters must be a JSON object"]
-    declared = {key: parameter_value_text(value) for key, value in declared_raw.items()}
+    try:
+        declared = {
+            key: value
+            if isinstance(value, str)
+            else parameter_value_text(
+                normalize_parameter_value(value, value_path=f"changed_parameters.{key}")
+            )
+            for key, value in declared_raw.items()
+        }
+    except WorkflowError as exc:
+        return [f"{row.get('job_id')} changed_parameters is invalid: {exc}"]
     actual = parameter_matrix_actual_changes(baseline_config_path, config_path)
     if declared != actual:
         return [

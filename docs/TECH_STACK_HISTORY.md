@@ -69,11 +69,11 @@
 - 目标问题：一次约一小时的训练，曾因专用控制器、双 GPU 锁、三波调度、Git bundle、永久编号、多层收据、制品哈希、三路审核和二次冻结，额外消耗约两小时准备与审核时间。
 - 采用技术：五步短流程——唯一实验提交、配置与参数表、一次开跑检查、直接训练到独立 RUN 目录、一次结果回填；普通账本/参数只做机器检查，实验代码、workflow/helper、模板和训练配置生成逻辑改动固定两轮不同子 Agent 对抗式只读审核。
 - 替换了什么：替换 `SYS-WORKFLOW-V5` 默认的多 agents/runtime/receipt/strict-3 执行门，也替换 2026-08-08 旧版“代码默认 1 轮审核”的口径；旧工具和旧证据原地保留，只作历史兼容或 owner 明确要求的特殊审计。
-- 实际可见效果：参数实验准备上限 10 分钟；涉及代码或评估改动上限 30 分钟。正式论文实验也不再自动增加文件层级或审核轮数。2026-08-13 补上两个小防线：`validate` 会拒绝与 `idea_tree.json` 不一致的人读视图，参数表会用 `<removed>` 明确记录相对基线删除的配置字段。
+- 实际可见效果：参数实验准备上限 10 分钟；涉及代码或评估改动上限 30 分钟。正式论文实验也不再自动增加文件层级或审核轮数。2026-08-13 补上三个小防线：`validate` 会拒绝与 `idea_tree.json` 不一致的人读视图；参数表会用 `<removed>` 明确记录相对基线删除的配置字段；嵌套配置按完整 YAML 值比较，并区分布尔值、空值和同名字符串。
 - 选择原因：可复现的核心来自准确代码、配置、数据、种子、评估口径和完整结果；其余行政式步骤没有按比例提高科学可信度。
 - 已知限制：旧 helper 和旧测试仍保留兼容入口，看到旧命令不代表新实验必须执行；后续只在真实重复问题出现时再做代码级瘦身，不先重构整套 helper。
 - 素材位置：`AGENTS.md`、`docs/workflow/START_HERE.md`、`docs/workflow/WORKFLOW_KERNEL.md`、`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`、`docs/workflow/playbooks/confirmation.md`。
-- 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；2026-08-13 新增派生视图漂移和配置字段删除负例后重跑完整测试。本条流程本身不启动训练。
+- 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；2026-08-13 新增派生视图漂移、字段删除、嵌套值、类型碰撞、日期及非有限数负例后，完整测试 319 项通过、10 项按环境跳过。本条流程本身不启动训练。
 - 回退方式：回退本次文档修改即可恢复旧默认门；不会改模型、训练代码、历史实验、分支、Tag、日志或 checkpoint。
 
 ## 2026-08-08：UI-GIT-GOVERNANCE-MAP-V1（已完成）

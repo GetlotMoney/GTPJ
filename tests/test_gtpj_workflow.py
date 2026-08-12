@@ -5506,6 +5506,51 @@ log:v1:module_trial:TRIAL-001:attempt-001
 
         self.assertEqual({}, changes)
 
+    def test_parameter_matrix_actual_changes_preserves_yaml_scalar_types(self) -> None:
+        cases = [
+            ("false", '"false"', '"false"'),
+            ("null", '"null"', '"null"'),
+        ]
+        for baseline_value, candidate_value, expected_value in cases:
+            with self.subTest(candidate_value=candidate_value):
+                self._write("base.yaml", f"typed_value:\n  value: {baseline_value}\n")
+                self._write("candidate.yaml", f"typed_value:\n  value: {candidate_value}\n")
+
+                changes = self.module.parameter_matrix_actual_changes(
+                    self.repo / "base.yaml", self.repo / "candidate.yaml"
+                )
+
+                self.assertEqual({"typed_value": expected_value}, changes)
+                errors = self.module.parameter_matrix_changed_parameter_errors(
+                    {"job_id": "RUN-001", "changed_parameters": "{}"},
+                    baseline_config_path=self.repo / "base.yaml",
+                    config_path=self.repo / "candidate.yaml",
+                )
+                self.assertTrue(any("typed_value" in item for item in errors))
+
+    def test_parameter_matrix_actual_changes_rejects_nested_yaml_date(self) -> None:
+        self._write("base.yaml", "schedule:\n  value: []\n")
+        self._write(
+            "candidate.yaml",
+            "schedule:\n  value:\n  - start_date: 2026-08-13\n",
+        )
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "unsupported YAML value type date"):
+            self.module.parameter_matrix_actual_changes(
+                self.repo / "base.yaml", self.repo / "candidate.yaml"
+            )
+
+    def test_parameter_matrix_actual_changes_rejects_non_finite_float(self) -> None:
+        self._write("base.yaml", "temperature:\n  value: 0.07\n")
+        for marker in [".nan", ".inf", "-.inf"]:
+            with self.subTest(marker=marker):
+                self._write("candidate.yaml", f"temperature:\n  value: {marker}\n")
+
+                with self.assertRaisesRegex(self.module.WorkflowError, "non-finite float"):
+                    self.module.parameter_matrix_actual_changes(
+                        self.repo / "base.yaml", self.repo / "candidate.yaml"
+                    )
+
     def test_record_module_attempt_resolves_head_to_the_frozen_commit(self) -> None:
         trial_dir = "experiments/module_trials/IDEA-0003_x/TRIAL-001_x"
         attempt_dir = f"{trial_dir}/attempts/ATTEMPT-001"
