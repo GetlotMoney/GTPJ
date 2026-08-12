@@ -3,7 +3,7 @@
 ```text
 experiment_id: V5-INNOVATION-011
 idea_id: IDEA-0013
-status: implementation
+status: pre_run
 base_version: v5
 formal_v6_status: not_created
 ```

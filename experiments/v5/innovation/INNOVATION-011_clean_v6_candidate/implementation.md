@@ -1,6 +1,6 @@
 # V5-INNOVATION-011 实现说明
 
-状态：implementation。
+状态：已实现，待正式训练。
 
 ## 代码起点与复用边界
 

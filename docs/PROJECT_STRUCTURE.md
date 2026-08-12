@@ -296,6 +296,8 @@ idea_tree/                 # 创意来源、评分、排序
 | `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
+| `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/agent_runtime.yaml` | 本次单个服务器后台 Runner 的最小启动记录；明确不创建命名线程，并引用三份开跑前只读检查。 |
+| `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/agent_outputs/` | `RUN-001` 的服务器、接口和证据三项开跑前只读检查；只服务本次正式启动，不是新控制器。 |
 
 ### `experiments/templates/`
 

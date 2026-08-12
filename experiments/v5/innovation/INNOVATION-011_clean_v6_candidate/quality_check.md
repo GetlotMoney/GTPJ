@@ -1,6 +1,6 @@
 # V5-INNOVATION-011 质量检查
 
-状态：implementation。
+状态：pre_run。
 
 - [x] 代码从 `model/v5-template-v2@fb4b29b` 独立分叉。
 - [x] 不继承 009/010 实验代码。

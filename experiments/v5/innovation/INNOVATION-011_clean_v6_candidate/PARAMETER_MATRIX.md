@@ -2,11 +2,11 @@
 
 这张表一行对应一个实际训练任务；它不是批次摘要。完整原始日志和模型仍在 Warehouse。
 
-来源：IDEA-0013 干净 V6 候选计划；尚未实现或训练
+来源：IDEA-0013 干净 V6 候选；模型已实现，尚未训练
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | clean-v6-candidate-seed5 | innovation | planned | {"framework_candidate":"clean_v6","text_source":"gpt56_8sent","sentence_roles":"6_local+1_unique+1_global","removed_modules":["fgvd_topk","icsa","bvsa","sgmp","bmdd","topology_loss","auxiliary_global_local_losses"],"losses":["main_classification_ce"]} | 5 |  | RUN-001 | 用最小干净框架验证8句句子—区域交互本身是否合理 |  | planned |  |
+| RUN-001 | clean-v6-candidate-seed5 | innovation | frozen | {"region_temperature":"0.07"} | 5 |  | RUN-001 | 用最小干净框架验证8句句子—区域交互本身是否合理 |  |  |  |
 
 ## 查重说明
 

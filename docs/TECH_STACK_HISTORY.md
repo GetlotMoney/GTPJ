@@ -25,7 +25,7 @@
 | PLVSE 论文正文 | `CONTENT-PLVSE-V1` | 已完成 | 保存双语正文及交错排版 Markdown；不代表模型或工作流版本。 |
 | PLVSE PDF 交付物 | `DOC-PLVSE-PDF-V1` | 已完成 | 保存同一正文的多种公式与双语排版 PDF；当前物理文件名保留历史 `CONTENT-PAPER-V1` 前缀。 |
 | 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，代码修改固定两轮不同子 Agent 对抗式只读审核。 |
-| 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 实现中 | 先登记为 `V5-INNOVATION-011`，删除 PSE、旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句直接匹配和主分类损失。 |
+| 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 已实现，待训练 | 先登记为 `V5-INNOVATION-011`，删除 PSE、旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句直接匹配和主分类损失。 |
 
 ## 2026-08-13：CONTENT-PLVSE-V1 / DOC-PLVSE-PDF-V1（已完成）
 
@@ -50,7 +50,7 @@
 - 验证命令与结果：V5 专项 45 项、workflow 259 项和最终结构命令全部通过；两名不同 Reviewer 对最终提交 `378ed95` 按第 1 轮→第 2 轮顺序审核，均为 `pass`、阻断为 0；冻结后再次核对分支、Tag、账本与运行文件。
 - 回退方式：回退本次提交即可恢复修复前主线副本；历史 Tag、母版提交、实验结果和 checkpoint 均不受影响。
 
-## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（实现中）
+## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（已实现，待训练）
 
 - 本次改的是哪个对象：下一代干净 GZSL 模型框架候选，不是正式 V6 框架。
 - 目标问题：V5-INNOVATION-009/010 在保留旧频域、旧局部分支、拓扑和多辅助损失时均显著掉点，无法判断新句子交互机制本身是否合理。
@@ -60,8 +60,8 @@
 - 选择原因：先用最小干净路径验证框架合理性，避免旧模块干扰导致继续堆复杂实验。
 - 已知限制：单 seed 首跑只能判断是否值得继续；若有效，仍需重复训练和确认后才能 promotion 为 `FRAMEWORK-V6`。
 - 素材位置：`idea_tree/ideas/IDEA-0013_clean_v6_candidate/IDEA.md`、`experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`。
-- 验证命令与结果：本次只做账本登记；后续实现会按代码规则跑机器测试和两轮不同子 Agent 审核。
-- 回退方式：删除 planned 实验目录和 IDEA-0013 记录；不影响已完成的 V5 实验结果、Tag 或 checkpoint。
+- 验证命令与结果：新模型专项 11 项通过；数据身份、评估和 checkpoint 复用能力另有 19 项专项通过。正式训练前仍需对最终冻结提交完成两轮不同子 Agent 只读审核。
+- 回退方式：回退实验实现/冻结提交或放弃该实验分支；保留 IDEA 与历史账本，不影响已完成的 V5 实验结果、Tag 或 checkpoint。
 
 ## 2026-08-08：SYS-WORKFLOW-V6（已完成，2026-08-11 更新代码审核规则）
 
