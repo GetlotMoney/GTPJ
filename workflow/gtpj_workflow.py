@@ -4752,13 +4752,15 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
         "experiment branch must contain its recorded template commit",
     )
     template_ledger_path = f"experiments/{version}/TEMPLATE.yaml"
-    changed_template_ledger = git(
-        ["diff", "--name-only", f"{template_commit}..HEAD", "--", template_ledger_path],
-        check=False,
-    )
-    if changed_template_ledger:
+    actual_template_ledger = git_show(f"HEAD:{template_ledger_path}", check=False)
+    accepted_template_ledgers = {
+        git_show(f"{template_commit}:{template_ledger_path}", check=False),
+        git_show(f"{registry_commit}:{template_ledger_path}", check=False),
+    }
+    if actual_template_ledger and actual_template_ledger not in accepted_template_ledgers:
         raise WorkflowError(
-            "experiment branch must not add or modify the framework TEMPLATE.yaml ledger"
+            "experiment branch framework TEMPLATE.yaml must match either its "
+            "template starting ledger or the recorded registry ledger"
         )
 
     experiment_refs = git(
