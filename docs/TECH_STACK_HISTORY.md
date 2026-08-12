@@ -33,7 +33,7 @@
 - 选择原因：主线只保存当前干净底稿，实验变化只留在各自分支，才能避免后续实验相互叠加。
 - 已知限制：当前干净母版只保证 CUB；`train_GTPJ_AWA2.py` 和 `train_GTPJ_SUN.py` 仍是历史入口，不在本次兼容范围内。
 - 素材位置：`experiments/v5/TEMPLATE.yaml`、`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*.py`、`workflow/gtpj_workflow.py`。
-- 验证命令与结果：V5 专项测试已扩展到 44 项并通过；workflow 全量测试和最终结构命令会在 V2 母版指针登记后重跑；两轮只读审核结果在本次分支完成后填写。
+- 验证命令与结果：V5 专项测试已扩展到 45 项并通过；workflow 256 项和最终结构命令全部通过；两轮只读审核结果在本次分支完成后填写。
 - 回退方式：回退本次提交即可恢复修复前主线副本；历史 Tag、母版提交、实验结果和 checkpoint 均不受影响。
 
 ## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（计划中）
