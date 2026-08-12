@@ -17,7 +17,7 @@
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
 | 模型 | `MODEL-GTPJ-V5-MAIN-ALIGN-V1` | 审核中 | 主线 CUB 模型与配置恢复到 V1；运行身份检查按大文件规则修复后，登记为 V2 母版候选，不改模型数学语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 当前干净母版候选 | `MODEL-V5-TEMPLATE-V2` | 待两轮审核 | 候选代码提交 `f78458d5d043b6cdb1d6f94110eec43f7ea8b2f5`；模型数学逻辑沿用 V1，只修正正式运行身份检查。 |
+| V5 当前干净母版候选 | `MODEL-V5-TEMPLATE-V2` | 待两轮审核 | 候选代码提交 `fb4b29b04087640890a532f105cb527d3a8c461b`；模型数学逻辑沿用 V1，只修正正式运行身份与 GPU 评估设备边界。 |
 | V5 历史干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 仍锁定到 `2f5fa5e`，没有移动或覆盖。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
 | 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，实验代码固定两轮不同子 Agent 对抗式只读审核。 |
