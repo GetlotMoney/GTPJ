@@ -164,6 +164,7 @@ class WorkflowHelperTest(unittest.TestCase):
                         "source_framework_tag",
                         "source_framework_commit",
                         "behavior_contract",
+                        "main_runtime_status",
                     ],
                     "properties": {
                         "schema_version": {"const": "gtpj.framework_template.v1"},
@@ -182,6 +183,11 @@ class WorkflowHelperTest(unittest.TestCase):
                         "source_framework_tag": {"pattern": r"^v[0-9]+$"},
                         "source_framework_commit": {"pattern": r"^[0-9a-f]{40}$"},
                         "behavior_contract": {"type": "string"},
+                        "main_runtime_status": {"enum": ["active", "inactive"]},
+                        "runtime_files": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
                     },
                 },
                 indent=2,
@@ -200,7 +206,8 @@ class WorkflowHelperTest(unittest.TestCase):
             f"template_commit: {commit}\n"
             f"source_framework_tag: {version}\n"
             f"source_framework_commit: {commit}\n"
-            "behavior_contract: none\n",
+            "behavior_contract: none\n"
+            "main_runtime_status: inactive\n",
         )
         return commit
 
@@ -221,7 +228,10 @@ class WorkflowHelperTest(unittest.TestCase):
             f"template_commit: {commit}\n"
             f"source_framework_tag: {version}\n"
             f"source_framework_commit: {self._git('rev-parse', f'{version}^{{commit}}').stdout.strip()}\n"
-            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n",
+            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n"
+            "main_runtime_status: active\n"
+            "runtime_files:\n"
+            "  - train_GTPJ_CUB.py\n",
         )
         return commit
 
@@ -244,7 +254,10 @@ class WorkflowHelperTest(unittest.TestCase):
             f"template_commit: {template_commit}\n"
             f"source_framework_tag: {version}\n"
             f"source_framework_commit: {self._git('rev-parse', f'{version}^{{commit}}').stdout.strip()}\n"
-            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n",
+            "behavior_contract: docs/workflow/contracts/V1_BEHAVIOR_CONTRACT.md\n"
+            "main_runtime_status: active\n"
+            "runtime_files:\n"
+            "  - train_GTPJ_CUB.py\n",
         )
         self._commit_all("record clean template in governance registry")
         registry_commit = self._git("rev-parse", "HEAD").stdout.strip()
@@ -1864,6 +1877,22 @@ log:v1:module_trial:TRIAL-001:attempt-001
             any("frozen template branch must equal template_commit" in item for item in errors)
         )
 
+    def test_confirmed_template_can_wait_for_frozen_refs(self) -> None:
+        commit = self._git("rev-parse", "HEAD").stdout.strip()
+        data = {
+            "framework_id": "FRAMEWORK-V1",
+            "template_id": "MODEL-V1-TEMPLATE-V2",
+            "template_status": "confirmed",
+            "template_branch": "framework/v1-template-v2",
+            "template_tag": "model/v1-template-v2",
+            "template_commit": commit,
+            "source_framework_tag": "v1",
+            "source_framework_commit": self._git("rev-parse", "v1^{commit}").stdout.strip(),
+        }
+
+        self.assertEqual([], self.module.framework_template_identity_errors("v1", data))
+        self.assertEqual([], self.module.framework_template_git_ref_errors(data))
+
     def test_active_standard_requires_template_yaml_for_every_framework(self) -> None:
         self._write(
             "schemas/framework_template.schema.json",
@@ -1878,6 +1907,53 @@ log:v1:module_trial:TRIAL-001:attempt-001
         errors = self.module.validate_framework_templates()
 
         self.assertTrue(any("experiments/v1/TEMPLATE.yaml" in item for item in errors))
+
+    def test_governance_runtime_must_match_current_clean_template(self) -> None:
+        template_commit = self._write_clean_template()
+        self._commit_all("record clean template metadata")
+        self._git("switch", "-c", "docs/readme-update")
+
+        self.assertEqual([], self.module.current_template_runtime_alignment_errors())
+
+        self._write("train_GTPJ_CUB.py", "print('accumulated experiment code')\n")
+        errors = self.module.current_template_runtime_alignment_errors()
+
+        self.assertTrue(any("train_GTPJ_CUB.py" in item for item in errors))
+        self.assertTrue(any(template_commit in item for item in errors))
+
+    def test_runtime_template_does_not_follow_idea_tree_view(self) -> None:
+        self._write_clean_template()
+        idea_tree = json.loads((self.repo / "idea_tree/idea_tree.json").read_text(encoding="utf-8"))
+        idea_tree["current_version"] = "v9"
+        self._write("idea_tree/idea_tree.json", json.dumps(idea_tree) + "\n")
+        self._commit_all("record active runtime independently from idea view")
+        self._git("switch", "-c", "docs/another-view")
+
+        self.assertEqual([], self.module.current_template_runtime_alignment_errors())
+
+    def test_active_runtime_template_must_list_runtime_files(self) -> None:
+        self._write_clean_template()
+        template_path = self.repo / "experiments/v1/TEMPLATE.yaml"
+        template_text = template_path.read_text(encoding="utf-8")
+        template_path.write_text(
+            template_text.replace(
+                "runtime_files:\n  - train_GTPJ_CUB.py\n",
+                "",
+            ),
+            encoding="utf-8",
+        )
+
+        errors = self.module.current_template_runtime_alignment_errors()
+
+        self.assertTrue(any("must list runtime_files" in item for item in errors))
+
+    def test_experiment_branch_uses_existing_template_base_gate(self) -> None:
+        template_commit = self._write_clean_template()
+        self._commit_all("record clean template metadata")
+        self._git("switch", "-c", "exp/v1/tune/tune-001-change", template_commit)
+        self._write("train_GTPJ_CUB.py", "print('experiment change')\n")
+
+        self.assertEqual([], self.module.current_template_runtime_alignment_errors())
 
     def test_formal_experiment_binding_reports_missing_experiment_yaml(self) -> None:
         row = {

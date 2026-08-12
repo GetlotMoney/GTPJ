@@ -8,3 +8,4 @@ template_commit: ccc4a10ddd67308e28c40d6000216917a71bf472
 source_framework_tag: v2
 source_framework_commit: ccc4a10ddd67308e28c40d6000216917a71bf472
 behavior_contract: none
+main_runtime_status: inactive

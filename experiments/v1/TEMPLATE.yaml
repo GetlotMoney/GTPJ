@@ -8,3 +8,4 @@ template_commit: d20d1882a88fc6d7be70d2f3b0b198fbc9f2444e
 source_framework_tag: v1
 source_framework_commit: d20d1882a88fc6d7be70d2f3b0b198fbc9f2444e
 behavior_contract: none
+main_runtime_status: inactive

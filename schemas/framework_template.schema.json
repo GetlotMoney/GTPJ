@@ -13,7 +13,8 @@
     "template_commit",
     "source_framework_tag",
     "source_framework_commit",
-    "behavior_contract"
+    "behavior_contract",
+    "main_runtime_status"
   ],
   "properties": {
     "schema_version": {"const": "gtpj.framework_template.v1"},
@@ -25,7 +26,12 @@
     "template_commit": {"pattern": "^[0-9a-f]{40}$"},
     "source_framework_tag": {"pattern": "^v[0-9]+$"},
     "source_framework_commit": {"pattern": "^[0-9a-f]{40}$"},
-    "behavior_contract": {"type": "string"}
+    "behavior_contract": {"type": "string"},
+    "main_runtime_status": {"enum": ["active", "inactive"]},
+    "runtime_files": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
   },
   "additionalProperties": true
 }

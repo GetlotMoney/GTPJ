@@ -23,6 +23,7 @@ GTPJ 仓库分成三层：
 代码层：model/、tools/、train_*.py、当前运行别名 config/GTPJ_*.yaml
 治理与复现控制层：docs/、workflow/、schemas/、AGENTS.md、NEXT_ACTIONS.md
 轻量实验索引层：experiments/、config/versions/、idea_tree/ 的索引视图
+本地临时状态层：.runtime/data_fingerprints/ 保存可复用输入哈希清单，不进入 Git
 ```
 
 完整材料和大型资产在 GitHub 外：
@@ -88,9 +89,9 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
-| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口，读取 YAML config，训练 GTPJ 并写训练日志。 |
-| `train_GTPJ_AWA2.py` | AWA2 GZSL 训练入口。 |
-| `train_GTPJ_SUN.py` | SUN GZSL 训练入口。 |
+| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；模型、损失和评估语义继承 `MODEL-V5-TEMPLATE-V1@2f5fa5e`，并在 V2 母版中增加大文件哈希清单复用。 |
+| `train_GTPJ_AWA2.py` | AWA2 GZSL 历史训练入口；不属于当前 V5 干净 CUB 母版的保证范围。 |
+| `train_GTPJ_SUN.py` | SUN GZSL 历史训练入口；不属于当前 V5 干净 CUB 母版的保证范围。 |
 
 ## `config/`
 
@@ -208,7 +209,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | GTPJ 主模型实现，包含 CLIP/Adapter/GPT/双向 Transformer、LaSt-ViT pooling、FAE、AG-JEPA 等核心组件。 |
+| `model/MyModel.py` | 当前 CUB 主模型实现，与 `MODEL-V5-TEMPLATE-V1@2f5fa5e` 完全对齐；实验改动只留在实验分支。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：
@@ -228,6 +229,11 @@ idea_tree/                 # 创意来源、评分、排序
 | `tools/helper_func.py` | 评估、特征缓存加载、CLIP spatial feature 获取等公共函数。 |
 | `tools/extract_features.py` | 预提取 CLIP 图像/patch 特征并缓存到 `data/cache/`。 |
 | `tools/eval_pure_clip.py` | 纯 CLIP zero-shot / GZSL baseline 评估脚本。 |
+| `tools/reproducibility.py` | 随机种子、DataLoader 生成器和可复现状态工具。 |
+| `tools/v5_cub_data.py` | V5 干净 CUB 母版的数据划分和标签顺序检查。 |
+| `tools/v5_evaluation.py` | V5 干净 CUB 母版的缓存加载与 U/S/H/ZS 评估。 |
+| `tools/v5_runtime.py` | V5 正式输入身份、可复用大文件哈希清单、RNG 状态和断点续训一致性检查。 |
+| `tools/convert_v5_checkpoint.py` | 把历史 V5 checkpoint 显式转换到干净母版字段；不猜字段、不覆盖原文件。 |
 
 注意：
 

@@ -931,6 +931,24 @@ def read_shallow_yaml(path: Path) -> dict[str, object]:
     return parse_shallow_yaml_text(read_text(path))
 
 
+def yaml_string_list(text: str, key: str) -> list[str]:
+    """Read one top-level YAML list whose entries are plain strings."""
+    values: list[str] = []
+    in_target = False
+    for raw_line in text.splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        if not raw_line.startswith(" "):
+            in_target = raw_line.strip() == f"{key}:"
+            continue
+        if in_target:
+            match = re.fullmatch(r"\s{2}-\s+(.+?)\s*", raw_line)
+            if not match:
+                break
+            values.append(yaml_unquote(match.group(1)))
+    return values
+
+
 def yaml_section_value(data: dict[str, object], section: str, key: str, default: str = "") -> str:
     section_data = data.get(section)
     if isinstance(section_data, dict):
@@ -3995,6 +4013,13 @@ def framework_template_git_ref_errors(data: dict[str, object]) -> list[str]:
     template_tag = str(data.get("template_tag", ""))
     template_branch = str(data.get("template_branch", ""))
     template_commit = str(data.get("template_commit", ""))
+    if str(data.get("template_status", "")) == "confirmed":
+        if not git(
+            ["rev-parse", "--verify", f"{template_commit}^{{commit}}"],
+            check=False,
+        ):
+            errors.append("confirmed template_commit must exist locally")
+        return errors
     tag_commit_value = git(
         ["rev-parse", "--verify", f"refs/tags/{template_tag}^{{commit}}"],
         check=False,
@@ -4047,8 +4072,9 @@ def framework_template_identity_errors(
     else:
         expected_branch = f"framework/{version}-template-v{template_number}"
         expected_tag = f"model/{version}-template-v{template_number}"
-        if status != "frozen":
-            errors.append("clean template must use frozen status")
+        if status not in {"confirmed", "frozen"}:
+            errors.append("clean template must use confirmed or frozen status")
+
 
     if str(data.get("template_branch", "")) != expected_branch:
         errors.append(f"template_branch must be {expected_branch}")
@@ -4066,6 +4092,84 @@ def framework_template_identity_errors(
         errors.append(f"missing source framework tag: {version}")
     elif source_commit != source_tag_commit:
         errors.append(f"source_framework_commit must match tag {version}")
+    return errors
+
+
+def current_template_runtime_alignment_errors() -> list[str]:
+    """Keep governance branches on the current clean template runtime."""
+    branch = current_branch()
+    if not branch or branch.startswith(("exp/", "dev/", "framework/")):
+        return []
+
+    template_paths = sorted((REPO_ROOT / "experiments").glob("v[0-9]*/TEMPLATE.yaml"))
+    clean_templates: list[tuple[Path, dict[str, object], list[str]]] = []
+    for template_path in template_paths:
+        template_text = read_text(template_path)
+        template_data = parse_shallow_yaml_text(template_text)
+        if str(template_data.get("template_status", "")) not in {"confirmed", "frozen"}:
+            continue
+        clean_templates.append(
+            (
+                template_path,
+                template_data,
+                yaml_string_list(template_text, "runtime_files"),
+            )
+        )
+
+    if not clean_templates:
+        return []
+    active_templates = [
+        entry
+        for entry in clean_templates
+        if str(entry[1].get("main_runtime_status", "")) == "active"
+    ]
+    if len(active_templates) != 1:
+        active_paths = ", ".join(rel(item[0]) for item in active_templates) or "none"
+        return [
+            "exactly one runtime template must use main_runtime_status: active; "
+            f"found {len(active_templates)} ({active_paths})"
+        ]
+
+    template_path, template_data, runtime_files = active_templates[0]
+    if not runtime_files:
+        return [f"{rel(template_path)}: active runtime template must list runtime_files"]
+    template_commit = str(template_data.get("template_commit", ""))
+    if not re.fullmatch(r"[0-9a-f]{40}", template_commit):
+        return [f"{rel(template_path)}: active runtime template needs a full template_commit"]
+
+    errors: list[str] = []
+    seen_runtime_files: set[str] = set()
+    for relative_path in runtime_files:
+        if relative_path in seen_runtime_files:
+            errors.append(f"{rel(template_path)}: duplicate runtime_files path: {relative_path}")
+            continue
+        seen_runtime_files.add(relative_path)
+        if (
+            not relative_path
+            or "\\" in relative_path
+            or Path(relative_path).is_absolute()
+            or ".." in Path(relative_path).parts
+        ):
+            errors.append(f"{rel(template_path)}: invalid runtime_files path: {relative_path}")
+            continue
+        expected = git(["rev-parse", f"{template_commit}:{relative_path}"], check=False)
+        if not expected:
+            errors.append(
+                f"{rel(template_path)}: template_commit lacks runtime file {relative_path}"
+            )
+            continue
+        actual_path = REPO_ROOT / relative_path
+        if not actual_path.is_file():
+            errors.append(
+                f"runtime file missing: {relative_path}; expected template_commit={template_commit}"
+            )
+            continue
+        actual = git(["hash-object", "--path", relative_path, relative_path], check=False)
+        if actual != expected:
+            errors.append(
+                f"runtime file differs from current clean template: {relative_path}; "
+                f"expected template_commit={template_commit}"
+            )
     return errors
 
 
@@ -4093,6 +4197,9 @@ def validate_framework_templates() -> list[str]:
                 )
             continue
         data = read_shallow_yaml(template_path)
+        runtime_files = yaml_string_list(read_text(template_path), "runtime_files")
+        if runtime_files:
+            data["runtime_files"] = runtime_files
         missing = sorted(FRAMEWORK_TEMPLATE_REQUIRED_KEYS - set(data))
         if missing:
             errors.append(f"{rel(template_path)} missing keys: {', '.join(missing)}")
@@ -4108,6 +4215,7 @@ def validate_framework_templates() -> list[str]:
             f"{rel(template_path)}: {item}"
             for item in framework_template_git_ref_errors(data)
         )
+    errors.extend(current_template_runtime_alignment_errors())
     return errors
 
 

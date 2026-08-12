@@ -1,3 +1,8 @@
+"""V5 唯一正式数学路径、形状和梯度测试。
+
+文件名保留历史路径，避免旧测试入口失效；正文不再维护实验路线。
+"""
+
 from types import SimpleNamespace
 import unittest
 
@@ -6,560 +11,141 @@ import torch
 from model.MyModel import GTPJ
 
 
-def make_config(
-    jepa_context_mode="fae_memory",
-    jepa_text_mode="adapted",
-    lambda_jepa=0.05,
-    lambda_jepa_neg=0.0,
-    use_fae=True,
-    lastvit_select_k=8,
-    use_conditional_text=False,
-    conditional_text_ratio=0.008,
-    bvsa_text_mode="adapted",
-):
-    return SimpleNamespace(
-        num_class=200,
-        dim_f_clip=768,
-        pse_adapter_ratio=0.2,
-        use_pse_self_attention=True,
-        pse_apply_unseen=False,
-        pse_heads=4,
+def make_config(**overrides):
+    values = dict(
+        num_class=6,
+        dim_f_clip=16,
+        pse_heads=2,
         pse_dropout=0.0,
         pse_inner_ratio=0.35,
         pse_outer_ratio=0.65,
-        adapter_ratio=0.2,
-        use_clip_a_self=True,
-        clip_a_self_apply_unseen=False,
-        clip_a_self_heads=4,
-        clip_a_self_dropout=0.0,
-        clip_a_self_inner_ratio=0.35,
-        clip_a_self_outer_ratio=0.65,
-        tf_common_dim=512,
-        tf_heads=4,
+        tf_common_dim=8,
+        tf_heads=2,
         tf_dropout=0.0,
         weight_s2v=0.5,
-        use_fae=use_fae,
-        use_fgvd_geometry=use_fae,
         local_weight=0.2,
         score_mode="add",
-        use_ag_jepa=True,
-        use_sgmp=True,
-        jepa_context_mode=jepa_context_mode,
-        sgmp_context_mode=jepa_context_mode,
-        jepa_text_mode=jepa_text_mode,
-        sgmp_text_mode=jepa_text_mode,
-        jepa_topk=2,
-        sgmp_topk=2,
-        jepa_hidden=512,
-        sgmp_hidden=512,
-        jepa_neg_margin=0.2,
+        fgvd_select_k=4,
+        icsa_ratio=0.008,
+        icsa_hidden=8,
+        sgmp_topk=1,
+        sgmp_hidden=8,
         sgmp_neg_margin=0.2,
-        lastvit_select_k=lastvit_select_k,
-        fgvd_select_k=lastvit_select_k,
-        lastvit_select_sigma=0.0,
-        fgvd_select_sigma=0.0,
-        lastvit_select_largest=True,
-        fgvd_select_largest=True,
-        lastvit_select_formula="v2_abs_mean",
-        fgvd_select_formula="v2_abs_mean",
-        use_icsa=use_conditional_text,
-        use_conditional_text=use_conditional_text,
-        icsa_ratio=conditional_text_ratio,
-        conditional_text_ratio=conditional_text_ratio,
-        bvsa_text_mode=bvsa_text_mode,
-        meta_net_hidden=48,
-        icsa_hidden=48,
-        lambda_consist=0.0,
-        lambda_topo_pearson=0.0,
-        lambda_msdn=0.0,
-        lambda_bmdd=0.0,
-        lambda_jepa=lambda_jepa,
-        lambda_mpp=lambda_jepa,
-        lambda_jepa_neg=lambda_jepa_neg,
-        lambda_neg=lambda_jepa_neg,
-        use_dynamic_routing=False,
-        dynamic_local_mode="fixed",
-        dynamic_icsa_mode="fixed",
-        dynamic_direction_mode="fixed",
-        dynamic_pse_mode="fixed",
-        dynamic_gate_hidden=16,
-        dynamic_gate_anchor_lambda=0.0,
+        lambda_consist=0.05,
+        consist_temp=2.0,
+        consist_dynamic_gamma=0.1,
+        lambda_topo_pearson=0.1,
+        lambda_bmdd=0.05,
+        msdn_temp=2.0,
+        lambda_mpp=0.05,
+        lambda_neg=0.01,
     )
+    values.update(overrides)
+    return SimpleNamespace(**values)
 
 
-def drop_config_keys(config, keys):
-    for key in keys:
-        if hasattr(config, key):
-            delattr(config, key)
-    return config
-
-
-def make_model(config):
+def make_model(config=None, seen=None, unseen=None):
     torch.manual_seed(7)
-    seen = torch.arange(150)
-    unseen = torch.arange(150, 200)
-    seen_text = torch.randn(150, 768)
-    unseen_text = torch.randn(50, 768)
-    seen_sentences = torch.randn(150, 3, 768)
+    seen = torch.tensor([0, 2, 3, 5]) if seen is None else torch.as_tensor(seen)
+    unseen = torch.tensor([1, 4]) if unseen is None else torch.as_tensor(unseen)
     return GTPJ(
-        config,
+        config or make_config(),
         seen,
         unseen,
-        seen_text,
-        unseen_text,
-        seen_sentence_embeds=seen_sentences,
+        torch.randn(seen.numel(), 16),
+        torch.randn(unseen.numel(), 16),
+        seen_sentence_embeds=torch.randn(seen.numel(), 3, 16),
     )
 
 
 def grad_norm(parameters):
-    total = 0.0
-    for param in parameters:
-        if param.grad is not None:
-            total += float(param.grad.detach().abs().sum().item())
-    return total
+    return sum(
+        float(parameter.grad.detach().abs().sum().item())
+        for parameter in parameters
+        if parameter.grad is not None
+    )
 
 
-class FaeMemoryJepaTest(unittest.TestCase):
-    def test_framework_only_config_keys_drive_model(self):
-        config = make_config(
-            "fgvd_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-            lastvit_select_k=3,
-        )
-        drop_config_keys(
-            config,
-            [
-                "adapter_ratio",
-                "use_clip_a_self",
-                "clip_a_self_apply_unseen",
-                "clip_a_self_heads",
-                "clip_a_self_dropout",
-                "clip_a_self_inner_ratio",
-                "clip_a_self_outer_ratio",
-                "use_fae",
-                "use_ag_jepa",
-                "jepa_context_mode",
-                "jepa_text_mode",
-                "jepa_topk",
-                "jepa_hidden",
-                "jepa_neg_margin",
-                "lastvit_select_k",
-                "lastvit_select_sigma",
-                "lastvit_select_largest",
-                "lastvit_select_formula",
-                "use_conditional_text",
-                "conditional_text_ratio",
-                "meta_net_hidden",
-                "lambda_msdn",
-                "lambda_jepa",
-                "lambda_jepa_neg",
-            ],
-        )
+class V5CanonicalMathPathTest(unittest.TestCase):
+    def test_fixed_fusion_uses_point_two_local_weight(self):
+        model = make_model()
+        out = model(torch.randn(2, 577, 16), is_train=False)
 
-        model = make_model(config)
+        expected = out["global_logits"] + 0.2 * out["local_logits"]
+        torch.testing.assert_close(out["final_logits"], expected)
+        self.assertEqual(model.local_weight, 0.2)
 
-        self.assertTrue(model.use_pse_self_attention)
-        self.assertEqual(model.fgvd_select_k, 3)
-        self.assertEqual(model.sgmp_context_mode, "fgvd_main_memory")
-        self.assertEqual(model.sgmp_text_mode, "conditional")
-        self.assertTrue(model.use_icsa)
-        self.assertEqual(model.bvsa_text_mode, "conditional")
+    def test_noncanonical_local_weight_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "local_weight=0.2"):
+            make_model(make_config(local_weight=0.3))
 
-    def test_legacy_only_config_keys_still_work(self):
-        config = make_config(
-            "fae_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-            lastvit_select_k=4,
-        )
-        drop_config_keys(
-            config,
-            [
-                "pse_adapter_ratio",
-                "use_pse_self_attention",
-                "pse_apply_unseen",
-                "pse_heads",
-                "pse_dropout",
-                "pse_inner_ratio",
-                "pse_outer_ratio",
-                "use_fgvd_geometry",
-                "use_sgmp",
-                "sgmp_context_mode",
-                "sgmp_text_mode",
-                "sgmp_topk",
-                "sgmp_hidden",
-                "sgmp_neg_margin",
-                "fgvd_select_k",
-                "fgvd_select_sigma",
-                "fgvd_select_largest",
-                "fgvd_select_formula",
-                "use_icsa",
-                "icsa_ratio",
-                "icsa_hidden",
-                "lambda_bmdd",
-                "lambda_mpp",
-                "lambda_neg",
-            ],
-        )
+    def test_known_noncanonical_route_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "use_sgmp=True"):
+            make_model(make_config(use_sgmp=False))
 
-        model = make_model(config)
+    def test_only_577_token_input_is_accepted(self):
+        model = make_model()
+        for invalid in (
+            torch.randn(2, 576, 16),
+            torch.randn(2, 1, 16),
+            torch.randn(2, 16),
+        ):
+            with self.subTest(shape=tuple(invalid.shape)):
+                with self.assertRaisesRegex(ValueError, r"\[B, 577, D\]"):
+                    model(invalid)
 
-        self.assertTrue(model.use_clip_a_self)
-        self.assertEqual(model.fgvd_select_k, 4)
-        self.assertEqual(model.sgmp_context_mode, "fgvd_main_memory")
-        self.assertEqual(model.sgmp_text_mode, "conditional")
-        self.assertTrue(model.use_conditional_text)
-        self.assertEqual(model.bvsa_text_mode, "conditional")
+    def test_feature_dimension_is_checked(self):
+        with self.assertRaisesRegex(ValueError, "D=16"):
+            make_model()(torch.randn(2, 577, 15))
 
-    def test_framework_keys_take_priority_over_legacy_aliases(self):
-        config = make_config(
-            "fgvd_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-            lastvit_select_k=6,
-        )
-        config.pse_adapter_ratio = 0.25
-        config.adapter_ratio = 0.75
-        config.use_pse_self_attention = True
-        config.use_clip_a_self = False
-        config.use_fgvd_geometry = True
-        config.use_fae = False
-        config.sgmp_context_mode = "fgvd_main_memory"
-        config.jepa_context_mode = "embed"
-        config.sgmp_text_mode = "conditional"
-        config.jepa_text_mode = "adapted"
-        config.fgvd_select_k = 2
-        config.lastvit_select_k = 6
-        config.use_icsa = True
-        config.use_conditional_text = False
-        config.icsa_ratio = 0.02
-        config.conditional_text_ratio = 0.0
-        config.icsa_hidden = 32
-        config.meta_net_hidden = 64
+    def test_train_and_eval_class_axes(self):
+        model = make_model()
+        features = torch.randn(2, 577, 16)
 
-        model = make_model(config)
+        train = model(features, is_train=True)
+        evaluate = model(features, is_train=False)
 
-        self.assertAlmostEqual(model.adapter_ratio, 0.25)
-        self.assertTrue(model.use_clip_a_self)
-        self.assertEqual(model.sgmp_context_mode, "fgvd_main_memory")
-        self.assertEqual(model.sgmp_text_mode, "conditional")
-        self.assertEqual(model.fgvd_select_k, 2)
-        self.assertTrue(model.use_icsa)
-        self.assertAlmostEqual(model.icsa_ratio, 0.02)
-        self.assertEqual(model.meta_net[0].out_features, 32)
+        self.assertEqual(tuple(train["clip_S_pp"].shape), (2, 4))
+        self.assertEqual(tuple(evaluate["clip_S_pp"].shape), (2, 6))
 
-    def test_fae_memory_positive_jepa_reaches_fae(self):
-        model = make_model(make_config("fae_memory", lambda_jepa=0.05, lambda_jepa_neg=0.0))
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
+    def test_mpp_reaches_fgvd_icsa_and_text_alignment(self):
+        model = make_model()
+        out = model(torch.randn(2, 577, 16), is_train=True)
+        losses = model.compute_loss(dict(out, batch_label=torch.tensor([0, 3])))
 
         model.zero_grad(set_to_none=True)
-        loss_pack["loss_jepa"].backward()
+        losses["loss_mpp"].backward()
 
-        self.assertEqual(tuple(out["logits"].shape), (2, 150))
-        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
-        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.cross_tf.embed_cv.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.clip_a_self_adapter.parameters()), 0.0)
+        self.assertEqual(tuple(out["sgmp_memory"].shape), (2, 4, 8))
+        self.assertGreater(grad_norm(model.bvsa_module.fgvd_encoder.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.icsa_module.parameters()), 0.0)
+        self.assertGreater(grad_norm(model.bvsa_module.embed_text.parameters()), 0.0)
 
-    def test_eval_logits_shape_is_unchanged(self):
-        model = make_model(make_config("fae_memory"))
-        clip_features = torch.randn(2, 577, 768)
-
-        out = model(clip_features, is_train=False)
-
-        self.assertEqual(tuple(out["logits"].shape), (2, 200))
-        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
-
-    def test_fae_memory_requires_fae(self):
-        config = make_config("fae_memory", use_fae=False)
-
-        with self.assertRaisesRegex(ValueError, "requires use_fgvd_geometry=True"):
-            make_model(config)
-
-    def test_fae_memory_supports_full_patch_set(self):
-        model = make_model(make_config("fae_memory", lastvit_select_k=0))
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
+    def test_local_logits_reach_icsa(self):
+        model = make_model()
+        out = model(torch.randn(2, 577, 16), is_train=True)
 
         model.zero_grad(set_to_none=True)
-        loss_pack["loss_mpp"].backward()
+        out["local_logits"].square().sum().backward()
 
-        self.assertEqual(tuple(out["jepa_selected_patches"].shape), (2, 576, 768))
-        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
+        self.assertEqual(tuple(out["local_logits"].shape), (2, 6))
+        self.assertGreater(grad_norm(model.icsa_module.parameters()), 0.0)
 
-    def test_embed_positive_jepa_does_not_reach_fae(self):
-        model = make_model(make_config("embed", lambda_jepa=0.05, lambda_jepa_neg=0.0))
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
+    def test_global_seen_labels_map_by_declared_class_order(self):
+        model = make_model()
+        mapped = model._global_to_seen_labels(torch.tensor([5, 0, 3, 2]))
+        torch.testing.assert_close(mapped, torch.tensor([3, 0, 2, 1]))
 
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
+        with self.assertRaisesRegex(ValueError, "seen classes"):
+            model._global_to_seen_labels(torch.tensor([1]))
 
-        model.zero_grad(set_to_none=True)
-        loss_pack["loss_jepa"].backward()
-
-        self.assertEqual(tuple(out["logits"].shape), (2, 150))
-        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
-
-    def test_negative_jepa_detaches_visual_context(self):
-        model = make_model(make_config("fae_memory", lambda_jepa=0.0, lambda_jepa_neg=0.01))
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
-
-        model.zero_grad(set_to_none=True)
-        loss_pack["loss_jepa_neg"].backward()
-
-        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
-
-    def test_fae_main_memory_conditional_jepa_reaches_main_fae_and_meta_net(self):
-        model = make_model(
-            make_config(
-                "fae_main_memory",
-                jepa_text_mode="conditional",
-                lambda_jepa=0.05,
-                lambda_jepa_neg=0.0,
-                use_conditional_text=True,
-            )
-        )
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
-
-        model.zero_grad(set_to_none=True)
-        loss_pack["loss_jepa"].backward()
-
-        self.assertEqual(tuple(out["logits"].shape), (2, 150))
-        self.assertEqual(tuple(out["logits_200"].shape), (2, 200))
-        self.assertEqual(tuple(out["sgmp_memory"].shape), (2, 8, 512))
-        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
-        self.assertGreater(grad_norm(model.cross_tf.fae.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.cross_tf.embed_text.parameters()), 0.0)
-
-    def test_default_bvsa_text_keeps_local_score_off_meta_net(self):
-        model = make_model(
-            make_config(
-                "fae_main_memory",
-                jepa_text_mode="conditional",
-                lambda_jepa=0.0,
-                lambda_jepa_neg=0.0,
-                use_conditional_text=True,
-                bvsa_text_mode="adapted",
-            )
-        )
-        clip_features = torch.randn(2, 577, 768)
-
-        out = model(clip_features, is_train=True)
-
-        model.zero_grad(set_to_none=True)
-        (out["local_score"] ** 2).sum().backward()
-
-        self.assertEqual(tuple(out["local_score"].shape), (2, 200))
-        self.assertEqual(grad_norm(model.meta_net.parameters()), 0.0)
-
-    def test_conditional_bvsa_text_reaches_local_score_and_meta_net(self):
-        model = make_model(
-            make_config(
-                "fae_main_memory",
-                jepa_text_mode="conditional",
-                lambda_jepa=0.0,
-                lambda_jepa_neg=0.0,
-                use_conditional_text=True,
-                bvsa_text_mode="conditional",
-            )
-        )
-        clip_features = torch.randn(2, 577, 768)
-
-        out = model(clip_features, is_train=True)
-
-        model.zero_grad(set_to_none=True)
-        (out["local_score"] ** 2).sum().backward()
-
-        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
-        self.assertEqual(tuple(out["score_v2s"].shape), (2, 200))
-        self.assertEqual(tuple(out["score_s2v"].shape), (2, 200))
-        self.assertEqual(tuple(out["local_score"].shape), (2, 200))
-        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
-
-    def test_dynamic_fixed_routing_matches_static_path_and_reports_stats(self):
-        base_config = make_config(
-            "fae_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-        )
-        dynamic_config = make_config(
-            "fae_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-        )
-        dynamic_config.use_dynamic_routing = True
-        dynamic_config.dynamic_local_mode = "fixed"
-        dynamic_config.dynamic_icsa_mode = "fixed"
-        dynamic_config.dynamic_direction_mode = "fixed"
-        dynamic_config.dynamic_pse_mode = "fixed"
-
-        base_model = make_model(base_config)
-        dynamic_model = make_model(dynamic_config)
-        clip_features = torch.randn(2, 577, 768)
-
-        base_out = base_model(clip_features, is_train=True)
-        dynamic_out = dynamic_model(clip_features, is_train=True)
-
-        torch.testing.assert_close(dynamic_out["s_final"], base_out["s_final"], rtol=1e-5, atol=1e-5)
-        self.assertIn("dynamic_route_stats", dynamic_out)
-        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["local_gate"]["mean"], 0.2)
-        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["icsa_gate"]["mean"], 0.008)
-        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["direction_gate"]["mean"], 0.5)
-        self.assertAlmostEqual(dynamic_out["dynamic_route_stats"]["pse_gate"]["mean"], 0.65)
-
-    def test_dynamic_sample_local_and_direction_gates_receive_gradients(self):
-        config = make_config(
-            "fae_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-        )
-        config.use_dynamic_routing = True
-        config.dynamic_local_mode = "sample"
-        config.dynamic_direction_mode = "sample"
-        model = make_model(config)
-        clip_features = torch.randn(2, 577, 768)
-
-        out = model(clip_features, is_train=True)
-
-        model.zero_grad(set_to_none=True)
-        out["s_final"].sum().backward()
-
-        self.assertEqual(tuple(out["dynamic_gates"]["local"].shape), (2, 1))
-        self.assertEqual(tuple(out["dynamic_gates"]["direction"].shape), (2, 1))
-        self.assertGreater(grad_norm(model.dynamic_local_gate.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.dynamic_direction_gate.parameters()), 0.0)
-
-    def test_dynamic_class_icsa_gate_reaches_conditional_bvsa_text(self):
-        config = make_config(
-            "fae_main_memory",
-            jepa_text_mode="conditional",
-            use_conditional_text=True,
-            bvsa_text_mode="conditional",
-        )
-        config.use_dynamic_routing = True
-        config.dynamic_icsa_mode = "class"
-        model = make_model(config)
-        with torch.no_grad():
-            model.meta_net[-1].bias.fill_(0.01)
-        clip_features = torch.randn(2, 577, 768)
-
-        out = model(clip_features, is_train=True)
-
-        model.zero_grad(set_to_none=True)
-        (out["local_score"] ** 2).sum().backward()
-
-        self.assertEqual(tuple(out["all_text_cond"].shape), (2, 200, 768))
-        self.assertEqual(tuple(out["dynamic_gates"]["icsa"].shape), (2, 150))
-        self.assertGreater(grad_norm(model.dynamic_icsa_gate.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
-
-    def test_dynamic_pse_class_gate_reaches_loss_and_reports_anchor(self):
-        config = make_config("fae_main_memory")
-        config.use_dynamic_routing = True
-        config.dynamic_pse_mode = "class"
-        config.dynamic_gate_anchor_lambda = 0.01
-        model = make_model(config)
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
-
-        model.zero_grad(set_to_none=True)
-        loss_pack["loss"].backward()
-
-        self.assertEqual(tuple(out["dynamic_gates"]["pse"].shape), (150, 1))
-        self.assertIn("loss_dynamic_gate_anchor", loss_pack)
-        self.assertGreater(grad_norm(model.dynamic_pse_gate.parameters()), 0.0)
-
-    def test_dynamic_pse_sample_mode_is_rejected_early(self):
-        config = make_config("fae_main_memory")
-        config.use_dynamic_routing = True
-        config.dynamic_pse_mode = "sample"
-
-        with self.assertRaisesRegex(ValueError, "dynamic_pse_mode"):
-            make_model(config)
-
-    def test_conditional_jepa_requires_conditional_text(self):
-        with self.assertRaisesRegex(ValueError, "requires use_icsa=True"):
-            make_model(
-                make_config(
-                    "fae_main_memory",
-                    jepa_text_mode="conditional",
-                    use_conditional_text=False,
-                )
-            )
-
-    def test_conditional_bvsa_requires_conditional_text(self):
-        with self.assertRaisesRegex(ValueError, "requires use_icsa=True"):
-            make_model(
-                make_config(
-                    "fae_main_memory",
-                    use_conditional_text=False,
-                    bvsa_text_mode="conditional",
-                )
-            )
-
-    def test_conditional_negative_jepa_detaches_visual_context(self):
-        model = make_model(
-            make_config(
-                "fae_main_memory",
-                jepa_text_mode="conditional",
-                lambda_jepa=0.0,
-                lambda_jepa_neg=0.01,
-                use_conditional_text=True,
-            )
-        )
-        clip_features = torch.randn(2, 577, 768)
-        labels = torch.tensor([0, 1])
-
-        out = model(clip_features, is_train=True)
-        pack = out.copy()
-        pack["batch_label"] = labels
-        loss_pack = model.compute_loss(pack)
-
-        model.zero_grad(set_to_none=True)
-        loss_pack["loss_jepa_neg"].backward()
-
-        self.assertEqual(grad_norm(model.cross_tf.fae.parameters()), 0.0)
-        self.assertGreater(grad_norm(model.meta_net.parameters()), 0.0)
+    def test_class_split_must_be_disjoint_unique_and_complete(self):
+        with self.assertRaisesRegex(ValueError, "must not overlap"):
+            make_model(seen=[0, 2, 3, 5], unseen=[1, 5])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            make_model(seen=[0, 0, 2, 3], unseen=[1, 4])
+        with self.assertRaisesRegex(ValueError, "cover every global class"):
+            make_model(seen=[0, 2, 3], unseen=[1, 4])
 
 
 if __name__ == "__main__":

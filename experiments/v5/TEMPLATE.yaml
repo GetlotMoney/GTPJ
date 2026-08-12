@@ -8,3 +8,16 @@ template_commit: 2f5fa5e631ef82658d4bac587cdfd17f3534cb35
 source_framework_tag: v5
 source_framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
 behavior_contract: docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md
+main_runtime_status: active
+runtime_files:
+  - model/MyModel.py
+  - train_GTPJ_CUB.py
+  - tools/reproducibility.py
+  - tools/convert_v5_checkpoint.py
+  - tools/v5_cub_data.py
+  - tools/v5_evaluation.py
+  - tools/v5_runtime.py
+  - config/GTPJ_cub_gzsl.yaml
+  - config/versions/v5.yaml
+  - experiments/v5/config.yaml
+  - experiments/v5/baseline/config.yaml

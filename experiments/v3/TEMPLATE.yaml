@@ -8,3 +8,4 @@ template_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
 source_framework_tag: v3
 source_framework_commit: 13529cb1d3ed8405e2f5cbb4832eff8d1c78db16
 behavior_contract: none
+main_runtime_status: inactive
