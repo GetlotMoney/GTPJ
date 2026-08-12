@@ -20,7 +20,8 @@
 | V5 当前干净母版 | `MODEL-V5-TEMPLATE-V2` | 本地已冻结 | 分支、Tag、commit 均锁定到 `fb4b29b04087640890a532f105cb527d3a8c461b`；模型数学逻辑沿用 V1，只修正正式运行身份与 GPU 评估设备边界。 |
 | V5 历史干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 仍锁定到 `2f5fa5e`，没有移动或覆盖。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
-| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，实验代码固定两轮不同子 Agent 对抗式只读审核。 |
+| Git 管理关系图 | `UI-GIT-GOVERNANCE-MAP-V1` | 已完成 | 三页本地 HTML 区分管理分支、正式模型框架、母版、实验、PR、Tag，并展示本地与 GitHub 当前同步缺口。 |
+| 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，代码修改固定两轮不同子 Agent 对抗式只读审核。 |
 | 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 计划中 | 先登记为 `V5-INNOVATION-011`，删除旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句句子—区域交互和主分类损失。 |
 
 ## 2026-08-13：MODEL-GTPJ-V5-MAIN-ALIGN-V1 / SYS-WORKFLOW-V7（已完成）
@@ -62,6 +63,18 @@
 - 验证命令与结果：`git diff --check`、`python workflow/gtpj_workflow.py validate-workflow-consistency`、`python workflow/gtpj_workflow.py validate` 均通过；本次是文档规范收缩，不运行训练或全量测试。
 - 回退方式：回退本次文档修改即可恢复旧默认门；不会改模型、训练代码、历史实验、分支、Tag、日志或 checkpoint。
 
+## 2026-08-08：UI-GIT-GOVERNANCE-MAP-V1（已完成）
+
+- 本次改的是哪个对象：人看的 Git 分支、Tag、新旧管理框架和污染边界说明图。
+- 目标问题：管理工作流、正式模型框架、临时 PR 分支、实验分支和历史 Tag 被混在一起理解，容易误以为“分支或 Tag 多就会污染 main”。
+- 采用技术：单文件自包含 HTML；分三页展示正确逻辑关系、2026-08-08 本地与 GitHub 实查引用、污染判断与安全处理顺序；不依赖服务或外部脚本。
+- 替换了什么：不替换当前框架注册页 `UI-FRAMEWORK-REGISTRY-V3`；补充它未覆盖的 Git 物理引用和远端同步关系。
+- 实际可见效果：一页可同时看清 `SYS-WORKFLOW-V5` 属于 `main`、未来新正式模型才建立平级 `framework/vN`、实验从只读母版独立分叉，以及 PR #2 合并会和不会带来什么。
+- 选择原因：把“研究逻辑结构”和“Git 真实引用”分页后，既避免重新画成无限嵌套树，也能直观看出本地 36 条分支、GitHub 13 条分支和缺失母版 Tag 的同步现状。
+- 已知限制：第二页是 2026-08-08 的静态快照，分支、Tag、PR 或远端 main 变化后需要重新实查更新；它不是机器事实源，也不执行清理或合并。
+- 素材位置：`docs/diagrams/GTPJ_GIT_GOVERNANCE_MAP_UI-V1.html`。
+- 验证命令与结果：HTML 的 `html`、`body` 标签各一组，三页和三个切换按钮完整；4 个本地链接全部存在；使用 Edge 以 1440×2000 渲染三页并完成截图复核；`python workflow/gtpj_workflow.py validate` 与 `git diff --check` 通过。`validate-remote` 按预期拒绝当前未同步状态，并准确报告 GitHub `main=08e5ecb`、本地 `main=88896d3`。
+- 回退方式：回退本次 HTML、项目结构登记和本条版本记录；模型、实验、分支、Tag、PR 与远端 main 均不受影响。
 
 ## 2026-08-08：DOC-GTPJ-CODE-TUTORIAL-V1（已完成）
 
