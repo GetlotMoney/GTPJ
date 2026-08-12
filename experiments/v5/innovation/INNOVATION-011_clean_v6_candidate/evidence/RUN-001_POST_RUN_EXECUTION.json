@@ -1,0 +1,79 @@
+{
+  "record_kind": "post_run_execution_record",
+  "experiment_id": "V5-INNOVATION-011",
+  "run_id": "RUN-001",
+  "evidence_level": "valid_single_run",
+  "formal_evidence": true,
+  "formal_evidence_basis": "2026-08-08 five-step short workflow scientific boundaries",
+  "receipt_status": "missing_pre_start_receipt",
+  "pre_start_receipt_present": false,
+  "receipt_gate_status": "not_applicable_under_2026_08_08_short_flow",
+  "not_confirmation_evidence": true,
+  "confirmation_eligible": false,
+  "promotion_eligible": false,
+  "single_run_decision": "continue_clean_framework",
+  "run_commit": "688f564fea25cc54912fc728d139eba9e98dcdd6",
+  "experiment_branch": "exp/v5/innovation/innovation-011-clean-v6-candidate",
+  "server": "lab4090",
+  "gpu": 0,
+  "pid": 1968348,
+  "started_at": "2026-08-13T06:00:10+08:00",
+  "finished_at": "2026-08-13T06:06:24+08:00",
+  "process_exit_code": null,
+  "completion_evidence": "training.log ends with 50/50 epochs and 训练完成; final_metrics.yaml and both checkpoints exist",
+  "pre_run_checks": {
+    "review_rounds_passed": 2,
+    "reviewed_commit": "688f564fea25cc54912fc728d139eba9e98dcdd6",
+    "clean_worktree": true,
+    "data_identity_matched": true,
+    "gpu_0_idle": true,
+    "output_directory_absent": true
+  },
+  "seed": 5,
+  "config_path": "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/config.yaml",
+  "config_sha256": "3981ac12e40d9d33b8d65a5bcf8f95740a3563b8e09e092f423ab9dfc33980fc",
+  "data_manifest_path": "/data/lby/projects/cv_project/GTPJ/.runtime/data_fingerprints/v5_innovation_011_inputs.json",
+  "data_manifest_sha256": "7b172e9a239aa494b0c7d7c9384b2274ed8c3ab6b79e3f47dbfc63530f34175a",
+  "warehouse_path": "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/innovation/V5-INNOVATION-011/RUN-001",
+  "self_hash_usage": "PARAMETER_MATRIX.artifact_manifest_sha256 points to this post-run record; it is not a training-time artifact manifest",
+  "training_argv": [
+    "/data/lby/.conda/envs/dvsr_gpu/bin/python",
+    "train_GTPJ_CUB.py",
+    "--config",
+    "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/config.yaml",
+    "--output-dir",
+    "/data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/innovation/V5-INNOVATION-011/RUN-001",
+    "--fingerprint-manifest",
+    "/data/lby/projects/cv_project/GTPJ/.runtime/data_fingerprints/v5_innovation_011_inputs.json"
+  ],
+  "metrics": {
+    "U": 48.54339361190796,
+    "S": 82.62491822242737,
+    "H": 61.156446573601244,
+    "ZS": 76.15612745285034,
+    "best_epoch": 1
+  },
+  "artifacts": [
+    {
+      "name": "training.log",
+      "size_bytes": 18116,
+      "sha256": "142b213907c833971968d0c8e6455bba00d088c89f6b9111006700fa4b48c5da"
+    },
+    {
+      "name": "model_best.pth",
+      "size_bytes": 7278439,
+      "sha256": "cdca8e7769f405e588a5da954012d7a849ddb83ad2b4bcda64f0a385beb02b6f"
+    },
+    {
+      "name": "checkpoint_full.pth",
+      "size_bytes": 12018487,
+      "sha256": "ee8bb85d99cb716f3b7622bc874c586317b5ba5f58403350e024ff8cb17fc5db"
+    },
+    {
+      "name": "final_metrics.yaml",
+      "size_bytes": 100,
+      "sha256": "c5dcecae780b4c6aeed6987f9fcf07c8a86da90796cff6bd7b0fa1e5729dc393"
+    }
+  ],
+  "note": "本文件在训练完成后按日志和产物重建，不是开跑前收据，也不能替代 workflow helper 要求的 run_start_receipt。"
+}

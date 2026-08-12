@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0013
 title: 干净 V6 框架候选
-status: selected
+status: testing
 source_type: user
 source_ref: owner:2026-08-11:删除旧模块和旧损失，验证干净新框架
 source_status: local_heuristic
@@ -28,4 +28,4 @@ linked_experiment: V5-INNOVATION-011
 
 ## 当前状态
 
-planned。尚未实现，尚未训练，不能作为 V6 正式结果引用。
+`RUN-001` 已完成：`U/S/H/ZS=48.543394/82.624918/61.156447/76.156127`，最佳 epoch 为 1。结果高于 009/010 判断线，但仍低于 V5 重复均值，因此进入继续修改阶段；它仍不是 V6 正式结果，也不是 confirmation 或 promotion 证据。
