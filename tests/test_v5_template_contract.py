@@ -327,6 +327,29 @@ def _check_v5_evaluation_semantics() -> None:
     assert zsl == 1.0
 
 
+def _check_v5_evaluation_accepts_cuda_class_indices() -> None:
+    cache = {
+        "seen_cls": torch.tensor([[0.0], [1.0]]),
+        "seen_patches": torch.zeros(2, 576, 1),
+        "seen_labels": torch.tensor([0, 2]),
+        "unseen_cls": torch.tensor([[2.0], [3.0]]),
+        "unseen_patches": torch.zeros(2, 576, 1),
+        "unseen_labels": torch.tensor([1, 3]),
+    }
+    seen, unseen, harmonic, zsl = evaluate_cached_v5(
+        _ControlledEvaluationModel().cuda(),
+        "cuda:0",
+        cache,
+        seenclasses=torch.tensor([0, 2], device="cuda:0"),
+        unseenclasses=torch.tensor([1, 3], device="cuda:0"),
+        batch_size=2,
+    )
+    assert seen == 1.0
+    assert unseen == 0.5
+    assert abs(harmonic - (2.0 / 3.0)) < 1e-12
+    assert zsl == 1.0
+
+
 def _check_v5_clean_path_parity_with_historical_tag() -> None:
     historical_model_class = _load_historical_v5_model_class()
     config = _parity_config()
@@ -439,6 +462,10 @@ class V5TemplateContractTest(unittest.TestCase):
 
     def test_v5_evaluation_semantics(self) -> None:
         _check_v5_evaluation_semantics()
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA 评估设备边界测试")
+    def test_v5_evaluation_accepts_cuda_class_indices(self) -> None:
+        _check_v5_evaluation_accepts_cuda_class_indices()
 
     def test_v5_evaluation_rejects_missing_real_patch_cache(self) -> None:
         with tempfile.TemporaryDirectory(prefix="gtpj-v5-eval-") as temporary:

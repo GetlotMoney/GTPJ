@@ -88,8 +88,8 @@ def _per_class_accuracy(labels, predictions, classes):
 
 
 def evaluate_cached_v5(model, device, cache, seenclasses, unseenclasses, batch_size=64):
-    seenclasses = torch.as_tensor(seenclasses, dtype=torch.long)
-    unseenclasses = torch.as_tensor(unseenclasses, dtype=torch.long)
+    seenclasses = torch.as_tensor(seenclasses).detach().cpu().long()
+    unseenclasses = torch.as_tensor(unseenclasses).detach().cpu().long()
     if seenclasses.dim() != 1 or unseenclasses.dim() != 1:
         raise ValueError("seenclasses 和 unseenclasses 必须是一维全局类别编号。")
     if seenclasses.unique().numel() != seenclasses.numel():
