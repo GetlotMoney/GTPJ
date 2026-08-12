@@ -52,7 +52,12 @@ class WorkflowHelperTest(unittest.TestCase):
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH = self.repo / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.parent.mkdir(parents=True, exist_ok=True)
         self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
-            "GitHub 仓库规则是唯一事实来源\n"
+            "---\n"
+            "name: gtpj-workflow\n"
+            "description: 执行 GTPJ 实验。只在用户直接选择本 Skill 或明确要求启动 GTPJ 实验时使用；普通 Git 查询、解释和文字修改不用。\n"
+            "---\n"
+            "GitHub 仓库规则是唯一事实来源。\n"
+            "本机 Skill 只负责导航，不复制规则正文。\n"
             "docs/workflow/START_HERE.md\n"
             "docs/workflow/WORKFLOW_KERNEL.md\n"
             "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n",
@@ -8537,6 +8542,24 @@ decision:
         errors = self.module.local_gtpj_workflow_skill_errors()
 
         self.assertTrue(any("docs/workflow/WORKFLOW_KERNEL.md" in error for error in errors), errors)
+
+    def test_local_gtpj_workflow_skill_rejects_broad_trigger_even_with_router_markers(self) -> None:
+        self.module.LOCAL_GTPJ_WORKFLOW_SKILL_PATH.write_text(
+            "---\n"
+            "name: gtpj-workflow\n"
+            "description: 所有 GTPJ 和 Git 任务都必须使用本 Skill。\n"
+            "---\n"
+            "GitHub 仓库规则是唯一事实来源。\n"
+            "本机 Skill 只负责导航，不复制规则正文。\n"
+            "docs/workflow/START_HERE.md\n"
+            "docs/workflow/WORKFLOW_KERNEL.md\n"
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md\n",
+            encoding="utf-8",
+        )
+
+        errors = self.module.local_gtpj_workflow_skill_errors()
+
+        self.assertTrue(any("frontmatter missing narrow trigger" in error for error in errors), errors)
 
     def test_list_workflow_files_groups_manifest_entries(self) -> None:
         self._write_minimal_workflow_manifest()

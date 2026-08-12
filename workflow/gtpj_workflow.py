@@ -8717,8 +8717,20 @@ def local_gtpj_workflow_skill_errors() -> list[str]:
         errors.append(f"missing local gtpj-workflow skill mirror: {skill_path}")
         return errors
     text = read_text(skill_path)
+    frontmatter = ""
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) == 3:
+            frontmatter = parts[1]
+    for marker in [
+        "只在用户直接选择本 Skill 或明确要求启动 GTPJ 实验时使用",
+        "普通 Git 查询、解释和文字修改不用",
+    ]:
+        if marker not in frontmatter:
+            errors.append(f"local gtpj-workflow skill frontmatter missing narrow trigger: {marker}")
     for marker in [
         "GitHub 仓库规则是唯一事实来源",
+        "本机 Skill 只负责导航，不复制规则正文",
         "docs/workflow/START_HERE.md",
         "docs/workflow/WORKFLOW_KERNEL.md",
         "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
