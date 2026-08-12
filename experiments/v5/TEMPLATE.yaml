@@ -1,7 +1,7 @@
 schema_version: gtpj.framework_template.v1
 framework_id: FRAMEWORK-V5
 template_id: MODEL-V5-TEMPLATE-V2
-template_status: confirmed
+template_status: frozen
 template_branch: framework/v5-template-v2
 template_tag: model/v5-template-v2
 template_commit: fb4b29b04087640890a532f105cb527d3a8c461b

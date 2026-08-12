@@ -15,15 +15,15 @@
 | 工作流 | `SYS-WORKFLOW-V7` | 已完成 | 治理/文档分支的当前 CUB 运行文件必须与正式干净母版一致；实验分支仍从准确母版 commit 独立分叉。 |
 | 框架台账 | `DATA-FRAMEWORK-LEDGER-V2` | 已完成 | `framework.yaml` 使用历史来源指针，不再使用父子字段。 |
 | 框架注册页面 | `UI-FRAMEWORK-REGISTRY-V3` | 已完成 | 本地 HTML 同级展示来源、各母版状态、四类实验数量和 V5 消融“已绑定、待实现”状态。 |
-| 模型 | `MODEL-GTPJ-V5-MAIN-ALIGN-V1` | 审核中 | 主线 CUB 模型与配置恢复到 V1；运行身份检查按大文件规则修复后，登记为 V2 母版候选，不改模型数学语义。 |
+| 模型 | `MODEL-GTPJ-V5-MAIN-ALIGN-V1` | 已完成 | 主线 CUB 模型与配置恢复到 V1；运行身份和 GPU 评估设备边界修复后，冻结为 V2 母版，不改模型数学语义。 |
 | 母版台账 | `DATA-FRAMEWORK-TEMPLATE-V1` | 已完成 | 已新增母版与实验起点身份，分开记录母版代码 commit 和后续 registry commit。 |
-| V5 当前干净母版候选 | `MODEL-V5-TEMPLATE-V2` | 待两轮审核 | 候选代码提交 `fb4b29b04087640890a532f105cb527d3a8c461b`；模型数学逻辑沿用 V1，只修正正式运行身份与 GPU 评估设备边界。 |
+| V5 当前干净母版 | `MODEL-V5-TEMPLATE-V2` | 本地已冻结 | 分支、Tag、commit 均锁定到 `fb4b29b04087640890a532f105cb527d3a8c461b`；模型数学逻辑沿用 V1，只修正正式运行身份与 GPU 评估设备边界。 |
 | V5 历史干净母版 | `MODEL-V5-TEMPLATE-V1` | 本地已冻结 | 分支、Tag、commit 仍锁定到 `2f5fa5e`，没有移动或覆盖。 |
 | 代码教程 | `DOC-GTPJ-CODE-TUTORIAL-V1` | 已完成 | 六篇中文教程，解释仓库根目录模型、训练和工具代码，并明确正式 V5 母版边界。 |
 | 实验执行工作流 | `SYS-WORKFLOW-V6` | 已完成 | 默认改为五步短流程；普通账本/参数只机器检查，实验代码固定两轮不同子 Agent 对抗式只读审核。 |
 | 干净新框架候选 | `MODEL-CLEAN-V6-CANDIDATE` | 计划中 | 先登记为 `V5-INNOVATION-011`，删除旧频域/ICSA/BVSA/拓扑/辅助损失，只验证 8 句句子—区域交互和主分类损失。 |
 
-## 2026-08-13：MODEL-GTPJ-V5-MAIN-ALIGN-V1 / SYS-WORKFLOW-V7（审核中）
+## 2026-08-13：MODEL-GTPJ-V5-MAIN-ALIGN-V1 / SYS-WORKFLOW-V7（已完成）
 
 - 本次改的是哪个对象：主线当前 CUB 运行代码，以及防止它再次混入实验代码的最小校验。
 - 目标问题：正式干净母版已经冻结在 `2f5fa5e`，但 GitHub 主线仍保留历史动态路由和旧兼容层，导致新治理分支继续携带一份很长的累积模型。
@@ -33,7 +33,7 @@
 - 选择原因：主线只保存当前干净底稿，实验变化只留在各自分支，才能避免后续实验相互叠加。
 - 已知限制：当前干净母版只保证 CUB；`train_GTPJ_AWA2.py` 和 `train_GTPJ_SUN.py` 仍是历史入口，不在本次兼容范围内。
 - 素材位置：`experiments/v5/TEMPLATE.yaml`、`model/MyModel.py`、`train_GTPJ_CUB.py`、`tools/v5_*.py`、`workflow/gtpj_workflow.py`。
-- 验证命令与结果：V5 专项测试已扩展到 45 项并通过；workflow 256 项和最终结构命令全部通过；两轮只读审核结果在本次分支完成后填写。
+- 验证命令与结果：V5 专项 45 项、workflow 259 项和最终结构命令全部通过；两名不同 Reviewer 对最终提交 `378ed95` 按第 1 轮→第 2 轮顺序审核，均为 `pass`、阻断为 0；冻结后再次核对分支、Tag、账本与运行文件。
 - 回退方式：回退本次提交即可恢复修复前主线副本；历史 Tag、母版提交、实验结果和 checkpoint 均不受影响。
 
 ## 2026-08-11：MODEL-CLEAN-V6-CANDIDATE（计划中）

@@ -4,7 +4,7 @@
 > **阅读顺序**：按编号依次读。每篇末尾有"你已经学会"检查点。
 
 > **阅读范围**：本套教程解释仓库根目录的 `model/MyModel.py`、`train_GTPJ_CUB.py` 和 `tools/`。
-> 正式 V5 新实验的代码起点以冻结母版 `model/v5-template-v1`（commit `2f5fa5e`）及
+> 正式 V5 新实验的代码起点以冻结母版 `model/v5-template-v2`（commit `fb4b29b`）及
 > `experiments/v5/TEMPLATE.yaml` 为准；教程用于理解代码，不替代正式实验配置和母版身份。
 > 当前框架、母版和四类实验状态请看
 > [UI-FRAMEWORK-REGISTRY-V3](../diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html)。
