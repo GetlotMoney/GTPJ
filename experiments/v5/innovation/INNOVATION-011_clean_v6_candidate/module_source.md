@@ -18,3 +18,4 @@ source_ref: owner:2026-08-11:删除旧模块和旧损失，验证干净新框架
 - SGMP / BMDD；
 - topology loss；
 - global/local auxiliary loss。
+- PSE。

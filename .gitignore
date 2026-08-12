@@ -54,6 +54,8 @@ Thumbs.db
 .vscode/
 
 # Temporary files
+/tmp/
+/docs/reviews/2026-08-08-v5-confirm-001-code-audit-package/
 *.tmp
 *.bak
 _tmp*

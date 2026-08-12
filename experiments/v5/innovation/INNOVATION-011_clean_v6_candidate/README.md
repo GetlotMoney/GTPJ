@@ -3,7 +3,7 @@
 ```text
 experiment_id: V5-INNOVATION-011
 idea_id: IDEA-0013
-status: planned
+status: implementation
 base_version: v5
 formal_v6_status: not_created
 ```
@@ -27,10 +27,12 @@ formal_v6_status: not_created
 
 ## 最小框架
 
-- 保留：CLIP 图像/文本骨干、8 句文本、PSE、句子—区域匹配、最终分类分数。
+- 保留：CLIP 全局与全部 576 个普通区域、8 句文本、一个共享单位初始化投影、直接句子—区域匹配、最终分类分数。
 - 删除：频域解耦 / Top-K、ICSA、BVSA、SGMP、BMDD、拓扑损失、全局/局部辅助损失。
 - 损失：只保留最终融合分数的主分类交叉熵。
 - 训练：沿用 V5 数据划分、seed、epoch、评估口径，先跑单 seed 判断是否值得继续。
+
+局部 6 句分别在全部 576 个区域上软匹配后取平均；第 8 句独立匹配全部区域；第 7 句直接与 CLS 全局特征匹配。三项等权平均，再乘可学习 CLIP 温度。配置中出现任何旧模块字段都会直接报错。
 
 ## V6 记录放在哪里
 

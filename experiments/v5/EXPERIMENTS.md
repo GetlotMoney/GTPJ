@@ -50,7 +50,7 @@
 | `V5-INNOVATION-008` | rejected | 限幅、对称且保留句子 PSE 的类别关系增强未提高 H；R0/R1/R2 为 69.91/61.27/58.14，未进入正式测试 | `experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-008_pse_class_relation_calibration` | - |
 | `V5-INNOVATION-009` | rejected | 只让全局图像选择8句话是否已经足够；RUN-002 H=59.41，未保留 | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` | `IDEA-0011` | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse` | - |
 | `V5-INNOVATION-010` | rejected | 统一的 8 句—全局/Top-K32 区域双向匹配能否比实验 A 进一步提高 H；RUN-001 H=58.92，未保留 | `experiments/v5/innovation/INNOVATION-010_pse_vsce/PARAMETER_MATRIX.md` | `IDEA-0012` | `experiments/v5/innovation/INNOVATION-010_pse_vsce` | - |
-| `V5-INNOVATION-011` | planned | 删除旧频域、旧局部分支、拓扑和多辅助损失后，干净 V6 候选是否能证明句子—区域交互本身合理 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` | `IDEA-0013` | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate` | - |
+| `V5-INNOVATION-011` | pre_run | 删除 PSE、旧频域、旧局部分支、拓扑和多辅助损失后，8 句直接匹配的干净候选是否合理 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` | `IDEA-0013` | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate` | - |
 
 ## 确认实验
 

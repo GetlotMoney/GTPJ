@@ -426,11 +426,10 @@
       "based_on_modules": [
         "CLIP visual/text encoder",
         "8 sentence semantic slots",
-        "PSE",
         "clean sentence-region matching"
       ],
       "target_component": "新一代干净 GZSL 图像—语义交互框架",
-      "hypothesis": "去掉旧频域解耦、BVSA、ICSA、SGMP、BMDD、拓扑损失和局部辅助损失后，只用 CLIP、8句语义槽位、PSE、区域匹配和最终分类损失，可以更清楚判断新框架本身是否合理。",
+      "hypothesis": "去掉 PSE、旧频域解耦、BVSA、ICSA、SGMP、BMDD、拓扑损失和局部辅助损失后，只用 CLIP、8句语义槽位、直接区域匹配和最终分类损失，可以更清楚判断新框架本身是否合理。",
       "expected_effect": {
         "U": "目标是避免旧模块带来的 unseen 大幅下降。",
         "S": "目标是用主分类损失保持 seen 判别，不额外堆辅助损失。",
@@ -450,7 +449,7 @@
         {
           "type": "planning",
           "ref": "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/README.md",
-          "note": "planned：干净 V6 候选先作为 V5 innovation 记录，尚未实现或训练。"
+          "note": "implementation：干净 V6 候选先作为 V5 innovation 记录，独立实现中，尚未训练。"
         }
       ]
     }

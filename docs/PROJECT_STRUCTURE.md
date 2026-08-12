@@ -89,7 +89,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
 | `requirements.txt` | pip 环境依赖，包含 PyTorch 周边库和 OpenAI CLIP。 |
 | `environment.yml` | conda 环境定义；本机 GTPJ 实验默认使用 `dvsr_gpu` 运行环境。 |
-| `train_GTPJ_CUB.py` | CUB GZSL 主训练入口；模型、损失和评估语义继承 `MODEL-V5-TEMPLATE-V1@2f5fa5e`，并在 V2 母版中增加大文件哈希清单复用。 |
+| `train_GTPJ_CUB.py` | 本实验分支的 CUB 入口：沿用 V2 的数据、评估、checkpoint 与可复现工具，运行 `V5-INNOVATION-011` 独立模型；主线仍以 `MODEL-V5-TEMPLATE-V2@fb4b29b` 为准。 |
 | `train_GTPJ_AWA2.py` | AWA2 GZSL 历史训练入口；不属于当前 V5 干净 CUB 母版的保证范围。 |
 | `train_GTPJ_SUN.py` | SUN GZSL 历史训练入口；不属于当前 V5 干净 CUB 母版的保证范围。 |
 
@@ -209,7 +209,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `model/MyModel.py` | 当前 CUB 主模型实现，与 `MODEL-V5-TEMPLATE-V1@2f5fa5e` 完全对齐；实验改动只留在实验分支。 |
+| `model/MyModel.py` | 本实验分支的 `V5-INNOVATION-011` 独立模型；主线 V5 模型不变，实验代码只留在本分支。 |
 | `model/modules/` | 预留模块目录；如果以后把新模块从 `MyModel.py` 拆出去，应放在这里并同步更新本文件。 |
 
 代码接口要求：

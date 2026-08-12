@@ -1,11 +1,10 @@
-"""V5 干净母版的 CUB 训练入口。
+"""V5-INNOVATION-011 的 CUB 训练入口。
 
-这份入口只接受正式 V5 配置、真实 CLS/局部块缓存和 GPT-5.5 句子缓存。
+这份入口只接受本实验配置、真实 CLS/局部块缓存和 GPT-5.6 八句缓存。
 它不根据机器上“碰巧存在什么文件”切换算法路线。
 """
 
 import argparse
-from datetime import datetime
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
@@ -34,67 +33,55 @@ from tools.v5_evaluation import (
 )
 
 
-MODEL_TEMPLATE_ID = "model/v5-template-v2"
-DATA_FINGERPRINT_MANIFEST = Path("./.runtime/data_fingerprints/cub_v5.json")
+MODEL_TEMPLATE_ID = "V5-INNOVATION-011"
+DATA_FINGERPRINT_MANIFEST = Path("./.runtime/data_fingerprints/cub_v5_innovation_011.json")
 CACHE_DIR = Path("./data/cache")
 TRAIN_CLS_PATH = CACHE_DIR / "CUB_train_features.pt"
 TRAIN_PATCH_PATH = CACHE_DIR / "CUB_train_patch_features.pt"
 TRAIN_LABEL_PATH = CACHE_DIR / "CUB_train_labels.pt"
-GPT55_SENTENCE_PATH = CACHE_DIR / "CUB_gpt55_sentence_embeds.pt"
+GPT56_SENTENCE_PATH = CACHE_DIR / "CUB_gpt56_8sent_sentence_embeds.pt"
 DATA_RES101_PATH = Path("./data/xlsa17/data/CUB/res101.mat")
 DATA_SPLIT_PATH = Path("./data/xlsa17/data/CUB/att_splits.mat")
 
-V5_CONFIG_KEYS = {
+EXPERIMENT_CONFIG_KEYS = {
     "dataset",
     "num_class",
     "dim_f_clip",
     "device",
     "batch_size",
     "random_seed",
-    "text_source",
-    "pse_heads",
-    "pse_dropout",
-    "pse_inner_ratio",
-    "pse_outer_ratio",
-    "tf_common_dim",
-    "tf_heads",
-    "tf_dropout",
-    "weight_s2v",
-    "local_weight",
-    "fgvd_select_k",
-    "score_mode",
-    "lambda_consist",
-    "consist_temp",
-    "consist_dynamic_gamma",
-    "lambda_topo_pearson",
-    "icsa_ratio",
-    "icsa_hidden",
-    "lambda_bmdd",
-    "msdn_temp",
-    "sgmp_topk",
-    "sgmp_hidden",
-    "lambda_mpp",
-    "lambda_neg",
-    "sgmp_neg_margin",
+    "region_temperature",
     "lr_stages",
 }
 
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description="Train the immutable V5 template on CUB GZSL.",
+        description="Train V5-INNOVATION-011 on CUB GZSL.",
         allow_abbrev=False,
     )
     parser.add_argument(
         "--config",
-        default="./config/GTPJ_cub_gzsl.yaml",
-        help="正式母版或实验副本中的 config.yaml。",
+        default="./experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/config.yaml",
+        help="V5-INNOVATION-011 的 config.yaml。",
     )
     parser.add_argument(
         "--resume-from",
         type=Path,
         default=None,
-        help="同一 V5 母版产生的完整 checkpoint；不支持 auto、重启或微调猜测。",
+        help="同一实验提交产生的完整 checkpoint；不支持旧 V5 checkpoint。",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="RUN 独立输出目录；必须在启动前不存在。",
+    )
+    parser.add_argument(
+        "--fingerprint-manifest",
+        type=Path,
+        default=None,
+        help="项目内数据身份清单；省略时使用本实验默认路径。",
     )
     return parser.parse_args()
 
@@ -105,21 +92,21 @@ def _load_config(path):
         raise FileNotFoundError(f"配置文件不存在：{config_path}")
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError("V5 配置顶层必须是字典。")
+        raise ValueError("实验配置顶层必须是字典。")
     values = {
         key: value["value"] if isinstance(value, dict) and "value" in value else value
         for key, value in raw.items()
     }
-    missing = sorted(V5_CONFIG_KEYS - set(values))
-    extra = sorted(set(values) - V5_CONFIG_KEYS)
+    missing = sorted(EXPERIMENT_CONFIG_KEYS - set(values))
+    extra = sorted(set(values) - EXPERIMENT_CONFIG_KEYS)
     if missing or extra:
-        raise ValueError(f"V5 配置字段不匹配；缺少={missing}，多出={extra}。")
+        raise ValueError(f"实验配置字段不匹配；缺少={missing}，多出={extra}。")
     if values["dataset"] != "CUB":
-        raise ValueError("V5 干净母版只接受 dataset='CUB'。")
-    if values["text_source"] != "gpt55":
-        raise ValueError("V5 干净母版只接受 text_source='gpt55'。")
-    if float(values["local_weight"]) != 0.2 or values["score_mode"] != "add":
-        raise ValueError("V5 固定使用 global + 0.2 * local。")
+        raise ValueError("本实验只接受 dataset='CUB'。")
+    if int(values["num_class"]) != 200 or int(values["dim_f_clip"]) != 768:
+        raise ValueError("本实验固定使用 CUB 200 类与 CLIP 768 维缓存。")
+    if float(values["region_temperature"]) <= 0:
+        raise ValueError("region_temperature 必须大于 0。")
     _validate_lr_stages(values["lr_stages"])
     return SimpleNamespace(**values), values, config_path
 
@@ -182,22 +169,22 @@ def _load_training_cache(expected_dim):
     return cls_features, patches, labels
 
 
-def _load_gpt55_sentences(expected_classes, expected_dim, device):
-    if not GPT55_SENTENCE_PATH.is_file():
+def _load_gpt56_sentences(expected_classes, expected_dim):
+    if not GPT56_SENTENCE_PATH.is_file():
         raise FileNotFoundError(
-            "V5 正式训练缺少 GPT-5.5 句子缓存：" + str(GPT55_SENTENCE_PATH)
+            "实验缺少 GPT-5.6 八句缓存：" + str(GPT56_SENTENCE_PATH)
         )
-    sentences = torch.load(GPT55_SENTENCE_PATH, map_location="cpu", weights_only=True)
+    sentences = torch.load(GPT56_SENTENCE_PATH, map_location="cpu", weights_only=True)
     if (
         sentences.dim() != 3
         or sentences.size(0) != expected_classes
-        or sentences.size(2) != expected_dim
+        or tuple(sentences.shape[1:]) != (8, expected_dim)
     ):
         raise ValueError(
-            f"GPT-5.5 句子缓存必须是 [{expected_classes}, M, {expected_dim}]，"
+            f"GPT-5.6 八句缓存必须是 [{expected_classes}, 8, {expected_dim}]，"
             f"实际为 {tuple(sentences.shape)}。"
         )
-    return sentences.to(device).float()
+    return sentences.float()
 
 
 def _stage_boundaries(stages):
@@ -230,10 +217,20 @@ config_hash = sha256_file(config_path)
 _require_clean_code_tree()
 code_commit = _current_code_commit()
 
-current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-log_dir = Path("./train_log/CUB")
-log_dir.mkdir(parents=True, exist_ok=True)
-log_path = log_dir / f"training_log_CUB_{current_time}.txt"
+if args.output_dir is None:
+    log_dir = Path("./train_log/CUB")
+    log_dir.mkdir(parents=True, exist_ok=True)
+else:
+    log_dir = args.output_dir.resolve()
+    if log_dir.exists():
+        raise FileExistsError(f"RUN 输出目录已存在：{log_dir}")
+    log_dir.mkdir(parents=True, exist_ok=False)
+log_path = log_dir / "training.log"
+fingerprint_manifest_path = (
+    args.fingerprint_manifest.resolve()
+    if args.fingerprint_manifest is not None
+    else DATA_FINGERPRINT_MANIFEST.resolve()
+)
 
 
 def print_log(message):
@@ -254,13 +251,13 @@ repro_state = configure_reproducibility(
 )
 
 print_log("=" * 60)
-print_log("V5 干净母版 | CUB GZSL 训练")
-print_log(f"母版：{MODEL_TEMPLATE_ID}")
+print_log("V5-INNOVATION-011 | CUB GZSL 训练")
+print_log(f"实验：{MODEL_TEMPLATE_ID}")
 print_log(f"配置：{config_path}")
 print_log(f"配置 SHA-256：{config_hash}")
 print_log(f"代码 commit：{code_commit}")
 print_log(f"随机种子：{seed}")
-print_log(f"局部分支融合：global + {config.local_weight} * local")
+print_log("分数：6句局部均值、独特句、全局句三项等权；唯一损失为 CE")
 print_log(f"PyTorch/CUDA：{repro_state['torch_version']} / {repro_state['cuda_version'] or 'cpu'}")
 print_log("=" * 60)
 
@@ -270,7 +267,7 @@ input_paths = {
     "train_cls": TRAIN_CLS_PATH,
     "train_patches": TRAIN_PATCH_PATH,
     "train_labels": TRAIN_LABEL_PATH,
-    "gpt55_sentences": GPT55_SENTENCE_PATH,
+    "gpt56_8sent_sentences": GPT56_SENTENCE_PATH,
     **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
 }
 before_load_records = {
@@ -278,12 +275,12 @@ before_load_records = {
 }
 data_manifest, data_manifest_hash = load_or_create_fingerprint_manifest(
     input_paths,
-    DATA_FINGERPRINT_MANIFEST,
+    fingerprint_manifest_path,
 )
 validate_stable_input_records(before_load_records, data_manifest["files"])
 train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
-sentence_embeds = _load_gpt55_sentences(
-    int(config.num_class), int(config.dim_f_clip), config.device
+sentence_embeds = _load_gpt56_sentences(
+    int(config.num_class), int(config.dim_f_clip)
 )
 test_cache = load_v5_test_cache()
 seenclasses, unseenclasses = load_v5_cub_split(
@@ -298,7 +295,7 @@ input_tensors = {
     "train_cls": train_cls,
     "train_patches": train_patches,
     "train_labels": train_labels,
-    "gpt55_sentences": sentence_embeds,
+    "gpt56_8sent_sentences": sentence_embeds,
     **{f"test_{name}": tensor for name, tensor in test_cache.items()},
 }
 after_load_records = {
@@ -314,7 +311,7 @@ for name, record in data_manifest["files"].items():
         input_records[name]["dtype"] = str(tensor.dtype)
 run_input_fingerprints = input_fingerprints(input_records)
 print_log(
-    f"数据清单：{DATA_FINGERPRINT_MANIFEST.resolve()} | "
+    f"数据清单：{fingerprint_manifest_path} | "
     f"sha256={data_manifest_hash}"
 )
 for name, record in input_records.items():
@@ -332,15 +329,11 @@ repro_state = configure_reproducibility(
     strict_determinism=False,
     deterministic_warn_only=True,
 )
-text_embeds = sentence_embeds.mean(dim=1)
-
 model = GTPJ(
     config,
     seenclasses,
     unseenclasses,
-    seen_text_embeds=text_embeds[seenclasses],
-    unseen_text_embeds=text_embeds[unseenclasses],
-    seen_sentence_embeds=sentence_embeds[seenclasses],
+    sentence_embeds=sentence_embeds,
 ).to(config.device)
 
 stages = config.lr_stages
@@ -479,9 +472,8 @@ for epoch in range(start_epoch, total_epochs + 1):
             "ZS": zsl_acc,
             "epoch": epoch,
         }
-        score = int(round(harmonic * 10000))
-        model_path = log_dir / f"best_model_CUB_{current_time}_H{score}.pth"
-        checkpoint_path = log_dir / f"ckpt_full_CUB_{current_time}.pth"
+        model_path = log_dir / "model_best.pth"
+        checkpoint_path = log_dir / "checkpoint_full.pth"
         torch.save(model.state_dict(), model_path)
         torch.save(
             {
@@ -495,7 +487,7 @@ for epoch in range(start_epoch, total_epochs + 1):
                 "config_sha256": config_hash,
                 "input_files": input_records,
                 "input_fingerprints": run_input_fingerprints,
-                "data_manifest_path": str(DATA_FINGERPRINT_MANIFEST.resolve()),
+                "data_manifest_path": str(fingerprint_manifest_path),
                 "data_manifest_sha256": data_manifest_hash,
                 "rng_state": capture_rng_state(),
                 "seenclasses": seenclasses.detach().cpu().long().tolist(),
@@ -513,4 +505,16 @@ print_log(
     f"最佳 epoch={best_metrics['epoch']}，U={best_metrics['U'] * 100:.2f}%，"
     f"S={best_metrics['S'] * 100:.2f}%，H={best_metrics['H'] * 100:.2f}%，"
     f"ZS={best_metrics['ZS'] * 100:.2f}%。"
+)
+final_metrics = {
+    "U": float(best_metrics["U"] * 100.0),
+    "S": float(best_metrics["S"] * 100.0),
+    "H": float(best_metrics["H"] * 100.0),
+    "ZS": float(best_metrics["ZS"] * 100.0),
+    "best_epoch": int(best_metrics["epoch"]),
+}
+metrics_path = log_dir / "final_metrics.yaml"
+metrics_path.write_text(
+    yaml.safe_dump(final_metrics, allow_unicode=True, sort_keys=False),
+    encoding="utf-8",
 )
