@@ -5,15 +5,18 @@
 """
 
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
 
+import scipy.io as sio
 import torch
 import torch.optim as optim
 import yaml
 
-from model.MyModel import GTPJ
+from model.MyModel import GTPJ, SENTENCE_ROLES
 from tools.reproducibility import configure_reproducibility
 from tools.v5_cub_data import load_v5_cub_split
 from tools.v5_runtime import (
@@ -40,6 +43,16 @@ TRAIN_CLS_PATH = CACHE_DIR / "CUB_train_features.pt"
 TRAIN_PATCH_PATH = CACHE_DIR / "CUB_train_patch_features.pt"
 TRAIN_LABEL_PATH = CACHE_DIR / "CUB_train_labels.pt"
 GPT56_SENTENCE_PATH = CACHE_DIR / "CUB_gpt56_8sent_sentence_embeds.pt"
+GPT56_SENTENCE_CONTRACT_PATH = Path(
+    "./experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/"
+    "gpt56_8sent_cache_contract.json"
+)
+EXPECTED_GPT56_SENTENCE_SHA256 = (
+    "8c1a8e27a70681759b22e87412c424b6c9c3a7991ed391b3acc244bbc3a6bca3"
+)
+EXPECTED_CUB_CLASS_ORDER_SHA256 = (
+    "7b6ffe26103bfeb73324f328fac499d6ea7cfadfb2b56448b0df295aca22df38"
+)
 DATA_RES101_PATH = Path("./data/xlsa17/data/CUB/res101.mat")
 DATA_SPLIT_PATH = Path("./data/xlsa17/data/CUB/att_splits.mat")
 
@@ -172,11 +185,106 @@ def _load_training_cache(expected_dim):
     return cls_features, patches, labels
 
 
-def _load_gpt56_sentences(expected_classes, expected_dim):
+def _canonical_class_order_sha256(class_order):
+    payload = json.dumps(
+        list(class_order), ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _load_cub_class_order(expected_classes):
+    splits = sio.loadmat(DATA_SPLIT_PATH)
+    if "allclasses_names" not in splits:
+        raise ValueError("xlsa17 att_splits.mat 缺少 allclasses_names。")
+    class_order = [str(entry[0]) for entry in splits["allclasses_names"].squeeze()]
+    if len(class_order) != expected_classes:
+        raise ValueError(
+            f"CUB 类别顺序必须有 {expected_classes} 类，实际为 {len(class_order)}。"
+        )
+    actual_hash = _canonical_class_order_sha256(class_order)
+    if actual_hash != EXPECTED_CUB_CLASS_ORDER_SHA256:
+        raise ValueError("CUB 类别顺序与本实验锁定顺序不一致。")
+    return class_order
+
+
+def _load_gpt56_contract():
+    try:
+        contract = json.loads(GPT56_SENTENCE_CONTRACT_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise FileNotFoundError(
+            "实验缺少 GPT-5.6 八句缓存说明卡：" + str(GPT56_SENTENCE_CONTRACT_PATH)
+        ) from error
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("GPT-5.6 八句缓存说明卡无法读取。") from error
+    if not isinstance(contract, dict):
+        raise ValueError("GPT-5.6 八句缓存说明卡必须是 JSON 对象。")
+    return contract
+
+
+def _validate_gpt56_contract(
+    contract,
+    actual_cache_sha256,
+    class_order,
+    expected_classes,
+    expected_dim,
+):
+    required = {
+        "schema_version",
+        "cache_filename",
+        "cache_sha256",
+        "tensor_shape",
+        "tensor_dtype",
+        "role_order",
+        "class_order",
+        "class_order_sha256",
+        "provenance",
+    }
+    if set(contract) != required:
+        raise ValueError("GPT-5.6 八句缓存说明卡字段不完整或含有未知字段。")
+    if contract["schema_version"] != "gtpj.gpt56_8sent_cache.v1":
+        raise ValueError("GPT-5.6 八句缓存说明卡版本不受支持。")
+    if contract["cache_filename"] != GPT56_SENTENCE_PATH.name:
+        raise ValueError("GPT-5.6 八句缓存文件名与说明卡不一致。")
+    if contract["role_order"] != list(SENTENCE_ROLES):
+        raise ValueError("GPT-5.6 八句角色顺序与模型定义不一致。")
+    expected_shape = [expected_classes, len(SENTENCE_ROLES), expected_dim]
+    if contract["tensor_shape"] != expected_shape:
+        raise ValueError("GPT-5.6 八句缓存形状说明与本实验不一致。")
+    if contract["tensor_dtype"] != "torch.float32":
+        raise ValueError("GPT-5.6 八句缓存 dtype 说明与本实验不一致。")
+    if contract["class_order"] != list(class_order):
+        raise ValueError("GPT-5.6 八句缓存类别顺序与 xlsa17 不一致。")
+    class_order_hash = _canonical_class_order_sha256(class_order)
+    if (
+        contract["class_order_sha256"] != EXPECTED_CUB_CLASS_ORDER_SHA256
+        or class_order_hash != EXPECTED_CUB_CLASS_ORDER_SHA256
+    ):
+        raise ValueError("GPT-5.6 八句缓存类别顺序身份不一致。")
+    if (
+        contract["cache_sha256"] != EXPECTED_GPT56_SENTENCE_SHA256
+        or actual_cache_sha256 != EXPECTED_GPT56_SENTENCE_SHA256
+    ):
+        raise ValueError("GPT-5.6 八句缓存 SHA-256 与本实验锁定文件不一致。")
+
+
+def _load_gpt56_sentences(
+    expected_classes,
+    expected_dim,
+    actual_cache_sha256,
+    class_order,
+):
     if not GPT56_SENTENCE_PATH.is_file():
         raise FileNotFoundError(
             "实验缺少 GPT-5.6 八句缓存：" + str(GPT56_SENTENCE_PATH)
         )
+    contract = _load_gpt56_contract()
+    _validate_gpt56_contract(
+        contract,
+        actual_cache_sha256,
+        class_order,
+        expected_classes,
+        expected_dim,
+    )
     sentences = torch.load(GPT56_SENTENCE_PATH, map_location="cpu", weights_only=True)
     if (
         sentences.dim() != 3
@@ -187,7 +295,11 @@ def _load_gpt56_sentences(expected_classes, expected_dim):
             f"GPT-5.6 八句缓存必须是 [{expected_classes}, 8, {expected_dim}]，"
             f"实际为 {tuple(sentences.shape)}。"
         )
-    return sentences.float()
+    if sentences.dtype != torch.float32:
+        raise ValueError(
+            f"GPT-5.6 八句缓存必须是 torch.float32，实际为 {sentences.dtype}。"
+        )
+    return sentences, contract
 
 
 def _stage_boundaries(stages):
@@ -276,6 +388,7 @@ input_paths = {
     "train_patches": TRAIN_PATCH_PATH,
     "train_labels": TRAIN_LABEL_PATH,
     "gpt56_8sent_sentences": GPT56_SENTENCE_PATH,
+    "gpt56_8sent_contract": GPT56_SENTENCE_CONTRACT_PATH,
     **{f"test_{name}": path for name, path in v5_test_cache_paths().items()},
 }
 before_load_records = {
@@ -287,8 +400,12 @@ data_manifest, data_manifest_hash = load_or_create_fingerprint_manifest(
 )
 validate_stable_input_records(before_load_records, data_manifest["files"])
 train_cls, train_patches, train_labels = _load_training_cache(int(config.dim_f_clip))
-sentence_embeds = _load_gpt56_sentences(
-    int(config.num_class), int(config.dim_f_clip)
+class_order = _load_cub_class_order(int(config.num_class))
+sentence_embeds, sentence_contract = _load_gpt56_sentences(
+    int(config.num_class),
+    int(config.dim_f_clip),
+    data_manifest["files"]["gpt56_8sent_sentences"]["sha256"],
+    class_order,
 )
 test_cache = load_v5_test_cache()
 seenclasses, unseenclasses = load_v5_cub_split(
@@ -318,6 +435,12 @@ for name, record in data_manifest["files"].items():
         input_records[name]["shape"] = list(tensor.shape)
         input_records[name]["dtype"] = str(tensor.dtype)
 run_input_fingerprints = input_fingerprints(input_records)
+run_input_fingerprints["gpt56_8sent_sentences"]["role_order"] = sentence_contract[
+    "role_order"
+]
+run_input_fingerprints["gpt56_8sent_sentences"]["class_order_sha256"] = (
+    sentence_contract["class_order_sha256"]
+)
 print_log(
     f"数据清单：{fingerprint_manifest_path} | "
     f"sha256={data_manifest_hash}"

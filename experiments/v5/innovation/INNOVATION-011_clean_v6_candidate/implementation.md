@@ -6,6 +6,8 @@
 
 实验分支从 `MODEL-V5-TEMPLATE-V2@fb4b29b04087640890a532f105cb527d3a8c461b` 精确分叉。V2 只提供 CUB 数据读取、U/S/H/ZS 评估、checkpoint、续训、可复现和大文件身份清单；`MyModel.py`、模型构造、`forward`、交互与损失均重新实现，不继承 V5 模型数学。
 
+八句缓存另由 `gpt56_8sent_cache_contract.json` 锁定文件 SHA-256、八个角色槽位和 CUB 官方 200 类顺序。训练入口会把这张说明卡一起纳入数据清单；缓存、角色顺序或类别顺序任一不一致都会在训练前停止。
+
 ## 最小计算路径
 
 ```text

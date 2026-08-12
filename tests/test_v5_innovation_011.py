@@ -1,6 +1,7 @@
 """V5-INNOVATION-011 的最小模型与训练合同测试。"""
 
 import importlib.util
+import json
 from pathlib import Path
 import re
 import tempfile
@@ -26,6 +27,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/config.yaml"
 MODEL_PATH = ROOT / "model/MyModel.py"
 TRAIN_PATH = ROOT / "train_GTPJ_CUB.py"
+CACHE_CONTRACT_PATH = (
+    ROOT
+    / "experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/"
+    "gpt56_8sent_cache_contract.json"
+)
 OLD_MODULE_TOKENS = {
     "ProgressiveSemanticSelfAttention",
     "fgvd_select_patches",
@@ -58,6 +64,16 @@ def make_model():
 
 
 class CleanInnovation011Test(unittest.TestCase):
+    @staticmethod
+    def _load_train_helpers(module_name):
+        source = TRAIN_PATH.read_text(encoding="utf-8").split(
+            "args = _parse_args()", 1
+        )[0]
+        spec = importlib.util.spec_from_loader(module_name, loader=None)
+        module = importlib.util.module_from_spec(spec)
+        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        return module
+
     def test_sentence_role_order_is_fixed(self):
         self.assertEqual(
             (
@@ -91,6 +107,75 @@ class CleanInnovation011Test(unittest.TestCase):
                 torch.tensor([1, 3]),
                 torch.randn(5, 8, 4),
             )
+
+    def test_sentence_cache_contract_matches_roles_classes_and_hash(self):
+        module = self._load_train_helpers("innovation_011_sentence_contract")
+        contract = json.loads(CACHE_CONTRACT_PATH.read_text(encoding="utf-8"))
+        class_order = module._load_cub_class_order(200)
+        actual_cache_sha256 = module.sha256_file(module.GPT56_SENTENCE_PATH)
+        module._validate_gpt56_contract(
+            contract,
+            actual_cache_sha256,
+            class_order,
+            200,
+            768,
+        )
+        self.assertEqual(module.EXPECTED_GPT56_SENTENCE_SHA256, actual_cache_sha256)
+        self.assertEqual(list(SENTENCE_ROLES), contract["role_order"])
+        self.assertEqual(200, len(contract["class_order"]))
+
+    def test_sentence_cache_contract_rejects_swapped_global_unique_slots(self):
+        module = self._load_train_helpers("innovation_011_swapped_sentence_roles")
+        contract = json.loads(CACHE_CONTRACT_PATH.read_text(encoding="utf-8"))
+        class_order = list(contract["class_order"])
+        contract["role_order"][GLOBAL_SENTENCE_INDEX], contract["role_order"][
+            UNIQUE_SENTENCE_INDEX
+        ] = (
+            contract["role_order"][UNIQUE_SENTENCE_INDEX],
+            contract["role_order"][GLOBAL_SENTENCE_INDEX],
+        )
+        with self.assertRaisesRegex(ValueError, "角色顺序"):
+            module._validate_gpt56_contract(
+                contract,
+                module.EXPECTED_GPT56_SENTENCE_SHA256,
+                class_order,
+                200,
+                768,
+            )
+
+    def test_sentence_cache_contract_rejects_changed_cache_or_class_order(self):
+        module = self._load_train_helpers("innovation_011_changed_sentence_identity")
+        contract = json.loads(CACHE_CONTRACT_PATH.read_text(encoding="utf-8"))
+        class_order = list(contract["class_order"])
+        with self.assertRaisesRegex(ValueError, "SHA-256"):
+            module._validate_gpt56_contract(
+                contract,
+                "0" * 64,
+                class_order,
+                200,
+                768,
+            )
+        changed_order = list(class_order)
+        changed_order[0], changed_order[1] = changed_order[1], changed_order[0]
+        with self.assertRaisesRegex(ValueError, "类别顺序"):
+            module._validate_gpt56_contract(
+                contract,
+                module.EXPECTED_GPT56_SENTENCE_SHA256,
+                changed_order,
+                200,
+                768,
+            )
+
+    def test_sentence_roles_and_class_order_enter_checkpoint_identity(self):
+        source = TRAIN_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            'run_input_fingerprints["gpt56_8sent_sentences"]["role_order"]',
+            source,
+        )
+        self.assertIn(
+            'run_input_fingerprints["gpt56_8sent_sentences"]["class_order_sha256"]',
+            source,
+        )
 
     def test_projection_starts_as_identity(self):
         model = make_model()
@@ -213,10 +298,7 @@ class CleanInnovation011Test(unittest.TestCase):
         self.assertNotRegex(source.lower(), r"topk\s*\(")
 
     def test_training_config_parser_rejects_a_legacy_module_field(self):
-        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
-        spec = importlib.util.spec_from_loader("innovation_011_train_config", loader=None)
-        module = importlib.util.module_from_spec(spec)
-        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        module = self._load_train_helpers("innovation_011_train_config")
         raw = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
         raw["fgvd_select_k"] = {"value": 32}
         temporary = ROOT / ".runtime" / "test_innovation_011_bad_config.yaml"
@@ -229,10 +311,7 @@ class CleanInnovation011Test(unittest.TestCase):
             temporary.unlink(missing_ok=True)
 
     def test_training_requires_a_new_run_output_directory(self):
-        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
-        spec = importlib.util.spec_from_loader("innovation_011_output_dir", loader=None)
-        module = importlib.util.module_from_spec(spec)
-        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        module = self._load_train_helpers("innovation_011_output_dir")
 
         with mock.patch("sys.argv", ["train_GTPJ_CUB.py", "--config", str(CONFIG_PATH)]):
             with self.assertRaises(SystemExit):
@@ -244,20 +323,14 @@ class CleanInnovation011Test(unittest.TestCase):
                 module._prepare_output_dir(existing)
 
     def test_first_zero_h_evaluation_is_still_saved(self):
-        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
-        spec = importlib.util.spec_from_loader("innovation_011_best_save", loader=None)
-        module = importlib.util.module_from_spec(spec)
-        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        module = self._load_train_helpers("innovation_011_best_save")
 
         self.assertTrue(module._should_save_best(0.0, 0.0, {"epoch": 0}))
         self.assertFalse(module._should_save_best(0.0, 0.0, {"epoch": 1}))
         self.assertTrue(module._should_save_best(0.1, 0.0, {"epoch": 1}))
 
     def test_training_schedule_is_locked_to_fifty_epochs(self):
-        source = TRAIN_PATH.read_text(encoding="utf-8").split("args = _parse_args()", 1)[0]
-        spec = importlib.util.spec_from_loader("innovation_011_schedule", loader=None)
-        module = importlib.util.module_from_spec(spec)
-        exec(compile(source, str(TRAIN_PATH), "exec"), module.__dict__)
+        module = self._load_train_helpers("innovation_011_schedule")
         raw = yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
         raw["lr_stages"]["value"][0]["epochs"] = 19
         temporary = ROOT / ".runtime" / "test_innovation_011_bad_schedule.yaml"
