@@ -3,12 +3,57 @@
 文件名保留历史路径，避免旧测试入口失效；正文不再维护实验路线。
 """
 
+import importlib.util
+from pathlib import Path
+import re
+import subprocess
+import tempfile
 from types import SimpleNamespace
 import unittest
 
 import torch
 
-from model.MyModel import GTPJ
+
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATE_METADATA = ROOT / "experiments" / "v5" / "TEMPLATE.yaml"
+
+
+def _load_active_v5_model_class():
+    metadata = TEMPLATE_METADATA.read_text(encoding="utf-8")
+    commit_match = re.search(
+        r"^template_commit:\s*([0-9a-f]{40})\s*$", metadata, re.MULTILINE
+    )
+    tag_match = re.search(r"^template_tag:\s*(\S+)\s*$", metadata, re.MULTILINE)
+    if commit_match is None or tag_match is None:
+        raise AssertionError("experiments/v5/TEMPLATE.yaml 缺少准确 commit 或 Tag。")
+    commit = commit_match.group(1)
+    tag_result = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", f"{tag_match.group(1)}^{{commit}}"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if tag_result.stdout.strip() != commit:
+        raise AssertionError("V5 母版 Tag 与 TEMPLATE.yaml 登记提交不一致。")
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "show", f"{commit}:model/MyModel.py"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    with tempfile.TemporaryDirectory(prefix="gtpj-v5-math-") as temporary:
+        source_path = Path(temporary) / "active_v5_model.py"
+        source_path.write_text(result.stdout, encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("gtpj_v5_math_model", source_path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.GTPJ
+
+
+GTPJ = _load_active_v5_model_class()
 
 
 def make_config(**overrides):

@@ -10,19 +10,56 @@ import unittest
 
 import torch
 
-from model.MyModel import GTPJ
 from tools.convert_v5_checkpoint import convert_state_dict
 from tools.v5_evaluation import evaluate_cached_v5, load_v5_test_cache
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION_CONFIG = ROOT / "config" / "versions" / "v5.yaml"
-EXPERIMENT_CONFIG = ROOT / "experiments" / "v5" / "config.yaml"
-BASELINE_CONFIG = ROOT / "experiments" / "v5" / "baseline" / "config.yaml"
-RUNTIME_CONFIG = ROOT / "config" / "GTPJ_cub_gzsl.yaml"
-MODEL_SOURCE = ROOT / "model" / "MyModel.py"
-TRAINING_SOURCE = ROOT / "train_GTPJ_CUB.py"
-RUNTIME_SOURCE = ROOT / "tools" / "v5_runtime.py"
+TEMPLATE_METADATA = ROOT / "experiments" / "v5" / "TEMPLATE.yaml"
+
+
+def _active_v5_template_commit() -> str:
+    text = TEMPLATE_METADATA.read_text(encoding="utf-8")
+    commit_match = re.search(
+        r"^template_commit:\s*([0-9a-f]{40})\s*$", text, re.MULTILINE
+    )
+    tag_match = re.search(r"^template_tag:\s*(\S+)\s*$", text, re.MULTILINE)
+    if commit_match is None or tag_match is None:
+        raise AssertionError("experiments/v5/TEMPLATE.yaml 缺少准确 commit 或 Tag。")
+    commit = commit_match.group(1)
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", f"{tag_match.group(1)}^{{commit}}"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if result.stdout.strip() != commit:
+        raise AssertionError("V5 母版 Tag 与 TEMPLATE.yaml 登记提交不一致。")
+    return commit
+
+
+def _template_text(path: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "show", f"{_active_v5_template_commit()}:{path}"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return result.stdout
+
+
+def _load_active_v5_model_class():
+    source = _template_text("model/MyModel.py")
+    with tempfile.TemporaryDirectory(prefix="gtpj-v5-template-") as temporary:
+        source_path = Path(temporary) / "active_v5_model.py"
+        source_path.write_text(source, encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("gtpj_active_v5_model", source_path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.GTPJ
 
 
 LEGACY_V5_KEYS = {
@@ -93,10 +130,10 @@ def _top_level_keys(text: str) -> set[str]:
 
 
 def _check_v5_config_contains_only_canonical_keys() -> None:
-    version_text = VERSION_CONFIG.read_text(encoding="utf-8")
-    experiment_text = EXPERIMENT_CONFIG.read_text(encoding="utf-8")
-    baseline_text = BASELINE_CONFIG.read_text(encoding="utf-8")
-    runtime_text = RUNTIME_CONFIG.read_text(encoding="utf-8")
+    version_text = _template_text("config/versions/v5.yaml")
+    experiment_text = _template_text("experiments/v5/config.yaml")
+    baseline_text = _template_text("experiments/v5/baseline/config.yaml")
+    runtime_text = _template_text("config/GTPJ_cub_gzsl.yaml")
 
     for key in LEGACY_V5_KEYS:
         assert not re.search(rf"^{re.escape(key)}:\s*$", version_text, re.MULTILINE), key
@@ -111,7 +148,7 @@ def _check_v5_config_contains_only_canonical_keys() -> None:
 
 
 def _check_v5_model_source_has_only_the_fixed_canonical_path() -> None:
-    source = MODEL_SOURCE.read_text(encoding="utf-8")
+    source = _template_text("model/MyModel.py")
     forbidden = {
         "_config_get",
         "CrossModalTransformer",
@@ -151,7 +188,7 @@ def _check_v5_model_source_has_only_the_fixed_canonical_path() -> None:
 
 
 def _check_v5_training_entry_uses_only_canonical_names() -> None:
-    source = TRAINING_SOURCE.read_text(encoding="utf-8")
+    source = _template_text("train_GTPJ_CUB.py")
     forbidden = {
         "legacy_key",
         "pool_method == 'lastvit'",
@@ -210,7 +247,7 @@ def _check_v5_training_entry_uses_only_canonical_names() -> None:
 
 
 def _check_v5_rng_restore_keeps_rng_state_on_cpu() -> None:
-    source = RUNTIME_SOURCE.read_text(encoding="utf-8")
+    source = _template_text("tools/v5_runtime.py")
     assert 'torch.set_rng_state(state["torch_cpu"].cpu())' in source
     assert "torch.cuda.set_rng_state_all([item.cpu() for item in cuda_states])" in source
 
@@ -352,6 +389,7 @@ def _check_v5_evaluation_accepts_cuda_class_indices() -> None:
 
 def _check_v5_clean_path_parity_with_historical_tag() -> None:
     historical_model_class = _load_historical_v5_model_class()
+    active_v5_model_class = _load_active_v5_model_class()
     config = _parity_config()
     torch.manual_seed(20260806)
     seen = torch.tensor([0, 2, 3, 5])
@@ -372,7 +410,7 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
         seen_sentence_embeds=seen_sentences,
     )
     torch.manual_seed(17)
-    clean_model = GTPJ(
+    clean_model = active_v5_model_class(
         config,
         seen,
         unseen,
