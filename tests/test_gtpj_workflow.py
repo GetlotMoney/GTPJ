@@ -5561,6 +5561,21 @@ log:v1:module_trial:TRIAL-001:attempt-001
                 self.repo / "base.yaml", self.repo / "candidate.yaml"
             )
 
+    def test_parameter_matrix_actual_changes_rejects_ambiguous_value_mapping(self) -> None:
+        self._write(
+            "base.yaml",
+            "optimizer:\n  value: 0.9\n  mode: sgd\n",
+        )
+        self._write(
+            "candidate.yaml",
+            "optimizer:\n  value: 0.9\n  mode: adam\n",
+        )
+
+        with self.assertRaisesRegex(self.module.WorkflowError, "optimizer is ambiguous"):
+            self.module.parameter_matrix_actual_changes(
+                self.repo / "base.yaml", self.repo / "candidate.yaml"
+            )
+
     def test_parameter_matrix_actual_changes_preserves_yaml_scalar_types(self) -> None:
         cases = [
             ("true", "false", False, "false"),

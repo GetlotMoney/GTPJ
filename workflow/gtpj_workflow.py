@@ -15349,7 +15349,11 @@ def read_parameter_config_values(config_path: Path) -> dict[str, object]:
             raise WorkflowError(
                 f"Config contains a non-string top-level parameter key: {key!r}"
             )
-        raw_value = entry["value"] if isinstance(entry, dict) and "value" in entry else entry
+        if isinstance(entry, dict) and "value" in entry and set(entry) != {"value"}:
+            raise WorkflowError(
+                f"Config parameter {key} is ambiguous: a value wrapper must contain only the value key"
+            )
+        raw_value = entry["value"] if isinstance(entry, dict) and set(entry) == {"value"} else entry
         normalized = normalize_parameter_value(
             raw_value, value_path=f"{key}.value"
         )
