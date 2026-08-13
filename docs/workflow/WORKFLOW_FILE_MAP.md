@@ -9,8 +9,8 @@ helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有�
 
 | 文件 | 状态 |
 |---|---|
-| `START_HERE.md` | 每个 GTPJ 工作流任务从这里开始。 |
-| `WORKFLOW_KERNEL.md` | 硬规则层。必须短而权威。 |
+| `START_HERE.md` | 当前唯一业务入口，只包含 V6 新流程。 |
+| `WORKFLOW_KERNEL.md` | 当前硬规则，只包含 V6 新流程。 |
 | `WORKFLOW_MANIFEST.yaml` | 机器可读瘦身索引，标记 daily/core/playbook/protocol/archive。 |
 | `WORKFLOW_FILE_MAP.md` | 人读路径地图。 |
 
@@ -21,8 +21,8 @@ helper 校验，再移动文件；不要靠聊天记忆判断路径是否仍有�
 | `core/QUICK_START.md` | owner 短口令备忘。 |
 | `core/WORKFLOW_ROUTER.md` | 完整路由表。任务类型模糊或混合时再读。 |
 | `core/TASK_START_MINI.md` | 给 owner 看的精简启动摘要。 |
-| `core/TASK_START_CARD.md` | 正式写入或运行前的完整启动记录。 |
-| `core/AGENT_RUNTIME_HARD_GATE.md` | 正式 Runner 启动硬门。 |
+| `core/TASK_START_CARD.md` | V6 最小启动记录。 |
+| `core/AGENT_RUNTIME_HARD_GATE.md` | 旧 runtime 门的历史兼容说明，不是 V6 默认硬门。 |
 
 ## 有效执行卡
 
@@ -66,6 +66,7 @@ protocols/autonomous_research_campaign.md
 
 ```text
 archive/specs/GTPJ_WORKFLOW_SPEC.md
+archive/specs/WORKFLOW_PRE_V6_ARCHIVE.md
 archive/reports/CURRENT_WORKFLOW_REPORT.md
 core/FIRST_CLOSED_LOOP.md
 archive/reports/IMPLEMENTATION_STATUS.md
@@ -93,8 +94,7 @@ python workflow/gtpj_workflow.py start --phrase "开新模块"
 python workflow/gtpj_workflow.py start --phrase "从论文开始"
 python workflow/gtpj_workflow.py start --phrase "跑2创新+8调参"
 python workflow/gtpj_workflow.py start-card --type tune --version v5 --owner-request "调参"
-python workflow/gtpj_workflow.py validate-agent-runtime --path <agent_runtime.yaml>
-python workflow/gtpj_workflow.py multi-agent-preflight --path <agent_runtime.yaml>
+python workflow/gtpj_workflow.py validate
 python workflow/gtpj_workflow.py validate-workflow-consistency
 ```
 

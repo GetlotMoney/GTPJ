@@ -790,7 +790,12 @@ class WorkflowHelperTest(unittest.TestCase):
             ("playbook_paper_intake", "docs/workflow/playbooks/paper_intake.md", "playbook", "active", False),
             ("playbook_paper_to_experiment", "docs/workflow/playbooks/paper_to_experiment.md", "playbook", "active", False),
         ]
-        lines = ["workflow_version: v2", "files:"]
+        lines = [
+            "workflow_version: v6",
+            "governance_standard: SYS-WORKFLOW-V6",
+            "slimming_stage: current_only",
+            "files:",
+        ]
         for logical_id, path, category, status, daily_read in entries:
             lines.extend(
                 [
@@ -4450,6 +4455,117 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertEqual(1, code)
         self.assertIn("frozen or running", stderr)
 
+    def test_record_result_accepts_v6_direct_training_log_without_receipt(self) -> None:
+        self._git("switch", "-c", "exp/v1/tune/tune-003-direct")
+        self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
+        self._commit_all("activate parameter-matrix policy")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--version", "v1", "--kind", "tune",
+            "--exp-id", "TUNE-003", "--slug", "direct",
+        )
+        self.assertEqual(0, code, stderr)
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-003_direct"
+        matrix_path = exp_dir / "PARAMETER_MATRIX.csv"
+        rows = self.module.read_parameter_matrix(matrix_path)
+        rows[0]["seed"] = "5"
+        rows[0]["changed_parameters"] = json.dumps({"conditional_text_ratio": 0.006})
+        self.module.write_parameter_matrix(
+            directory=exp_dir,
+            title=exp_dir.name,
+            rows=rows,
+            source_note="V6 direct training test",
+            overwrite=True,
+        )
+        config_path = exp_dir / "config.yaml"
+        config_path.write_text(
+            self.module.render_config_with_updates(
+                config_path.read_text(encoding="utf-8"),
+                {"conditional_text_ratio": 0.006},
+            ),
+            encoding="utf-8",
+        )
+        code, _stdout, stderr = self._run_main(
+            "freeze-parameter-matrix", "--path", str(matrix_path),
+            "--config", str(config_path), "--job-id", "RUN-001",
+        )
+        self.assertEqual(0, code, stderr)
+        self._commit_all("freeze V6 direct run")
+        freeze_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._write(
+            "train_log/direct.log",
+            f"代码 commit：{freeze_commit}\n"
+            f"配置 SHA-256：{self.module.sha256_file(config_path)}\n"
+            "随机种子：5\n"
+            "Best Results @ Epoch 2\n  GZSL-U : 70.0%\n  GZSL-S : 72.0%\n"
+            "  GZSL-H : 71.0%\n  ZSL : 73.0%\n",
+        )
+        code, _stdout, stderr = self._run_main(
+            "record-result", "--version", "v1", "--kind", "tune",
+            "--exp-id", "TUNE-003", "--slug", "direct",
+            "--matrix-job-id", "RUN-001", "--parameter", "conditional_text_ratio",
+            "--old-value", "0.008", "--new-value", "0.006", "--seed", "5",
+            "--log", "train_log/direct.log", "--pre-run-freeze-commit", freeze_commit,
+            "--command", "python train_GTPJ_CUB.py --config experiments/v1/config.yaml",
+            "--decision", "keep",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("--config must exactly match the frozen config path", stderr)
+        direct_log_path = self.repo / "train_log/direct.log"
+        valid_log = direct_log_path.read_text(encoding="utf-8")
+        direct_log_path.write_text(
+            valid_log.replace(f"代码 commit：{freeze_commit}", "代码 commit：" + "0" * 40),
+            encoding="utf-8",
+        )
+        identity_args = (
+            "record-result", "--version", "v1", "--kind", "tune",
+            "--exp-id", "TUNE-003", "--slug", "direct",
+            "--matrix-job-id", "RUN-001", "--parameter", "conditional_text_ratio",
+            "--old-value", "0.008", "--new-value", "0.006", "--seed", "5",
+            "--log", "train_log/direct.log", "--pre-run-freeze-commit", freeze_commit,
+            "--command", "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-003_direct/config.yaml",
+            "--decision", "keep",
+        )
+        code, _stdout, stderr = self._run_main(*identity_args)
+        self.assertEqual(1, code)
+        self.assertIn("代码 commit does not match the frozen run", stderr)
+        direct_log_path.write_text(valid_log, encoding="utf-8")
+        code, stdout, stderr = self._run_main(
+            "record-result", "--version", "v1", "--kind", "tune",
+            "--exp-id", "TUNE-003", "--slug", "direct",
+            "--matrix-job-id", "RUN-001", "--parameter", "conditional_text_ratio",
+            "--old-value", "0.008", "--new-value", "0.006", "--seed", "5",
+            "--log", "train_log/direct.log", "--pre-run-freeze-commit", freeze_commit,
+            "--command", "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-003_direct/config.yaml",
+            "--decision", "keep",
+        )
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("", stderr)
+        self.assertIn("record-result-ok", stdout)
+        result_yaml = (exp_dir / "result.yaml").read_text(encoding="utf-8")
+        self.assertIn('run_start_receipt_sha256: ""', result_yaml)
+        self.assertFalse((exp_dir / "run_start_receipt.json").exists())
+        result_rows = self.module.read_parameter_matrix(matrix_path)
+        self.assertEqual("completed", result_rows[0]["status"])
+        self.assertEqual("71.0", result_rows[0]["H"])
+        self.assertEqual(
+            self.module.sha256_file(self.repo / "train_log/direct.log"),
+            result_rows[0]["run_log_sha256"],
+        )
+
+    def test_training_log_rejects_out_of_range_and_inconsistent_gzsl_metrics(self) -> None:
+        with self.assertRaisesRegex(self.module.WorkflowError, "finite percentages"):
+            self.module.parse_training_log_text(
+                "Best Results @ Epoch 1\nGZSL-U : 170%\nGZSL-S : 172%\n"
+                "GZSL-H : 171%\nZSL : 173%\n",
+                "out-of-range probe",
+            )
+        with self.assertRaisesRegex(self.module.WorkflowError, "inconsistent with U/S"):
+            self.module.parse_training_log_text(
+                "Best Results @ Epoch 1\nGZSL-U : 70%\nGZSL-S : 72%\n"
+                "GZSL-H : 99%\nZSL : 73%\n",
+                "harmonic-mean probe",
+            )
+
     def test_freeze_parameter_matrix_allows_multi_job_rows_to_be_frozen_one_at_a_time(self) -> None:
         matrix_dir = self.repo / "experiments/v1/tune/TUNE-002_batch"
         config_one = matrix_dir / "configs/JOB-001.yaml"
@@ -4589,6 +4705,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
                     decision="keep",
                     run_id="RUN-LOCK",
                     artifact_ref="warehouse://lock-test",
+                    run_log_sha256="a" * 64,
                 )
         finally:
             lock_path.unlink()
@@ -8786,13 +8903,13 @@ decision:
     def test_validate_workflow_consistency_accepts_preflight_markers(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nSkill 入口\nGitHub 现行文档\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
-        self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
-        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
-        self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
-        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\nrole_file_plan\nfiles_reviewed\n是否需要再次确认\n")
+        self._write("docs/workflow/START_HERE.md", "当前唯一默认入口：五步短流程\nSYS-WORKFLOW-V6\nPARAMETER_MATRIX\nclean/data/GPU/输出不覆盖\n一次开跑检查\n直接训练\ntraining.log\n参数表回填\nWORKFLOW_PRE_V6_ARCHIVE.md\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "当前执行内核：SYS-WORKFLOW-V6\n唯一实验提交\n独立 RUN 目录\n准确 commit\nclean checkout\nU/S/H/ZS\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\nfiles_reviewed\nWORKFLOW_PRE_V6_ARCHIVE.md\n")
+        self._write("docs/workflow/core/QUICK_START.md", "V6 快速入口\nTEMPLATE.yaml\nPARAMETER_MATRIX\n独立 `RUN-xxx`\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "V6 任务路由\nplaybooks/tune.md\nplaybooks/innovation.md\nplaybooks/confirmation.md\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "SYS-WORKFLOW-V6\n历史兼容\n没有当前命令权\n不是 V6 默认开跑门\n")
+        self._write("docs/workflow/core/TASK_START_MINI.md", "V6 最小启动摘要\nbaseline_commit\nconfig_or_parameter_matrix\ndata_and_split_identity\nblocking_issue\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "V6 启动卡\nrun_commit\nconfig_snapshot\nparameter_matrix\nreview_status\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
@@ -8837,13 +8954,13 @@ decision:
     def test_validate_workflow_consistency_rejects_stale_ai_review_phrase(self) -> None:
         self._write_minimal_workflow_manifest()
         self._write("docs/workflow/README.md", "# Workflow\n")
-        self._write("docs/workflow/START_HERE.md", "formal_runner_allowed\nmulti_agent_preflight\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n正文必须使用中文\n不允许整段英文说明\n框架记录只跟\nformal_pending\norphan_runtime_plan\n明确入口硬规则\n执行授权\n不得反复确认\npre_run_planned\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n重复 3 轮\n")
-        self._write("docs/workflow/WORKFLOW_KERNEL.md", "multi-agent-preflight\nformal_evidence_allowed\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\n文档语言硬规则\n正文必须使用中文\n框架记录绑定\nformal_pending\norphan_runtime_plan\n开启多agents智能体工作流\nlive_multi_agent_monitor\nplanning gate\nfiles_reviewed\n独立输出文件\nallow/block/propose\nSkill 入口\nGitHub 现行文档\nhelper 测试\nreport-new-completions\n代码审核不被 `server_frozen_runner` 豁免\n")
-        self._write("docs/workflow/core/QUICK_START.md", "repro-status\nbaseline_repro_status\n")
-        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "# Router\nformal_pending\norphan_runtime_plan\n")
-        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\nnamed_thread_titles\n<subject_id> | <Role Label>\nfiles_reviewed\nreport-new-completions\n")
-        self._write("docs/workflow/core/TASK_START_MINI.md", "runner_scope\nblocked_reason\n")
-        self._write("docs/workflow/core/TASK_START_CARD.md", "multi_agent_preflight\nformal_evidence_allowed\nagent_status_refs\nrole_file_plan\nfiles_reviewed\n是否需要再次确认\n")
+        self._write("docs/workflow/START_HERE.md", "当前唯一默认入口：五步短流程\nSYS-WORKFLOW-V6\nPARAMETER_MATRIX\nclean/data/GPU/输出不覆盖\n一次开跑检查\n直接训练\ntraining.log\n参数表回填\nWORKFLOW_PRE_V6_ARCHIVE.md\n重复 3 轮\n")
+        self._write("docs/workflow/WORKFLOW_KERNEL.md", "当前执行内核：SYS-WORKFLOW-V6\n唯一实验提交\n独立 RUN 目录\n准确 commit\nclean checkout\nU/S/H/ZS\nreviewed_code_id\n第 1 轮\n第 2 轮\n对抗式\nfiles_reviewed\nWORKFLOW_PRE_V6_ARCHIVE.md\n")
+        self._write("docs/workflow/core/QUICK_START.md", "V6 快速入口\nTEMPLATE.yaml\nPARAMETER_MATRIX\n独立 `RUN-xxx`\n")
+        self._write("docs/workflow/core/WORKFLOW_ROUTER.md", "V6 任务路由\nplaybooks/tune.md\nplaybooks/innovation.md\nplaybooks/confirmation.md\n")
+        self._write("docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md", "SYS-WORKFLOW-V6\n历史兼容\n没有当前命令权\n不是 V6 默认开跑门\n")
+        self._write("docs/workflow/core/TASK_START_MINI.md", "V6 最小启动摘要\nbaseline_commit\nconfig_or_parameter_matrix\ndata_and_split_identity\nblocking_issue\n")
+        self._write("docs/workflow/core/TASK_START_CARD.md", "V6 启动卡\nrun_commit\nconfig_snapshot\nparameter_matrix\nreview_status\n")
         self._write("docs/workflow/protocols/agent_cleanup_protocol.md", "agent cleanup\n")
         self._write("docs/workflow/protocols/agent_orchestration.md", "multi_agent_preflight\nformal_runner_allowed\nagent_output_refs\nagent-cleanup-plan\n<subject_id> | <Role Label>\nfiles_reviewed\n分文件复核\nreport-new-completions\n")
         self._write(
@@ -8882,6 +8999,36 @@ decision:
         self.assertIn("contains stale AI review phrase", stderr)
         self.assertIn("重复 3 轮", stderr)
 
+    def test_workflow_manifest_rejects_stale_v2_identity(self) -> None:
+        self._write_minimal_workflow_manifest()
+        manifest = self.repo / "docs/workflow/WORKFLOW_MANIFEST.yaml"
+        text = manifest.read_text(encoding="utf-8").replace("workflow_version: v6", "workflow_version: v2")
+        manifest.write_text(text, encoding="utf-8")
+
+        errors = self.module.workflow_manifest_errors()
+
+        self.assertTrue(any("workflow_version: v6" in error for error in errors), errors)
+
+    def test_workflow_manifest_rejects_v2_with_v6_comment_spoof(self) -> None:
+        self._write_minimal_workflow_manifest()
+        manifest = self.repo / "docs/workflow/WORKFLOW_MANIFEST.yaml"
+        text = manifest.read_text(encoding="utf-8").replace(
+            "workflow_version: v6",
+            "workflow_version: v2  # workflow_version: v6",
+        )
+        manifest.write_text(text, encoding="utf-8")
+
+        errors = self.module.workflow_manifest_errors()
+
+        self.assertTrue(any("workflow_version: v6" in error for error in errors), errors)
+
+    def test_workflow_manifest_rejects_non_mapping_root(self) -> None:
+        self._write("docs/workflow/WORKFLOW_MANIFEST.yaml", "- workflow_version: v6\n")
+
+        errors = self.module.workflow_manifest_errors()
+
+        self.assertIn("workflow manifest root must be a mapping", errors)
+
     def test_confirmation_rule_map_lists_sync_dictionary(self) -> None:
         code, stdout, stderr = self._run_main("confirmation-rule-map")
 
@@ -8889,7 +9036,7 @@ decision:
         self.assertEqual(0, code)
         self.assertIn("confirmation-rule-map", stdout)
         self.assertIn("repeat_type: exact_repeat", stdout)
-        self.assertIn("docs/workflow/WORKFLOW_KERNEL.md", stdout)
+        self.assertIn("docs/workflow/playbooks/confirmation.md", stdout)
         self.assertIn("experiments/templates/run_receipt_template.yaml", stdout)
 
     def test_local_gtpj_workflow_skill_accepts_thin_router(self) -> None:

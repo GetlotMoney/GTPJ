@@ -48,10 +48,10 @@ changed_parameters     相对基线只改了什么，使用 JSON 对象
 config_fingerprint     完整配置的指纹，用于查重
 repeat_of              若是原样复跑，明确写复跑哪一行
 seed                   随机种子
-run_start_receipt_sha256 启动收据的固定哈希
-run_command_sha256      实际训练命令的固定哈希
-run_log_sha256          helper 封口后的完整训练日志哈希
-run_exit_code           helper 真实子进程的退出码
+run_start_receipt_sha256 可选兼容收据的固定哈希；V6 直接训练时留空
+run_command_sha256      使用兼容收据入口时记录的训练命令哈希；V6 直接训练时可留空
+run_log_sha256          训练日志哈希
+run_exit_code           使用兼容收据入口时记录的退出码；V6 直接训练时可留空
 U/S/H/ZS、best_epoch   实际结果；未跑时为空
 decision               保留、放弃、继续确认等决定
 artifact_ref           Warehouse 中结果摘要的位置
@@ -67,8 +67,8 @@ artifact_manifest_sha256 该任务证据清单的固定哈希；首次回填后�
 2. 逐行看清任务数、参数变化和复跑对象。
 3. 查重：同一个 config_fingerprint 已经存在时，必须改参数，或明确写 repeat_of。
 4. 把参数矩阵和计划一起提交为 pre-run freeze commit；训练与结果入账都引用这个提交。
-5. 通过 `prepare-run-start-receipt` 一次完成“生成启动收据 + 直接拉起训练进程 + 收集输出”，不能再手工把训练命令拆出去运行。
-6. 通过参数矩阵校验后，才能生成正式 Runner 批次。
+5. 做一次 clean worktree、数据/划分身份、GPU 可见和输出目录不存在检查。
+6. 用现有训练入口直接运行，把完整输出保存到独立 `RUN-xxx/training.log`；不得覆盖历史目录。
 ```
 
 版本级 tune、ablation、confirmation 的训练入口目前由外部训练脚本执行。因此 `new-experiment`
@@ -88,24 +88,15 @@ python workflow\gtpj_workflow.py validate-parameter-matrix `
 单独冻结一行不会要求同批其余草稿已经填完；全部行都冻结后，再执行一次
 `validate-parameter-matrix --require-ready` 作为整批放行检查。
 
-冻结提交完成后，用下面这个唯一入口生成启动收据并直接启动训练：
+冻结提交完成后，使用现有训练入口直接运行。默认环境是 `dvsr_gpu`，每个任务使用独立输出目录并保存完整日志：
 
 ```powershell
-python workflow\gtpj_workflow.py prepare-run-start-receipt `
-  --path <PARAMETER_MATRIX.csv> --config <实际训练配置> --job-id <JOB-ID> `
-  --run-id <RUN-ID> --pre-run-freeze-commit <commit> `
-  --command "<实际训练命令>" --receipt <run_start_receipt.json> --log <train.log>
+conda run -n dvsr_gpu python <现有训练入口.py> --config <实际训练配置> <其他参数>
 ```
 
-正常启动时，这个命令拒绝只存在收据或只存在日志的半套文件，只能在训练前成对创建。若收据和日志已经同时存在，且都能证明来自同一行、同一 Run、同一冻结提交和同一训练命令，重复执行同一条命令只会恢复或复核结束封存，不会再次训练。首次创建时必须正好位于指定的冻结提交，且工作树没有未提交变化；命令只能直接调用 Python，或使用 `conda run ... python`，不能套 `cmd /c echo`、PowerShell 输出命令或多个 shell 命令。`--config` 的实际参数必须精确等于这一行冻结的配置，`--conf`、`--con` 等缩写一律拒绝；训练入口本身也关闭 argparse 的参数缩写。训练入口脚本必须在仓库内、存在于冻结提交且内容没有变化。启动收据会记录训练入口相对路径及其冻结内容哈希。
+训练完成后，用 `record-result` 回填对应行。必须提供 `--pre-run-freeze-commit <commit>`，helper 会再次核对冻结提交中的参数表、配置快照、配置指纹、seed 和调参值，解析日志中的完整 U/S/H/ZS，并保存日志哈希与轻量证据索引。无收据日志必须包含训练入口实际打印的唯一代码 commit、配置 SHA-256 和随机种子，且与冻结运行完全一致；U/S/H/ZS 必须位于 0..100，H 必须与 U/S 的调和平均一致。`--run-start-receipt` 不是 V6 默认门槛；传入时继续严格核验旧收据、结束标记、命令和日志封口，供历史运行或真实高风险任务兼容使用。
 
-helper 会先准备临时收据和临时日志，再把该行从 `frozen` 改成 `running`，写入唯一的 Run 编号、收据路径、收据 SHA-256 和命令 SHA-256，最后发布收据和日志首行；其中任何一步失败，参数表会恢复到原来的 `frozen` 状态并清理本次临时文件。随后 helper 自己用无 shell 的子进程直接执行 `--command`，把进程号、开始时间、退出码和完整标准输出/错误输出追加到同一日志。进程结束后、等待参数表锁之前，helper 会额外创建一次性的 `*.finish.json` 结束收据，先固定原始日志哈希、退出码、进程号和起止时间。子进程无法启动时，该行恢复为 `frozen` 并清理收据和日志；子进程已经启动但非零退出时，该行明确写成 `failed`，保留收据、退出码和日志供排障，不能一直停在 `running`。
-
-进程结束标记必须独占日志最后一行；即使训练程序最后一段输出没有换行，helper 也会先补换行再写结束标记。helper 随后把整份日志的 SHA-256 和退出码写回参数表，相当于给日志“封口”；正式入账只解析开始标记和结束标记之间的真实进程输出，并同时核对日志哈希、退出码和标记顺序。任何在结束标记后补写指标、改写中间输出或手工伪造成功退出码的日志都会被拒绝。
-
-同一张参数表的所有改写动作共用同一把锁，不只是领取启动收据。冻结配置、刷新阅读版、登记普通结果、准备动态批次和回填动态结果都会在锁内重新读取并检查当前表，再一起写回 CSV 与 Markdown，避免两个进程各自拿旧表覆盖对方。训练进程已经结束时，封存步骤会等待最多 30 秒让短暂占锁的写入完成；若仍未封存，释放占锁后原样重跑 `prepare-run-start-receipt`，helper 会用一次性结束收据核对原始日志哈希、结束标记、退出码和进程身份后补齐参数表，不会重复训练，也不会接受超时窗口中被改写的日志。
-
-即使有人绕过这一步单独运行训练，`record-result` 也会拒绝把结果写成正式账本。它只会把指标回填到已冻结的对应行。旧模块 Attempt 仍可由 `record-module-attempt` 做历史兼容核验，但它不能创建新的正式实验。两个结果命令都必须显式传入 `--pre-run-freeze-commit <commit>` 和 `--run-start-receipt <run_start_receipt.json>`；helper 会核对启动收据与结束收据、真实文件哈希、训练入口路径与冻结哈希、日志首行、进程标记、日志封口哈希和文件先后关系。正式账本中的代码提交固定写训练前的冻结提交，不会被训练后推进的当前 `HEAD` 偷换；helper 自己产生的参数表运行状态、两份收据和日志也不会被误判成训练代码变脏。
+同一张参数表的所有改写动作共用同一把锁。冻结配置、刷新阅读版和登记结果都会在锁内重新读取当前表，再一起写回 CSV 与 Markdown，避免两个进程各自拿旧表覆盖对方。正式账本中的代码提交固定写训练前的冻结提交，不会被训练后推进的当前 `HEAD` 偷换。
 
 `record-result` 在写正式框架账本前先取得整张参数表的锁；历史兼容命令 `record-module-attempt` 在补旧证据前也会锁表并检查旧 `ATTEMPTS.md`。两者用途不同：前者是今后的正式入口，后者只修补历史证据。
 
@@ -121,8 +112,8 @@ python workflow\gtpj_workflow.py init-parameter-matrix `
 
 `SYS-WORKFLOW-V5` 启用后，旧动态路由 Trial/Attempt 入口只作历史回查。不得再创建新的旧式动态路由参数表，
 也不得用旧正式 batch planner 启动训练。新动态路由想法必须先成为所属正式框架的 innovation 实验，
-再使用该实验目录自己的 `PARAMETER_MATRIX.csv`、`freeze-parameter-matrix` 和
-`prepare-run-start-receipt`。旧 planner 只允许 `--debug-smoke`，产物不能进入正式证据。
+再使用该实验目录自己的 `PARAMETER_MATRIX.csv`、`freeze-parameter-matrix` 和现有训练入口直接运行。
+旧 planner 只允许 `--debug-smoke`，产物不能进入正式证据。
 
 标准实验的检查入口是：
 

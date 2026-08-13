@@ -83,7 +83,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `README.md` | 项目入口说明，解释 GTPJ 的目标、当前版本、主要目录、GitHub 治理重点和结构辅助命令。 |
-| `AGENTS.md` | agent 协作规则，规定沟通语言、仓库规则、实验规则、安全边界和结构文档同步要求。 |
+| `AGENTS.md` | 当前生效的精简 Agent 规则入口，只保留沟通、安全、五步实验闭环、两轮代码审核和权威文件路由。 |
 | `REPOSITORY_INDEX.json` | 新旧仓库机器可读索引；允许互相定位和只读参考，不提供自动同步或跨仓库写入授权。 |
 | `REPOSITORY_INDEX.md` | 新旧仓库索引的人话说明。 |
 | `NEXT_ACTIONS.md` | 当前执行窗口，只保留近期优先动作，不放完整想法库；由 `idea_tree/queues/queue_state.yaml` 通过 `refresh-todo` 刷新。 |
@@ -144,14 +144,15 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `docs/workflow/README.md` | workflow 入口，说明 owner 薄入口、核心规范、阅读顺序、runtime 边界和结构辅助工具。 |
+| `docs/workflow/README.md` | V6 workflow 短入口，说明唯一阅读链和结构辅助检查。 |
 | `docs/workflow/core/QUICK_START.md` | owner 人话入口，把 `查状态`、`复现`、`调参`、`消融`、`开新模块`、`试这个：...` 等短口令映射到正式 workflow。 |
-| `docs/workflow/core/TASK_START_MINI.md` | owner 可见的 8 字段 mini 启动卡；完整 `TASK_START_CARD.md` 仍由 Coordinator 后台展开。 |
-| `docs/workflow/core/WORKFLOW_ROUTER.md` | GTPJ 总教官/总路由文件，先判断任务类型、是否进入创意树、写入位置、必读协议、agents 和 gate。 |
-| `docs/workflow/core/TASK_START_CARD.md` | 每次 GTPJ 工作开始前的启动卡模板，把 Router 判断落成可检查的任务单。 |
+| `docs/workflow/core/TASK_START_MINI.md` | V6 最小启动摘要，只记录问题、基线、配置、数据、seed、输出和唯一阻断。 |
+| `docs/workflow/core/WORKFLOW_ROUTER.md` | V6 人话请求到九张活动执行卡的短路由。 |
+| `docs/workflow/core/TASK_START_CARD.md` | V6 正式实验最小启动记录。 |
 | `docs/workflow/core/FIRST_CLOSED_LOOP.md` | 首条工作流闭环指南，建议先用 readiness check / tune-suggest / confirmation 验证通路。 |
 | `docs/workflow/archive/reports/CURRENT_WORKFLOW_REPORT.md` | 当前工作流汇报版入口，集中解释 GitHub、多 agents、本地目录、工作规范和当前完成度。 |
 | `docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md` | GTPJ 实验创新工作流总规范，集中说明 GitHub、本地目录、创意树、实验记账、tag、agents、质量门和实验闭环。 |
+| `docs/workflow/archive/specs/WORKFLOW_PRE_V6_ARCHIVE.md` | V6 精简前的三份核心规则、九张活动执行卡、七份旧 README/core 导航，以及旧参数矩阵协议和 helper README 的完整合并归档；只供历史回查，没有当前命令权。 |
 | `docs/workflow/archive/reports/IMPLEMENTATION_STATUS.md` | 规范落地状态清单，说明哪些文件已落地、哪些按需创建、哪些仍是设计，避免 owner 反复口述当前完成度。 |
 | `docs/workflow/archive/diagrams/workflow_diagrams.md` | 流程图标准，规定版本流程图、module trial 流程图、innovation framework diagram、变量/方法词典、Mermaid 权威格式和更新时机。 |
 | `docs/workflow/protocols/git_policy.md` | Git 分支、tag、push、trial 快照策略，以及带 base version 的命名规则。 |
@@ -161,7 +162,7 @@ idea_tree/                 # 创意来源、评分、排序
 | `docs/workflow/protocols/module_trial_protocol.md` | 模块 trial 协议，规定 trial 目录结构、分支/tag 命名、必填记录和决策类型。 |
 | `docs/workflow/protocols/code_interface_contract.md` | 代码接口契约，规定新增模块的开关、输入输出、shape、loss、eval 和最低验证要求。 |
 | `docs/workflow/protocols/innovation_code_review_protocol.md` | 创新代码审核协议，规定 idea/source intent、接口设计、代码两轮不同子 Agent 只读审核和结果回填。 |
-| `docs/workflow/protocols/experiment_protocol.md` | tune、ablation、confirmation 实验协议，包含历史版本运行分支、调参表、消融接口检查和临时分支销毁规则。 |
+| `docs/workflow/protocols/experiment_protocol.md` | tune、ablation、innovation、confirmation 的科学证据、复现与结果判定协议。 |
 | `docs/workflow/reference/artifact_policy.md` | GitHub 轻量边界和 Research/Warehouse 外部资产职责。 |
 | `docs/workflow/protocols/ARTIFACT_REGISTRATION.md` | 外部 artifact 入账步骤，规定 Warehouse 路径、artifact id、URI、hash、size、manifest/result 引用。 |
 | `docs/workflow/reference/result_index_protocol.md` | `manifest.yaml`、`result.yaml`、`result.md` 的实验结果索引协议。 |
@@ -182,7 +183,7 @@ idea_tree/                 # 创意来源、评分、排序
 
 | 路径 | 用途 |
 |---|---|
-| `workflow/README.md` | 结构辅助说明和 runtime 入口说明。 |
+| `workflow/README.md` | V6 helper 使用说明；正式实验默认直接训练并用 `record-result` 回填，旧收据入口仅按需兼容。 |
 | `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
 | `workflow/codex/README.md` | Codex workflow 入口，说明 Codex 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
 | `workflow/openclaw/README.md` | OpenClaw workflow 入口，说明 OpenClaw 如何遵循同一套 GitHub 事实源和 workflow 规范。 |

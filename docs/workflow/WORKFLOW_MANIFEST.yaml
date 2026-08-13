@@ -1,7 +1,7 @@
-workflow_version: v2
-governance_standard: SYS-WORKFLOW-V5
-slimming_stage: manifest_first
-owner_daily_rule: read_start_here_kernel_one_playbook
+workflow_version: v6
+governance_standard: SYS-WORKFLOW-V6
+slimming_stage: current_only
+owner_daily_rule: read_agents_then_start_here_kernel_then_one_playbook
 
 files:
   - logical_id: workflow_readme
@@ -267,6 +267,11 @@ files:
 
   - logical_id: gtpj_workflow_spec
     canonical_path: docs/workflow/archive/specs/GTPJ_WORKFLOW_SPEC.md
+    category: archive
+    status: historical
+    daily_read: false
+  - logical_id: workflow_pre_v6_archive
+    canonical_path: docs/workflow/archive/specs/WORKFLOW_PRE_V6_ARCHIVE.md
     category: archive
     status: historical
     daily_read: false

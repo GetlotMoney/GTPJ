@@ -49,18 +49,14 @@ CONFIRMATION_RULE_REQUIRED_MARKERS = [
 ]
 CONFIRMATION_RULE_REPO_SYNC_FILES = [
     "AGENTS.md",
-    "docs/workflow/WORKFLOW_KERNEL.md",
     "docs/workflow/playbooks/confirmation.md",
     "docs/workflow/playbooks/tune.md",
     "docs/workflow/playbooks/mixed_campaign.md",
-    "docs/workflow/playbooks/innovation.md",
     "docs/workflow/protocols/experiment_protocol.md",
     "docs/workflow/protocols/module_trial_protocol.md",
     "docs/workflow/protocols/mixed_experiment_campaign_protocol.md",
     "docs/workflow/protocols/autonomous_research_campaign.md",
     "docs/workflow/protocols/promotion.md",
-    "docs/workflow/core/TASK_START_CARD.md",
-    "docs/workflow/core/TASK_START_MINI.md",
     "docs/workflow/CLAUDE_CONTEXT.md",
     "experiments/templates/quality_check_template.md",
     "experiments/templates/run_receipt_template.yaml",
@@ -1292,11 +1288,53 @@ def parse_training_log_text(text: str, label: str) -> dict[str, str]:
             f"Unable to parse training log metrics from {label}: "
             + ", ".join(missing)
         )
+    numeric_metrics = {name: float(metrics[name]) for name in METRIC_NAMES}
+    out_of_range = [
+        name for name, value in numeric_metrics.items()
+        if not math.isfinite(value) or value < 0.0 or value > 100.0
+    ]
+    if out_of_range:
+        raise WorkflowError(
+            f"Training log metrics from {label} must be finite percentages in [0, 100]: "
+            + ", ".join(out_of_range)
+        )
+    u_value = numeric_metrics["U"]
+    s_value = numeric_metrics["S"]
+    expected_h = 0.0 if u_value + s_value == 0.0 else 2.0 * u_value * s_value / (u_value + s_value)
+    if abs(numeric_metrics["H"] - expected_h) > 0.15:
+        raise WorkflowError(
+            f"Training log GZSL-H from {label} is inconsistent with U/S: "
+            f"reported={metrics['H']} expected≈{expected_h:.4f}"
+        )
     return metrics
 
 
 def parse_training_log(log_path: Path) -> dict[str, str]:
     return parse_training_log_text(read_text(log_path), display_path(log_path))
+
+
+def direct_training_log_identity_errors(
+    log_path: Path,
+    *,
+    freeze_commit: str,
+    config_path: Path,
+    seed: str,
+) -> list[str]:
+    """Bind a receipt-free formal log to the identity printed by the training process."""
+    text = read_text(log_path)
+    expected = {
+        "代码 commit": resolve_commit(freeze_commit),
+        "配置 SHA-256": sha256_file(config_path),
+        "随机种子": str(seed),
+    }
+    errors: list[str] = []
+    for label, value in expected.items():
+        matches = re.findall(rf"(?m)^{re.escape(label)}[：:]\s*(\S+)\s*$", text)
+        if len(matches) != 1:
+            errors.append(f"receipt-free training log must contain exactly one {label} identity line")
+        elif matches[0] != value:
+            errors.append(f"receipt-free training log {label} does not match the frozen run")
+    return errors
 
 
 def captured_training_log_text(log_path: Path, command: str) -> str:
@@ -2209,62 +2247,31 @@ def cmd_validate(_: argparse.Namespace) -> int:
 
     marker_requirements = {
         "docs/workflow/START_HERE.md": [
-            "baseline_repro_status",
-            "comparison_reference",
-            "debug_smoke",
-            "multi_agent_preflight",
-            "formal_pending",
-            "orphan_runtime_plan",
-            "明确入口硬规则",
-            "执行授权",
-            "不得反复确认",
-            "pre_run_planned",
-            "report-new-completions",
+            "SYS-WORKFLOW-V6",
+            "PARAMETER_MATRIX",
+            "clean/data/GPU/输出不覆盖",
+            "training.log",
+            "WORKFLOW_PRE_V6_ARCHIVE.md",
         ],
         "docs/workflow/WORKFLOW_KERNEL.md": [
-            "named_owner_thread",
-            "debug_smoke",
-            "Top-3",
-            "TRANSITIONS.jsonl",
-            "validate-agent-runtime",
-            "multi-agent-preflight",
-            "formal_pending",
-            "orphan_runtime_plan",
-            "开启多agents智能体工作流",
-            "planning gate",
-            "files_reviewed",
-            "独立输出文件",
-            "allow/block/propose",
-            "report-new-completions",
+            "SYS-WORKFLOW-V6",
+            "clean checkout",
+            "U/S/H/ZS",
+            "reviewed_code_id",
+            "第 1 轮",
+            "第 2 轮",
+            "WORKFLOW_PRE_V6_ARCHIVE.md",
         ],
         "docs/workflow/protocols/evidence_routing_protocol.md": ["subject_id", "TRANSITIONS.jsonl", "validate-evidence-routing"],
-        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
-            "left_sidebar_named_threads",
-            "agent_runtime.yaml",
-            "validate-agent-runtime",
-            "multi-agent-preflight",
-            "single_agent_execution",
-            "formal_runner_allowed",
-            "agent_output_refs",
-            "files_reviewed",
-            "report-new-completions",
-        ],
+        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": ["SYS-WORKFLOW-V6", "历史兼容", "没有当前命令权"],
         "docs/workflow/reference/GZSL_HARD_RULES.md": ["seen/unseen split", "logits", "rule_checks"],
         "docs/workflow/reference/innovation_decomposition_protocol.md": ["Hypothesis", "Trial", "Attempt"],
-        "docs/workflow/core/WORKFLOW_VERSION.md": ["workflow-v2", "evidence_routing.yaml"],
+        "docs/workflow/core/WORKFLOW_VERSION.md": ["SYS-WORKFLOW-V6", "previous_workflow: historical"],
         "docs/workflow/core/CHANGELOG.md": ["workflow-v2", "validate-evidence-routing"],
-        "docs/workflow/core/QUICK_START.md": ["repro-status", "baseline_repro_status"],
-        "docs/workflow/core/WORKFLOW_ROUTER.md": ["baseline_repro_status", "best_observed_H", "role_key", "formal_pending", "orphan_runtime_plan"],
-        "docs/workflow/core/TASK_START_MINI.md": ["baseline_repro_status", "named_owner_thread", "subject_id", "agent_runtime_gate", "formal_runner_allowed"],
-        "docs/workflow/core/TASK_START_CARD.md": [
-            "subject_id",
-            "transition_permissions",
-            "authority_refs",
-            "agent_runtime_gate",
-            "multi_agent_preflight",
-            "开启多agents智能体工作流",
-            "files_reviewed",
-        ],
+        "docs/workflow/core/QUICK_START.md": ["V6 快速入口", "PARAMETER_MATRIX", "独立 `RUN-xxx`"],
+        "docs/workflow/core/WORKFLOW_ROUTER.md": ["V6 任务路由", "playbooks/tune.md", "playbooks/innovation.md"],
+        "docs/workflow/core/TASK_START_MINI.md": ["V6 最小启动摘要", "baseline_commit", "blocking_issue"],
+        "docs/workflow/core/TASK_START_CARD.md": ["V6 启动卡", "run_commit", "review_status"],
         "docs/workflow/agents/README.md": ["role_aliases", "runner_monitor", "log_analyst"],
         "docs/workflow/protocols/agent_orchestration.md": [
             "Agent Runtime Protocol",
@@ -2277,11 +2284,11 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "report-new-completions",
         ],
         "docs/workflow/protocols/mixed_experiment_campaign_protocol.md": ["subject_id", "derived_index_only", "evidence_state", "agent_runtime.yaml", "formal_pending", "orphan_runtime_plan"],
-        "docs/workflow/playbooks/mixed_campaign.md": ["subject_id", "derived_index_only"],
+        "docs/workflow/playbooks/mixed_campaign.md": ["每个真实训练", "轻量索引"],
         "docs/workflow/playbooks/innovation.md": ["Hypothesis", "Attachment Point"],
-        "docs/workflow/playbooks/tune.md": ["tune_promising", "stopped_no_gain"],
+        "docs/workflow/playbooks/tune.md": ["配置指纹", "失败也记录"],
         "docs/workflow/playbooks/ablation.md": ["ablation_supported", "stopped_ablation_not_supported"],
-        "docs/workflow/playbooks/confirmation.md": ["promotion_compare_metric", "confirmed_H"],
+        "docs/workflow/playbooks/confirmation.md": ["best hit", "mean/min/max/range"],
         "docs/workflow/reference/artifact_policy.md": ["Top-3", "pruned"],
         "docs/workflow/protocols/promotion.md": ["must not push", "explicitly asks"],
         "docs/workflow/protocols/experiment_protocol.md": ["mixed_confirmation", "strict_determinism", "formal_pending", "orphan_runtime_plan"],
@@ -2799,11 +2806,6 @@ def cmd_validate(_: argparse.Namespace) -> int:
             "valid_single_run",
             "confirmation_grade",
             "baseline_grade",
-        ],
-        "docs/workflow/core/TASK_START_CARD.md": [
-            "best_observed_H",
-            "confirmed_H",
-            "confirmation_grade",
         ],
     }
     for doc, markers in evidence_docs.items():
@@ -5318,6 +5320,13 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
                 job_id=matrix_result_row["job_id"],
             )
         )
+        runtime_errors.extend(
+            run_start_command_errors(
+                args.command,
+                exp_dir / "config.yaml",
+                commit_ref=str(getattr(args, "pre_run_freeze_commit", "") or ""),
+            )
+        )
         receipt_text = str(getattr(args, "run_start_receipt", "") or "").strip()
         if receipt_text:
             run_start_receipt_path = Path(receipt_text)
@@ -5336,14 +5345,26 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
             )
             if run_start_receipt_path.exists() and run_start_receipt_path.is_file():
                 run_start_receipt_sha256 = sha256_file(run_start_receipt_path)
-        else:
-            runtime_errors.append("formal result requires --run-start-receipt created before training")
         if runtime_errors:
             raise WorkflowError("Formal result does not match its parameter-matrix row:\n" + "\n".join(runtime_errors))
-        metrics = parse_training_log_text(
-            captured_training_log_text(log_path, args.command),
-            f"workflow-captured output in {display_path(log_path)}",
-        )
+        if run_start_receipt_path is not None:
+            metrics = parse_training_log_text(
+                captured_training_log_text(log_path, args.command),
+                f"workflow-captured output in {display_path(log_path)}",
+            )
+        else:
+            identity_errors = direct_training_log_identity_errors(
+                log_path,
+                freeze_commit=str(getattr(args, "pre_run_freeze_commit", "") or ""),
+                config_path=exp_dir / "config.yaml",
+                seed=args.seed,
+            )
+            if identity_errors:
+                raise WorkflowError(
+                    "Receipt-free training log identity does not match the frozen run:\n"
+                    + "\n".join(identity_errors)
+                )
+            metrics = parse_training_log(log_path)
     log_sha256 = sha256_file(log_path)
     log_size_bytes = str(log_path.stat().st_size)
     log_uri = artifact_uri_for_log(
@@ -5511,6 +5532,7 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
             decision=args.decision,
             run_id=args.attempt_id,
             artifact_ref=log_uri,
+            run_log_sha256=log_sha256,
         )
     if is_formal_framework:
         framework_status = "promoted" if effective_promotion_decision == "promote" else "completed"
@@ -7432,6 +7454,7 @@ note: Full per-epoch output is stored in the training_log artifact.
             decision=args.decision,
             run_id=args.run_id or attempt_upper,
             artifact_ref=artifacts["train_log"]["uri"],
+            run_log_sha256=artifacts["train_log"]["sha256"],
         )
 
     print("record-module-attempt-ok")
@@ -8578,10 +8601,28 @@ def read_workflow_manifest_entries(path: Path | None = None) -> list[dict[str, s
 
 def workflow_manifest_errors() -> list[str]:
     errors: list[str] = []
+    manifest_text = read_text(workflow_manifest_path()) if workflow_manifest_path().exists() else ""
+    expected_identity = {
+        "workflow_version": "v6",
+        "governance_standard": "SYS-WORKFLOW-V6",
+        "slimming_stage": "current_only",
+    }
+    try:
+        manifest_data = yaml.safe_load(manifest_text) or {}
+    except yaml.YAMLError as exc:
+        errors.append(f"workflow manifest is not valid YAML: {exc}")
+        manifest_data = {}
+    if not isinstance(manifest_data, dict):
+        errors.append("workflow manifest root must be a mapping")
+        manifest_data = {}
+    for key, expected in expected_identity.items():
+        if manifest_data.get(key) != expected:
+            errors.append(f"workflow manifest must set {key}: {expected}")
     try:
         entries = read_workflow_manifest_entries()
     except WorkflowError as exc:
-        return [str(exc)]
+        errors.append(str(exc))
+        return errors
 
     seen_ids: set[str] = set()
     seen_paths: set[str] = set()
@@ -8679,8 +8720,6 @@ def is_english_only_heading(line: str) -> bool:
 def doc_language_policy_errors() -> list[str]:
     errors: list[str] = []
     language_marker_requirements = {
-        "docs/workflow/START_HERE.md": ["正文必须使用中文", "不允许整段英文说明"],
-        "docs/workflow/WORKFLOW_KERNEL.md": ["文档语言硬规则", "正文必须使用中文"],
         "docs/workflow/protocols/module_template_selection.md": ["文档语言边界", "不能写整段英文说明"],
         "experiments/templates/modules/README.md": ["训练入口模式", "不允许改变"],
     }
@@ -8856,11 +8895,9 @@ def immutable_template_language_errors() -> list[str]:
     ]
     required_markers: dict[Path, list[str]] = {
         REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md": core_markers,
-        REPO_ROOT / "docs" / "workflow" / "START_HERE.md": core_markers[:3],
-        REPO_ROOT / "docs" / "workflow" / "WORKFLOW_KERNEL.md": core_markers,
-        REPO_ROOT / "docs" / "workflow" / "core" / "QUICK_START.md": core_markers[:3],
-        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_MINI.md": core_markers[1:3],
-        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_CARD.md": core_markers[1:3],
+        REPO_ROOT / "docs" / "workflow" / "core" / "QUICK_START.md": ["TEMPLATE.yaml", "PARAMETER_MATRIX"],
+        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_MINI.md": ["baseline_commit", "config_or_parameter_matrix"],
+        REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_CARD.md": ["run_commit", "config_snapshot"],
         REPO_ROOT / "docs" / "workflow" / "protocols" / "git_policy.md": core_markers,
         REPO_ROOT / "docs" / "workflow" / "protocols" / "versioning.md": core_markers,
         REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers,
@@ -8979,66 +9016,29 @@ def workflow_consistency_errors() -> list[str]:
     errors.extend(immutable_template_language_errors())
     required_markers = {
         "docs/workflow/START_HERE.md": [
-            "formal_runner_allowed",
-            "multi_agent_preflight",
-            "reviewed_code_id",
-            "第 1 轮",
-            "第 2 轮",
-            "对抗式",
-            "正文必须使用中文",
-            "框架记录只跟",
-            "formal_pending",
-            "orphan_runtime_plan",
-            "明确入口硬规则",
-            "执行授权",
-            "不得反复确认",
-            "pre_run_planned",
-            "report-new-completions",
-            "代码审核不被 `server_frozen_runner` 豁免",
+            "当前唯一默认入口：五步短流程",
+            "PARAMETER_MATRIX",
+            "一次开跑检查",
+            "直接训练",
+            "参数表回填",
+            "WORKFLOW_PRE_V6_ARCHIVE.md",
         ],
         "docs/workflow/WORKFLOW_KERNEL.md": [
-            "multi-agent-preflight",
-            "formal_evidence_allowed",
+            "当前执行内核：SYS-WORKFLOW-V6",
+            "唯一实验提交",
+            "独立 RUN 目录",
+            "准确 commit",
             "reviewed_code_id",
             "第 1 轮",
             "第 2 轮",
             "对抗式",
-            "文档语言硬规则",
-            "框架记录绑定",
-            "formal_pending",
-            "orphan_runtime_plan",
-            "开启多agents智能体工作流",
-            "live_multi_agent_monitor",
-            "planning gate",
             "files_reviewed",
-            "独立输出文件",
-            "allow/block/propose",
-            "Skill 入口",
-            "GitHub 现行文档",
-            "helper 测试",
-            "report-new-completions",
-            "代码审核不被 `server_frozen_runner` 豁免",
+            "WORKFLOW_PRE_V6_ARCHIVE.md",
         ],
-        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": [
-            "multi_agent_preflight",
-            "formal_runner_allowed",
-            "agent_output_refs",
-            "agent-cleanup-plan",
-            "named_thread_titles",
-            "<subject_id> | <Role Label>",
-            "files_reviewed",
-            "report-new-completions",
-        ],
-        "docs/workflow/core/TASK_START_MINI.md": ["runner_scope", "blocked_reason"],
-        "docs/workflow/core/TASK_START_CARD.md": [
-            "multi_agent_preflight",
-            "formal_evidence_allowed",
-            "agent_status_refs",
-            "role_file_plan",
-            "files_reviewed",
-            "是否需要再次确认",
-        ],
-        "docs/workflow/core/WORKFLOW_ROUTER.md": ["formal_pending", "orphan_runtime_plan"],
+        "docs/workflow/core/AGENT_RUNTIME_HARD_GATE.md": ["SYS-WORKFLOW-V6", "历史兼容", "不是 V6 默认开跑门"],
+        "docs/workflow/core/TASK_START_MINI.md": ["baseline_commit", "data_and_split_identity", "blocking_issue"],
+        "docs/workflow/core/TASK_START_CARD.md": ["run_commit", "parameter_matrix", "review_status"],
+        "docs/workflow/core/WORKFLOW_ROUTER.md": ["V6 任务路由", "playbooks/confirmation.md"],
         "docs/workflow/protocols/agent_orchestration.md": [
             "multi_agent_preflight",
             "formal_runner_allowed",
@@ -15197,6 +15197,7 @@ def sync_parameter_matrix_result_row(
     decision: str,
     run_id: str,
     artifact_ref: str,
+    run_log_sha256: str,
 ) -> None:
     expected_frozen_fields = parameter_matrix_frozen_fields(row)
     with parameter_matrix_mutation_lock(
@@ -15232,6 +15233,7 @@ def sync_parameter_matrix_result_row(
         current_row["decision"] = decision
         current_row["run_id"] = run_id
         current_row["artifact_ref"] = artifact_ref
+        current_row["run_log_sha256"] = run_log_sha256
         write_parameter_matrix(
             directory=csv_path.parent,
             title=csv_path.parent.name,

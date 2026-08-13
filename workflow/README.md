@@ -73,10 +73,8 @@ python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-i
 python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
 python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
 # 提交上述冻结表后，才运行训练。
-python workflow/gtpj_workflow.py runner-lock --run-id RUN-20260625-001 --experiment-id TUNE-001
-python workflow/gtpj_workflow.py prepare-run-start-receipt --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001 --run-id RUN-001 --pre-run-freeze-commit <FREEZE_COMMIT> --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --receipt train_log/tune.run_start.json --log train_log/CUB/<log>.txt
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id RUN-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --run-start-receipt train_log/tune.run_start.json --command "python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
-python workflow/gtpj_workflow.py runner-unlock --run-id RUN-20260625-001
+conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
+python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id RUN-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --command "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
 
 # idea and version view
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
@@ -114,4 +112,4 @@ The current OpenClaw/Codex runtime entrypoints, and any future runtime integrati
 
 ## 参数矩阵入口（2026-08-04 起）
 
-新的正式实验必须先有逐任务参数表，不能只保留批次总结果。先填写 `PARAMETER_MATRIX.csv`，再用 `freeze-parameter-matrix` 把实际配置快照、种子和完整指纹冻结并生成阅读版；通过 `validate-parameter-matrix --require-ready` 后提交 pre-run freeze commit。随后运行 `prepare-run-start-receipt`：它不再只写一张收据，而是由 helper 亲自拉起冻结命令并把进程开始、退出和完整输出写进同一个日志；`--conf` 等配置参数缩写会被拒绝。所有参数表改写动作共用同一把锁。结果登记时必须同时提供 `--pre-run-freeze-commit` 与 `--run-start-receipt`。`record-result` 和历史补录命令会拒绝未准备好、阅读版过期或和实际配置、种子、训练入口、进程标记不一致的表，并把指标回填到对应行。`SYS-WORKFLOW-V5` 下旧动态路由矩阵创建和正式 batch planner 已停用；`sync-dynamic-routing-matrix` 只允许收回规范启用前已经运行的历史结果。完整命令和规则见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
+新的正式实验必须先有逐任务参数表，不能只保留批次总结果。先填写 `PARAMETER_MATRIX.csv`，再用 `freeze-parameter-matrix` 把实际配置快照、种子和完整指纹冻结并生成阅读版；通过 `validate-parameter-matrix --require-ready` 后提交 pre-run freeze commit。随后在 clean worktree 中用现有训练入口直接运行，并把输出保存到独立 `RUN-xxx/training.log`。结果登记必须提供 `--pre-run-freeze-commit`；`record-result` 会核对参数表、实际配置、种子、调参值，以及日志中训练入口实际打印的代码 commit、配置 SHA-256 和随机种子，校验完整 U/S/H/ZS 后把日志哈希和结果回填对应行。`--run-start-receipt` 只作历史兼容或按真实风险启用，不是 V6 默认门槛。完整规则见 `docs/workflow/protocols/parameter_matrix_protocol.md`。
