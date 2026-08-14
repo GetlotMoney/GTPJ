@@ -49,6 +49,8 @@ idea_tree/                 # 创意来源、评分、排序
 干净 V6 这类“准备升级成新框架”的想法，在确认前仍先登记为所属框架的 innovation。例如当前入口是
 `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`；只有实现、训练、重复验证并通过 promotion 后，才创建正式 `experiments/v6/`、`FRAMEWORK-V6` 和对应 Tag。
 
+`experiments/v5/innovation/INNOVATION-012_global8_clip_baseline/` 保存 8 句话纯 CLIP 全局零模块基线的冻结配置、评估入口、参数矩阵与结果索引；原始指标写入 Warehouse 的独立 RUN 目录。
+
 版本规则：
 
 ```text

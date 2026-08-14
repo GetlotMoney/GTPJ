@@ -1,0 +1,20 @@
+dataset: CUB
+text_aggregation: normalized_sentence_mean
+role_order:
+  - beak
+  - head_features
+  - body_plumage
+  - wings
+  - tail
+  - legs
+  - overall_appearance
+  - unique_discriminative_features
+inputs:
+  sentence_embeds: data/cache/CUB_gpt56_8sent_sentence_embeds.pt
+  train_labels: data/cache/CUB_train_labels.pt
+  seen_features: data/cache/CUB_test_seen_features.pt
+  seen_labels: data/cache/CUB_test_seen_labels.pt
+  unseen_features: data/cache/CUB_test_unseen_features.pt
+  unseen_labels: data/cache/CUB_test_unseen_labels.pt
+  res101: data/xlsa17/data/CUB/res101.mat
+  att_splits: data/xlsa17/data/CUB/att_splits.mat
