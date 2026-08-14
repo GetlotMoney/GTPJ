@@ -75,10 +75,24 @@ def test_frozen_config_and_expected_commit_are_enforced():
     else:
         raise AssertionError("a different commit must be rejected")
 
-    MODULE.verify_run_id("RUN-002")
+    MODULE.verify_run_identity("RUN-002", Path("/tmp/RUN-002"))
     try:
-        MODULE.verify_run_id("RUN-2")
+        MODULE.verify_run_identity("RUN-2", Path("/tmp/RUN-2"))
     except ValueError as error:
         assert "RUN-xxx" in str(error)
     else:
         raise AssertionError("an invalid run id must be rejected")
+
+    try:
+        MODULE.verify_run_identity("RUN-003", Path("/tmp/RUN-003"))
+    except ValueError as error:
+        assert "frozen plan RUN-002" in str(error)
+    else:
+        raise AssertionError("an unplanned run id must be rejected")
+
+    try:
+        MODULE.verify_run_identity("RUN-002", Path("/tmp/RUN-003"))
+    except ValueError as error:
+        assert "directory name" in str(error)
+    else:
+        raise AssertionError("a mismatched run directory must be rejected")

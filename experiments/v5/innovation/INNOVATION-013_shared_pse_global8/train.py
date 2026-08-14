@@ -42,6 +42,7 @@ EXPECTED_ROLES = (
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
 EXPECTED_CONFIG_SHA256 = "e38bd1f760b0106b617cc5fad7d1dbca040460dc8bb4966f639da327958e3413"
+EXPECTED_RUN_ID = "RUN-002"
 
 
 def sha256_file(path: Path) -> str:
@@ -103,9 +104,13 @@ def verify_expected_commit(actual_commit: str, expected_commit: str) -> None:
         )
 
 
-def verify_run_id(run_id: str) -> None:
+def verify_run_identity(run_id: str, run_dir: Path) -> None:
     if not re.fullmatch(r"RUN-[0-9]{3}", run_id):
         raise ValueError("--run-id must use the RUN-xxx format.")
+    if run_id != EXPECTED_RUN_ID:
+        raise ValueError(f"--run-id must match the frozen plan {EXPECTED_RUN_ID}.")
+    if run_dir.name != run_id:
+        raise ValueError("--run-dir final directory name must equal --run-id.")
 
 
 def resolve_input_paths(config: dict) -> dict[str, Path]:
@@ -285,7 +290,7 @@ def evaluate(model, tensors, seenclasses, unseenclasses, device) -> dict[str, fl
 def run(config_path: Path, run_dir: Path, expected_commit: str, run_id: str) -> dict:
     code_commit = get_clean_commit()
     verify_expected_commit(code_commit, expected_commit)
-    verify_run_id(run_id)
+    verify_run_identity(run_id, run_dir)
     config, config_sha256 = load_config(config_path)
     paths = resolve_input_paths(config)
     input_sha256 = verify_input_contract(config, paths)
