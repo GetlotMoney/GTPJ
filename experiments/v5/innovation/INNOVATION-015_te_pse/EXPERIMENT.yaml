@@ -1,0 +1,22 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-015
+framework_id: FRAMEWORK-V5
+kind: innovation
+idea_id: none
+idea_binding_status: owner_direct_2026_08_15
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V2
+base_template_tag: model/v5-template-v2
+base_template_commit: fb4b29b04087640890a532f105cb527d3a8c461b
+template_registry_commit: 9e459a12a98fca726e7da3649645451602ab5230
+historical_code_ref: IDEA-0001; V5-INNOVATION-013; V5-ABLATION-012/013
+template_binding_status: ready
+implementation_branch: codex/te-pse-freeze-20260815
+experiment_branch: exp/v5/innovation/innovation-015-te-pse
+legacy_ref: owner_conversation_2026_08_15
+status: ready_to_run
+planned_runs: 1
+not_confirmation_evidence: true
+formal_training_started: false
+selection_protocol: seen_train_internal_10pct_validation_ce
+official_test_policy: once_after_checkpoint_freeze
