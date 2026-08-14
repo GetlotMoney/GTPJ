@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | te-pse-vsc-seed5 | innovation | frozen | {"parent_te_pse_commit":"b7f060afdd6d42baeee25b4d3068389085d88286","vsc_weight":0.1,"vsc_direction":"symmetric","centroid_source":"seen_train_90pct_only","inference_change":false} | 5 |  | RUN-001 | 验证简单双向视觉语义中心一致性是否改善TE-PSE的raw GZSL H |  | planned |  |
+| RUN-001 | te-pse-vsc-seed5 | innovation | completed | {"parent_te_pse_commit":"b7f060afdd6d42baeee25b4d3068389085d88286","vsc_weight":0.1,"vsc_direction":"symmetric","centroid_source":"seen_train_90pct_only","inference_change":false} | 5 |  | RUN-001 | 验证简单双向视觉语义中心一致性是否改善TE-PSE的raw GZSL H | 63.70194169736658 | stop_no_gain |  |
 
 ## 查重说明
 

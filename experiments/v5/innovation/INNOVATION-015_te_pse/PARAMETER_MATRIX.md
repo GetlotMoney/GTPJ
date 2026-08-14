@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | te-pse-role-rival-evidence-seed5 | innovation | frozen | {"text_source":"gpt56_8sent","score_path":"clip_cls_x_te_pse_role_rival_evidence","evidence_roles":7,"evidence_cap":0.5,"evidence_init":0.1,"temperature":0.05,"trainable_parameters":1} | 5 |  | RUN-001 | 验证同角色最强rival的可迁移加性证据是否提高raw GZSL H |  | planned |  |
+| RUN-001 | te-pse-role-rival-evidence-seed5 | innovation | completed | {"text_source":"gpt56_8sent","score_path":"clip_cls_x_te_pse_role_rival_evidence","evidence_roles":7,"evidence_cap":0.5,"evidence_init":0.1,"temperature":0.05,"trainable_parameters":1} | 5 |  | RUN-001 | 验证同角色最强rival的可迁移加性证据是否提高raw GZSL H | 63.70194169736658 | stop_no_gain |  |
 
 ## 查重说明
 

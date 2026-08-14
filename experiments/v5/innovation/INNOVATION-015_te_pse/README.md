@@ -2,10 +2,11 @@
 
 ```text
 experiment_id: V5-INNOVATION-015
-status: ready_to_run_not_launched
+status: completed_stop_no_gain
 base_template: MODEL-V5-TEMPLATE-V2
 base_commit: fb4b29b04087640890a532f105cb527d3a8c461b
-formal_training_started: false
+formal_training_started: true
+run_commit: b7f060afdd6d42baeee25b4d3068389085d88286
 ```
 
 ## 只回答一个问题

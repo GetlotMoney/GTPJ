@@ -1,10 +1,11 @@
 # V5-INNOVATION-016：TE-PSE + VSC-Loss
 
 ```text
-status: ready_to_run_not_launched
+status: completed_stop_no_gain
 parent_module: V5-INNOVATION-015 TE-PSE
 parent_commit: b7f060afdd6d42baeee25b4d3068389085d88286
-formal_training_started: false
+formal_training_started: true
+run_commit: 3e91d348abb82fab8c9046c73f55de0252a56ee7
 ```
 
 ## 唯一问题

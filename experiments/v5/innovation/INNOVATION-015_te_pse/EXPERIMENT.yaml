@@ -14,9 +14,9 @@ template_binding_status: ready
 implementation_branch: codex/te-pse-freeze-20260815
 experiment_branch: exp/v5/innovation/innovation-015-te-pse
 legacy_ref: owner_conversation_2026_08_15
-status: ready_to_run
+status: rejected
 planned_runs: 1
 not_confirmation_evidence: true
-formal_training_started: false
+formal_training_started: true
 selection_protocol: seen_train_internal_10pct_validation_ce
 official_test_policy: once_after_checkpoint_freeze
