@@ -74,3 +74,11 @@ def test_frozen_config_and_expected_commit_are_enforced():
         assert "does not match" in str(error)
     else:
         raise AssertionError("a different commit must be rejected")
+
+    MODULE.verify_run_id("RUN-002")
+    try:
+        MODULE.verify_run_id("RUN-2")
+    except ValueError as error:
+        assert "RUN-xxx" in str(error)
+    else:
+        raise AssertionError("an invalid run id must be rejected")

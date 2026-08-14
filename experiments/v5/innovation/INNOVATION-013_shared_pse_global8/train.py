@@ -103,6 +103,11 @@ def verify_expected_commit(actual_commit: str, expected_commit: str) -> None:
         )
 
 
+def verify_run_id(run_id: str) -> None:
+    if not re.fullmatch(r"RUN-[0-9]{3}", run_id):
+        raise ValueError("--run-id must use the RUN-xxx format.")
+
+
 def resolve_input_paths(config: dict) -> dict[str, Path]:
     paths = {
         name: (PROJECT_ROOT / value).resolve()
@@ -277,9 +282,10 @@ def evaluate(model, tensors, seenclasses, unseenclasses, device) -> dict[str, fl
     }
 
 
-def run(config_path: Path, run_dir: Path, expected_commit: str) -> dict:
+def run(config_path: Path, run_dir: Path, expected_commit: str, run_id: str) -> dict:
     code_commit = get_clean_commit()
     verify_expected_commit(code_commit, expected_commit)
+    verify_run_id(run_id)
     config, config_sha256 = load_config(config_path)
     paths = resolve_input_paths(config)
     input_sha256 = verify_input_contract(config, paths)
@@ -428,7 +434,7 @@ def run(config_path: Path, run_dir: Path, expected_commit: str) -> dict:
     )
     result = {
         "experiment_id": "V5-INNOVATION-013",
-        "run_id": "RUN-001",
+        "run_id": run_id,
         "code_commit": code_commit,
         "config_sha256": config_sha256,
         "seed": seed,
@@ -466,8 +472,9 @@ def main() -> None:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--expected-commit", required=True)
+    parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
-    run(args.config.resolve(), args.run_dir.resolve(), args.expected_commit)
+    run(args.config.resolve(), args.run_dir.resolve(), args.expected_commit, args.run_id)
 
 
 if __name__ == "__main__":
