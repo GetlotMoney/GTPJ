@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 共享PSE全局分支 | innovation | frozen | {"module":"shared_pse","local_branch":false,"residual_cap":0.35} | 5 |  | RUN-001 | 只加共享PSE并与H=64.164039零号基线比较 |  | pending |  |
+| RUN-001 | 共享PSE全局分支 | innovation | frozen | {"module":"shared_pse","local_branch":false,"residual_cap":0.35,"max_epochs":100} | 5 |  | RUN-001 | 只加共享PSE并与H=64.164039零号基线比较 |  | pending |  |
 
 ## 查重说明
 
