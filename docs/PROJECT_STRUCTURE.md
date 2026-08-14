@@ -51,6 +51,8 @@ idea_tree/                 # 创意来源、评分、排序
 
 `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline/` 保存 8 句话纯 CLIP 全局零模块基线的冻结配置、评估入口、参数矩阵与结果索引；原始指标写入 Warehouse 的独立 RUN 目录。
 
+`experiments/v5/innovation/INNOVATION-013_shared_pse_global8/` 保存只加共享 PSE 的全局分支训练入口、冻结配置、参数矩阵和可解释性证据索引。
+
 版本规则：
 
 ```text
