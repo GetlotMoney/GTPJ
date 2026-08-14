@@ -11,10 +11,13 @@ historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-012-global8-clip-baseline
 legacy_ref: none
-status: pre_run
+status: completed
 planned_runs: 1
 not_confirmation_evidence: true
-formal_training_started: false
-completed_runs: 0
+formal_training_started: true
+completed_runs: 1
+result_evidence_level: valid_single_run
+single_run_H: 64.16403868322334
+innovation_outcome: baseline_established
 confirmation_status: not_started
 promotion_status: not_applicable

@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | 8句纯CLIP全局基线 | innovation | frozen | {"trainable_parameters":0,"text_aggregation":"normalized_sentence_mean"} | 0 |  | RUN-001 | 建立8句话纯CLIP全局分数的真实U/S/H/ZS |  | pending |  |
+| RUN-001 | 8句纯CLIP全局基线 | innovation | completed | {"trainable_parameters":0,"text_aggregation":"normalized_sentence_mean"} | 0 |  | RUN-001 | 建立8句话纯CLIP全局分数的真实U/S/H/ZS | 64.16403868322334 | baseline_established |  |
 
 ## 查重说明
 

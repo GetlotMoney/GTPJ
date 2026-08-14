@@ -51,7 +51,7 @@
 | `V5-INNOVATION-009` | rejected | 只让全局图像选择8句话是否已经足够；RUN-002 H=59.41，未保留 | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` | `IDEA-0011` | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse` | - |
 | `V5-INNOVATION-010` | rejected | 统一的 8 句—全局/Top-K32 区域双向匹配能否比实验 A 进一步提高 H；RUN-001 H=58.92，未保留 | `experiments/v5/innovation/INNOVATION-010_pse_vsce/PARAMETER_MATRIX.md` | `IDEA-0012` | `experiments/v5/innovation/INNOVATION-010_pse_vsce` | - |
 | `V5-INNOVATION-011` | candidate | 干净 8 句直接匹配的 RUN-001 得到 H=61.16，高于 009/010 但低于 V5 74.44；继续修改，不晋级 V6 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` | `IDEA-0013` | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate` | - |
-| `V5-INNOVATION-012` | pre_run | 冻结 CLIP CLS 与 8 句等权文本原型的纯全局零模块基线是多少 | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline` | - |
+| `V5-INNOVATION-012` | completed | 8 句纯 CLIP 全局零模块基线 H=64.164039 | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline` | - |
 
 ## 确认实验
 
