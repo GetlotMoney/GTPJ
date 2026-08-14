@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -44,6 +46,28 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def get_clean_commit() -> str:
+    commit = subprocess.check_output(
+        ["git", "-C", str(PROJECT_ROOT), "rev-parse", "HEAD"], text=True
+    ).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError(f"could not resolve one full run commit: {commit!r}.")
+    dirty = subprocess.check_output(
+        [
+            "git",
+            "-C",
+            str(PROJECT_ROOT),
+            "status",
+            "--porcelain",
+            "--untracked-files=no",
+        ],
+        text=True,
+    ).strip()
+    if dirty:
+        raise ValueError("formal baseline requires a clean tracked worktree.")
+    return commit
 
 
 def build_global8_prototypes(sentence_embeds: torch.Tensor) -> torch.Tensor:
@@ -187,6 +211,7 @@ def write_result_exclusive(output_path: Path, result: dict) -> None:
 
 
 def run(config_path: Path, output_path: Path) -> dict:
+    code_commit = get_clean_commit()
     config = load_config(config_path)
     paths = resolve_input_paths(config)
     input_sha256 = verify_input_hashes(config, paths)
@@ -218,6 +243,7 @@ def run(config_path: Path, output_path: Path) -> dict:
     result = {
         "experiment_id": "V5-INNOVATION-012",
         "run_id": "RUN-001",
+        "code_commit": code_commit,
         "baseline": "frozen_clip_cls_x_equal_mean_of_8_normalized_sentences",
         "trainable_parameters": 0,
         "role_order": list(EXPECTED_ROLES),
