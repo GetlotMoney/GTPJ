@@ -5,6 +5,7 @@ status: active
 last_verified: 2026-08-15
 primary_target: CUB official GZSL H >= 75
 framework_direction: frozen CLIP global path + one independently verified module at a time
+current_batch_status: TE-PSE_and_VSC_completed_stop_no_gain
 ```
 
 ## 1. 本文件怎么用
@@ -44,6 +45,8 @@ framework_direction: frozen CLIP global path + one independently verified module
 | 条件 | U | S | H | ZS | 说明 |
 |---|---:|---:|---:|---:|---|
 | GPT-5.6 八句纯 CLIP 等权原型 | 63.0379 | 65.3311 | 64.1640 | 80.3012 | 当前八句原始基线 |
+| GPT-5.6 八句 TE-PSE | 63.2517 | 64.1587 | 63.7019 | 79.8281 | `V5-INNOVATION-015/RUN-001`；相对 B0 `ΔH=-0.4621`，停止 |
+| GPT-5.6 八句 TE-PSE + VSC | 63.2517 | 64.1587 | 63.7019 | 79.8281 | `V5-INNOVATION-016/RUN-001`；相对 TE-PSE 四项指标精确不变，停止 |
 | GPT-5.6 八句 SharedPSE | 63.2332 | 74.9939 | 68.6133 | 79.6711 | official test；PSE `ΔH=+4.4492` |
 | GPT-5.6 同角色七句 SharedPSE | 63.1858 | 74.6629 | 68.4466 | 79.4469 | 已包含 unique，删除的是 overall |
 | GPT-5.5 同角色七句 SharedPSE | 65.5572 | 75.0977 | 70.0039 | 82.2628 | 比 GPT-5.6 同角色七句高 `1.5573 H` |
@@ -225,11 +228,12 @@ rule: historical facts may be reused; proposed mechanisms must be frozen and tes
 名称：**TE-PSE，Transferable Evidence-Calibrated PSE（迁移式证据校准语义增强）**。
 
 ```text
-status: formula_code_config_review_frozen_not_launched
+status: completed_stop_no_gain
 experiment_id: V5-INNOVATION-015
 frozen_commit: b7f060afdd6d42baeee25b4d3068389085d88286
 reviewed_diff_sha256: 372bb7caec269a550412d0379163beb33cb37b4cbb19d10f397407a157ec9486
-formal_result: none
+formal_result: U=63.251662; S=64.158678; H=63.701942; ZS=79.828095
+delta_H_from_B0: -0.462097
 ```
 
 它针对旧 PSE 的真实问题：训练信号只来自 seen，强 prototype 变换容易向 seen 漂移；旧 Shared-Unseen 实验已经出现 `H -15.3914` 的迁移崩溃。最终冻结版不再使用 Q/K/V 或学习式句子汇聚，而是：
@@ -241,22 +245,28 @@ formal_result: none
 
 要求输出：逐角色权重、最强混淆类别、正/负贡献、静态证据一致度、共享强度和精确加法误差。
 
-当前实现可运行，但尚无正式指标。文本得到的证据向量范数只是静态一致度，不得称为图像动态置信度。最小相关工作检索未找到完整等价公式，但每个基础算子都有先例，因此贡献只能落在“同角色 hard-rival、文本可分性加权、单一共享有界强度、逐角色精确归因”的受约束组合，不能声称单个算子首创。
+正式 seed-5 结果没有提高 H：U 仅升 `0.2138`，S 下降 `1.1725`，H 下降 `0.4621`，ZS 下降 `0.4731`。共享强度达到上限的 `99.61%`，说明不是没有学到，而是当前证据方向没有形成 U/S 共同增益。该模块按门槛停止，不跑机制 controls 或第二 seed。文本得到的证据向量范数只是静态一致度，不得称为图像动态置信度。
+
+最小相关工作检索未找到完整等价公式，但每个基础算子都有先例，因此即使以后重设计，贡献也只能落在受约束组合，不能声称单个算子首创。
 
 **与 RCE 的关系**：本批次已选择并冻结 TE-PSE，不再并行实现另一套 RCE。RCE 保留为历史候选，不得与 TE-PSE 同时叠加后重复归因。
 
 | 方案 | 现在已经明确的部分 | 仍缺什么 |
 |---|---|---|
 | RCE | 历史候选；图像相关的同角色 rival margin | 本批次不实现、不运行 |
-| TE-PSE | 公式、代码、配置、贡献分解和两轮代码审核均已冻结 | RUN-001 的真实精度、机制 controls 与多 seed 稳定性 |
+| TE-PSE | 公式、代码、配置、贡献分解、两轮审核与 RUN-001 均完成 | raw H 下降，已 `stop_no_gain`；不再补 controls 或 seed |
 
 ### 7.3 VSC-Loss：TE-PSE 后的简单视觉—语义一致性约束
 
 暂定名：**VSC-Loss，Visual-Semantic Centroid Consistency**。
 
 ```text
-status: formula_frozen_implementation_pending
+status: completed_stop_no_gain
+experiment_id: V5-INNOVATION-016
 parent_module: frozen TE-PSE
+frozen_commit: 3e91d348abb82fab8c9046c73f55de0252a56ee7
+formal_result: U=63.251662; S=64.158678; H=63.701942; ZS=79.828095
+delta_H_from_parent_TE-PSE: 0.0
 rule: separate experiment; never rewrite the TE-PSE M1 result
 ```
 
@@ -273,6 +283,8 @@ L_total = L_image_ce + 0.1 * L_vsc
 第一版固定 `lambda_vsc=0.1`，不做 sweep；视觉中心只由 90% seen 训练样本计算，不读取内部 validation 或 official test。VSC 不新增参数、不改变推理公式、不加入局部分支、adapter 或 gamma。它是否提高 U/S/H 必须由相对冻结 M1 的单变量实验回答，不能提前保证。
 
 判定：先报告 raw `U/S/H/ZS`。若相对同提交、同划分、同 seed 的 TE-PSE，H 不升或只抬高 S 且明显损害 U，则 `stop_no_gain`；只有原始 H 提升并保持 unseen 语义边界，才进入第二 seed 和方向/标签 control。
+
+正式结果中 VSC loss 从 `2.2991` 降到 `2.2131`，唯一标量也发生变化，说明约束确实执行；但相对父 TE-PSE 的 U/S/H/ZS 原始浮点数全部精确不变。它没有转化成分类收益，因此不跑 seed 17 或打乱类别对应负控制。
 
 ### 7.4 APRM：对话提出的局部模块候选
 
@@ -318,7 +330,7 @@ flowchart LR
     R --> O
 ```
 
-这是目标关系图，不是当前已完成结果。先依次验证 M1 与训练期 M2；只有二者的真实结果支持继续局部路线，才允许冻结 M3/APRM。APRM 两个 seed 都没有明确正收益就整块删除，不围绕旧局部分支继续修补。seen-bias calibration 仍是评估工具，不冒充创新模块。
+这是原先冻结的目标关系图。M1 与训练期 M2 现已依次完成，但都没有正增益，所以继续冻结 M3/APRM 的前置条件没有满足。当前不围绕失败链继续堆局部分支；下一候选必须重新从 B0 或已证明更强的干净全局底座提出。seen-bias calibration 仍是评估工具，不冒充创新模块。
 
 ### 7.6 严格可比的最小版本
 
@@ -326,9 +338,9 @@ flowchart LR
 |---|---|---|
 | `B0` | CLIP + 冻结的原始句子/global anchor | 干净零号基线 |
 | `B1` | B0 + 同文本、同底座复现的 CLIP-A-self | 来源方法参考，不是自有创新；开跑前必须写明采用论文公式还是官方代码实现 |
-| `M1` | B0 + 已冻结 TE-PSE | 验证自有全局语义模块 |
-| `M2` | 冻结 M1 + VSC-Loss | 只验证视觉—语义中心一致性损失的独立贡献 |
-| `M3` | 冻结通过的 M2 + APRM | 仅当前两项通过后，验证局部残差的独立贡献 |
+| `M1` | B0 + 已冻结 TE-PSE | 已完成；`ΔH=-0.4621`，拒绝 |
+| `M2` | 冻结 M1 + VSC-Loss | 已完成；相对 M1 `ΔH=0.0`，拒绝 |
+| `M3` | 冻结通过的 M2 + APRM | 前置条件未满足，不实现、不运行 |
 
 旧 TRIAL-001 和 ABLATION-001 可以提供历史锚点，但因底座和伴随模块不同，不能代替上述同口径 `B0/B1/M1`。
 
@@ -338,9 +350,9 @@ flowchart LR
 |---|---|---|---|---|
 | S0 | GPT-5.6 八句纯 CLIP 全局底座 | 本批次已冻结 | 同次 alpha=0 路径复核 B0 | PSE、adapter、bias、局部分支 |
 | B1 | 论文式 CLIP-A-self 同口径参考 | 历史/来源参考，本批次不阻塞 M1 | 后续需要时单独复现 | 自有模块、局部分支、bias |
-| M1 | TE-PSE 同角色 hard-rival 加性证据 | 公式/代码/配置/审核已冻结，待 RUN-001 | 准确提交 `b7f060af...` | RCE、visual adapter、gamma、局部分支 |
-| M2 | VSC-Loss 视觉—语义中心一致性 | 公式已冻结，待实现审核 | 从冻结 M1 独立分支，只改变训练损失 | APRM、adapter、gamma、局部分支 |
-| M3 | APRM 属性—图块残差匹配 | 延后，不在当前批次提前实现 | M1/M2 真实结果支持后重新冻结 | FGVD、BVSA、SGMP、动态融合 |
+| M1 | TE-PSE 同角色 hard-rival 加性证据 | `RUN-001` 完成并拒绝；`H=63.7019` | 准确提交 `b7f060af...` | RCE、visual adapter、gamma、局部分支 |
+| M2 | VSC-Loss 视觉—语义中心一致性 | `RUN-001` 完成并拒绝；相对 M1 `ΔH=0` | 准确提交 `3e91d348...`，只改变训练损失 | APRM、adapter、gamma、局部分支 |
+| M3 | APRM 属性—图块残差匹配 | `blocked_by_failed_prerequisites`，未实现 | M1/M2 真实结果支持后才能重新冻结 | FGVD、BVSA、SGMP、动态融合 |
 | C0 | seen-bias calibration | 独立评估工具，不算创新模块 | 每个冻结模型先报告 gamma=0，再在 validation 选一个 gamma | 不得用来掩盖模块原始退化 |
 
 M2 只冻结这一条简单损失，M3 不提前堆代码；后续机制仍必须根据前一模块结果重新质疑和设计。
@@ -380,16 +392,16 @@ M2 只冻结这一条简单损失，M3 不提前堆代码；后续机制仍必�
 - [x] 冻结本批次 S0：GPT-5.6 八句归一化等权全局原型；overall 不在 M1 内另行更换。
 - [x] 选择 TE-PSE 作为 M1，补齐精确公式、参数、exact contribution、来源边界和正式 innovation 入口。
 - [x] 完成 M1 最小相关工作检索及与 Enhance GPT-4 的结构复核；当前只能声称组合差异，不能声称基础算子首创。
-- [ ] 运行 `V5-INNOVATION-015/RUN-001`，回填同次 B0 与 TE-PSE 的完整 U/S/H/ZS。
-- [ ] 实现并审核独立 M2：TE-PSE + VSC-Loss，保持唯一变化为 `lambda_vsc=0.1`。
-- [ ] M1 完成后再启动 M2；两项都不得加入 gamma、adapter 或局部分支。
-- [ ] M1 原始结果通过后，再单独做 validation-selected bias；两组结果分开报告。
-- [ ] 只在 M1 多 seed 通过后冻结 APRM；检索 attribute-patch matching 相关工作，并以 `M1 OFF/ON APRM` 做唯一变量比较。
+- [x] 运行 `V5-INNOVATION-015/RUN-001` 并回填完整指标；结果 `H=63.7019`、`ΔH=-0.4621`，停止。
+- [x] 实现、两轮审核并运行独立 M2：TE-PSE + VSC-Loss；唯一变化为 `lambda_vsc=0.1`。
+- [x] M1 完成后才启动 M2；两项均未加入 gamma、adapter 或局部分支。
+- [x] 依据 M1 失败门不启动 validation-selected bias；不允许用校准掩盖原始退化。
+- [x] 依据 M1/M2 失败门不冻结 APRM；若以后重提，必须从新的正增益全局底座重新立项。
 
 ## 11. 当前执行批次：TE-PSE → VSC
 
 ```text
-batch_status: authorized_2026_08_15
+batch_status: completed_stop_no_gain_2026_08_15
 runner_policy: sequential
 selection_policy: seen internal validation only
 official_test_policy: one frozen evaluation stage per predeclared comparison
@@ -398,11 +410,11 @@ forbidden: gamma, visual adapter, local branch, test-driven parameter changes
 
 | 顺序 | 实验 | 固定变化 | 当前状态 |
 |---|---|---|---|
-| 1 | `V5-INNOVATION-015/RUN-001` | B0 上只加入 TE-PSE；同时只读报告同次 alpha=0 B0 | 已冻结，待服务器启动 |
-| 2 | `V5-INNOVATION-016/RUN-001` | 冻结 TE-PSE 上只加入 `lambda_vsc=0.1` 的双向中心一致性损失 | 公式冻结，待实现/两轮审核 |
-| 3 | M1 机制 controls | no-contrast、wrong-role、top-vs-random deletion | 仅当 M1 raw H 有正信号时运行 |
-| 4 | M2 机制 control | 打乱类别对应的 VSC 负控制 | 仅当 M2 相对 M1 有正信号时运行 |
-| 5 | seed 17 / exact repeat | 不改变已冻结参数 | 对对应 seed-5 正信号模块继续；无信号项停止 |
+| 1 | `V5-INNOVATION-015/RUN-001` | B0 上只加入 TE-PSE；同时只读报告同次 alpha=0 B0 | 已完成；`H=63.7019`，相对 B0 `-0.4621`，拒绝 |
+| 2 | `V5-INNOVATION-016/RUN-001` | 冻结 TE-PSE 上只加入 `lambda_vsc=0.1` 的双向中心一致性损失 | 已完成；相对 M1 四项指标精确不变，拒绝 |
+| 3 | M1 机制 controls | no-contrast、wrong-role、top-vs-random deletion | `skipped_by_stop_gate`：M1 raw H 无正信号 |
+| 4 | M2 机制 control | 打乱类别对应的 VSC 负控制 | `skipped_by_stop_gate`：M2 相对 M1 无正信号 |
+| 5 | seed 17 / exact repeat | 不改变已冻结参数 | `skipped_by_stop_gate`：两个 seed-5 候选均无正信号 |
 
 “依次跑完”指按此表和预先停止条件执行：失败模块仍如实回填，但不为它继续开启后续 controls、seed sweep 或补救调参。M3/APRM 尚无冻结公式，不在本批次冒充可运行实验。
 
@@ -416,6 +428,8 @@ forbidden: gamma, visual adapter, local branch, test-driven parameter changes
 - PSE 历史最好结果：`experiments/module_trials/IDEA-0001_clip_a_self_text_prototype/TRIAL-001_clip_a_self_residual_seenonly/result.md`。
 - 旧局部分支贡献：`experiments/v5/ablation/ABLATION-001_local_branch_effect/README.md` 与同目录参数矩阵。
 - APRM 动机的历史局部诊断：`experiments/v5/innovation/INNOVATION-005_confusion_attribute_contrast/result.md`。
+- TE-PSE 冻结提交：`b7f060afdd6d42baeee25b4d3068389085d88286`；正式结果在 `V5-INNOVATION-015/RUN-001`，结果账本随 VSC 结果提交 `aa68b1d` 记录。
+- TE-PSE+VSC 冻结提交：`3e91d348abb82fab8c9046c73f55de0252a56ee7`；正式结果在 `V5-INNOVATION-016/RUN-001`，结果账本提交 `aa68b1d`。
 
 ## 13. 更新模板
 
