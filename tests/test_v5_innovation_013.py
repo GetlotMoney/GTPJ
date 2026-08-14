@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 from pathlib import Path
 
 import torch
@@ -42,3 +43,34 @@ def test_stratified_split_is_disjoint_and_keeps_every_class():
     assert not torch.isin(train_indices, validation_indices).any()
     assert set(labels[train_indices].tolist()) == set(classes.tolist())
     assert set(labels[validation_indices].tolist()) == set(classes.tolist())
+
+
+def test_frozen_config_and_expected_commit_are_enforced():
+    config_path = SCRIPT.parent / "config.yaml"
+    config, config_sha256 = MODULE.load_config(config_path)
+    assert config_sha256 == MODULE.EXPECTED_CONFIG_SHA256
+    assert config["max_epochs"] == 100
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        changed_config = Path(temporary_directory) / "config.yaml"
+        changed_config.write_text(
+            config_path.read_text(encoding="utf-8").replace(
+                "learning_rate: 0.0001", "learning_rate: 0.0002"
+            ),
+            encoding="utf-8",
+        )
+        try:
+            MODULE.load_config(changed_config)
+        except ValueError as error:
+            assert "config SHA-256" in str(error)
+        else:
+            raise AssertionError("a changed config must be rejected")
+
+    commit = "a" * 40
+    MODULE.verify_expected_commit(commit, commit)
+    try:
+        MODULE.verify_expected_commit(commit, "b" * 40)
+    except ValueError as error:
+        assert "does not match" in str(error)
+    else:
+        raise AssertionError("a different commit must be rejected")

@@ -41,6 +41,7 @@ EXPECTED_ROLES = (
     "unique_discriminative_features",
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
+EXPECTED_CONFIG_SHA256 = "e38bd1f760b0106b617cc5fad7d1dbca040460dc8bb4966f639da327958e3413"
 
 
 def sha256_file(path: Path) -> str:
@@ -73,7 +74,13 @@ def get_clean_commit() -> str:
     return commit
 
 
-def load_config(path: Path) -> dict:
+def load_config(path: Path) -> tuple[dict, str]:
+    config_sha256 = sha256_file(path)
+    if config_sha256 != EXPECTED_CONFIG_SHA256:
+        raise ValueError(
+            "config SHA-256 does not match the reviewed frozen config: "
+            f"{config_sha256}."
+        )
     config = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(config, dict):
         raise ValueError("config root must be a mapping.")
@@ -83,7 +90,17 @@ def load_config(path: Path) -> dict:
         raise ValueError("role_order does not match the frozen 8-sentence contract.")
     if config.get("score_path") != "clip_cls_x_shared_pse_global_only":
         raise ValueError("score_path must keep the single global-only path.")
-    return config
+    return config, config_sha256
+
+
+def verify_expected_commit(actual_commit: str, expected_commit: str) -> None:
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_commit):
+        raise ValueError("--expected-commit must be one full lowercase Git SHA.")
+    if actual_commit != expected_commit:
+        raise ValueError(
+            f"current clean commit {actual_commit} does not match "
+            f"--expected-commit {expected_commit}."
+        )
 
 
 def resolve_input_paths(config: dict) -> dict[str, Path]:
@@ -260,9 +277,10 @@ def evaluate(model, tensors, seenclasses, unseenclasses, device) -> dict[str, fl
     }
 
 
-def run(config_path: Path, run_dir: Path) -> dict:
+def run(config_path: Path, run_dir: Path, expected_commit: str) -> dict:
     code_commit = get_clean_commit()
-    config = load_config(config_path)
+    verify_expected_commit(code_commit, expected_commit)
+    config, config_sha256 = load_config(config_path)
     paths = resolve_input_paths(config)
     input_sha256 = verify_input_contract(config, paths)
     if run_dir.exists():
@@ -270,6 +288,9 @@ def run(config_path: Path, run_dir: Path) -> dict:
     run_dir.mkdir(parents=True, exist_ok=False)
 
     seed = int(config["seed"])
+    print(f"代码 commit：{code_commit}")
+    print(f"配置 SHA-256：{config_sha256}")
+    print(f"随机种子：{seed}")
     set_determinism(seed)
     device = torch.device(config["device"])
     if device.type != "cuda" or not torch.cuda.is_available():
@@ -409,6 +430,7 @@ def run(config_path: Path, run_dir: Path) -> dict:
         "experiment_id": "V5-INNOVATION-013",
         "run_id": "RUN-001",
         "code_commit": code_commit,
+        "config_sha256": config_sha256,
         "seed": seed,
         "score_path": config["score_path"],
         "trainable_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
@@ -443,8 +465,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
+    parser.add_argument("--expected-commit", required=True)
     args = parser.parse_args()
-    run(args.config.resolve(), args.run_dir.resolve())
+    run(args.config.resolve(), args.run_dir.resolve(), args.expected_commit)
 
 
 if __name__ == "__main__":
