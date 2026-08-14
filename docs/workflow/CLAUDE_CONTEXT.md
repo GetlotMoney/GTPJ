@@ -18,7 +18,7 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 
 - 机器验证优先于模型意见。
 - Claude Code 只读审核，Codex 负责实现和修复。
-- 正式实验不能绕过 `agent_runtime.yaml`、`validate-agent-runtime`、`multi-agent-preflight` 和 cleanup 记录。
+- 正式实验默认不把 `agent_runtime.yaml`、`validate-agent-runtime`、`multi-agent-preflight` 或 cleanup 记录当作开跑硬门；这些机制仅在 owner 明确要求多智能体实时监控或真实并行隔离风险时按需启用。
 - raw artifacts 不能进入 GitHub；GitHub 只记录 artifact id、URI、sha256、size、config、manifest、result 和 quality。
 - exact repeat 必须固定原始 seed；正式复现必须写 `repeat_type: exact_repeat`、`original_seed`、`max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`。同一候选无论是否还原成功都最多 5 次；多 seed / `seed_sweep` / `multi_seed_stability` 必须写 `not_confirmation_evidence: true`，不算 exact repeat。
 - `best_observed_H` 表示历史最高观察值；`confirmed_H` 表示确认复现实验的确认值，二者不能混用。
@@ -39,6 +39,6 @@ GTPJ 是面向 GZSL（广义零样本学习）实验的研究 workflow。GitHub 
 
 - 训练入口、评估语义、label mapping、seen/unseen split、class order、logits shape 或 U/S/H/ZS 指标语义不清。
 - helper 生成的正式 evidence 与实际 run、attempt、artifact 或 warehouse 路由不一致。
-- `agent_runtime.yaml` 中 agent id、UI 显示名、role 映射、output refs 或 cleanup 记录缺失。
+- 仅在 owner 明确要求多智能体协作时：`agent_runtime.yaml` 中 agent id、UI 显示名、role 映射、output refs 或 cleanup 记录缺失。
 - 将 debug/smoke 或 seed sweep 伪装成正式 confirmation。
-- 用当前主会话或隐藏记忆冒充真实 `real_multi_agent` 证据。
+- 用当前主会话或隐藏记忆冒充独立的只读子 Agent 审核轮次。

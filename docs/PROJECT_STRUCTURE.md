@@ -126,6 +126,7 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
+| `docs/MODULE_RESEARCH_CHECKLIST.md` | 自有模块逐项实验的长期上下文清单；固定指标口径、论文方法边界、当前证据、模块队列、通过/停止条件和每次结果更新模板。 |
 | `docs/TECH_STACK_HISTORY.md` | 系统、界面、数据、模型和文档版本的技术演进记录。 |
 | `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
 | `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
