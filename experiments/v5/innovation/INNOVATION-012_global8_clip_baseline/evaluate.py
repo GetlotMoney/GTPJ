@@ -15,6 +15,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 import yaml
+import scipy.io as sio
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -143,11 +144,54 @@ def resolve_input_paths(config: dict) -> dict[str, Path]:
     return paths
 
 
+def verify_input_hashes(config: dict, paths: dict[str, Path]) -> dict[str, str]:
+    expected = config.get("expected_sha256")
+    if not isinstance(expected, dict) or set(expected) != set(paths):
+        raise ValueError("expected_sha256 must bind every configured input exactly once.")
+    actual = {name: sha256_file(path) for name, path in paths.items()}
+    mismatches = [
+        f"{name}: expected {expected[name]}, got {actual[name]}"
+        for name in paths
+        if expected[name] != actual[name]
+    ]
+    if mismatches:
+        raise ValueError("input SHA-256 mismatch: " + "; ".join(mismatches))
+    return actual
+
+
+def verify_class_order(config: dict, split_path: Path) -> None:
+    split_data = sio.loadmat(split_path)
+    raw_names = split_data.get("allclasses_names")
+    if raw_names is None or tuple(raw_names.shape) != (200, 1):
+        raise ValueError("att_splits allclasses_names must have shape [200, 1].")
+    names = [str(item[0][0]) for item in raw_names]
+    serialized = json.dumps(names, ensure_ascii=False, separators=(",", ":"))
+    actual = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    expected = config.get("class_order_sha256")
+    if actual != expected:
+        raise ValueError(
+            f"class order SHA-256 mismatch: expected {expected}, got {actual}."
+        )
+
+
+def create_run_directory(output_path: Path) -> None:
+    if output_path.name != "metrics.json":
+        raise ValueError("formal baseline output filename must be metrics.json.")
+    output_path.parent.mkdir(parents=True, exist_ok=False)
+
+
+def write_result_exclusive(output_path: Path, result: dict) -> None:
+    with output_path.open("x", encoding="utf-8") as handle:
+        json.dump(result, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
 def run(config_path: Path, output_path: Path) -> dict:
-    if output_path.exists():
-        raise FileExistsError(f"refusing to overwrite existing output: {output_path}")
     config = load_config(config_path)
     paths = resolve_input_paths(config)
+    input_sha256 = verify_input_hashes(config, paths)
+    verify_class_order(config, paths["att_splits"])
+    create_run_directory(output_path)
     tensors = {
         name: torch.load(path, map_location="cpu", weights_only=True)
         for name, path in paths.items()
@@ -177,13 +221,11 @@ def run(config_path: Path, output_path: Path) -> dict:
         "baseline": "frozen_clip_cls_x_equal_mean_of_8_normalized_sentences",
         "trainable_parameters": 0,
         "role_order": list(EXPECTED_ROLES),
-        "input_sha256": {name: sha256_file(path) for name, path in paths.items()},
+        "class_order_sha256": config["class_order_sha256"],
+        "input_sha256": input_sha256,
         "metrics_percent": metrics,
     }
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_result_exclusive(output_path, result)
     print("U={U:.6f}% S={S:.6f}% H={H:.6f}% ZS={ZS:.6f}%".format(**metrics))
     print(f"result_json={output_path}")
     return result
