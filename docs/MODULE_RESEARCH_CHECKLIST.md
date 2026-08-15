@@ -2,10 +2,10 @@
 
 ```text
 status: active
-last_verified: 2026-08-15
+last_verified: 2026-08-16
 primary_target: CUB official GZSL H >= 75
 framework_direction: frozen CLIP global path + one independently verified module at a time
-current_batch_status: TE-PSE_and_VSC_completed_stop_no_gain
+current_batch_status: GPT55_derived_8role_text_completed_RCE_stopped_by_role_control
 ```
 
 ## 1. 本文件怎么用
@@ -49,10 +49,12 @@ current_batch_status: TE-PSE_and_VSC_completed_stop_no_gain
 | GPT-5.6 八句 TE-PSE + VSC | 63.2517 | 64.1587 | 63.7019 | 79.8281 | `V5-INNOVATION-016/RUN-001`；相对 TE-PSE 四项指标精确不变，停止 |
 | GPT-5.6 八句 SharedPSE | 63.2332 | 74.9939 | 68.6133 | 79.6711 | official test；PSE `ΔH=+4.4492` |
 | GPT-5.6 同角色七句 SharedPSE | 63.1858 | 74.6629 | 68.4466 | 79.4469 | 已包含 unique，删除的是 overall |
-| GPT-5.5 同角色七句 SharedPSE | 65.5572 | 75.0977 | 70.0039 | 82.2628 | 比 GPT-5.6 同角色七句高 `1.5573 H` |
-| GPT-5.5 八句 SharedPSE | - | - | - | - | **缺失单元**：旧缓存没有 overall 句，不能拼接 GPT-5.6 句冒充公平对照 |
+| GPT-5.5 历史七句纯 CLIP | 66.1977 | 65.9640 | 66.0807 | 81.2389 | 六个局部角色 + overall；此前把第七句记成 unique 属于语义标注错误 |
+| GPT-5.5 历史七句 SharedPSE | 65.5572 | 75.0977 | 70.0039 | 82.2628 | 旧 ABLATION-014 结果；实际第七句是 overall，不是 unique |
+| GPT-5.5 派生八句纯 CLIP | 66.8941 | 66.3929 | 66.6426 | 81.5347 | 保持历史七句逐字不变，追加 GPT-5.5 任务生成的 unique；相对七句 `ΔH=+0.5619` |
+| GPT-5.5 派生八句 SharedPSE | 66.5120 | 75.2606 | **70.6163** | 82.6018 | debug 参考；相对自身纯 CLIP `ΔH=+3.9738`，相对历史七句 SharedPSE `+0.6125 H` |
 
-结论：GPT-5.5 与 GPT-5.6 七句的 `1.5573 H` 差距中，纯 CLIP 文本原型已贡献 `1.3824 H`，PSE 增益只相差 `0.1750 H`。主要差异来自文本，而不是 PSE 在两个版本上产生了完全不同的学习收益。GPT-5.6 八句比其同角色七句只高 `0.1667 H`，不能说第八句拉低了最终结果。
+结论：新增 GPT-5.5 unique 句没有拉低结果，在纯 CLIP 和 SharedPSE 上分别提高 `0.5619 H` 与 `0.6125 H`。但这套八句不是历史遗失数据的恢复，准确身份是“历史 GPT-5.5 七句 + 2026-08-16 GPT-5.5 任务新生成 unique”。SharedPSE 八句的 role scorer 又把 `99.8204%` 平均权重压到 head 角色，unique 平均权重仅 `0.0303%`；因此新增句的收益主要通过 base prototype 进入，不能把 learned role weight 当成可靠解释。
 
 ABLATION-014 运行提交：`c8fcd79c611183bd9acbbd57001a63e50649cced`；结果账本提交：`d7758c5`；正式分支：`exp/v5/ablation/ablation-014-pse-text-source`。
 
@@ -138,7 +140,7 @@ ABLATION-014 运行提交：`c8fcd79c611183bd9acbbd57001a63e50649cced`；结果�
 
 暂定名：**RCE，Role-Contrastive Evidence（角色对比证据）**。不沿用 PSE 名称，避免把来源方法换名包装成自有模块。
 
-状态：候选设计，尚未实现、尚未验证、尚未完成全量文献新颖性检索。
+状态：`debug_completed_stop_mechanism_not_supported`。首轮已按固定 `lambda=1` 在 GPT-5.5 派生八句上运行；没有训练或 test 选参。RCE 原始分数为 `U=67.2046 / S=68.8373 / H=68.0111 / ZS=82.8882`，但错乱角色负控制仍为 `H=67.9926`，只低 `0.0186 H`，所以当前实验不支持“收益依赖正确角色对齐”的核心解释。
 
 ### 6.1 最小结构
 
@@ -187,7 +189,16 @@ contribution(c, r) = lambda * margin(c, r) / 7
 | `M1-C2` | wrong-role rival | rival 使用预先固定的错位角色 | 收益是否依赖正确角色对齐 |
 | `M1-X1` | top contribution deletion vs matched-random deletion | 不重训，只删除解释项 | 声称的重要角色是否真的更影响最终 logit |
 
-只有最终选择 RCE 作为 M1 时才执行本表。先跑 `M1-E0/E1`；只有 E1 有正增益才跑两个机制 control，control 通过后才做第二 seed / exact repeat。任何阶段都不混入 visual adapter、gamma 或局部分支。结构不同现在可以确认，能否达到旧 PSE 约 74 的效果必须由这些真实实验决定，不能提前保证。
+本表已执行到机制停止门：
+
+| 条件 | U | S | H | ZS | 相对结论 |
+|---|---:|---:|---:|---:|---|
+| `M1-E0` overall/global anchor | 62.2374 | 64.5596 | 63.3772 | 80.5454 | 固定第七句 overall 为全局 anchor |
+| `M1-E1` RCE | 67.2046 | 68.8373 | 68.0111 | 82.8882 | 相对 E0 `+4.6339 H`；相对八句等权基线 `+1.3686 H` |
+| `M1-C1` no-contrast | 66.2587 | 68.3737 | 67.2996 | 82.4739 | RCE 高 `0.7116 H`，类间竞争有部分作用 |
+| `M1-C2` class-wise wrong-role | 67.3390 | 68.6589 | 67.9926 | 82.7549 | RCE 仅高 `0.0186 H`，角色对齐机制不成立 |
+
+因此不做 `M1-X1`、第二 seed、exact repeat，也不基于 RCE 启动 APRM。整个批次没有混入 visual adapter、gamma 或局部分支；这些结果只作 test-exposed debug 诊断，不作 promotion/confirmation evidence。
 
 ### 6.4 可以与不可以声称什么
 
@@ -249,11 +260,11 @@ delta_H_from_B0: -0.462097
 
 最小相关工作检索未找到完整等价公式，但每个基础算子都有先例，因此即使以后重设计，贡献也只能落在受约束组合，不能声称单个算子首创。
 
-**与 RCE 的关系**：本批次已选择并冻结 TE-PSE，不再并行实现另一套 RCE。RCE 保留为历史候选，不得与 TE-PSE 同时叠加后重复归因。
+**与 RCE 的关系**：2026-08-15 批次选择并冻结 TE-PSE，当时没有并行实现 RCE。2026-08-16 在全新的 GPT-5.5 派生八句干净底座上单独运行了无训练 RCE 诊断；两者从未叠加，RCE 又因 wrong-role control 未拉开而停止。
 
 | 方案 | 现在已经明确的部分 | 仍缺什么 |
 |---|---|---|
-| RCE | 历史候选；图像相关的同角色 rival margin | 本批次不实现、不运行 |
+| RCE | 图像相关的同角色 rival margin；debug `H=68.0111` | wrong-role 仍为 `H=67.9926`，机制未成立，停止 |
 | TE-PSE | 公式、代码、配置、贡献分解、两轮审核与 RUN-001 均完成 | raw H 下降，已 `stop_no_gain`；不再补 controls 或 seed |
 
 ### 7.3 VSC-Loss：TE-PSE 后的简单视觉—语义一致性约束
@@ -352,6 +363,8 @@ flowchart LR
 | B1 | 论文式 CLIP-A-self 同口径参考 | 历史/来源参考，本批次不阻塞 M1 | 后续需要时单独复现 | 自有模块、局部分支、bias |
 | M1 | TE-PSE 同角色 hard-rival 加性证据 | `RUN-001` 完成并拒绝；`H=63.7019` | 准确提交 `b7f060af...` | RCE、visual adapter、gamma、局部分支 |
 | M2 | VSC-Loss 视觉—语义中心一致性 | `RUN-001` 完成并拒绝；相对 M1 `ΔH=0` | 准确提交 `3e91d348...`，只改变训练损失 | APRM、adapter、gamma、局部分支 |
+| S1 | GPT-5.5 派生八句纯 CLIP / SharedPSE 参考 | debug 完成；`H=66.6426 / 70.6163` | 历史七句保持不变，只追加 GPT-5.5 unique | 不冒充历史恢复数据，不作 promotion evidence |
+| M1b | RCE 同角色竞争证据 | debug 完成并拒绝；`H=68.0111` | no-contrast 与 wrong-role 机制控制 | SharedPSE、adapter、gamma、局部分支 |
 | M3 | APRM 属性—图块残差匹配 | `blocked_by_failed_prerequisites`，未实现 | M1/M2 真实结果支持后才能重新冻结 | FGVD、BVSA、SGMP、动态融合 |
 | C0 | seen-bias calibration | 独立评估工具，不算创新模块 | 每个冻结模型先报告 gamma=0，再在 validation 选一个 gamma | 不得用来掩盖模块原始退化 |
 
@@ -386,8 +399,10 @@ M2 只冻结这一条简单损失，M3 不提前堆代码；后续机制仍必�
 
 ## 10. 当前待办
 
-- [ ] 找到 GPT-5.5 原始生成提示词与文本源，只补 200 类 `overall_appearance`，编码得到 GPT-5.5 八句缓存。
-- [ ] 完成 GPT-5.5 八句纯 CLIP 与 SharedPSE 对照，补齐 2×2；该实验只用于冻结文本，不把 SharedPSE 当最终创新。
+- [x] 核实 GPT-5.5 历史原文只有七句且第七句本身是 overall；保持七句不变，由 GPT-5.5 任务为 200 类各生成一条 unique，编码得到派生八句缓存。该数据不得写成历史恢复版本。
+- [x] 完成 GPT-5.5 派生八句纯 CLIP 与 SharedPSE debug 对照：`H=66.6426 / 70.6163`；该实验只用于文本与来源方法参考，不把 SharedPSE 当最终创新。
+- [x] 完成八句 RCE 的 E0/E1/no-contrast/wrong-role 最小闭环；wrong-role 只低 `0.0186 H`，按机制停止门拒绝。
+- [x] 依据 RCE 机制失败门跳过 top-vs-random deletion、第二 seed、exact repeat 和 APRM。
 - [ ] 把 ABLATION-012/013 的历史服务器结果按其实际证据级别回填旧账本。
 - [x] 冻结本批次 S0：GPT-5.6 八句归一化等权全局原型；overall 不在 M1 内另行更换。
 - [x] 选择 TE-PSE 作为 M1，补齐精确公式、参数、exact contribution、来源边界和正式 innovation 入口。
@@ -418,6 +433,26 @@ forbidden: gamma, visual adapter, local branch, test-driven parameter changes
 
 “依次跑完”指按此表和预先停止条件执行：失败模块仍如实回填，但不为它继续开启后续 controls、seed sweep 或补救调参。M3/APRM 尚无冻结公式，不在本批次冒充可运行实验。
 
+### 11.1 2026-08-16：GPT-5.5 派生八句 → RCE
+
+```text
+batch_status: completed_stop_at_RCE_role_control
+evidence_level: debug_only_not_formal_evidence
+runner_policy: sequential
+test_policy: fixed formulas; no parameter selected from reported test metrics
+forbidden_and_absent: gamma, visual adapter, local branch
+```
+
+| 顺序 | 实验 | 结果 | 决定 |
+|---|---|---|---|
+| 1 | 历史七句 vs 派生八句纯 CLIP | `H 66.0807 → 66.6426` | unique 句保留 |
+| 2 | 派生八句 SharedPSE 参考 | `H=70.6163`；相对纯 CLIP `+3.9738` | 只作来源方法强参考，不作自有创新 |
+| 3 | 派生八句 RCE | `H=68.0111` | 进入机制 control |
+| 4 | no-contrast / wrong-role | `H=67.2996 / 67.9926` | wrong-role 几乎不降，RCE 停止 |
+| 5 | deletion / seed17 / APRM | 未运行 | `skipped_by_mechanism_stop_gate` |
+
+SharedPSE 训练使用现有代码提交 `c8fcd79c611183bd9acbbd57001a63e50649cced`、seed 5、seen 内部 10% validation CE 选 epoch 100，official test 只在固定 checkpoint 后读取一次。该次临时 runner 只保留 `metrics.json` 与 checkpoint，没有独立 `training.log`，所以不能升级为正式账本 RUN；若未来确需论文级复现，应从同一配置另建正式实验，而不是把 debug 目录改名冒充。
+
 ## 12. 证据入口
 
 - 论文登记与本地 PDF 身份：`idea_tree/sources/papers_index.md` 中的 `PAPER-2023-VDT-Adapter`。
@@ -430,6 +465,9 @@ forbidden: gamma, visual adapter, local branch, test-driven parameter changes
 - APRM 动机的历史局部诊断：`experiments/v5/innovation/INNOVATION-005_confusion_attribute_contrast/result.md`。
 - TE-PSE 冻结提交：`b7f060afdd6d42baeee25b4d3068389085d88286`；正式结果在 `V5-INNOVATION-015/RUN-001`，结果账本随 VSC 结果提交 `aa68b1d` 记录。
 - TE-PSE+VSC 冻结提交：`3e91d348abb82fab8c9046c73f55de0252a56ee7`；正式结果在 `V5-INNOVATION-016/RUN-001`，结果账本提交 `aa68b1d`。
+- GPT-5.5 派生八句原文 SHA256：`180d6a5b6b735fa2dc2f7c294858dc7af43e86d07c23b17a168f2fb146f23a10`；嵌入缓存 `[200,8,768]` SHA256：`e3b428a3588d4e715910e07472848de4641ddb7e37791edbe6c07f8681213663`。前七句嵌入与历史缓存逐位相同。
+- 八句纯 CLIP / RCE debug 结果：本地 `.runtime/gpt55_8_e0_rce_20260816_v2.json`，SHA256 `e2a1f8c85d9d901941f6a9f6e698d3439ff6e8aee409efcebba53df0f6d4c4e0`。
+- 八句 SharedPSE debug：服务器 `GTPJ_Warehouse/debug/gpt55_8_shared_pse_20260816/RUN-001/`；`metrics.json` SHA256 `4e1b76a8d58a2d111f37ad1aba8412c83af8edf8fc00a5db6302cd2415976eff`，checkpoint SHA256 `6748dfc5497aca4a7876bfbc19aaf6b59c030818a1f997659f48be81fe96078c`。
 
 ## 13. 更新模板
 
