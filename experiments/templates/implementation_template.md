@@ -12,6 +12,15 @@ docs/workflow/protocols/innovation_code_review_protocol.md
 
 ## Module（模块）
 
+```text
+module_abbreviation:
+module_full_name_en:
+module_name_zh:
+module_plain_purpose:  # 一句话说明它解决什么问题、做什么
+```
+
+第一次解释模块时必须同时填写英文缩写、英文全称、中文含义和一句话作用，不能只写缩写。
+
 本文件只用于产生或改变方法框架的代码模块变动。调参、复现、只关闭既有组件的窄消融不需要新增本文件；
 如果一次实验要新增或改写 module、forward、loss、evaluation、data view、接口语义或模块分支逻辑，
 它应被路由为 innovation / module trial。

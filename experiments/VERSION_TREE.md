@@ -1,42 +1,54 @@
-# Version Registry
+# Version Tree
 
-## 正式框架同级注册表（DATA-FRAMEWORK-LEDGER-V2）
+## 当前正式框架血缘（DATA-FRAMEWORK-TREE-V3）
 
 ```text
-FRAMEWORK-V1  [tag v1]  derived_from: none
-FRAMEWORK-V2  [tag v2]  derived_from: FRAMEWORK-V1
-FRAMEWORK-V3  [tag v3]  derived_from: FRAMEWORK-V2
-FRAMEWORK-V5  [tag v5]  derived_from: FRAMEWORK-V3
+main（公共底座）
+└─ FRAMEWORK-V1  [framework/v1, tag v1]
+   └─ FRAMEWORK-V2  [framework/v2, tag v2]
+      └─ FRAMEWORK-V3  [framework/v3, tag v3]
+         └─ FRAMEWORK-V5  [framework/v5, tag v5]
 ```
 
-以上四个框架全部同级。`derived_from` 是历史来源指针，不是父子层级。
+这是一棵真实继承树：V2 的正式 commit 继承 V1，V3 继承 V2，V5 继承 V3。每个已经确认的框架又都是 GitHub 分支列表中的直接入口，可以独立作为新实验起点。
 
-正式框架的人类实验全貌以各自 `EXPERIMENTS.md` 为准。普通调参、消融、确认和未晋级创新不进入本注册表，也不能创建正式 Tag。
+## 当前登记
 
-## 历史来源表
-
-| 正式框架 | 来源框架 | 正式 Tag | 来源实验或历史记录 | 变化类型 | 说明 |
+| 正式框架 | 直接来源 | 正式 Tag | 来源实验或历史记录 | 变化类型 | 说明 |
 |---|---|---|---|---|---|
-| `FRAMEWORK-V1` | none | `v1` | initial | initial | 第一套正式框架。 |
-| `FRAMEWORK-V2` | `FRAMEWORK-V1` | `v2` | `V1-INNOVATION-001` | add_module | CLIP-A-self 文本原型适配；历史接纳，未按新规范补签确认。 |
-| `FRAMEWORK-V3` | `FRAMEWORK-V2` | `v3` | `V2-INNOVATION-001` | add_module | 严格条件 FAE-memory JEPA；历史接纳，未按新规范补签确认。 |
-| `FRAMEWORK-V5` | `FRAMEWORK-V3` | `v5` | `V3-INNOVATION-001` | combo | 条件 BVSA 文本正式框架；历史 owner 激活。 |
+| `FRAMEWORK-V1` | `none` | `v1` | initial | initial | 第一套历史正式框架。 |
+| `FRAMEWORK-V2` | `FRAMEWORK-V1` | `v2` | `V1-INNOVATION-001` | add_module | CLIP-A-self 文本原型适配；历史接纳。 |
+| `FRAMEWORK-V3` | `FRAMEWORK-V2` | `v3` | `V2-INNOVATION-001` | add_module | 严格条件 FAE-memory JEPA；历史接纳。 |
+| `FRAMEWORK-V5` | `FRAMEWORK-V3` | `v5` | `V3-INNOVATION-001` | combo | 条件 BVSA 文本框架；历史 owner 激活。 |
 
-## 历史特例
+`v4` 是历史 config-only Tag，不是正式框架，继续保留用于复现。
 
-`v4` Tag 来自 V3 的纯调参确认，是历史误分类，不是正式框架。它继续保留用于复现，但不进入上面的正式框架注册表。
+## 新节点怎样接入
 
-## 新正式框架登记模板
+继承现有框架：
 
 ```text
-| `FRAMEWORK-VX` | `FRAMEWORK-VSOURCE` | `vX` | `VSOURCE-INNOVATION-xxx` | add_module / replace_module / architecture_change / combo | short note |
+FRAMEWORK-V2 -> 候选实验 -> owner 确认 -> FRAMEWORK-V6
 ```
 
-同时更新：
+新 `framework/v6` 与 `v6` 指向候选最终 commit；`derived_from_framework` 记录 `FRAMEWORK-V2`。以后从 V6 开的新实验直接从 `framework/v6` 分叉，不再回到 V2 下面继续叠。
+
+完全独立：
+
+```text
+main -> 独立候选 -> owner 确认 -> FRAMEWORK-VX
+```
+
+此时登记 `derived_from_framework: main` 和实际 `derived_from_commit`。候选阶段不能预占正式编号、分支或 Tag。
+
+## 登记时同步
 
 - `experiments/vX/framework.yaml`
+- `experiments/vX/TEMPLATE.yaml`
 - `experiments/vX/VERSION.md`
 - `experiments/vX/EXPERIMENTS.md`
+- tune、ablation、innovation、confirmation 四张索引
 - `experiments/EXPERIMENT_REGISTRY.md`
-- `config/versions/vX.yaml`
 - `docs/PROJECT_STATUS.md`
+
+详细规则见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。

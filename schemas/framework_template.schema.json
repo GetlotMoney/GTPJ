@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://local.gtpj/schemas/framework_template.schema.json",
-  "title": "GTPJ immutable framework template",
+  "title": "GTPJ canonical framework template and legacy template binding",
   "type": "object",
   "required": [
     "schema_version",
@@ -19,8 +19,8 @@
   "properties": {
     "schema_version": {"const": "gtpj.framework_template.v1"},
     "framework_id": {"pattern": "^FRAMEWORK-V[0-9]+$"},
-    "template_id": {"pattern": "^MODEL-V[0-9]+-TEMPLATE-V[0-9]+$"},
-    "template_status": {"enum": ["draft", "confirmed", "frozen", "retired", "legacy_frozen"]},
+    "template_id": {"pattern": "^(FRAMEWORK-V[0-9]+|MODEL-V[0-9]+-TEMPLATE-V[0-9]+)$"},
+    "template_status": {"enum": ["canonical", "draft", "confirmed", "frozen", "retired", "legacy_frozen"]},
     "template_branch": {"pattern": "^framework/v[0-9]+(?:-template-v[0-9]+)?$"},
     "template_tag": {"pattern": "^(v[0-9]+|model/v[0-9]+-template-v[0-9]+)$"},
     "template_commit": {"pattern": "^[0-9a-f]{40}$"},

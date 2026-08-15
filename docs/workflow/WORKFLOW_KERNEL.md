@@ -21,6 +21,8 @@
 1. 第 1 轮由子 Agent A 检查需求对应、实现正确性、接口、shape、梯度、数据与评估边界，并主动尝试证明代码有错。实现者修复并重跑机器测试后，由 A 复核到通过。
 2. 第 2 轮由不同的子 Agent B 检查与第 1 轮相同的最终代码，重点寻找反例、隐藏耦合、回归、测试盲区和结论污染。
 
+正式第 1 轮前，Implementer 必须先对本轮完整范围做一次集中预审，覆盖主要入口、接口、反例和回归风险，不能把已知问题拆成多次零散审核。每轮 Reviewer 发现 blocker 后仍须继续检查该轮剩余范围，最后一次性报告全部发现与未覆盖范围；只有代码无法加载或外部条件使后续检查客观不可执行时才可提前停止，并写明原因。Implementer 必须等待该轮完整报告，再集中修复全部 blocker、统一重跑机器测试，不得在审核进行中发现一个修一个并反复重置代码身份。
+
 同一个子 Agent 不能计算为两轮，主助手自审不能替代子 Agent。其他只读角色可以并行，但第 2 轮必须等待第 1 轮问题修复、重测和 A 复核通过后再启动。若第 2 轮导致被审核代码改变，两轮都要针对最终代码重新执行；仍使用 A、B，不增加第三个 Reviewer。
 
 两轮必须绑定同一个 `reviewed_code_id`：有冻结提交时写准确 commit；尚未提交时写包含 staged/unstaged tracked diff 的 SHA-256，并用 `reviewed_extra_files` 记录范围内 untracked 或仓库外文件的排序后路径与 SHA-256。每轮至少记录 `round`、`reviewer_id`、`reviewed_code_id`、`reviewed_extra_files`、`files_reviewed`、`machine_test_ref`、发现、`unresolved_blockers`、`decision` 和 `uncovered_scope`；第 2 轮另写 `previous_round_ref`。两轮都为 `decision: pass`、`unresolved_blockers: 0` 后，代码才允许正式训练。记录复用当前任务输出或现有实验质量记录，默认不新建审核包。

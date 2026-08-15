@@ -19,6 +19,7 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -30,7 +31,9 @@ from typing import Iterable
 import yaml
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+TOOL_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = TOOL_ROOT
+EXTERNAL_REPO_ROOT = False
 LOCAL_GTPJ_WORKFLOW_SKILL_PATH = Path.home() / ".codex" / "skills" / "gtpj-workflow" / "SKILL.md"
 CONFIRMATION_RULE_DEFAULT_MAX_ATTEMPTS = 5
 CONFIRMATION_RULE_DEFAULT_NEAR_MISS_TOLERANCE_H = 0.2
@@ -276,6 +279,74 @@ class WorkflowError(RuntimeError):
     pass
 
 
+def configure_repo_root(path_text: str) -> Path:
+    """Point this governance helper at one explicit checkout of the same repository."""
+    candidate = Path(path_text).expanduser().resolve()
+    result = subprocess.run(
+        ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise WorkflowError(
+            f"--repo-root is not a Git checkout: {candidate}"
+        )
+    actual_root = Path(result.stdout.strip()).resolve()
+    if actual_root != candidate:
+        raise WorkflowError(
+            f"--repo-root must name the checkout root {actual_root}, got {candidate}"
+        )
+    if not (candidate / "experiments").is_dir():
+        raise WorkflowError(
+            f"--repo-root is not a GTPJ checkout: missing {candidate / 'experiments'}"
+        )
+    global REPO_ROOT, EXTERNAL_REPO_ROOT
+    REPO_ROOT = candidate
+    EXTERNAL_REPO_ROOT = candidate != TOOL_ROOT.resolve()
+    return candidate
+
+
+def governance_asset_root() -> Path:
+    """Use the helper checkout's schemas/rules when it controls another checkout."""
+    return TOOL_ROOT if EXTERNAL_REPO_ROOT else REPO_ROOT
+
+
+def require_external_governance_identity(expected_commit: str) -> None:
+    """Bind cross-checkout execution to one clean, reviewed governance commit."""
+    if not EXTERNAL_REPO_ROOT:
+        return
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=TOOL_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if head.returncode != 0 or head.stdout.strip() != expected_commit:
+        raise WorkflowError(
+            "external --repo-root execution requires the helper checkout HEAD to "
+            f"equal template_registry_commit {expected_commit}"
+        )
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=TOOL_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if status.returncode != 0 or status.stdout.strip():
+        raise WorkflowError(
+            "external --repo-root execution requires a clean governance helper checkout"
+        )
+
+
 @dataclass(frozen=True)
 class ExperimentKind:
     name: str
@@ -346,6 +417,7 @@ EXPERIMENT_BINDING_RULES = {
     "historical_code_ref": ("historical_read_only", False, True),
     "pending_clean_template": ("blocked_pending_clean_template", False, False),
 }
+CANDIDATE_FRAMEWORK_STATUSES = {"not_applicable", "attempt_only"}
 FRAMEWORK_INDEX_STATUSES = {
     "planned",
     "pending",
@@ -363,11 +435,61 @@ FRAMEWORK_INDEX_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
+FORMAL_RUNNABLE_INDEX_STATUSES = {
+    "planned",
+    "pending",
+    "pre_run",
+    "pre_run_gated",
+    "ready_to_run",
+    "running",
+    "candidate",
+}
 LEGACY_ORIGIN_STATUSES = {
     "legacy_owner_accepted_unconfirmed",
     "legacy_owner_activated",
 }
+LEGACY_FRAMEWORK_ORIGINS = {
+    "FRAMEWORK-V2": {
+        "framework_version": "v2",
+        "framework_commit": "ccc4a10ddd67308e28c40d6000216917a71bf472",
+        "derived_from_framework": "FRAMEWORK-V1",
+        "promoted_from_experiment": "V1-INNOVATION-001",
+        "origin_status": "legacy_owner_accepted_unconfirmed",
+    },
+    "FRAMEWORK-V3": {
+        "framework_version": "v3",
+        "framework_commit": "13529cb1d3ed8405e2f5cbb4832eff8d1c78db16",
+        "derived_from_framework": "FRAMEWORK-V2",
+        "promoted_from_experiment": "V2-INNOVATION-001",
+        "origin_status": "legacy_owner_accepted_unconfirmed",
+    },
+    "FRAMEWORK-V5": {
+        "framework_version": "v5",
+        "framework_commit": "08e5ecb1a5db6c6d589527cda35d8d4f7f437e07",
+        "derived_from_framework": "FRAMEWORK-V3",
+        "promoted_from_experiment": "V3-INNOVATION-001",
+        "origin_status": "legacy_owner_activated",
+    },
+}
 PROMOTED_FRAMEWORK_STATUSES = {"promoted", *LEGACY_ORIGIN_STATUSES}
+CANDIDATE_FRAMEWORK_FAMILY_BINDINGS = {
+    "clean_v6": {
+        "framework_id": "FRAMEWORK-V5",
+        "target_framework": "FRAMEWORK-V6",
+        "kind": "innovation",
+        "candidate_framework_status": "attempt_only",
+    }
+}
+FRAMEWORK_GOVERNANCE_OVERLAY_PATHS = (
+    "framework.yaml",
+    "TEMPLATE.yaml",
+    "MODULES.md",
+    "EXPERIMENTS.md",
+    "tune/INDEX.md",
+    "ablation/INDEX.md",
+    "innovation/INDEX.md",
+    "confirmation/INDEX.md",
+)
 
 CANONICAL_BASELINES = {
     "v1": {
@@ -729,6 +851,65 @@ def write_new_lf(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write(content.rstrip() + "\n")
+
+
+def publish_temp_file_no_replace(
+    temp_path: Path,
+    target_path: Path,
+) -> tuple[int, int, str]:
+    """Atomically publish one same-directory temp file without replacing evidence."""
+    try:
+        os.link(temp_path, target_path)
+    except FileExistsError as exc:
+        raise WorkflowError(
+            f"Refusing to overwrite existing file: {display_path(target_path)}"
+        ) from exc
+    except OSError as exc:
+        raise WorkflowError(
+            f"Cannot atomically publish {display_path(target_path)} without replacement: {exc}"
+        ) from exc
+    target_stat = target_path.lstat()
+    digest = sha256_file(target_path)
+    try:
+        temp_path.unlink()
+    except OSError as exc:
+        try:
+            current_stat = target_path.lstat()
+            if (
+                not target_path.is_symlink()
+                and current_stat.st_dev == target_stat.st_dev
+                and current_stat.st_ino == target_stat.st_ino
+                and sha256_file(target_path) == digest
+            ):
+                target_path.unlink()
+        except OSError:
+            pass
+        raise WorkflowError(
+            f"Published {display_path(target_path)} but could not retire its temp file: {exc}"
+        ) from exc
+    return target_stat.st_dev, target_stat.st_ino, digest
+
+
+def unlink_published_file_if_owned(
+    path: Path,
+    identity: tuple[int, int, str],
+) -> None:
+    """Delete only the exact inode/content published by this transaction."""
+    if not path.exists() and not path.is_symlink():
+        return
+    current_stat = path.lstat()
+    expected_dev, expected_ino, expected_digest = identity
+    if (
+        path.is_symlink()
+        or current_stat.st_dev != expected_dev
+        or current_stat.st_ino != expected_ino
+        or sha256_file(path) != expected_digest
+    ):
+        raise WorkflowError(
+            f"Refusing to delete evidence no longer owned by this transaction: "
+            f"{display_path(path)}"
+        )
+    path.unlink()
 
 
 def ensure_dir(path: Path) -> None:
@@ -1616,6 +1797,37 @@ def load_framework_template_from_registry(
     return template_data, registry_commit
 
 
+def framework_governance_overlay_contents(
+    version: str,
+    registry_commit: str,
+) -> dict[Path, str]:
+    """Preflight the lightweight governance files needed by an old framework commit."""
+    overlay: dict[Path, str] = {}
+    missing: list[str] = []
+    for suffix in FRAMEWORK_GOVERNANCE_OVERLAY_PATHS:
+        relative = f"experiments/{version}/{suffix}"
+        raw = git_show(f"{registry_commit}:{relative}", check=False)
+        if not raw:
+            missing.append(relative)
+            continue
+        overlay[REPO_ROOT / relative] = raw.rstrip() + "\n"
+    if missing:
+        raise WorkflowError(
+            "template registry is missing the framework governance overlay: "
+            + ", ".join(missing)
+        )
+    return overlay
+
+
+def apply_framework_governance_overlay(overlay: dict[Path, str]) -> None:
+    """Write a preflighted governance-only overlay without copying model code."""
+    for path, content in overlay.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and read_text(path) == content:
+            continue
+        path.write_text(content, encoding="utf-8", newline="\n")
+
+
 def require_experiment_branch_base(
     version: str,
     *,
@@ -1625,9 +1837,10 @@ def require_experiment_branch_base(
     if template_data is not None or template_path.exists():
         template_data = template_data or read_shallow_yaml(template_path)
         template_status = str(template_data.get("template_status", ""))
-        if template_status != "frozen":
+        if template_status != "canonical":
             raise WorkflowError(
-                "new-experiment requires a frozen clean framework template; "
+                "new-experiment requires the canonical framework commit; "
+                "historical frozen templates are read-only; "
                 f"{rel(template_path)} status is {template_status or '<missing>'}"
             )
         template_commit = str(template_data.get("template_commit", ""))
@@ -2887,10 +3100,15 @@ def make_experiment_readme(version: str, kind: ExperimentKind, exp_id: str, slug
 experiment_id: {exp_id}
 kind: {kind.name}
 version: {version}
-base_code_tag: {version}
-branch_source: main
+base_template_id: FRAMEWORK-{version.upper()}
+base_template_tag: {version}
+base_template_commit:
+template_registry_commit:
+branch_source: exact_template_commit
 code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
-runtime: OpenClaw preferred / Codex compatible
+candidate_family: none
+target_framework: none
+candidate_framework_status: not_applicable
 quality_check_mode: {kind.default_check}
 run_commit:
 dirty_state:
@@ -2936,11 +3154,11 @@ status: planned
 
 ## 运行前检查
 
-- [ ] 实验分支从 `framework/{version}` 切出，并按 `exp/{version}/<type>/<experiment-id>-<slug>` 命名。
-- [ ] `base_code_tag: {version}` 和 `branch_source` 已记录。
-- [ ] 配置复制自 `experiments/{version}/config.yaml`。
-- [ ] 只改变声明过的变量或开关。
-- [ ] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
+- [ ] 实验分支从 `framework/{version}` 的准确 commit 切出，并按 `exp/{version}/<type>/<experiment-id>-<slug>` 命名。
+- [ ] `base_template_id/tag/commit`、`template_registry_commit` 和 `branch_source: exact_template_commit` 已记录。
+ - [ ] 配置复制自 `experiments/{version}/config.yaml`。
+ - [ ] 只改变声明过的变量或开关。
+- [ ] 工作区 clean、GPU 可见、数据与划分身份一致，且独立输出目录不存在。
 - [ ] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
 - [ ] `manifest.yaml` 中的 artifact URI、hash、size 能对应外部资产。
 - [ ] `agent_summary.md` 已记录参与 agents、检查范围、发现和结论。
@@ -3589,25 +3807,135 @@ log_uri: {log_uri}
 """
 
 
+def parse_central_experiment_registry(
+    text: str,
+) -> tuple[list[dict[str, str]], list[str]]:
+    """Parse the one canonical five-column formal-experiment table strictly."""
+    rows: list[dict[str, str]] = []
+    errors: list[str] = []
+    in_formal_table = False
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped == "## 正式实验账本":
+            in_formal_table = True
+            continue
+        if in_formal_table and stripped.startswith("## "):
+            break
+        if not in_formal_table or not stripped.startswith("|"):
+            continue
+        cells = [cell.strip().strip("`") for cell in stripped.strip("|").split("|")]
+        if not cells or all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+            continue
+        if cells[0] in {"实验", "-", "暂无"}:
+            continue
+        match = re.fullmatch(
+            r"V([0-9]+)-(TUNE|ABLATION|INNOVATION|CONFIRM)-([0-9]{3})",
+            cells[0],
+        )
+        if match is None:
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} "
+                f"has an invalid formal experiment ID: {cells[0] or '<empty>'}"
+            )
+            continue
+        if len(cells) != 5:
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} "
+                "must have exactly 5 columns"
+            )
+            continue
+        version = f"v{match.group(1)}"
+        kind_name = {
+            "TUNE": "tune",
+            "ABLATION": "ablation",
+            "INNOVATION": "innovation",
+            "CONFIRM": "confirmation",
+        }[match.group(2)]
+        expected_framework = f"FRAMEWORK-{version.upper()}"
+        if cells[1] != expected_framework:
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} framework "
+                f"must be {expected_framework}"
+            )
+        if cells[2] != kind_name:
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} kind "
+                f"must be {kind_name}"
+            )
+        if cells[3] not in FRAMEWORK_INDEX_STATUSES:
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} has "
+                f"invalid status: {cells[3]}"
+            )
+        entry = PurePosixPath(cells[4])
+        if entry.is_absolute() or ".." in entry.parts or not cells[4].startswith(
+            f"experiments/{version}/{kind_name}/"
+        ):
+            errors.append(
+                f"experiments/EXPERIMENT_REGISTRY.md line {line_number} has "
+                f"an invalid entry path: {cells[4]}"
+            )
+        rows.append(
+            {
+                "experiment_id": cells[0],
+                "framework_id": cells[1],
+                "kind": cells[2],
+                "status": cells[3],
+                "entry": cells[4],
+                "directory": entry.parent.as_posix(),
+                "line_number": str(line_number),
+            }
+        )
+    if not in_formal_table:
+        errors.append(
+            "experiments/EXPERIMENT_REGISTRY.md is missing the formal experiment table"
+        )
+    return rows, errors
+
+
+def central_experiment_registry_rows() -> tuple[list[dict[str, str]], list[str]]:
+    registry = REPO_ROOT / "experiments" / "EXPERIMENT_REGISTRY.md"
+    if not registry.exists():
+        return [], ["formal experiment requires experiments/EXPERIMENT_REGISTRY.md"]
+    return parse_central_experiment_registry(read_text(registry))
+
+
 def append_version_experiment_registry(
     version: str, kind: ExperimentKind, exp_id: str, slug: str, folder: Path
 ) -> None:
     registry = REPO_ROOT / "experiments" / "EXPERIMENT_REGISTRY.md"
     content = read_text(registry)
-    experiment_name = f"{exp_id}_{slug}"
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
+    expected_directory = rel(folder)
+    rows, errors = parse_central_experiment_registry(content)
+    if errors:
+        raise WorkflowError("Cannot update central experiment registry:\n" + "\n".join(errors))
+    conflicts = [
+        row
+        for row in rows
+        if row["experiment_id"] == framework_experiment_id
+        or row["directory"] == expected_directory
+    ]
+    if conflicts:
+        raise WorkflowError(
+            "central experiment registry already contains this experiment identity or directory"
+        )
     row = (
-        f"| `{experiment_name}` | `{version}` | `{kind.name}` | planned | "
-        f"`{rel(folder)}` | 由结构 helper 创建；正式待跑以 `experiments/{version}/{kind.folder}/INDEX.md` 行为准。 |"
+        f"| `{framework_experiment_id}` | `FRAMEWORK-{version.upper()}` | "
+        f"{kind.name} | planned | `{rel(folder / PARAMETER_MATRIX_MD)}` |"
     )
-    if experiment_name in content:
-        return
-
-    lines = [
+    marker = "\n## 历史 Trial 回查"
+    if marker not in content:
+        raise WorkflowError("central experiment registry is missing its history boundary")
+    formal_text, history_text = content.split(marker, 1)
+    formal_lines = [
         line
-        for line in content.splitlines()
+        for line in formal_text.splitlines()
         if "No clean GTPJ-run experiments yet." not in line and "| 暂无 |" not in line
     ]
-    content = "\n".join(lines).rstrip() + "\n" + row + "\n"
+    content = "\n".join(formal_lines).rstrip() + "\n" + row + marker + history_text
+    if not content.endswith("\n"):
+        content += "\n"
     registry.write_text(content, encoding="utf-8")
 
 
@@ -3621,21 +3949,20 @@ def update_version_experiment_registry_status(
 ) -> None:
     registry = REPO_ROOT / "experiments" / "EXPERIMENT_REGISTRY.md"
     content = read_text(registry)
-    experiment_name = f"{exp_id}_{slug}"
-    prefix = f"| `{experiment_name}` | `{version}` | `{kind.name}` |"
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
+    prefix = f"| `{framework_experiment_id}` | `FRAMEWORK-{version.upper()}` | {kind.name} |"
     lines = content.splitlines()
     for index, line in enumerate(lines):
         if not line.startswith(prefix):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) < 6:
-            raise WorkflowError(f"Malformed registry row for {experiment_name}")
+        if len(cells) != 5:
+            raise WorkflowError(f"Malformed registry row for {framework_experiment_id}")
         cells[3] = status
-        cells[5] = note
         lines[index] = "| " + " | ".join(cells) + " |"
         registry.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
         return
-    raise WorkflowError(f"Missing registry row for {experiment_name}")
+    raise WorkflowError(f"Missing registry row for {framework_experiment_id}")
 
 
 def append_kind_index(
@@ -3647,8 +3974,18 @@ def append_kind_index(
     experiment_name = f"{exp_id}_{slug}"
     framework_experiment_id = f"{version.upper()}-{exp_id}"
     content = read_text(index)
-    if framework_experiment_id in content:
-        return
+    rows = framework_index_rows(version, kind.name)
+    expected_directory = rel(folder)
+    expected_matrix = rel(folder / PARAMETER_MATRIX_MD)
+    if any(
+        row["experiment_id"] == framework_experiment_id
+        or row["directory"] == expected_directory
+        or row["parameter_matrix"] == expected_matrix
+        for row in rows
+    ):
+        raise WorkflowError(
+            "experiment INDEX already contains this experiment identity, directory, or matrix"
+        )
     if "| Experiment ID | Status | Question | Parameter matrix | Legacy reference | Directory | Promoted framework |" in content:
         lines = [
             line
@@ -3677,12 +4014,64 @@ def append_kind_index(
     index.write_text(content, encoding="utf-8")
 
 
-def framework_index_rows(version: str, kind_name: str) -> list[dict[str, str]]:
-    index_path = REPO_ROOT / "experiments" / version / kind_name / "INDEX.md"
-    if not index_path.exists():
-        return []
+def new_experiment_registration_preflight_errors(
+    *,
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    folder: Path,
+    index_text: str,
+) -> list[str]:
+    """Reject every central/INDEX conflict before creating experiment files."""
+    errors: list[str] = []
+    framework_experiment_id = f"{version.upper()}-{exp_id}"
+    expected_directory = rel(folder)
+    expected_matrix = rel(folder / PARAMETER_MATRIX_MD)
+    registry_rows, registry_errors = central_experiment_registry_rows()
+    errors.extend(registry_errors)
+    for row in registry_rows:
+        if row.get("experiment_id") == framework_experiment_id:
+            errors.append(
+                f"central registry already contains {framework_experiment_id}"
+            )
+        if row.get("directory") == expected_directory:
+            errors.append(
+                f"central registry already contains directory {expected_directory}"
+            )
+    errors.extend(
+        framework_index_text_errors(
+            index_text,
+            version=version,
+            kind_name=kind.name,
+            path_label=f"experiments/{version}/{kind.folder}/INDEX.md",
+        )
+    )
+    for row in parse_framework_index_rows(
+        index_text,
+        version=version,
+        kind_name=kind.name,
+    ):
+        if row.get("experiment_id") == framework_experiment_id:
+            errors.append(f"experiment INDEX already contains {framework_experiment_id}")
+        if row.get("directory") == expected_directory:
+            errors.append(
+                f"experiment INDEX already contains directory {expected_directory}"
+            )
+        if row.get("parameter_matrix") == expected_matrix:
+            errors.append(
+                f"experiment INDEX already contains matrix {expected_matrix}"
+            )
+    return errors
+
+
+def parse_framework_index_rows(
+    text: str,
+    *,
+    version: str,
+    kind_name: str,
+) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    for line in read_text(index_path).splitlines():
+    for line in text.splitlines():
         if not line.startswith("|"):
             continue
         cells = [cell.strip().strip("`") for cell in line.strip().strip("|").split("|")]
@@ -3705,15 +4094,29 @@ def framework_index_rows(version: str, kind_name: str) -> list[dict[str, str]]:
     return rows
 
 
-def framework_index_row_errors(version: str, kind_name: str) -> list[str]:
-    """Report malformed formal rows instead of silently dropping them."""
+def framework_index_rows(version: str, kind_name: str) -> list[dict[str, str]]:
     index_path = REPO_ROOT / "experiments" / version / kind_name / "INDEX.md"
     if not index_path.exists():
         return []
+    return parse_framework_index_rows(
+        read_text(index_path),
+        version=version,
+        kind_name=kind_name,
+    )
+
+
+def framework_index_text_errors(
+    text: str,
+    *,
+    version: str,
+    kind_name: str,
+    path_label: str,
+) -> list[str]:
+    """Report malformed formal rows instead of silently dropping them."""
     errors: list[str] = []
     kind = KINDS[kind_name]
     expected_pattern = rf"{version.upper()}-{kind.prefix}-[0-9]{{3}}"
-    for line_number, line in enumerate(read_text(index_path).splitlines(), start=1):
+    for line_number, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
         if not stripped.startswith("|"):
             continue
@@ -3724,31 +4127,43 @@ def framework_index_row_errors(version: str, kind_name: str) -> list[str]:
         ):
             continue
         if len(cells) != 7:
-            errors.append(f"{rel(index_path)} line {line_number} must have 7 columns")
+            errors.append(f"{path_label} line {line_number} must have 7 columns")
             continue
         if not re.fullmatch(expected_pattern, first):
-            errors.append(f"{rel(index_path)} line {line_number} has wrong ID for {kind_name}: {first}")
+            errors.append(f"{path_label} line {line_number} has wrong ID for {kind_name}: {first}")
         status = cells[1]
         promoted_framework = cells[6]
         if status not in FRAMEWORK_INDEX_STATUSES:
-            errors.append(f"{rel(index_path)} line {line_number} has invalid status: {status}")
+            errors.append(f"{path_label} line {line_number} has invalid status: {status}")
         if promoted_framework != "-" and not re.fullmatch(r"FRAMEWORK-V[0-9]+", promoted_framework):
             errors.append(
-                f"{rel(index_path)} line {line_number} has invalid promoted framework: {promoted_framework}"
+                f"{path_label} line {line_number} has invalid promoted framework: {promoted_framework}"
             )
         if promoted_framework != "-" and kind_name != "innovation":
             errors.append(
-                f"{rel(index_path)} line {line_number} can name a promoted framework only in innovation"
+                f"{path_label} line {line_number} can name a promoted framework only in innovation"
             )
         if promoted_framework != "-" and status not in PROMOTED_FRAMEWORK_STATUSES:
             errors.append(
-                f"{rel(index_path)} line {line_number} status {status} cannot name a promoted framework"
+                f"{path_label} line {line_number} status {status} cannot name a promoted framework"
             )
         if promoted_framework == "-" and status in PROMOTED_FRAMEWORK_STATUSES:
             errors.append(
-                f"{rel(index_path)} line {line_number} status {status} requires a promoted framework"
+                f"{path_label} line {line_number} status {status} requires a promoted framework"
             )
     return errors
+
+
+def framework_index_row_errors(version: str, kind_name: str) -> list[str]:
+    index_path = REPO_ROOT / "experiments" / version / kind_name / "INDEX.md"
+    if not index_path.exists():
+        return []
+    return framework_index_text_errors(
+        read_text(index_path),
+        version=version,
+        kind_name=kind_name,
+        path_label=rel(index_path),
+    )
 
 
 def render_framework_experiments_view(version: str) -> str:
@@ -3860,13 +4275,28 @@ def json_schema_subset_errors(
 def framework_origin_evidence_errors(
     framework_data: dict[str, object], source_row: dict[str, str]
 ) -> list[str]:
-    """Check how a peer framework entered the formal registry without modelling containment."""
+    """Check how a derived framework entered the formal registry."""
     errors: list[str] = []
     framework_id = str(framework_data.get("framework_id", "formal framework"))
     source_experiment = str(framework_data.get("promoted_from_experiment", "source innovation"))
     origin_status = str(framework_data.get("origin_status", ""))
     source_status = source_row["status"]
     if origin_status in LEGACY_ORIGIN_STATUSES:
+        expected_legacy = LEGACY_FRAMEWORK_ORIGINS.get(framework_id)
+        if expected_legacy is None:
+            return [
+                f"{framework_id} cannot claim a legacy origin; legacy status is "
+                "restricted to the immutable V2/V3/V5 history whitelist"
+            ]
+        for key, expected_value in expected_legacy.items():
+            if str(framework_data.get(key, "")) != expected_value:
+                errors.append(
+                    f"{framework_id} legacy {key} must be {expected_value}"
+                )
+        if source_row.get("experiment_id", "") != source_experiment:
+            errors.append(
+                f"{framework_id} legacy source row must be {source_experiment}"
+            )
         if source_status != origin_status:
             errors.append(
                 f"{framework_id} legacy origin status must match source row {origin_status}"
@@ -3903,8 +4333,110 @@ def framework_origin_evidence_errors(
     return errors
 
 
+def yaml_duplicate_mapping_keys(text: str) -> tuple[list[str], str]:
+    """Return every duplicate YAML mapping key, including quoted/nested keys."""
+    try:
+        root = yaml.compose(text, Loader=yaml.SafeLoader)
+    except yaml.YAMLError as exc:
+        return [], str(exc)
+    duplicates: list[str] = []
+
+    def visit(node: yaml.Node | None, path: tuple[str, ...]) -> None:
+        if isinstance(node, yaml.MappingNode):
+            seen: set[tuple[str, str]] = set()
+            for key_node, value_node in node.value:
+                if isinstance(key_node, yaml.ScalarNode):
+                    signature = (key_node.tag, key_node.value)
+                    key_text = key_node.value
+                else:
+                    signature = (type(key_node).__name__, repr(key_node))
+                    key_text = "<non-scalar-key>"
+                if signature in seen:
+                    duplicates.append(".".join((*path, key_text)))
+                else:
+                    seen.add(signature)
+                visit(value_node, (*path, key_text))
+        elif isinstance(node, yaml.SequenceNode):
+            for index, child in enumerate(node.value):
+                visit(child, (*path, f"[{index}]"))
+
+    visit(root, ())
+    return sorted(set(duplicates)), ""
+
+
+def framework_owner_decision_errors(
+    framework_data: dict[str, object],
+) -> list[str]:
+    """Bind every new formal framework to one explicit owner acceptance record."""
+    origin_status = str(framework_data.get("origin_status", ""))
+    if origin_status not in {"confirmed_promoted", "owner_confirmed_independent"}:
+        return []
+
+    framework_id = str(framework_data.get("framework_id", "formal framework"))
+    framework_version = str(framework_data.get("framework_version", ""))
+    framework_commit = str(framework_data.get("framework_commit", ""))
+    source_experiment = str(framework_data.get("promoted_from_experiment", ""))
+    decision_ref = str(framework_data.get("owner_decision_ref", "")).strip()
+    if not decision_ref:
+        return [f"{framework_id} requires owner_decision_ref"]
+    expected_ref = f"experiments/{framework_version}/OWNER_DECISION.yaml"
+    if decision_ref != expected_ref:
+        return [f"{framework_id} owner_decision_ref must be {expected_ref}"]
+
+    relative = Path(decision_ref)
+    if (
+        "\\" in decision_ref
+        or relative.is_absolute()
+        or ".." in relative.parts
+        or relative.as_posix() != decision_ref
+    ):
+        return [f"{framework_id} owner_decision_ref must be a safe repository-relative path"]
+
+    decision_path = REPO_ROOT / relative
+    if not decision_path.is_file():
+        return [f"{framework_id} owner decision record is missing: {decision_ref}"]
+
+    decision_text = read_text(decision_path)
+    duplicate_keys, compose_error = yaml_duplicate_mapping_keys(decision_text)
+    if compose_error:
+        return [f"{framework_id} owner decision is invalid YAML: {compose_error}"]
+    if duplicate_keys:
+        return [
+            f"{framework_id} owner decision repeats keys: {', '.join(duplicate_keys)}"
+        ]
+    try:
+        decision = yaml.safe_load(decision_text)
+    except yaml.YAMLError as exc:
+        return [f"{framework_id} owner decision is invalid YAML: {exc}"]
+    if not isinstance(decision, dict):
+        return [f"{framework_id} owner decision root must be a mapping"]
+    expected = {
+        "schema_version": "gtpj.owner_decision.v1",
+        "decision": "accepted",
+        "framework_id": framework_id,
+        "framework_commit": framework_commit,
+        "source_experiment": source_experiment,
+    }
+    errors: list[str] = []
+    for key, value in expected.items():
+        if str(decision.get(key, "")) != value:
+            errors.append(
+                f"{framework_id} owner decision {key} must be {value or '<empty>'}"
+            )
+    decision_source = str(decision.get("decision_source", "")).strip()
+    if not re.fullmatch(
+        r"owner_task:[A-Za-z0-9][A-Za-z0-9._/-]{2,127}",
+        decision_source,
+    ):
+        errors.append(
+            f"{framework_id} owner decision requires decision_source in "
+            "owner_task:<stable-task-reference> form"
+        )
+    return errors
+
+
 def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> list[str]:
-    """Reject broken or cyclic history pointers while keeping every formal framework at one level."""
+    """Reject broken or cyclic framework ancestry while allowing independent main roots."""
     errors: list[str] = []
     by_id = {
         str(data.get("framework_id", "")): data
@@ -3925,11 +4457,21 @@ def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> lis
                     "FRAMEWORK-V1 must use derived_from_framework=none, "
                     "promoted_from_experiment=initial, and origin_status=initial"
                 )
+        elif source_framework == "main":
+            if (promoted_from, origin_status) != (
+                "owner-confirmed-independent",
+                "owner_confirmed_independent",
+            ):
+                errors.append(
+                    f"{framework_id} derived from main must use "
+                    "promoted_from_experiment=owner-confirmed-independent and "
+                    "origin_status=owner_confirmed_independent"
+                )
         elif promoted_from == "initial" or origin_status == "initial":
             errors.append(f"{framework_id} cannot use initial origin fields")
         path: list[str] = []
         cursor = framework_id
-        while cursor != "none":
+        while cursor not in {"none", "main"}:
             if cursor in path:
                 cycle = tuple(path[path.index(cursor):] + [cursor])
                 normalized = tuple(sorted(set(cycle)))
@@ -3949,8 +4491,89 @@ def framework_derivation_errors(frameworks: dict[str, dict[str, object]]) -> lis
     return errors
 
 
+def framework_git_ancestry_errors(
+    frameworks: dict[str, dict[str, object]],
+) -> list[str]:
+    """Require the recorded framework ancestry to match the real Git graph."""
+    errors: list[str] = []
+    by_id = {
+        str(data.get("framework_id", "")): data
+        for data in frameworks.values()
+        if str(data.get("framework_id", ""))
+    }
+
+    def is_ancestor(ancestor: str, descendant: str) -> bool:
+        if not ancestor or not descendant:
+            return False
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=REPO_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.returncode == 0
+
+    for framework_id, data in sorted(by_id.items()):
+        source = str(data.get("derived_from_framework", ""))
+        child_commit = str(data.get("framework_commit", ""))
+        if source == "none":
+            continue
+        if source == "main":
+            base_commit = str(data.get("derived_from_commit", ""))
+            if not re.fullmatch(r"[0-9a-f]{40}", base_commit):
+                errors.append(
+                    f"{framework_id} derived from main must record derived_from_commit"
+                )
+                continue
+            if not is_ancestor(base_commit, "refs/heads/main"):
+                errors.append(
+                    f"{framework_id} derived_from_commit is not in main history: {base_commit}"
+                )
+            if not is_ancestor(base_commit, child_commit):
+                errors.append(
+                    f"{framework_id} does not descend from main commit {base_commit}"
+                )
+            merge_base_result = subprocess.run(
+                ["git", "merge-base", "--all", child_commit, "refs/heads/main"],
+                cwd=REPO_ROOT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            merge_bases = [
+                line.strip()
+                for line in merge_base_result.stdout.splitlines()
+                if line.strip()
+            ]
+            if merge_base_result.returncode != 0 or not merge_bases:
+                errors.append(
+                    f"{framework_id} cannot resolve its real main fork point"
+                )
+            elif len(merge_bases) != 1:
+                errors.append(
+                    f"{framework_id} has ambiguous main fork points: {', '.join(merge_bases)}"
+                )
+            elif merge_bases[0] != base_commit:
+                errors.append(
+                    f"{framework_id} derived_from_commit must equal real main fork point "
+                    f"{merge_bases[0]}, got {base_commit}"
+                )
+            continue
+        parent = by_id.get(source)
+        if parent is None:
+            continue
+        parent_commit = str(parent.get("framework_commit", ""))
+        if not is_ancestor(parent_commit, child_commit):
+            errors.append(
+                f"{framework_id} does not descend from {source} commit {parent_commit}"
+            )
+    return errors
+
+
 def framework_promotion_link_errors(frameworks: dict[str, dict[str, object]]) -> list[str]:
-    """Require every promotion pointer to name one real peer framework and appear only once."""
+    """Require every experiment promotion pointer to name one real framework once."""
     errors: list[str] = []
     registered_ids = {
         str(data.get("framework_id", ""))
@@ -3976,12 +4599,14 @@ def framework_promotion_link_errors(frameworks: dict[str, dict[str, object]]) ->
 
 
 def framework_git_ref_errors(version: str, expected_commit: str) -> list[str]:
-    """Require both the long-lived branch and frozen Tag for a formal peer framework."""
+    """Require the canonical framework branch and its frozen marker to identify one commit."""
     errors: list[str] = []
     branch = framework_branch_name(version)
     branch_commit = git(["rev-parse", "--verify", f"refs/heads/{branch}"], check=False)
     if not branch_commit:
-        errors.append(f"missing long-lived framework branch: {branch}")
+        errors.append(f"missing canonical framework branch: {branch}")
+    elif branch_commit != expected_commit:
+        errors.append(f"framework branch must equal framework_commit: {branch}")
     tag_commit_value = git(
         ["rev-parse", "--verify", f"refs/tags/{version}^{{commit}}"],
         check=False,
@@ -3990,15 +4615,6 @@ def framework_git_ref_errors(version: str, expected_commit: str) -> list[str]:
         errors.append(f"missing frozen framework tag: {version}")
     elif expected_commit != tag_commit_value:
         errors.append(f"framework_commit does not match tag {version}")
-    if branch_commit and expected_commit:
-        result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", expected_commit, branch],
-            cwd=REPO_ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if result.returncode != 0:
-            errors.append(f"{branch} does not contain framework_commit {expected_commit}")
     return errors
 
 
@@ -4030,7 +4646,7 @@ def framework_template_git_ref_errors(data: dict[str, object]) -> list[str]:
     if not branch_commit_value:
         errors.append(f"missing template branch: {template_branch}")
     elif (
-        str(data.get("template_status", "")) in {"frozen", "legacy_frozen"}
+        str(data.get("template_status", "")) in {"canonical", "frozen", "legacy_frozen"}
         and branch_commit_value != template_commit
     ):
         errors.append(
@@ -4049,26 +4665,31 @@ def framework_template_identity_errors(
     if str(data.get("framework_id", "")) != expected_framework_id:
         errors.append(f"framework_id must be {expected_framework_id}")
 
-    template_id = str(data.get("template_id", ""))
-    id_match = re.fullmatch(
-        rf"MODEL-{version.upper()}-TEMPLATE-V([0-9]+)", template_id
-    )
-    if not id_match:
-        errors.append(f"template_id must belong to {version.upper()}")
-        return errors
-
-    template_number = int(id_match.group(1))
     status = str(data.get("template_status", ""))
-    if template_number == 0:
+    template_id = str(data.get("template_id", ""))
+    if status == "canonical":
+        if template_id != expected_framework_id:
+            errors.append(f"canonical template_id must be {expected_framework_id}")
         expected_branch = framework_branch_name(version)
         expected_tag = version
-        if status != "legacy_frozen":
-            errors.append("V0 must use legacy_frozen status")
     else:
-        expected_branch = f"framework/{version}-template-v{template_number}"
-        expected_tag = f"model/{version}-template-v{template_number}"
-        if status not in {"confirmed", "frozen"}:
-            errors.append("clean template must use confirmed or frozen status")
+        id_match = re.fullmatch(
+            rf"MODEL-{version.upper()}-TEMPLATE-V([0-9]+)", template_id
+        )
+        if not id_match:
+            errors.append(f"template_id must belong to {version.upper()}")
+            return errors
+        template_number = int(id_match.group(1))
+        if template_number == 0:
+            expected_branch = framework_branch_name(version)
+            expected_tag = version
+            if status != "legacy_frozen":
+                errors.append("V0 must use legacy_frozen status")
+        else:
+            expected_branch = f"framework/{version}-template-v{template_number}"
+            expected_tag = f"model/{version}-template-v{template_number}"
+            if status not in {"confirmed", "frozen"}:
+                errors.append("clean template must use confirmed or frozen status")
 
 
     if str(data.get("template_branch", "")) != expected_branch:
@@ -4116,6 +4737,14 @@ def current_template_runtime_alignment_errors() -> list[str]:
         for entry in templates
         if str(entry[1].get("main_runtime_status", "")) == "active"
     ]
+    if canonical_framework_binding_standard_is_active():
+        if active_templates:
+            active_paths = ", ".join(rel(item[0]) for item in active_templates)
+            return [
+                "canonical framework bindings do not designate a main runtime template; "
+                f"set main_runtime_status: inactive for {active_paths}"
+            ]
+        return []
     if (
         not immutable_template_standard_is_active()
         and not active_templates
@@ -4179,7 +4808,7 @@ def current_template_runtime_alignment_errors() -> list[str]:
 
 def validate_framework_templates() -> list[str]:
     errors: list[str] = []
-    schema_path = REPO_ROOT / "schemas" / "framework_template.schema.json"
+    schema_path = governance_asset_root() / "schemas" / "framework_template.schema.json"
     try:
         template_schema = json.loads(read_text(schema_path))
     except (OSError, json.JSONDecodeError) as exc:
@@ -4204,6 +4833,14 @@ def validate_framework_templates() -> list[str]:
         runtime_files = yaml_string_list(read_text(template_path), "runtime_files")
         if runtime_files:
             data["runtime_files"] = runtime_files
+        if (
+            canonical_framework_binding_standard_is_active()
+            and str(data.get("template_status", "")) != "canonical"
+        ):
+            errors.append(
+                f"{rel(template_path)} must use template_status: canonical; "
+                "historical frozen templates are read-only"
+            )
         missing = sorted(FRAMEWORK_TEMPLATE_REQUIRED_KEYS - set(data))
         if missing:
             errors.append(f"{rel(template_path)} missing keys: {', '.join(missing)}")
@@ -4237,6 +4874,50 @@ def _binding_expected_branch(
     return experiment_branch_name(version, KINDS[kind_name], local_id, slug)
 
 
+def candidate_framework_binding_errors(data: dict[str, object]) -> list[str]:
+    """Keep a future-framework attempt distinct from an already formal framework."""
+    keys = {"candidate_family", "target_framework", "candidate_framework_status"}
+    if not any(key in data for key in keys):
+        return []
+
+    family = str(data.get("candidate_family", "none")).strip()
+    target = str(data.get("target_framework", "none")).strip()
+    status = str(data.get("candidate_framework_status", "not_applicable")).strip()
+    errors: list[str] = []
+    if status not in CANDIDATE_FRAMEWORK_STATUSES:
+        return [
+            "candidate_framework_status must be not_applicable or attempt_only"
+        ]
+    if status == "not_applicable":
+        if not _none_like(family) or not _none_like(target):
+            errors.append(
+                "candidate_framework_status not_applicable requires "
+                "candidate_family: none and target_framework: none"
+            )
+        return errors
+
+    if str(data.get("kind", "")) != "innovation":
+        errors.append("candidate framework attempts must use kind: innovation")
+    if not re.fullmatch(r"[a-z0-9]+(?:[-_][a-z0-9]+)*", family):
+        errors.append("candidate_family must be a lowercase slug")
+    if not re.fullmatch(r"FRAMEWORK-V[0-9]+", target):
+        errors.append("target_framework must be FRAMEWORK-VX")
+    if target == str(data.get("framework_id", "")):
+        errors.append("target_framework must differ from the source framework")
+    expected = CANDIDATE_FRAMEWORK_FAMILY_BINDINGS.get(family)
+    if expected is None:
+        errors.append(
+            f"candidate_family {family or '<missing>'} is not registered in the governance helper"
+        )
+    else:
+        for key, expected_value in expected.items():
+            if str(data.get(key, "")) != expected_value:
+                errors.append(
+                    f"candidate_family {family} requires {key}: {expected_value}"
+                )
+    return errors
+
+
 def experiment_binding_errors(
     *,
     version: str,
@@ -4244,6 +4925,7 @@ def experiment_binding_errors(
     row: dict[str, str],
     data: dict[str, object],
     template_data: dict[str, object],
+    require_canonical_registry: bool = False,
 ) -> list[str]:
     errors: list[str] = []
     missing = sorted(EXPERIMENT_BINDING_REQUIRED_KEYS - set(data))
@@ -4260,6 +4942,7 @@ def experiment_binding_errors(
     for key, expected in scalar_checks.items():
         if str(data.get(key, "")) != expected:
             errors.append(f"{key} must be {expected}")
+    errors.extend(candidate_framework_binding_errors(data))
 
     row_legacy = row.get("legacy_ref", "-")
     data_legacy = str(data.get("legacy_ref", ""))
@@ -4318,8 +5001,24 @@ def experiment_binding_errors(
                     errors.append(
                         "framework_template id/tag/commit must match TEMPLATE.yaml"
                     )
-                if str(registry_template.get("template_status", "")) != "frozen":
-                    errors.append("framework_template requires a frozen clean template")
+                registry_status = str(
+                    registry_template.get("template_status", "")
+                )
+                allowed_registry_statuses = (
+                    {"canonical"}
+                    if require_canonical_registry
+                    else {"canonical", "frozen"}
+                )
+                if registry_status not in allowed_registry_statuses:
+                    if require_canonical_registry:
+                        errors.append(
+                            "new formal runs require template_status: canonical; "
+                            "frozen templates are read-only history"
+                        )
+                    else:
+                        errors.append(
+                            "framework_template history requires a canonical or frozen template"
+                        )
         # The experiment checkout starts at the template code commit, which is
         # intentionally older than the later governance commit that registers
         # that template.  Trust the immutable registry object above rather than
@@ -4390,7 +5089,7 @@ def validate_experiment_binding(
         return [f"{row['experiment_id']} missing EXPERIMENT.yaml under {rel(path.parent)}"]
     data = read_shallow_yaml(path)
     errors: list[str] = []
-    schema_path = REPO_ROOT / "schemas" / "experiment.schema.json"
+    schema_path = governance_asset_root() / "schemas" / "experiment.schema.json"
     try:
         schema = json.loads(read_text(schema_path))
     except (OSError, json.JSONDecodeError) as exc:
@@ -4422,7 +5121,7 @@ def validate_framework_ledgers() -> list[str]:
     errors: list[str] = []
     errors.extend(validate_framework_templates())
     frameworks: dict[str, dict[str, object]] = {}
-    schema_path = REPO_ROOT / "schemas" / "framework.schema.json"
+    schema_path = governance_asset_root() / "schemas" / "framework.schema.json"
     try:
         framework_schema = json.loads(read_text(schema_path))
     except (OSError, json.JSONDecodeError) as exc:
@@ -4589,10 +5288,13 @@ def validate_framework_ledgers() -> list[str]:
     if (REPO_ROOT / "experiments" / "v4" / "framework.yaml").exists():
         errors.append("v4 is a legacy config-only tag and must not have framework.yaml")
     errors.extend(framework_derivation_errors(frameworks))
+    errors.extend(framework_git_ancestry_errors(frameworks))
     errors.extend(framework_promotion_link_errors(frameworks))
+    for data in frameworks.values():
+        errors.extend(framework_owner_decision_errors(data))
     for version, data in frameworks.items():
         source_framework = str(data.get("derived_from_framework", ""))
-        if source_framework == "none":
+        if source_framework in {"none", "main"}:
             continue
         source_version = source_framework.removeprefix("FRAMEWORK-").lower()
         source_experiment = str(data.get("promoted_from_experiment", ""))
@@ -4658,6 +5360,9 @@ template_registry_commit: {template_registry_commit}
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: {branch}
+candidate_family: none
+target_framework: none
+candidate_framework_status: not_applicable
 legacy_ref: none
 status: planned
 """
@@ -4686,8 +5391,122 @@ def formal_experiment_coordinates(
     return version, kind_name, local_id
 
 
+def formal_experiment_registration(
+    experiment_dir: Path,
+    *,
+    version: str,
+    kind_name: str,
+    local_id: str,
+) -> tuple[list[str], dict[str, str] | None, dict[str, str] | None]:
+    """Require one unique kind-index row and one unique central-registry row."""
+    errors = framework_index_row_errors(version, kind_name)
+    framework_experiment_id = f"{version.upper()}-{local_id}"
+    expected_directory = rel(experiment_dir)
+    expected_matrix = rel(experiment_dir / PARAMETER_MATRIX_MD)
+    index_matches = [
+        row
+        for row in framework_index_rows(version, kind_name)
+        if row.get("experiment_id") == framework_experiment_id
+    ]
+    if len(index_matches) != 1:
+        errors.append(
+            f"formal experiment must have exactly one {kind_name}/INDEX.md row for "
+            f"{framework_experiment_id}; found {len(index_matches)}"
+        )
+        index_row = None
+    else:
+        index_row = index_matches[0]
+        if index_row.get("directory") != expected_directory:
+            errors.append(
+                f"formal experiment INDEX directory must be {expected_directory}"
+            )
+        if index_row.get("parameter_matrix") != expected_matrix:
+            errors.append(
+                f"formal experiment INDEX parameter matrix must be {expected_matrix}"
+            )
+        if index_row.get("status") not in FRAMEWORK_INDEX_STATUSES:
+            errors.append("formal experiment INDEX status is invalid")
+        elif index_row.get("status") not in FORMAL_RUNNABLE_INDEX_STATUSES:
+            errors.append(
+                "formal experiment INDEX status is not runnable: "
+                f"{index_row.get('status')}"
+            )
+
+    for version_dir in sorted((REPO_ROOT / "experiments").glob("v*")):
+        if not version_dir.is_dir():
+            continue
+        for other_kind in FRAMEWORK_KIND_ORDER:
+            for other_row in framework_index_rows(version_dir.name, other_kind):
+                if other_row.get("experiment_id") == framework_experiment_id:
+                    continue
+                if other_row.get("directory") == expected_directory:
+                    errors.append(
+                        "formal experiment directory is also registered to "
+                        f"{other_row.get('experiment_id')}"
+                    )
+                if other_row.get("parameter_matrix") == expected_matrix:
+                    errors.append(
+                        "formal experiment parameter matrix is also registered to "
+                        f"{other_row.get('experiment_id')}"
+                    )
+
+    registry_rows, registry_errors = central_experiment_registry_rows()
+    errors.extend(registry_errors)
+    registry_matches = [
+        row
+        for row in registry_rows
+        if row.get("experiment_id") == framework_experiment_id
+    ]
+    if len(registry_matches) != 1:
+        errors.append(
+            "formal experiment must have exactly one central registry row for "
+            f"{framework_experiment_id}; found {len(registry_matches)}"
+        )
+        registry_row = None
+    else:
+        registry_row = registry_matches[0]
+        if registry_row.get("framework_id") != f"FRAMEWORK-{version.upper()}":
+            errors.append(
+                f"central registry framework must be FRAMEWORK-{version.upper()}"
+            )
+        if registry_row.get("kind") != kind_name:
+            errors.append(f"central registry kind must be {kind_name}")
+        if registry_row.get("directory") != expected_directory:
+            errors.append(f"central registry directory must be {expected_directory}")
+        if index_row is not None and registry_row.get("status") != index_row.get("status"):
+            errors.append(
+                "central registry status must match the formal INDEX status: "
+                f"{index_row.get('status')}"
+            )
+    for other_row in registry_rows:
+        if other_row.get("experiment_id") == framework_experiment_id:
+            continue
+        if other_row.get("directory") == expected_directory:
+            errors.append(
+                "central registry directory is also registered to "
+                f"{other_row.get('experiment_id')}"
+            )
+    return errors, index_row, registry_row
+
+
+def formal_experiment_registration_errors(
+    experiment_dir: Path,
+    *,
+    version: str,
+    kind_name: str,
+    local_id: str,
+) -> list[str]:
+    errors, _index_row, _registry_row = formal_experiment_registration(
+        experiment_dir,
+        version=version,
+        kind_name=kind_name,
+        local_id=local_id,
+    )
+    return errors
+
+
 def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
-    """Require one formal experiment to be an independent child of a frozen template."""
+    """Require one formal experiment to be an independent child of a canonical framework."""
     require_path_inside(experiment_dir, REPO_ROOT / "experiments", "experiment path")
     coordinates = formal_experiment_coordinates(experiment_dir)
     if coordinates is None:
@@ -4698,7 +5517,7 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
     binding_path = experiment_dir / "EXPERIMENT.yaml"
     if not binding_path.exists():
         raise WorkflowError(
-            "formal experiment is not bound to a ready frozen template: "
+            "formal experiment is not bound to a ready canonical framework: "
             f"missing {display_path(binding_path)}"
         )
     data = read_shallow_yaml(binding_path)
@@ -4707,27 +5526,35 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
         or str(data.get("template_binding_status", "")) != "ready"
     ):
         raise WorkflowError(
-            "formal experiment is not bound to a ready frozen template"
+            "formal experiment is not bound to a ready canonical framework"
         )
 
     registry_commit = str(data.get("template_registry_commit", ""))
     if not re.fullmatch(r"[0-9a-f]{40}", registry_commit):
         raise WorkflowError(
-            "formal experiment is not bound to a ready frozen template: "
+            "formal experiment is not bound to a ready canonical framework: "
             "template_registry_commit must be a full commit"
         )
+    require_external_governance_identity(registry_commit)
     template_data, resolved_registry = load_framework_template_from_registry(
         version, registry_commit
     )
     if resolved_registry != registry_commit:
         raise WorkflowError("template_registry_commit did not resolve exactly")
 
-    row = {
+    registration_errors, index_row, _registry_row = formal_experiment_registration(
+        experiment_dir,
+        version=version,
+        kind_name=kind_name,
+        local_id=local_id,
+    )
+    row = index_row or {
         "experiment_id": f"{version.upper()}-{local_id}",
         "directory": rel(experiment_dir),
         "legacy_ref": str(data.get("legacy_ref", "none")),
         "status": str(data.get("status", "")),
         "parameter_matrix": rel(experiment_dir / PARAMETER_MATRIX_MD),
+        "promoted_framework": "-",
     }
     errors = experiment_binding_errors(
         version=version,
@@ -4735,8 +5562,9 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
         row=row,
         data=data,
         template_data=template_data,
+        require_canonical_registry=True,
     )
-    schema_path = REPO_ROOT / "schemas" / "experiment.schema.json"
+    schema_path = governance_asset_root() / "schemas" / "experiment.schema.json"
     try:
         schema = json.loads(read_text(schema_path))
     except (OSError, json.JSONDecodeError) as exc:
@@ -4745,6 +5573,7 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
         errors.extend(
             f"schema: {item}" for item in json_schema_subset_errors(data, schema)
         )
+    errors.extend(registration_errors)
     if errors:
         raise WorkflowError(
             "formal experiment template binding is invalid:\n" + "\n".join(errors)
@@ -4811,12 +5640,57 @@ def require_ready_experiment_for_artifact(path: Path) -> None:
     """Require every new V5 formal artifact to live under one canonical experiment."""
     if not immutable_template_standard_is_active():
         return
-    experiment_dir = path if path.is_dir() else path.parent
+    if path.is_dir() or path.name != PARAMETER_MATRIX_CSV:
+        raise WorkflowError(
+            "formal parameter-matrix commands require the exact experiment-root "
+            f"{PARAMETER_MATRIX_CSV}; alternate matrix files are not allowed"
+        )
+    if any(part == os.pardir for part in path.parts):
+        raise WorkflowError(
+            "formal parameter-matrix commands reject parent-directory aliases; "
+            f"use the direct experiment-root {PARAMETER_MATRIX_CSV} path"
+        )
+    lexical_path = Path(os.path.abspath(os.fspath(path)))
+    lexical_root = Path(os.path.abspath(os.fspath(REPO_ROOT)))
+    try:
+        relative_parts = lexical_path.relative_to(lexical_root).parts
+    except ValueError as exc:
+        raise WorkflowError(
+            "formal parameter-matrix commands require a direct path inside the repository"
+        ) from exc
+    candidate = lexical_root
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    for part in relative_parts:
+        candidate /= part
+        try:
+            candidate_stat = candidate.lstat()
+        except OSError:
+            continue
+        if candidate.is_symlink() or (
+            reparse_flag
+            and getattr(candidate_stat, "st_file_attributes", 0) & reparse_flag
+        ):
+            raise WorkflowError(
+                "formal parameter-matrix commands reject symlink, junction, and path aliases; "
+                f"use the direct experiment-root {PARAMETER_MATRIX_CSV} path"
+            )
+    if lexical_path.exists() and lexical_path.stat().st_nlink != 1:
+        raise WorkflowError(
+            "formal parameter-matrix commands reject hard-link and path aliases; "
+            f"use the direct experiment-root {PARAMETER_MATRIX_CSV} path"
+        )
+    experiment_dir = lexical_path.parent
     if formal_experiment_coordinates(experiment_dir) is None:
         raise WorkflowError(
             "SYS-WORKFLOW-V5 formal artifacts must belong to a canonical formal "
             "experiment directory experiments/vX/<kind>/<EXPERIMENT-ID_slug>; "
             "legacy Trial/Attempt paths are read-only history"
+        )
+    expected_path = experiment_dir / PARAMETER_MATRIX_CSV
+    if os.path.normcase(str(lexical_path)) != os.path.normcase(str(expected_path)):
+        raise WorkflowError(
+            "formal parameter-matrix commands require the exact experiment-root "
+            f"{PARAMETER_MATRIX_CSV}; aliases and alternate paths are not allowed"
         )
     require_ready_experiment_base(experiment_dir)
 
@@ -4845,12 +5719,20 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
         or DEFAULT_TEMPLATE_REGISTRY_REF
     )
     registry_active = immutable_template_standard_is_active_at_ref(registry_ref)
+    if (immutable_template_standard_is_active() or EXTERNAL_REPO_ROOT) and not registry_active:
+        raise WorkflowError(
+            "new-experiment under active governance requires "
+            "--template-registry-ref to resolve to an active canonical template registry; "
+            "legacy or inactive registry refs are read-only"
+        )
     template_registry_commit = "none"
     registry_template_data: dict[str, object] = {}
+    registry_overlay: dict[Path, str] = {}
     if registry_active:
         registry_template_data, template_registry_commit = (
             load_framework_template_from_registry(version, registry_ref)
         )
+        require_external_governance_identity(template_registry_commit)
         registry_framework = git_show(
             f"{template_registry_commit}:experiments/{version}/framework.yaml",
             check=False,
@@ -4858,6 +5740,19 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
         if not registry_framework:
             raise WorkflowError(
                 f"{version} is not a formal framework in template registry "
+                f"{template_registry_commit}"
+            )
+        registry_overlay = framework_governance_overlay_contents(
+            version,
+            template_registry_commit,
+        )
+        registry_index = registry_overlay[
+            REPO_ROOT / f"experiments/{version}/{kind.folder}/INDEX.md"
+        ]
+        framework_experiment_id = f"{version.upper()}-{exp_id}"
+        if framework_experiment_id in registry_index:
+            raise WorkflowError(
+                f"{framework_experiment_id} already exists in template registry "
                 f"{template_registry_commit}"
             )
     elif framework_standard_is_active():
@@ -4870,6 +5765,11 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 + "\n".join(framework_errors)
             )
     src_config = base_dir / "config.yaml"
+    if not src_config.is_file():
+        raise WorkflowError(f"Missing framework config: {rel(src_config)}")
+    central_registry = REPO_ROOT / "experiments" / "EXPERIMENT_REGISTRY.md"
+    if not central_registry.is_file():
+        raise WorkflowError(f"Missing experiment registry: {rel(central_registry)}")
     duplicates = sorted((base_dir / kind.folder).glob(f"{exp_id}_*"))
     if duplicates:
         raise WorkflowError(
@@ -4886,6 +5786,8 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
         version,
         template_data=registry_template_data or None,
     )
+    if registry_overlay:
+        apply_framework_governance_overlay(registry_overlay)
 
     template_path = framework_template_path(version)
     template_data = registry_template_data or (
@@ -5234,11 +6136,26 @@ def cmd_record_result(args: argparse.Namespace) -> int:
     kind = KINDS[args.kind]
     exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
     slug = require_slug(args.slug)
-    matrix_path = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}" / PARAMETER_MATRIX_CSV
+    exp_dir = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}"
+    legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    formal_transaction = immutable_template_standard_is_active() and not legacy_summary_only
+    matrix_path = exp_dir / PARAMETER_MATRIX_CSV
+    if formal_transaction:
+        if not exp_dir.exists():
+            raise WorkflowError(f"Missing experiment directory: {rel(exp_dir)}")
+        require_ready_experiment_for_artifact(matrix_path)
+        with parameter_matrix_mutation_lock(
+            matrix_path,
+            operation="record-result-transaction",
+            job_id=str(getattr(args, "matrix_job_id", "") or ""),
+            run_id=str(getattr(args, "attempt_id", "") or ""),
+        ):
+            require_ready_experiment_for_artifact(matrix_path)
+            return _cmd_record_result_locked(args)
     if (
         matrix_path.exists()
         and parameter_matrix_policy_is_active()
-        and not bool(getattr(args, "legacy_summary_only", False))
+        and not legacy_summary_only
     ):
         with parameter_matrix_mutation_lock(
             matrix_path,
@@ -5258,8 +6175,12 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
     exp_dir = REPO_ROOT / "experiments" / version / kind.folder / f"{exp_id}_{slug}"
     if not exp_dir.exists():
         raise WorkflowError(f"Missing experiment directory: {rel(exp_dir)}")
+    legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
     if existing_legacy_identity(exp_dir):
         raise WorkflowError("legacy_summary_only identity is permanent; refusing to overwrite this experiment ledger")
+    matrix_path = exp_dir / PARAMETER_MATRIX_CSV
+    if immutable_template_standard_is_active() and not legacy_summary_only:
+        require_ready_experiment_for_artifact(matrix_path)
     if args.kind == "tune":
         if not args.parameter or not args.old_value or not args.new_value:
             raise WorkflowError("record-result --kind tune requires --parameter, --old-value, and --new-value")
@@ -5271,8 +6192,7 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
     matrix_result_row: dict[str, str] | None = None
     run_start_receipt_path: Path | None = None
     run_start_receipt_sha256 = ""
-    matrix_exists = (exp_dir / PARAMETER_MATRIX_CSV).exists()
-    legacy_summary_only = bool(getattr(args, "legacy_summary_only", False))
+    matrix_exists = matrix_path.exists()
     if legacy_summary_only:
         legacy_errors = legacy_summary_only_eligibility_errors(
             exp_dir,
@@ -5294,7 +6214,6 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
     if parameter_matrix_policy_is_active() and matrix_exists:
         if not args.seed:
             raise WorkflowError("record-result under the parameter-matrix policy requires --seed")
-        matrix_path = exp_dir / PARAMETER_MATRIX_CSV
         matrix_rows = ready_parameter_matrix_rows(matrix_path)
         matrix_result_row = select_parameter_matrix_result_row(
             matrix_rows,
@@ -7050,7 +7969,7 @@ def cmd_record_module_attempt(args: argparse.Namespace) -> int:
 
 
 def framework_standard_is_active() -> bool:
-    standard_path = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    standard_path = governance_asset_root() / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
     if not standard_path.exists():
         return False
     standard_text = read_text(standard_path)
@@ -7060,13 +7979,25 @@ def framework_standard_is_active() -> bool:
 
 
 def immutable_template_standard_is_active() -> bool:
-    standard_path = REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    standard_path = governance_asset_root() / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
     if not standard_path.exists():
         return False
     standard_text = read_text(standard_path)
     version_match = re.search(r"(?m)^standard_id:\s*SYS-WORKFLOW-V([0-9]+)\s*$", standard_text)
     status_active = re.search(r"(?m)^status:\s*active\s*$", standard_text) is not None
     return bool(version_match and int(version_match.group(1)) >= 5 and status_active)
+
+
+def canonical_framework_binding_standard_is_active() -> bool:
+    """Return whether TEMPLATE.yaml is only a binding for framework/vX itself."""
+    standard_path = governance_asset_root() / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md"
+    if not standard_path.exists():
+        return False
+    standard_text = read_text(standard_path)
+    return bool(
+        re.search(r"(?m)^ledger_id:\s*DATA-FRAMEWORK-TREE-V3\s*$", standard_text)
+        and re.search(r"(?m)^status:\s*active\s*$", standard_text)
+    )
 
 
 def immutable_template_standard_is_active_at_ref(ref: str) -> bool:
@@ -8797,26 +9728,17 @@ def local_gtpj_workflow_skill_errors() -> list[str]:
 
 
 def flat_framework_language_errors() -> list[str]:
-    """Keep active governance pages from drifting back to parent/child framework language."""
+    """Keep active governance pages aligned with truthful framework ancestry."""
     if not framework_standard_is_active():
         return []
     errors: list[str] = []
     banned_phrases = [
-        "新的子 `FRAMEWORK",
-        "新的子 FRAMEWORK",
-        "产生一个子 `FRAMEWORK",
-        "parent version / parent tag",
-        "under the parent version",
-        "source_version / source_tag",
-        "正式框架树",
-        "版本树账本",
-        "父版本 H",
-        "父节点",
-        "Version tree:",
-        "promote/<parent-version>",
-        "父代码来源",
-        "formal framework tree",
-        "promote/v1-idea-0003-to-v4",
+        "正式框架全部平级",
+        "所有正式框架平级",
+        "所有节点同级",
+        "新的同级正式框架",
+        "不表示包含、上下级",
+        "正式框架不能嵌套",
     ]
     roots = [
         REPO_ROOT / "README.md",
@@ -8834,7 +9756,6 @@ def flat_framework_language_errors() -> list[str]:
         elif root.exists():
             candidates.update(path for path in root.rglob("*.md") if path.is_file())
     exempt_paths = {
-        (REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md").resolve(),
         (REPO_ROOT / "experiments" / "templates" / "TRIAL_README_template.md").resolve(),
     }
     for path in sorted(candidates, key=lambda item: str(item).lower()):
@@ -8851,19 +9772,22 @@ def flat_framework_language_errors() -> list[str]:
                 errors.append(f"{display_path(path)} contains retired flat-framework phrase: {phrase}")
 
     required_markers = {
-        REPO_ROOT / "README.md": ["v1  ←  v2  ←  v3  ←  v5"],
+        REPO_ROOT / "README.md": ["main（公共底座）", "framework/vX"],
         REPO_ROOT / "docs" / "GITHUB_GOVERNANCE.md": [
-            "FRAMEWORK-V3  derived_from: FRAMEWORK-V2",
-            "FRAMEWORK-V5  derived_from: FRAMEWORK-V3",
+            "main -> FRAMEWORK-VX",
+            "derived_from_framework",
         ],
         REPO_ROOT / "docs" / "workflow" / "core" / "WORKFLOW_ROUTER.md": [
-            "新的同级正式框架"
+            "owner 明确确认",
+            "framework/vX",
         ],
         REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": [
-            "新的同级正式框架"
+            "derived_from_framework",
+            "framework/vX",
         ],
         REPO_ROOT / "docs" / "workflow" / "protocols" / "promotion.md": [
-            "registry_level: formal_peer",
+            "owner 明确确认",
+            "framework/vY",
             "tune/INDEX.md",
             "ablation/INDEX.md",
             "innovation/INDEX.md",
@@ -8881,37 +9805,62 @@ def flat_framework_language_errors() -> list[str]:
 
 
 def immutable_template_language_errors() -> list[str]:
-    """Keep every active entry aligned with the immutable template start rule."""
+    """Keep every active entry aligned with the canonical framework start rule."""
     if not immutable_template_standard_is_active():
         return []
     errors: list[str] = []
     core_markers = [
-        "MODEL-VX-TEMPLATE-VN",
+        "framework/vX",
         "TEMPLATE.yaml",
         "EXPERIMENT.yaml",
-        "从准确母版提交独立分叉",
-        "实验代码不得并回母版",
-        "legacy_frozen 不能启动新实验",
+        "正式框架本身就是最简模板",
+        "从准确框架提交独立分叉",
+        "实验代码不得并回正式框架",
+        "只有 `canonical` 能启动新实验",
     ]
+    module_explanation_markers = ["英文缩写", "英文全称", "中文含义", "一句话作用"]
+    candidate_framework_markers = [
+        "candidate_family",
+        "target_framework",
+        "candidate_framework_status",
+    ]
+    external_governance_markers = ["--repo-root", "template_registry_commit"]
     required_markers: dict[Path, list[str]] = {
-        REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md": core_markers,
+        REPO_ROOT / "docs" / "workflow" / "FRAMEWORK_EXPERIMENT_STANDARD.md": core_markers
+        + module_explanation_markers
+        + candidate_framework_markers
+        + external_governance_markers,
         REPO_ROOT / "docs" / "workflow" / "core" / "QUICK_START.md": ["TEMPLATE.yaml", "PARAMETER_MATRIX"],
         REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_MINI.md": ["baseline_commit", "config_or_parameter_matrix"],
         REPO_ROOT / "docs" / "workflow" / "core" / "TASK_START_CARD.md": ["run_commit", "config_snapshot"],
         REPO_ROOT / "docs" / "workflow" / "protocols" / "git_policy.md": core_markers,
         REPO_ROOT / "docs" / "workflow" / "protocols" / "versioning.md": core_markers,
-        REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers,
-        REPO_ROOT / "experiments" / "templates" / "experiment_README_template.md": core_markers[1:3],
-        REPO_ROOT / "README.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
-        REPO_ROOT / "AGENTS.md": ["TEMPLATE.yaml", "framework/vX-template-vN"],
+        REPO_ROOT / "docs" / "workflow" / "protocols" / "experiment_protocol.md": core_markers
+        + candidate_framework_markers
+        + external_governance_markers,
+        REPO_ROOT / "experiments" / "templates" / "experiment_README_template.md": [
+            "TEMPLATE.yaml",
+            "EXPERIMENT.yaml",
+            "framework/vX",
+        ]
+        + candidate_framework_markers,
+        REPO_ROOT / "experiments" / "templates" / "VERSION_template.md": module_explanation_markers,
+        REPO_ROOT / "experiments" / "templates" / "implementation_template.md": module_explanation_markers,
+        REPO_ROOT / "experiments" / "templates" / "modules" / "module_source_template.md": [
+            "module_full_name_en",
+            "module_name_zh",
+            "module_plain_purpose",
+        ],
+        REPO_ROOT / "README.md": ["TEMPLATE.yaml", "framework/vX"],
+        REPO_ROOT / "AGENTS.md": ["TEMPLATE.yaml", "framework/vX"],
         REPO_ROOT / "docs" / "PROJECT_STATUS.md": [
-            "MODEL-V5-TEMPLATE-V1",
-            "不能启动新实验",
+            "framework/vX",
+            "canonical",
         ],
         REPO_ROOT / "docs" / "workflow" / "protocols" / "promotion.md": [
             "TEMPLATE.yaml",
-            "MODEL-VY-TEMPLATE-V1",
-            "framework/vY-template-v1",
+            "framework/vY",
+            "owner 明确确认",
         ],
     }
     for path, markers in required_markers.items():
@@ -8957,22 +9906,10 @@ def immutable_template_language_errors() -> list[str]:
                 current_status = yaml_unquote(status_match.group(1))
         add_manifest_path()
 
-    retired_instructions = [
-        "新的创新从 `framework/v1`",
-        "所有新实验都从对应的 `framework/vX`",
-        "必须从 `framework/vX`",
-        "从目标 `framework/vX`",
-        "从对应的 `framework/vX`",
-    ]
     for path in sorted(active_paths, key=lambda item: str(item).lower()):
         if not path.exists():
             continue
         content = read_text(path)
-        for phrase in retired_instructions:
-            if phrase in content:
-                errors.append(
-                    f"{display_path(path)} still contains retired experiment-start instruction: {phrase}"
-                )
         command_content = re.sub(r"`\s*\r?\n\s*", " ", content)
         command_content = re.sub(r"\\\s*\r?\n\s*", " ", command_content)
         retired_formal_runner = re.search(
@@ -9512,7 +10449,10 @@ def ai_cross_review_errors(pack_dir: Path) -> list[str]:
     return errors
 
 
-def run_command_capture(command: str, *, cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
+def run_command_capture(
+    command: str, *, cwd: Path | None = None
+) -> tuple[int, str, str]:
+    cwd = cwd or REPO_ROOT
     result = subprocess.run(
         command,
         cwd=cwd,
@@ -16015,6 +16955,7 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
         raise WorkflowError("another process is already binding this parameter matrix") from exc
     _HELD_PARAMETER_MATRIX_LOCKS.add(lock_key)
     try:
+        require_ready_experiment_for_artifact(matrix_path)
         rows = read_parameter_matrix(matrix_path)
         original_rows = [dict(item) for item in rows]
         source_note = parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD))
@@ -16287,6 +17228,7 @@ def cmd_freeze_parameter_matrix(args: argparse.Namespace) -> int:
         operation="freeze-parameter-matrix",
         job_id=args.job_id,
     ):
+        require_ready_experiment_for_artifact(matrix_path)
         return freeze_parameter_matrix_locked(args, matrix_path=matrix_path, config_path=config_path)
 
 
@@ -18707,6 +19649,14 @@ def cmd_closeout_workflow(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GTPJ workflow 结构辅助 helper")
+    parser.add_argument(
+        "--repo-root",
+        default="",
+        help=(
+            "显式指定要操作的 GTPJ checkout 根目录；用于从当前治理 helper "
+            "安全操作历史 framework commit 的独立实验分支"
+        ),
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     status = sub.add_parser("status", help="显示仓库状态")
@@ -18799,21 +19749,26 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate_framework = sub.add_parser(
         "validate-framework-ledgers",
-        help="校验同级正式框架身份、四类实验、参数表和历史来源指针",
+        help="校验正式框架身份、真实 Git 继承、四类实验和参数表",
     )
     validate_framework.set_defaults(func=cmd_validate_framework_ledgers)
 
     validate_templates = sub.add_parser(
         "validate-framework-templates",
-        help="校验正式框架只读母版的分支、Tag 和准确提交",
+        help="校验正式框架或历史模板的分支、Tag 和准确提交",
     )
     validate_templates.set_defaults(func=cmd_validate_framework_templates)
 
     validate_experiment_base = sub.add_parser(
         "validate-experiment-base",
-        help="校验当前实验分支包含账本登记的准确母版提交",
+        help="校验当前实验分支绑定账本登记的准确框架提交",
     )
     validate_experiment_base.add_argument("--path", required=True)
+    validate_experiment_base.add_argument(
+        "--repo-root",
+        default=argparse.SUPPRESS,
+        help="也可在子命令后指定目标 GTPJ checkout 根目录",
+    )
     validate_experiment_base.set_defaults(func=cmd_validate_experiment_base)
 
     new_exp = sub.add_parser("new-experiment", help="创建版本实验目录")
@@ -18821,6 +19776,11 @@ def build_parser() -> argparse.ArgumentParser:
     new_exp.add_argument("--kind", required=True, choices=sorted(KINDS))
     new_exp.add_argument("--exp-id", required=True)
     new_exp.add_argument("--slug", required=True)
+    new_exp.add_argument(
+        "--repo-root",
+        default=argparse.SUPPRESS,
+        help="也可在子命令后指定目标 GTPJ checkout 根目录",
+    )
     new_exp.add_argument(
         "--template-registry-ref",
         default=DEFAULT_TEMPLATE_REGISTRY_REF,
@@ -19179,6 +20139,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.repo_root:
+            configure_repo_root(args.repo_root)
         return args.func(args)
     except WorkflowError as exc:
         print(f"gtpj-helper-error: {exc}", file=sys.stderr)

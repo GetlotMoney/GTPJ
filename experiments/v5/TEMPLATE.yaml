@@ -1,23 +1,11 @@
 schema_version: gtpj.framework_template.v1
 framework_id: FRAMEWORK-V5
-template_id: MODEL-V5-TEMPLATE-V2
-template_status: frozen
-template_branch: framework/v5-template-v2
-template_tag: model/v5-template-v2
-template_commit: fb4b29b04087640890a532f105cb527d3a8c461b
+template_id: FRAMEWORK-V5
+template_status: canonical
+template_branch: framework/v5
+template_tag: v5
+template_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
 source_framework_tag: v5
 source_framework_commit: 08e5ecb1a5db6c6d589527cda35d8d4f7f437e07
-behavior_contract: docs/workflow/contracts/V5_BEHAVIOR_CONTRACT.md
-main_runtime_status: active
-runtime_files:
-  - model/MyModel.py
-  - train_GTPJ_CUB.py
-  - tools/reproducibility.py
-  - tools/convert_v5_checkpoint.py
-  - tools/v5_cub_data.py
-  - tools/v5_evaluation.py
-  - tools/v5_runtime.py
-  - config/GTPJ_cub_gzsl.yaml
-  - config/versions/v5.yaml
-  - experiments/v5/config.yaml
-  - experiments/v5/baseline/config.yaml
+behavior_contract: none
+main_runtime_status: inactive

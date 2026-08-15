@@ -66,30 +66,32 @@ python workflow/gtpj_workflow.py audit-boundary
 python workflow/gtpj_workflow.py tune-suggest --version v5
 
 # framework tune example
-python workflow/gtpj_workflow.py validate-framework-templates
-git switch -c exp/v1/tune/tune-001-topo008 <TEMPLATE_TAG>
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+# GOVERNANCE_HELPER 来自干净且已审核的治理 commit；FRAMEWORK_CHECKOUT 位于准确框架 commit。
+# 历史框架 checkout 内的旧 helper 不得用于新实验。
+python <GOVERNANCE_HELPER> validate-framework-templates
+git switch -c exp/v1/tune/tune-001-topo008 framework/v1
+python <GOVERNANCE_HELPER> new-experiment --repo-root <FRAMEWORK_CHECKOUT> --template-registry-ref <GOVERNANCE_COMMIT> --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 # 填写 experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv 的真实参数、seed 和目的后：
-python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
-python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
+python <GOVERNANCE_HELPER> --repo-root <FRAMEWORK_CHECKOUT> freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
+python <GOVERNANCE_HELPER> --repo-root <FRAMEWORK_CHECKOUT> validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
 # 提交上述冻结表后，才运行训练。
 conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml
-python workflow/gtpj_workflow.py record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id RUN-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --command "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
+python <GOVERNANCE_HELPER> --repo-root <FRAMEWORK_CHECKOUT> record-result --version v1 --kind tune --exp-id TUNE-001 --slug topo008 --matrix-job-id RUN-001 --parameter conditional_text_ratio --old-value 0.008 --new-value 0.006 --seed 5 --log train_log/CUB/<log>.txt --pre-run-freeze-commit <FREEZE_COMMIT> --command "conda run -n dvsr_gpu python train_GTPJ_CUB.py --config experiments/v1/tune/TUNE-001_topo008/config.yaml" --decision keep
 
 # idea and version view
 python workflow/gtpj_workflow.py new-idea --idea-id IDEA-XXXX --slug short_name --title "short name" --source-type paper --source-ref "<source>" --source-status verified --base-version v1 --global-score 50 --version-score 50 --applicability direct
 python workflow/gtpj_workflow.py set-current-version --version v1
 
 # framework innovation example
-python workflow/gtpj_workflow.py validate-framework-templates
-git switch -c exp/v1/innovation/innovation-001-short-name <TEMPLATE_TAG>
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
-# 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再注册新的同级正式框架和 Tag。
+python <GOVERNANCE_HELPER> validate-framework-templates
+git switch -c exp/v1/innovation/innovation-001-short-name framework/v1
+python <GOVERNANCE_HELPER> new-experiment --repo-root <FRAMEWORK_CHECKOUT> --template-registry-ref <GOVERNANCE_COMMIT> --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
+# 填写 innovation 实验的 PARAMETER_MATRIX.csv；owner 确认晋级后，在候选最终 commit 上注册新正式框架和 Tag。
 ```
 
 ## Boundary Rules
 
-- `new-experiment` 只在干净且命名准确的 `exp/vX/<type>/...` 分支运行；分支 `HEAD` 必须正好等于 `TEMPLATE.yaml` 登记的母版 commit，并生成 `EXPERIMENT.yaml`。
+- `new-experiment` 只在干净且命名准确的 `exp/vX/<type>/...` 分支运行；分支 `HEAD` 必须正好等于 `TEMPLATE.yaml` 登记的 `framework/vX` commit，并生成 `EXPERIMENT.yaml`。跨 checkout 时，治理 helper 的 `HEAD` 必须等于 `template_registry_commit` 且自身工作区干净；后续命令统一用全局 `--repo-root <FRAMEWORK_CHECKOUT>` 操作目标 checkout。历史 commit 缺少的新式 `framework.yaml`、`MODULES.md`、`EXPERIMENTS.md` 或四类 `INDEX.md` 只从同一 registry commit 预检并同步轻量治理覆盖层，不同步模型、配置或训练产物。
 - `start --phrase "..."` is read-only: it prints the owner-facing mini start card and never creates branches, files, or runs.
 - `new-trial`、`record-module-attempt` 和 `sync-trial-summary` 仅用于维护迁移前的旧 Trial/Attempt 证据，不是新实验入口。
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.

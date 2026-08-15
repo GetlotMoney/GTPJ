@@ -39,8 +39,8 @@ GTPJ_Warehouse：raw logs、checkpoint、experiment visualizations、experiment 
 idea_tree/                 # 创意来源、评分、排序
   -> experiments/vX/innovation/
                              # 创意被选中后，在所属正式框架内保存实现和证据，候选无 Tag
-  -> promoted FRAMEWORK-VY   # 创新确认并接纳后，注册新的同级正式框架并创建 Tag
-  -> experiments/vY/         # 新同级正式框架自己的四类实验记录
+  -> promoted FRAMEWORK-VY   # 创新确认并由 owner 接纳后，在候选最终 commit 注册新框架与 Tag
+  -> experiments/vY/         # 新正式框架自己的四类实验记录；derived_from 保留真实血缘
 ```
 
 正式实验只有一层：tune、ablation、innovation、confirmation 都写入目标 `experiments/vX/`。
@@ -52,21 +52,20 @@ idea_tree/                 # 创意来源、评分、排序
 版本规则：
 
 ```text
-一个 FRAMEWORK-VX = 一份 framework.yaml + 一份 TEMPLATE.yaml + 一个只读母版 Tag/commit + 四类同级实验账本 + 一个历史来源指针
+一个 FRAMEWORK-VX = 一个 framework/vX 分支 + 同 commit 的 vX Tag + framework.yaml + TEMPLATE.yaml + 四类实验账本 + 真实父框架或 main 起点
 ```
 
 从框架到一次运行固定分四层：
 
 | 层级 | 固定入口 | 用途 |
 |---|---|---|
-| 1. 框架 | `experiments/vX/framework.yaml` | 正式框架身份和历史来源。 |
-| 2. 母版 | `experiments/vX/TEMPLATE.yaml` | 不继续修改的代码底稿，登记母版编号、Tag 和准确代码 commit；它由后续管理提交记录。 |
-| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的代码起点，同时记录母版代码提交与管理登记提交。 |
+| 1. 框架 | `framework/vX` + `experiments/vX/framework.yaml` | 正式框架的最简代码、身份和真实继承关系。 |
+| 2. 绑定 | `experiments/vX/TEMPLATE.yaml` | 登记同一个框架的分支、Tag 和准确代码 commit；不是第二份代码。 |
+| 3. 实验 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 某项调参、消融、创新或确认的准确框架起点与治理登记提交。 |
 | 4. 运行 | 同一实验目录的 `PARAMETER_MATRIX.csv` | 一行一套参数、一个 seed 和一次真实运行。 |
 
 当前 active mainline 是 `GTPJ-v5 / tag v5`；`best_observed_H=74.54`，5 次 frozen repeat mean `confirmed_H=74.44`。
-当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。历史 `v4` tag 是 config-only 误分类，不作为正式框架版本。`main` 管总治理；旧 `framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 只作历史来源回查；
-`v1`、`v2`、`v3`、`v4`、`v5` 是 tag，不是分支；其中 `v4` 是历史 config-only tag，不计作正式框架版本。
+当前更强的 confirmed reference 是 `v3/CONFIRM-001 local-v3-054 / confirmed_H=74.47`。`main` 管总治理；`framework/v1`、`framework/v2`、`framework/v3`、`framework/v5` 是 canonical 长期分支，`v1`、`v2`、`v3`、`v5` 是分别与它们同 commit 的永久 Tag。只有历史 `framework/vX-template-vN` 与 `model/vX-template-vN` 继续只读回查；`v4` 仅是 config-only 历史 Tag，不是正式框架版本。
 
 代码层和实验层不要混淆：
 
@@ -126,9 +125,9 @@ idea_tree/                 # 创意来源、评分、排序
 |---|---|
 | `docs/PROJECT_STRUCTURE.md` | 本文件，项目结构总账本。 |
 | `docs/PROJECT_STATUS.md` | 当前项目状态、baseline、启用模块和参考结果。 |
-| `docs/MODULE_RESEARCH_CHECKLIST.md` | 自有模块逐项实验的长期上下文清单；固定指标口径、论文方法边界、当前证据、模块队列、通过/停止条件和每次结果更新模板。 |
+| `docs/MODULE_RESEARCH_CHECKLIST.md` | 自有模块逐项实验的长期上下文清单；固定 V6 候选家族归属、模块全称与通俗作用、指标口径、论文方法边界、当前证据、模块队列、通过/停止条件和每次结果更新模板。 |
 | `docs/TECH_STACK_HISTORY.md` | 系统、界面、数据、模型和文档版本的技术演进记录。 |
-| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 GitHub 如何管理同级正式框架、历史来源、tag、分支命名、合并删除、配置快照、创意树和实验证据。 |
+| `docs/GITHUB_GOVERNANCE.md` | GitHub 控制面主规范，说明 main 公共底座、真实框架继承树、tag、分支命名、晋级、合并删除和实验证据。 |
 | `docs/agent_reviews/<日期>-<主题>/` | 已完成的 Codex/Claude 只读审核证据包；保存任务范围、验证、意见、修复回应和最终结论，不保存训练产物。 |
 | `docs/reviews/*.zip` 与同名 `.sha256` | 已发生的历史审核包压缩归档；展开副本只留本机并由 `.gitignore` 忽略，不再作为现行审核入口。 |
 | `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html` | 当前人类总览入口，同级显示框架来源、母版状态、四类实验数量和 V5 消融阻塞原因。 |
@@ -185,7 +184,7 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `workflow/README.md` | V6 helper 使用说明；正式实验默认直接训练并用 `record-result` 回填，旧收据入口仅按需兼容。 |
-| `workflow/gtpj_workflow.py` | CLI helper，提供 `status`、`validate`、`validate-remote`、`audit-boundary`、`new-experiment`、`tune-suggest`、`runner-lock`、`runner-unlock`、`record-result`、`new-idea`、`new-trial`、`set-current-version`；会检查 `v1` tag 是否对应 `H=73.93`，可核对远端 `main`/`v1` 与本地 `main`/`v1` 对齐，要求 `new-experiment` 位于 clean 且包含当前本地 `main` 历史的目标 `exp/...` 分支，并生成带 base version 的分支/tag 建议、tune 候选建议、GPU Runner 本地锁、外部日志 artifact 入账和创意树版本视图。`set-current-version` 只切换创意树视图，不切换 `main` active code。 |
+| `workflow/gtpj_workflow.py` | 当前治理 CLI helper；校验真实框架 Git 继承、canonical 绑定、owner 记录、候选家族、实验参数表与结果边界。`new-experiment` 必须在准确 `framework/vX` commit 的独立 `exp/...` 分支运行；历史框架 checkout 由干净且 `HEAD == template_registry_commit` 的当前 helper 通过 `--repo-root` 操作，并从该 commit 预检/同步所属版本的轻量治理覆盖层，避免执行旧 helper 或把治理分支模型代码混入框架。`frozen / legacy_frozen` 只读，不能启动新正式运行。 |
 | `workflow/codex/README.md` | Codex workflow 入口，说明 Codex 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
 | `workflow/openclaw/README.md` | OpenClaw workflow 入口，说明 OpenClaw 如何遵循同一套 GitHub 事实源和 workflow 规范。 |
 | `workflow/openclaw/agent_roles.md` | OpenClaw 多角色职责参考：Coordinator、Reader、Implementer、质量检查者、Result Analyst；角色边界以 `docs/workflow/protocols/agent_orchestration.md` 为准。 |
@@ -293,9 +292,9 @@ idea_tree/                 # 创意来源、评分、排序
 | 路径 | 用途 |
 |---|---|
 | `experiments/README.md` | 实验记录目录说明。 |
-| `experiments/FRAMEWORK_TREE.md` | 正式框架同级表、历史来源连线和当前实验全貌的人类入口；文件名为兼容保留，不表示上下级树。 |
+| `experiments/FRAMEWORK_TREE.md` | 正式框架真实 Git 继承树和当前实验全貌的人类入口。 |
 | `experiments/EXPERIMENT_REGISTRY.md` | 全局实验登记表，记录版本、模块 trial 和版本实验。 |
-| `experiments/VERSION_TREE.md` | 全局同级框架注册表，记录正式 baseline 的历史来源、代码 Tag、账本来源和旧 trial 来源。 |
+| `experiments/VERSION_TREE.md` | 全局框架树账本，记录正式 baseline 的父框架或 main 起点、代码 Tag、账本来源和旧 trial 来源。 |
 | `experiments/PARAMETER_MATRIX_CATALOG.md` | 所有正式实验调参表的总目录。 |
 | `experiments/LEGACY_POLICY.md` | 边界重构前历史证据的迁移规则；`GTPJ-v1` baseline 原始日志已迁到外部 Warehouse，GitHub 只保留 artifact id、URI、hash 和 size。 |
 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/agent_runtime.yaml` | 本次单个服务器后台 Runner 的最小启动记录；明确不创建命名线程，并引用三份开跑前只读检查。 |
@@ -413,13 +412,14 @@ All formal version directories `experiments/vX/` must also include:
 | Path | Purpose |
 |---|---|
 | `experiments/vX/framework_diagram.md` | Version-level framework diagram: active forward path, key tensors, loss/training flow, GZSL hard-rule boundary, and code-vs-intent notes. |
-| `experiments/vX/MODULES.md` | Module glossary: every named module must state purpose, input, output, config switch, and baseline-off behavior. |
-| `experiments/vX/framework.yaml` | 同级正式框架的机器身份、历史来源框架、来源创新、分支、Tag 和 commit。 |
-| `experiments/vX/TEMPLATE.yaml` | 该框架的代码母版身份；`legacy_frozen` 只解释旧结果，`frozen` 才允许新实验起步。 |
+| `experiments/vX/MODULES.md` | 模块词典：每个模块必须写英文缩写、英文全称、中文含义、一句话作用、输入、输出、配置开关和关闭后行为。 |
+| `experiments/vX/framework.yaml` | 正式框架的机器身份、直接父框架或 main 起点、来源创新、分支、Tag 和 commit。 |
+| `experiments/vX/OWNER_DECISION.yaml` | 仅新晋级框架需要的 owner 接纳记录；绑定来源实验、目标框架和候选最终 commit。 |
+| `experiments/vX/TEMPLATE.yaml` | 正式框架的代码绑定卡；只有 `canonical` 可启动新实验，历史 `frozen / legacy_frozen` 只解释旧结果。 |
 | `experiments/vX/EXPERIMENTS.md` | 由四类 INDEX 自动生成的人类实验总览。 |
-| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的同级正式框架。 |
+| `experiments/vX/innovation/INDEX.md` | 该框架的创新实验索引；晋级后反向登记由它确定出的新正式框架。 |
 
-每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
+每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定框架编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来框架。
 
 这些 `experiments/vX/*` 索引是全部正式实验的主账本。即使问题来源于旧 module trial，heads、ratio、
 dropout、seed、窄消融或 clean confirmation 也要登记到所属正式框架对应类型，并用 `legacy_ref` 回查旧目录。

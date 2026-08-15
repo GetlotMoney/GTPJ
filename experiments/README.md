@@ -5,7 +5,8 @@
 - 总框架树：`experiments/FRAMEWORK_TREE.md`
 - 正式规范：`docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`
 - 每个框架总览：`experiments/vX/EXPERIMENTS.md`
-- 每个框架代码母版：`experiments/vX/TEMPLATE.yaml`
+- 每个正式框架：`framework/vX`（本身就是最简模板）
+- 框架代码绑定卡：`experiments/vX/TEMPLATE.yaml`
 - 每个实验代码起点：该实验目录的 `EXPERIMENT.yaml`
 - 每个实验参数：该实验目录的 `PARAMETER_MATRIX.md`
 
@@ -18,7 +19,7 @@
 主要区域：
 
 ```text
-VERSION_TREE.md          同级正式框架的历史来源指针
+VERSION_TREE.md          正式框架的真实 Git 继承树
 EXPERIMENT_REGISTRY.md   全局实验登记表
 module_trials/           旧创新 Trial/Attempt 的只读兼容证据
 v1/                      GTPJ-v1 baseline、tune、ablation、confirmation 记录

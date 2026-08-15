@@ -3,13 +3,12 @@
 ## 正式框架与实验入口
 
 当前采用 `FRAMEWORK-VX / 四类实验 / RUN-xxx` 规范。先看
-[同级正式框架注册表与历史来源连线](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
+[正式框架树](experiments/FRAMEWORK_TREE.md)，再进入各框架的 `EXPERIMENTS.md` 和具体实验的
 `PARAMETER_MATRIX.md`。旧 `TRIAL / ATTEMPT / DR` 仅用于历史回查。
 
-`main` 保存总索引和规则。历史 `framework/v1`、`framework/v2`、`framework/v3`、
-`framework/v5` 与 `vX` Tag 只负责回查正式框架来源；新实验只能读取 `TEMPLATE.yaml`，
-从 `framework/vX-template-vN` 与 `model/vX-template-vN` 锁定的准确母版提交独立开始。
-`v4` 只保留为历史 config-only 标签。
+`main（公共底座）` 默认冻结并保存共享基础、总索引和规则。`framework/vX` 本身就是
+正式框架的最简模板，`vX` Tag 固定同一 commit；新实验读取 `TEMPLATE.yaml` 后从该准确
+commit 独立开始。历史双层模板引用只读保留，`v4` 只保留为历史 config-only 标签。
 
 ## Current Active Version
 
@@ -56,13 +55,16 @@ promotion_decision: blocked
 | `GTPJ-v4` | `v4` | legacy config-only tag | CUB GZSL | Historical misclassification of `v3/CONFIRM-001 local-v3-054`; not a formal framework version. |
 | `GTPJ-v5` | `v5` | owner activated provisional active mainline | CUB GZSL | TRIAL-003 conditional BVSA text, best_observed_H=74.54, repeat mean H=74.44. |
 
-正式框架注册表与历史来源：
+正式框架树与真实继承关系：
 
 ```text
-v1  ←  v2  ←  v3  ←  v5
-       来源    来源    来源
+main（公共底座）
+└─ v1
+   └─ v2
+      └─ v3
+         └─ v5
 
-四个节点都是同级正式框架；向左箭头只表示右侧框架从左侧框架演变而来。
+每个确认节点都能直接作为下一项实验的起点；树形位置保留实际 Git 血缘。
 v3/CONFIRM-001 = local-v3-054 min3-confirmed tuned config，不是新的框架版本。
 ```
 

@@ -37,6 +37,9 @@
 - 修改代码、workflow、helper、模板或训练配置生成逻辑前，先从干净基线切到 `codex/` 专用分支。
 - 普通说明文档、账本值，以及已审核代码支持的普通超参数/seed 修改，只要不改变 schema、解析/生成逻辑、数据/划分、评估语义或工作流门槛，只做直接相关的机器检查。
 - 其他代码或规则修改在机器测试通过后，必须由两个不同子 Agent **依次**完成两轮对抗式只读审核；Implementer 是唯一 writer。
+- 正式第 1 轮前，Implementer 必须按本轮完整范围做一次集中预审，主动覆盖主要入口、接口、反例和回归风险；不能把已知问题拆成多次零散审核。
+- 每轮 Reviewer 即使发现 blocker 也必须继续检查该轮剩余范围，最后一次性列出全部发现和未覆盖范围；只有代码无法加载或外部条件使后续检查客观不可执行时才可提前停止，并明确写出原因。
+- Implementer 收到一轮完整报告后集中修复全部 blocker、统一重跑机器测试，再提交该轮复核；不得在 Reviewer 尚未完成整轮时发现一个修一个、反复重置审核。
 - 第 1 轮检查实现、接口、shape、梯度、数据和评估错误；修复、重测并经第 1 轮复核通过后，才能开始第 2 轮。
 - 第 2 轮检查同一份最终代码，寻找反例、隐藏耦合、回归和测试盲区。若它引发代码修改，两轮对该最终版本重新按顺序确认。
 - 两轮必须绑定同一 `reviewed_code_id` 和 `reviewed_extra_files`，记录 `files_reviewed`、`machine_test_ref`、发现、`unresolved_blockers`、`decision`、`uncovered_scope`；第 2 轮另记 `previous_round_ref`。
@@ -44,9 +47,14 @@
 
 ## 5. 框架、账本与资产
 
-- `main` 是治理分支；正式新实验读取所属 `experiments/vX/TEMPLATE.yaml`，从锁定的 `framework/vX-template-vN` / `model/vX-template-vN` 准确提交独立分叉。
-- 正式框架平级；每个框架只有 tune、ablation、innovation、confirmation 四类实验。创新通过确认和接纳后才注册新框架与 Tag。
+- `main` 是默认冻结的公共底座与治理分支；只有 owner 明确批准的公共修复才允许移动，已有框架不会随 `main` 自动变化。
+- 正式框架按真实 Git 继承关系形成树；`framework/vX` 本身就是该框架的最简模板，`vX` Tag 与它固定在同一 commit，`experiments/vX/TEMPLATE.yaml` 只负责绑定这一个代码身份。
+- 正式新实验读取所属 `TEMPLATE.yaml`，从准确 `framework/vX` commit 独立分叉；每个框架只有 tune、ablation、innovation、confirmation 四类实验，实验代码不回写正式框架。
+- 创新候选只有经过确认并由 owner 明确接纳后，才能在候选最终 commit 上创建新 `framework/vY` 与 `vY`；继承旧框架就保留父子血缘，完全独立则记录真实 `main` 起点。
+- 历史 `MODEL-VX-TEMPLATE-VN`、`framework/vX-template-vN`、`model/vX-template-vN` 原地只读兼容；只有 `canonical` 能启动新实验，历史 `frozen / legacy_frozen` 只用于回查。
+- 历史正式框架 commit 内的旧 helper 没有当前命令权；从它创建新实验时，必须由干净、已审核且与 `template_registry_commit` 相同的当前治理 checkout 执行 helper，并用 `--repo-root` 指向准确框架 checkout。
 - 每个真实训练对应参数矩阵中的一行 `RUN-xxx`；旧记录无法可靠恢复时写 `legacy_summary_only`，不得猜值。
+- 新模块第一次出现时必须同时写英文缩写、英文全称、中文含义和一句普通人能看懂的作用说明；后续不能只写缩写。框架账本用 `MODULES.md` 保留这份解释。
 - 正式复现固定 `repeat_type: exact_repeat`、`original_seed`、原始配置、代码、数据、训练日程和评估口径，并写明 `max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`。`seed_sweep`、`score_search`、`multi_seed_stability` 必须写 `not_confirmation_evidence: true`；best hit、stable confirm 和 promotion 的详细判定以 `docs/workflow/protocols/promotion.md` 与 `docs/workflow/protocols/experiment_protocol.md` 为准。
 - GitHub 只保存轻量账本、配置与证据索引；数据集、checkpoint、原始 cache、密钥和大型日志不入 Git。失败实验也必须如实记录。
 - 新增、删除、移动、重命名文件或改变职责时，同步更新 `docs/PROJECT_STRUCTURE.md`。

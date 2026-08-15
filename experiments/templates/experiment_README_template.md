@@ -3,13 +3,16 @@
 ```text
 experiment_id:
 version:
-base_template_id: MODEL-VX-TEMPLATE-VN
-base_template_tag:
+base_template_id: FRAMEWORK-VX
+base_template_tag: vX
 base_template_commit:
 template_registry_commit:
 template_ledger: experiments/vX/TEMPLATE.yaml
 experiment_binding: EXPERIMENT.yaml
 branch_source: exact_template_commit
+candidate_family: none
+target_framework: none
+candidate_framework_status: not_applicable
 run_commit:
 dirty_state:
 config:
@@ -41,10 +44,14 @@ confirmation_status:
 ## 问题
 
 说明这次实验要回答的具体问题。先读取所属框架的 `TEMPLATE.yaml`，再由本目录的
-`EXPERIMENT.yaml` 同时绑定母版编号、Tag、准确 commit 和登记它的 `template_registry_commit`。
-母版代码提交与管理登记提交是两个对象；新实验分支必须从母版代码 commit 独立开出，命名为
-`exp/vX/<type>/<experiment-id>-<slug>`；不得从另一项实验接着改。结果写回该框架的四类账本，再同步
+`EXPERIMENT.yaml` 同时绑定 `FRAMEWORK-VX`、Tag、准确 commit 和登记它的 `template_registry_commit`。
+`framework/vX` 本身就是最简模板；新实验分支必须从准确框架提交独立分叉，命名为
+`exp/vX/<type>/<experiment-id>-<slug>`；实验代码不得并回正式框架，也不得从另一项实验接着改。结果写回该框架的四类账本，再同步
 `main` 总索引。
+
+若 innovation 只是面向未来框架的尝试，填写 `candidate_family`、`target_framework` 和
+`candidate_framework_status: attempt_only`。这只表示候选归属，不代表目标框架已经注册；
+正式 `framework/vY` 与 `vY` Tag 仍须 confirmation、质量门和 owner 接纳。
 
 ## 变量
 

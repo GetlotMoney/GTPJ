@@ -12,7 +12,7 @@
 ```text
 实验是为了调/查/验证已有正式 baseline -> experiments/vX，不进 idea_tree。
 实验是为了调/查/确认旧 module trial 内部模块 -> 回到所属 FRAMEWORK-VX 的四类账本，用 legacy_ref 指旧证据。
-实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，接纳后才注册新的同级正式框架。
+实验是为了证明一个新方法值得存在 -> idea_tree + 所属正式框架 innovation 账本；候选无 Tag，owner 接纳后才在候选最终 commit 上注册新正式框架并保留真实继承关系。
 ```
 
 因此，tune、ablation、confirmation、debug 不会因为有“想法”就自动进入

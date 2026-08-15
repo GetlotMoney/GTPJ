@@ -3,12 +3,15 @@ experiment_id: VX-TUNE-001
 framework_id: FRAMEWORK-VX
 kind: tune
 base_identity_kind: framework_template
-base_template_id: MODEL-VX-TEMPLATE-V1
-base_template_tag: model/vx-template-v1
+base_template_id: FRAMEWORK-VX
+base_template_tag: vx
 base_template_commit: 0000000000000000000000000000000000000000
 template_registry_commit: 0000000000000000000000000000000000000000
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/vx/tune/tune-001-example
+candidate_family: none
+target_framework: none
+candidate_framework_status: not_applicable
 legacy_ref: none
 status: planned

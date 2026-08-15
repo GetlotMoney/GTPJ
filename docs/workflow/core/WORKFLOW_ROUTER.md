@@ -12,6 +12,6 @@
 | 组合实验 | `playbooks/mixed_campaign.md` |
 | 长周期研究 | `playbooks/autonomous_campaign.md` |
 
-只读查询不进入实验流程。正式实验先确定所属 `FRAMEWORK-VX` 和准确母版；tune、ablation、innovation、confirmation 分别写入所属框架目录。创新经 confirmation 并由 owner 接纳后，才注册新的同级正式框架。
+只读查询不进入实验流程。正式实验先确定所属 `FRAMEWORK-VX`，读取 `TEMPLATE.yaml`，并从准确 `framework/vX` commit 独立分叉；tune、ablation、innovation、confirmation 分别写入所属框架目录。创新经 confirmation 并由 owner 明确确认后，才在候选最终 commit 上注册新正式框架，同时保留真实继承关系。
 
 旧 Router 全文见 `../archive/specs/WORKFLOW_PRE_V6_ARCHIVE.md`，没有当前命令权。

@@ -18,6 +18,7 @@
 Paper -> Claim / Mechanism -> Hypothesis -> Attachment Point -> Trial -> Run
 ```
 
-每项创新写入所属框架的 `experiments/vX/innovation/INNOVATION-xxx/`；创新经过 confirmation 并由 owner 接纳后，才注册新的同级正式框架和 Tag。需要长期推理时写入 Research；raw logs 和 checkpoint 写入 Warehouse。
+每项创新写入所属框架的 `experiments/vX/innovation/INNOVATION-xxx/`；创新经过 confirmation 并由 owner 明确接纳后，才在候选最终 commit 上注册新正式框架和 Tag，并保留来源框架的真实 Git 血缘。需要长期推理时写入 Research；raw logs 和 checkpoint 写入 Warehouse。
+若多项独立 innovation 都面向同一个未来框架，用 `candidate_family` 和 `target_framework` 归组，但仍逐项单变量运行。候选家族不是正式框架；失败项写 `stop_no_gain` 后不得成为下一项代码底座。
 
 `探索 / 正式分界`、`formal_evidence_allowed`、`validate-trial-meta`、`strict_template_entry` 等旧字段只用于读取历史记录，不是 V6 默认门。当前通用规则见 `START_HERE.md` 和 `WORKFLOW_KERNEL.md`。

@@ -1,4 +1,4 @@
-"""V5 干净代码母版的静态边界测试。"""
+"""冻结的 MODEL-V5-TEMPLATE-V2 静态兼容性测试。"""
 
 import importlib.util
 from pathlib import Path
@@ -12,33 +12,26 @@ import torch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE_METADATA = ROOT / "experiments" / "v5" / "TEMPLATE.yaml"
+LEGACY_V5_TEMPLATE_TAG = "model/v5-template-v2"
+LEGACY_V5_TEMPLATE_COMMIT = "fb4b29b04087640890a532f105cb527d3a8c461b"
 
 
-def _active_v5_template_commit() -> str:
-    text = TEMPLATE_METADATA.read_text(encoding="utf-8")
-    commit_match = re.search(
-        r"^template_commit:\s*([0-9a-f]{40})\s*$", text, re.MULTILINE
-    )
-    tag_match = re.search(r"^template_tag:\s*(\S+)\s*$", text, re.MULTILINE)
-    if commit_match is None or tag_match is None:
-        raise AssertionError("experiments/v5/TEMPLATE.yaml 缺少准确 commit 或 Tag。")
-    commit = commit_match.group(1)
+def _frozen_v5_template_commit() -> str:
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "rev-parse", f"{tag_match.group(1)}^{{commit}}"],
+        ["git", "-C", str(ROOT), "rev-parse", f"{LEGACY_V5_TEMPLATE_TAG}^{{commit}}"],
         check=True,
         capture_output=True,
         text=True,
         encoding="utf-8",
     )
-    if result.stdout.strip() != commit:
-        raise AssertionError("V5 母版 Tag 与 TEMPLATE.yaml 登记提交不一致。")
-    return commit
+    if result.stdout.strip() != LEGACY_V5_TEMPLATE_COMMIT:
+        raise AssertionError("只读 MODEL-V5-TEMPLATE-V2 Tag 被移动")
+    return LEGACY_V5_TEMPLATE_COMMIT
 
 
 def _template_text(path: str) -> str:
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "show", f"{_active_v5_template_commit()}:{path}"],
+        ["git", "-C", str(ROOT), "show", f"{_frozen_v5_template_commit()}:{path}"],
         check=True,
         capture_output=True,
         text=True,
@@ -47,7 +40,7 @@ def _template_text(path: str) -> str:
     return result.stdout
 
 
-def _load_active_v5_module(path: str, module_name: str):
+def _load_frozen_v5_module(path: str, module_name: str):
     source = _template_text(path)
     with tempfile.TemporaryDirectory(prefix="gtpj-v5-template-") as temporary:
         source_path = Path(temporary) / Path(path).name
@@ -59,19 +52,19 @@ def _load_active_v5_module(path: str, module_name: str):
         return module
 
 
-def _load_active_v5_model_class():
-    return _load_active_v5_module("model/MyModel.py", "gtpj_active_v5_model").GTPJ
+def _load_frozen_v5_model_class():
+    return _load_frozen_v5_module("model/MyModel.py", "gtpj_frozen_v5_model").GTPJ
 
 
-ACTIVE_V5_CHECKPOINT_CONVERTER = _load_active_v5_module(
-    "tools/convert_v5_checkpoint.py", "gtpj_active_v5_checkpoint_converter"
+FROZEN_V5_CHECKPOINT_CONVERTER = _load_frozen_v5_module(
+    "tools/convert_v5_checkpoint.py", "gtpj_frozen_v5_checkpoint_converter"
 )
-ACTIVE_V5_EVALUATION = _load_active_v5_module(
-    "tools/v5_evaluation.py", "gtpj_active_v5_evaluation"
+FROZEN_V5_EVALUATION = _load_frozen_v5_module(
+    "tools/v5_evaluation.py", "gtpj_frozen_v5_evaluation"
 )
-convert_state_dict = ACTIVE_V5_CHECKPOINT_CONVERTER.convert_state_dict
-evaluate_cached_v5 = ACTIVE_V5_EVALUATION.evaluate_cached_v5
-load_v5_test_cache = ACTIVE_V5_EVALUATION.load_v5_test_cache
+convert_state_dict = FROZEN_V5_CHECKPOINT_CONVERTER.convert_state_dict
+evaluate_cached_v5 = FROZEN_V5_EVALUATION.evaluate_cached_v5
+load_v5_test_cache = FROZEN_V5_EVALUATION.load_v5_test_cache
 
 
 LEGACY_V5_KEYS = {
@@ -401,7 +394,7 @@ def _check_v5_evaluation_accepts_cuda_class_indices() -> None:
 
 def _check_v5_clean_path_parity_with_historical_tag() -> None:
     historical_model_class = _load_historical_v5_model_class()
-    active_v5_model_class = _load_active_v5_model_class()
+    frozen_v5_model_class = _load_frozen_v5_model_class()
     config = _parity_config()
     torch.manual_seed(20260806)
     seen = torch.tensor([0, 2, 3, 5])
@@ -422,7 +415,7 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
         seen_sentence_embeds=seen_sentences,
     )
     torch.manual_seed(17)
-    clean_model = active_v5_model_class(
+    clean_model = frozen_v5_model_class(
         config,
         seen,
         unseen,
@@ -495,7 +488,7 @@ def _check_v5_clean_path_parity_with_historical_tag() -> None:
 
 
 class V5TemplateContractTest(unittest.TestCase):
-    def test_v5_contract_tools_are_loaded_from_registered_template(self) -> None:
+    def test_v5_contract_tools_are_loaded_from_frozen_template(self) -> None:
         self.assertNotEqual(
             Path(convert_state_dict.__code__.co_filename).resolve(),
             (ROOT / "tools" / "convert_v5_checkpoint.py").resolve(),

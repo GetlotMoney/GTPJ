@@ -7,6 +7,7 @@ status:
 code_tag:
 registry_level: formal_peer
 derived_from_framework:
+derived_from_commit:  # 仅 main 直接来源必填
 source_tag:
 promoted_from_experiment:
 change_type:
@@ -23,13 +24,17 @@ module_glossary: experiments/vX/MODULES.md
 
 ## 当前启用模块
 
--
+每个模块第一次出现时必须写完整四项：英文缩写、英文全称、中文含义、一句话作用；禁止只列缩写。
+
+| 英文缩写 | 英文全称 | 中文含义 | 一句话作用 |
+|---|---|---|---|
+| `TODO` | TODO | TODO | TODO |
 
 ## 相比 Base 的变化
 
 -
 
-## 同级框架注册位置
+## 框架树注册位置
 
 ```text
 registry_level: formal_peer

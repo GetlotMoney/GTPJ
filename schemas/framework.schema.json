@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://local.gtpj/schemas/framework.schema.json",
-  "title": "GTPJ flat formal framework registry",
+  "title": "GTPJ formal framework lineage registry",
   "type": "object",
   "required": [
     "schema_version",
@@ -27,13 +27,15 @@
     "framework_id": {"pattern": "^FRAMEWORK-V[0-9]+$"},
     "framework_version": {"pattern": "^v[0-9]+$"},
     "registry_level": {"const": "formal_peer"},
-    "derived_from_framework": {"pattern": "^(none|FRAMEWORK-V[0-9]+)$"},
-    "promoted_from_experiment": {"pattern": "^(initial|V[0-9]+-INNOVATION-[0-9]{3})$"},
+    "derived_from_framework": {"pattern": "^(none|main|FRAMEWORK-V[0-9]+)$"},
+    "derived_from_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "promoted_from_experiment": {"pattern": "^(initial|owner-confirmed-independent|V[0-9]+-INNOVATION-[0-9]{3})$"},
     "framework_branch": {"pattern": "^framework/v[0-9]+$"},
     "framework_tag": {"pattern": "^v[0-9]+$"},
     "framework_commit": {"pattern": "^[0-9a-f]{40}$"},
     "governance_source_commit": {"pattern": "^[0-9a-f]{40}$"},
-    "origin_status": {"enum": ["initial", "confirmed_promoted", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]},
+    "owner_decision_ref": {"pattern": "^experiments/v[0-9]+/OWNER_DECISION\\.yaml$"},
+    "origin_status": {"enum": ["initial", "confirmed_promoted", "owner_confirmed_independent", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]},
     "change_type": {"enum": ["initial", "add_module", "replace_module", "architecture_change", "combo"]},
     "modules": {"type": "array", "items": {"type": "string"}},
     "inherits": {"type": "array", "items": {"type": "string"}},
@@ -55,10 +57,19 @@
       },
       "else": {
         "properties": {
-          "derived_from_framework": {"pattern": "^FRAMEWORK-V[0-9]+$"},
-          "promoted_from_experiment": {"pattern": "^V[0-9]+-INNOVATION-[0-9]{3}$"},
-          "origin_status": {"enum": ["confirmed_promoted", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]}
+          "derived_from_framework": {"pattern": "^(main|FRAMEWORK-V[0-9]+)$"},
+          "promoted_from_experiment": {"pattern": "^(owner-confirmed-independent|V[0-9]+-INNOVATION-[0-9]{3})$"},
+          "origin_status": {"enum": ["confirmed_promoted", "owner_confirmed_independent", "legacy_owner_accepted_unconfirmed", "legacy_owner_activated"]}
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {"derived_from_framework": {"const": "main"}},
+        "required": ["derived_from_framework"]
+      },
+      "then": {
+        "required": ["derived_from_commit"]
       }
     }
   ],

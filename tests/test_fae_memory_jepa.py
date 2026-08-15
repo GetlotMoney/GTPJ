@@ -1,11 +1,11 @@
-"""V5 唯一正式数学路径、形状和梯度测试。
+"""冻结的 MODEL-V5-TEMPLATE-V2 数学路径兼容性测试。
 
-文件名保留历史路径，避免旧测试入口失效；正文不再维护实验路线。
+当前 canonical 框架是历史 ``v5`` commit 本身；这些测试继续守护另一份只读
+干净母版，不能因 TEMPLATE.yaml 改指 canonical 框架而静默改变被测模型。
 """
 
 import importlib.util
 from pathlib import Path
-import re
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -15,29 +15,28 @@ import torch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE_METADATA = ROOT / "experiments" / "v5" / "TEMPLATE.yaml"
+LEGACY_V5_TEMPLATE_TAG = "model/v5-template-v2"
+LEGACY_V5_TEMPLATE_COMMIT = "fb4b29b04087640890a532f105cb527d3a8c461b"
 
 
-def _load_active_v5_model_class():
-    metadata = TEMPLATE_METADATA.read_text(encoding="utf-8")
-    commit_match = re.search(
-        r"^template_commit:\s*([0-9a-f]{40})\s*$", metadata, re.MULTILINE
-    )
-    tag_match = re.search(r"^template_tag:\s*(\S+)\s*$", metadata, re.MULTILINE)
-    if commit_match is None or tag_match is None:
-        raise AssertionError("experiments/v5/TEMPLATE.yaml 缺少准确 commit 或 Tag。")
-    commit = commit_match.group(1)
+def _load_frozen_v5_model_class():
     tag_result = subprocess.run(
-        ["git", "-C", str(ROOT), "rev-parse", f"{tag_match.group(1)}^{{commit}}"],
+        ["git", "-C", str(ROOT), "rev-parse", f"{LEGACY_V5_TEMPLATE_TAG}^{{commit}}"],
         check=True,
         capture_output=True,
         text=True,
         encoding="utf-8",
     )
-    if tag_result.stdout.strip() != commit:
-        raise AssertionError("V5 母版 Tag 与 TEMPLATE.yaml 登记提交不一致。")
+    if tag_result.stdout.strip() != LEGACY_V5_TEMPLATE_COMMIT:
+        raise AssertionError("只读 MODEL-V5-TEMPLATE-V2 Tag 被移动")
     result = subprocess.run(
-        ["git", "-C", str(ROOT), "show", f"{commit}:model/MyModel.py"],
+        [
+            "git",
+            "-C",
+            str(ROOT),
+            "show",
+            f"{LEGACY_V5_TEMPLATE_COMMIT}:model/MyModel.py",
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -53,7 +52,7 @@ def _load_active_v5_model_class():
         return module.GTPJ
 
 
-GTPJ = _load_active_v5_model_class()
+GTPJ = _load_frozen_v5_model_class()
 
 
 def make_config(**overrides):
@@ -111,7 +110,7 @@ def grad_norm(parameters):
     )
 
 
-class V5CanonicalMathPathTest(unittest.TestCase):
+class V5FrozenTemplateMathPathTest(unittest.TestCase):
     def test_fixed_fusion_uses_point_two_local_weight(self):
         model = make_model()
         out = model(torch.randn(2, 577, 16), is_train=False)

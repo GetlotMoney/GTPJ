@@ -2,9 +2,15 @@
 
 Date: 2026-08-08
 
+## 2026-08-15 框架树规范更新
+
+当前治理标准改为：`main` 是默认冻结的公共底座；正式框架按真实 Git 祖先关系形成树；新标准下 `framework/vX` 本身就是最简模板，`vX` 固定同一 commit，`TEMPLATE.yaml` 只做身份绑定。候选只有经过确认并由 owner 明确接纳后才晋级，晋级不会移动 `main`。
+
+旧 `MODEL-VX-TEMPLATE-VN` 双层模板分支与 Tag 保持原 SHA，只读兼容；只有各 `framework/vX = vX` 的 canonical 绑定能启动新实验。本次没有移动现有框架分支或 Tag，没有删除历史，也没有启动训练。
+
 ## 2026-08-13 V5 主线与干净母版更新
 
-当前 V5 新实验起点已更新为 `MODEL-V5-TEMPLATE-V2`：本地分支
+历史 V5 干净模板 `MODEL-V5-TEMPLATE-V2`：本地分支
 `framework/v5-template-v2`、Tag `model/v5-template-v2` 和代码提交
 `fb4b29b04087640890a532f105cb527d3a8c461b` 完全一致。模型、损失、配置和评估含义沿用
 V1；V2 只修正大文件身份清单复用和 GPU 评估设备边界。旧 V1 仍冻结在 `2f5fa5e`，没有移动。
@@ -33,19 +39,19 @@ Reviewer 对同一最终提交均为 `pass`、阻断为 0。本次没有启动�
 
 ## 2026-08-06 管理结构更新
 
-实验管理已切换为“同级正式框架 + 只读代码母版 + 四类独立实验 + 逐次运行表”。当前图形总览见
+本节记录 2026-08-06 的历史管理结构；2026-08-15 起已由“真实框架继承树 + 正式框架即最简模板”取代。当前图形总览见
 `docs/diagrams/GTPJ_FRAMEWORK_REGISTRY_UI-V3.html`，正式规则见
 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。本阶段只改管理、校验和查看方式，没有改变模型、训练或评估结论。
 
 | 层级 | 文件 | 现在负责什么 |
 |---|---|---|
-| 框架身份 | `experiments/vX/framework.yaml` | 说明这是哪个正式框架、历史上从哪个同级框架演变而来。 |
-| 代码母版 | `experiments/vX/TEMPLATE.yaml` | 锁定母版编号、只读分支、Tag 和准确 commit。 |
-| 实验起点 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 说明这项实验实际复制了哪份母版；实验之间不得接着叠代码。 |
+| 框架身份 | `experiments/vX/framework.yaml` | 说明正式框架及其真实父框架或 main 起点。 |
+| 框架绑定 | `experiments/vX/TEMPLATE.yaml` | 锁定正式框架分支、Tag 和准确 commit。 |
+| 实验起点 | `experiments/vX/<type>/<id>/EXPERIMENT.yaml` | 说明这项实验从哪个准确框架 commit 分叉；实验之间不得接着叠代码。 |
 | 真实运行 | `PARAMETER_MATRIX.csv` | 每一行记录一套参数、一个 seed、一次状态和结果。 |
 
-V1、V2、V3 继续使用 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 历史母版账本，只解释过去，不能启动新实验。
-V5 当前新实验改用 `MODEL-V5-TEMPLATE-V2 / frozen`；历史局部分支消融仍保留它当时准确绑定的 V1，旧 Attempt 只保留为规划来源。
+V1、V2、V3 的 `MODEL-VX-TEMPLATE-V0 / legacy_frozen` 继续只解释过去；当前 `TEMPLATE.yaml` 已改为各自 `FRAMEWORK-VX / canonical` 绑定。
+V5 的 `MODEL-V5-TEMPLATE-V2 / frozen` 保持只读历史身份；当前新实验从 `framework/v5 = v5` 的准确 commit 开始，历史实验仍保留它们当时的模板绑定。
 
 ## Current Active Mainline
 

@@ -105,7 +105,7 @@ status
 - `result.md`
 - `quality_check.md`
 - `agent_summary.md`
-- 同级正式框架注册表、experiment registry、轻量 idea index
+- 正式框架继承树、experiment registry、轻量 idea index
 - 小型手工维护的解释性图源文件；生成的实验图仍必须留在外部
 
 ## Boundary Audit

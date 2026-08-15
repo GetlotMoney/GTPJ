@@ -5,6 +5,9 @@ experiment_id: V5-INNOVATION-011
 idea_id: IDEA-0013
 status: candidate
 base_version: v5
+candidate_family: clean_v6
+target_framework: FRAMEWORK-V6
+candidate_framework_status: attempt_only
 formal_v6_status: not_created
 ```
 

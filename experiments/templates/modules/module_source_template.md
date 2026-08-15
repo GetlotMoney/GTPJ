@@ -4,6 +4,9 @@
 idea_id:
 trial_id:
 module_name:
+module_full_name_en:
+module_name_zh:
+module_plain_purpose:
 template_family:
 module_scope:
 trial_meta: trial_meta.yaml

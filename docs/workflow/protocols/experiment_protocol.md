@@ -3,12 +3,12 @@
 本文件规定 `FRAMEWORK-VX` 下面的四类正式实验：tune、ablation、innovation、confirmation。
 唯一结构总规范见 `docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md`。
 
-四类实验都是同级。tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、
-质量检查和接纳全部通过后，才注册一个新的同级正式框架 `FRAMEWORK-VY`。
+正式框架按 `derived_from_framework` 与真实 Git 祖先关系形成树。每个 `framework/vX` 的正式框架本身就是最简模板；`TEMPLATE.yaml` 绑定它的 Tag 和准确 commit，每项实验再用 `EXPERIMENT.yaml` 固定实际起点。四类实验都从准确框架提交独立分叉；实验代码不得并回正式框架，也不得从另一个实验继续改。只有 `canonical` 能启动新实验，历史 `frozen / legacy_frozen` 只允许回查证据。
 
-每个正式框架必须用 `TEMPLATE.yaml` 登记只读母版 `MODEL-VX-TEMPLATE-VN`；每项实验必须用
-`EXPERIMENT.yaml` 登记它实际使用的母版编号、Tag 和 commit。四类实验都从准确母版提交独立分叉；
-实验代码不得并回母版，也不得从另一个实验继续改。`legacy_frozen 不能启动新实验`，只允许回查历史证据。
+V1/V2/V3/V5 的框架 commit 比当前治理规则更早。对这些 commit 创建或校验新实验时，不执行其中的旧 helper；由一份干净、已审核且 `HEAD == template_registry_commit` 的当前治理 checkout 运行 helper，并通过 `--repo-root` 指向目标框架 checkout。当前 schema/规则来自治理 checkout，模型与实验事实来自目标 checkout。
+
+tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、质量检查和 owner 明确接纳全部通过后，才在候选最终 commit 上注册 `framework/vY` 与 `vY`，并保留来源框架的真实血缘。
+面向尚未注册的下一版本时，实验仍留在来源框架的 innovation 目录，并用 `candidate_family`、`target_framework`、`candidate_framework_status: attempt_only` 归组；这些字段不等于正式版本，也不能提前创建 `experiments/vY/`。
 
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该
@@ -26,7 +26,7 @@ experiments/module_trials/IDEA-xxxx_*/TRIAL-xxx_*/attempts/ATTEMPT-xxx/
 ```
 
 并遵守 `docs/workflow/protocols/module_trial_protocol.md`。新工作不再在 Trial 里面复制一套
-四类目录；创新候选留在所属正式框架且没有 Tag，接纳后的代码注册为新的同级正式框架。
+四类目录；创新候选留在所属正式框架且没有 Tag，owner 接纳后才在候选最终 commit 注册新正式框架。
 
 示例：
 

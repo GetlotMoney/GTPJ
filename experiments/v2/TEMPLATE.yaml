@@ -1,7 +1,7 @@
 schema_version: gtpj.framework_template.v1
 framework_id: FRAMEWORK-V2
-template_id: MODEL-V2-TEMPLATE-V0
-template_status: legacy_frozen
+template_id: FRAMEWORK-V2
+template_status: canonical
 template_branch: framework/v2
 template_tag: v2
 template_commit: ccc4a10ddd67308e28c40d6000216917a71bf472

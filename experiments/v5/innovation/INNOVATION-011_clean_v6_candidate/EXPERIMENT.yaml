@@ -12,6 +12,9 @@ template_registry_commit: 8f7d33051d48adea9c60762a7703e281e5b8aa60
 historical_code_ref: none
 template_binding_status: ready
 experiment_branch: exp/v5/innovation/innovation-011-clean-v6-candidate
+candidate_family: clean_v6
+target_framework: FRAMEWORK-V6
+candidate_framework_status: attempt_only
 legacy_ref: IDEA-0013
 status: candidate
 planned_runs: 1
