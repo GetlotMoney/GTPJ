@@ -500,6 +500,56 @@
         "experiments/v5/innovation/INNOVATION-017_vcer/vcer.py",
         "tests/test_v5_vcer.py"
       ]
+    },
+    {
+      "idea_id": "IDEA-0015",
+      "idea_dir": "idea_tree/ideas/IDEA-0015_artv/",
+      "title": "解剖锚定角色传输验证器（ARTV）",
+      "status": "developing",
+      "source_type": "hybrid",
+      "source_ref": "owner-codex:2026-08-17:ARTV_crop_grounded_top2_verifier",
+      "source_status": "local_heuristic",
+      "global_score": 84.0,
+      "core_summary": "冻结 PSE-X2，只用确定性裁剪的冻结 CLIP CLS 和六个类别无关部位锚点形成固定视觉槽；六个局部描述与一个独特描述投七票，仅在至少五票支持时交换 X2 top-1/top-2。",
+      "version_scores": {
+        "v5": {
+          "score": 84.0,
+          "applicability": "direct",
+          "stage": "trialing",
+          "rationale": "X2 top-2 oracle 有明显空间；ARTV 不重学分类器，只把 6 局部、1 全局、1 独特描述转化为可干预的裁剪证据。",
+          "blockers": [
+            "正式运行等待同一最终代码两轮审核与空闲 GPU。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE-X2",
+        "frozen CLIP ViT-L/14@336px"
+      ],
+      "target_component": "冻结 PSE-X2 后的 crop-grounded top-2 验证",
+      "hypothesis": "若 X2 的主要剩余错误是前两名次序，角色对齐的局部裁剪证据能在不改变另外 198 类的前提下救回部分样本，并在 role-shuffle 时显著退化。",
+      "expected_effect": {
+        "U": "不以明显降低 unseen 为代价换取 seen 增益。",
+        "S": "只修正有 5/7 证书的 top-2 次序。",
+        "H": "目标 H>=75；最低保留门为相对 X2 提升至少 0.5。"
+      },
+      "implementation_scope": "新增 ARTV 模块和 training-free evaluator；对 official 原图提取固定 15-crop 冻结 CLIP CLS，0 个可训练参数，固定 5/7 证书，只允许交换 X2 top-2。",
+      "risk": "通用部位锚点不是真实检测框；固定 5/7 证书可能不适合数据，但本轮不搜索阈值。",
+      "compatibility": "ARTV-off bitwise 退回 X2；同一公式处理 200 类 GZSL 和 50 类 ZS，不接收 seen/unseen 身份。",
+      "transfer_notes": "迁移到非鸟类数据集时必须重写类别无关的对象部位锚点，不能复制 CUB 鸟体锚点。",
+      "priority": 0.84,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-022_artv"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-022_artv/artv.py",
+        "tests/test_v5_artv.py"
+      ]
     }
   ]
 }

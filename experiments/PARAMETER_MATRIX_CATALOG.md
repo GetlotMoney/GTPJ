@@ -42,6 +42,7 @@
 | `V5-INNOVATION-011` | 1 | planned | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-015` | 1 | completed_stop_no_gain | `experiments/v5/innovation/INNOVATION-015_te_pse/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-016` | 1 | completed_stop_no_gain | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-022` | 1 | pre_run | `experiments/v5/innovation/INNOVATION-022_artv/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-001` | 5 | pre_run | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-002` | 5 | planned | `experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-003` | 3 | completed | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/PARAMETER_MATRIX.md` |

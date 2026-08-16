@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ARTV：解剖锚定角色传输验证器</title>
+  <style>
+    body{margin:0;padding:32px;background:#f4f7fb;color:#172033;font-family:"Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1160px;margin:auto}.row{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;align-items:center;margin:18px 0}.box{padding:15px;background:#fff;border:1px solid #d9e1ee;border-radius:14px;box-shadow:0 7px 22px #23305212;text-align:center}.base{border-color:#7667e8;background:#f2f0ff}.visual{border-color:#2aa876;background:#ecfbf5}.vote{border-color:#e99a34;background:#fff6e8}.decision{border-color:#e05270;background:#fff0f4}.arrow{text-align:center;color:#718096;font-size:24px}.wide{grid-column:span 2}.note{background:#fff;border-left:4px solid #7667e8;padding:16px;margin-top:24px;line-height:1.7}code{color:#5d4bd1}@media(max-width:850px){.row{grid-template-columns:1fr}.wide{grid-column:auto}.arrow{transform:rotate(90deg)}}
+  </style>
+</head>
+<body><main>
+  <h1>ARTV：冻结 X2 后的 top-2 视觉验证</h1>
+  <p>八句话严格分工为 6 个局部描述、1 个全局描述和 1 个独特描述。</p>
+  <section class="row">
+    <div class="box base">official CLS</div><div class="arrow">→</div><div class="box base wide">冻结 PSE-X2<br>200 类 logits</div><div class="arrow">→</div><div class="box base wide">只保留 top-1 / top-2 候选对</div>
+  </section>
+  <section class="row">
+    <div class="box visual">原始 CUB 图像</div><div class="arrow">→</div><div class="box visual">确定性 15-crop</div><div class="arrow">→</div><div class="box visual">冻结 CLIP crop CLS</div><div class="arrow">→</div><div class="box visual">6 解剖锚 + background<br>平衡 Sinkhorn</div>
+  </section>
+  <section class="row">
+    <div class="box">1 个全局描述<br>top-2 对称前景质量</div><div class="arrow">↘</div><div class="box visual wide">6 个固定视觉角色槽</div><div class="arrow">→</div><div class="box vote">6 个局部同名槽投票</div><div class="arrow">+</div><div class="box vote">1 个独特描述投票</div>
+  </section>
+  <section class="row">
+    <div class="box base wide">X2 top-1 / top-2</div><div class="arrow">+</div><div class="box vote wide"><code>至少 5 / 7</code> 票支持第二名</div><div class="arrow">→</div><div class="box decision">通过：只交换 top-2<br>否则：精确保持 X2</div>
+  </section>
+  <div class="note"><strong>硬边界：</strong>无训练参数、无 gamma、无 seen/unseen 专属路径；其余 198 类逐元素不变。role-shuffle 只错配六个局部描述与固定视觉槽，unique-swap 只破坏第七票。</div>
+</main></body></html>

@@ -1,0 +1,84 @@
+experiment_id: V5-INNOVATION-022
+run_id: RUN-001
+dataset: CUB
+device: cuda:0
+seed: 5
+official_test_policy: direct_owner_20260817
+evidence_label: official-test-guided-development
+formal_evidence: false
+class_order_sha256: 7b6ffe26103bfeb73324f328fac499d6ea7cfadfb2b56448b0df295aca22df38
+official_image_content_sha256: 66cfcc0407cf0b6012b0addcac2d74b644194d61b7da7e9a13ab8818d5460672
+
+role_order:
+  - beak
+  - head_features
+  - body_plumage
+  - wings
+  - tail
+  - legs
+  - overall_appearance
+  - unique_discriminative_features
+role_anchor_prompts:
+  - "a close-up photo of a bird's beak"
+  - "a close-up photo of a bird's head"
+  - "a close-up photo of a bird's body plumage"
+  - "a close-up photo of a bird's wings"
+  - "a close-up photo of a bird's tail"
+  - "a close-up photo of a bird's legs"
+role_anchor_tokens_sha256: ecfc07339502077cc79c7ac98cad421728b9e0957ec1299d2c76859c1ca22d8c
+role_shuffle_permutation: [1, 2, 3, 4, 5, 0]
+
+clip_model: ViT-L/14@336px
+runtime_identity:
+  torch_version: "2.5.1"
+  torch_cuda_version: "11.8"
+  torchvision_version: "0.20.1"
+  pillow_version: "12.2.0"
+  clip_package_sha256: 122109054be65c795609a37efc4e4ddd7c2321d58ab3b90c850974c52281d0ff
+  preprocess_normalized_repr_sha256: ce6af024b45c37520116f40908c942f1e564bb780eb0935cacca931448923e73
+determinism:
+  enabled: true
+  cublas_workspace_config: ":4096:8"
+crop_scheme: deterministic_15
+crop_scales: [0.5, 0.7, 1.0]
+crops_per_scale: [9, 5, 1]
+crop_batch_images: 2
+evaluation_batch_size: 32
+sinkhorn_iterations: 12
+transport_epsilon: 0.05
+certificate_votes: 5
+
+x2_identity:
+  sha256: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3
+  code_commit: a0ac9d8f82fef6022da5e823049b00760cd1fa2e
+  best_epoch: 50
+  metrics_percent:
+    U: 73.39547872543335
+    S: 73.6515760421753
+    H: 73.52330437411622
+    ZS: 81.53468370437622
+
+inputs:
+  sentence_embeds: cache/CUB_gpt55_8role_sentence_embeds.pt
+  train_labels: cache/CUB_train_labels.pt
+  seen_features: cache/CUB_test_seen_features.pt
+  seen_labels: cache/CUB_test_seen_labels.pt
+  unseen_features: cache/CUB_test_unseen_features.pt
+  unseen_labels: cache/CUB_test_unseen_labels.pt
+  res101: xlsa17/data/CUB/res101.mat
+  att_splits: xlsa17/data/CUB/att_splits.mat
+  cub_images: CUB/images
+  clip_weight: /data/lby/.cache/clip/ViT-L-14-336px.pt
+  x2_checkpoint: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/local_trials/DCRA-PSE-20260816/RUN-005/model_best.pth
+
+expected_sha256:
+  sentence_embeds: e3b428a3588d4e715910e07472848de4641ddb7e37791edbe6c07f8681213663
+  train_labels: b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666
+  seen_features: 5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5
+  seen_labels: 06f3f7057b6847fd912544ddb921d0ca3fca96d0888503f3fc87a52f98d3de14
+  unseen_features: 32c1b89edb72a94e27585060ac968f1afc99000a9bd8c42acee8469971fb107e
+  unseen_labels: 7fadd63d51f69cf09cc8107a132d28036b838649b75227a17656eac8640b9c59
+  res101: 9a97c71951f9ac9f5c3708e6e55386e53f3d433289ed5e87a18b4af2a1a0fca1
+  att_splits: d7f5b4c2cb7853acdce43a9e87607ceed30bdf18c60344be3a266de29b6751e3
+  clip_weight: 3035c92b350959924f9f00213499208652fc7ea050643e8b385c2dac08641f02
+  x2_checkpoint: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3

@@ -6,7 +6,7 @@
 |---|---:|---|
 | 调参 | 4 | `tune/INDEX.md` |
 | 消融 | 13 | `ablation/INDEX.md` |
-| 创新 | 13 | `innovation/INDEX.md` |
+| 创新 | 15 | `innovation/INDEX.md` |
 | 确认 | 5 | `confirmation/INDEX.md` |
 
 ## 调参实验
@@ -53,6 +53,8 @@
 | `V5-INNOVATION-011` | planned | 删除旧频域、旧局部分支、拓扑和多辅助损失后，干净 V6 候选是否能证明句子—区域交互本身合理 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` | `IDEA-0013` | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate` | - |
 | `V5-INNOVATION-015` | rejected | TE-PSE 的 RUN-001 得到 H=63.70，比同次 B0 低 0.46；停止，不进入 seed 17 | `experiments/v5/innovation/INNOVATION-015_te_pse/PARAMETER_MATRIX.md` | `owner_conversation_2026_08_15` | `experiments/v5/innovation/INNOVATION-015_te_pse` | - |
 | `V5-INNOVATION-016` | rejected | VSC 与父 TE-PSE 的 U/S/H/ZS 完全相同，H=63.70；无增益并停止 controls | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc/PARAMETER_MATRIX.md` | `owner_conversation_2026_08_15` | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc` | - |
+| `V5-INNOVATION-017` | frozen_ready | 冻结 PSE-X2 后，以 unique 路由六局部差异、global 估计前景可见性的反事实证据能否提高 official GZSL H，并在角色干预下退化 | `experiments/v5/innovation/INNOVATION-017_vcer/PARAMETER_MATRIX.md` | `IDEA-0014` | `experiments/v5/innovation/INNOVATION-017_vcer` | - |
+| `V5-INNOVATION-022` | pre_run | 六个固定视觉角色槽与 7 票证书能否只交换 X2 top-2 并提高 official GZSL H | `experiments/v5/innovation/INNOVATION-022_artv/PARAMETER_MATRIX.md` | `IDEA-0015` | `experiments/v5/innovation/INNOVATION-022_artv` | - |
 
 ## 确认实验
 
