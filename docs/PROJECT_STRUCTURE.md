@@ -413,6 +413,8 @@ All formal version directories `experiments/vX/` must also include:
 | `experiments/v5/innovation/INNOVATION-022_artv/evaluate.py` | ARTV 的 training-free 正式评估入口：验证冻结输入身份、提取确定性 15-crop CLIP CLS，并一次性计算 X2、ARTV 与两项干预的 U/S/H/ZS。 |
 | `experiments/v5/innovation/INNOVATION-022_artv/result.md` | ARTV RUN-001 的完整 U/S/H/ZS、干预诊断、停止结论与 Warehouse 证据摘要。 |
 | `experiments/v5/innovation/INNOVATION-022_artv/quality_check.md` | ARTV 失败记录的数据、运行时、评估口径与 artifact 完整性检查。 |
+| `experiments/v5/innovation/INNOVATION-017_vcer/result.md` | VCER RUN-001 的完整 U/S/H/ZS、角色干预诊断、停止结论与 Warehouse 证据摘要。 |
+| `experiments/v5/innovation/INNOVATION-017_vcer/quality_check.md` | VCER 失败记录的代码、数据、训练、评估口径与 artifact 完整性检查。 |
 
 每个新正式实验目录必须有 `EXPERIMENT.yaml`，绑定母版编号、Tag 和准确 commit；历史实验只能如实记录当时的代码来源，不倒填成未来母版。
 

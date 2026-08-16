@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0014
 title: 可见反事实证据路由（VCER）
-status: candidate
+status: rejected
 source_type: user
 source_ref: owner:2026-08-16:VCER_6local_unique_router_global_foreground
 source_status: local_heuristic
@@ -59,11 +59,14 @@ Owner 于 2026-08-16 提出的本项目原创框架：把 8 句严格解释为
 
 - patch 证据可能仍偏向背景，使 U 下降。
 - unique 路由可能退化成近似共享角色权重。
-- 当前仅完成模块与合成张量测试，尚无正式训练效果证据。
+- RUN-001 表明训练 CE 能下降，但 unseen transfer 和角色因果门同时失败。
 
-## 阻塞点
+## 实验结果
 
-模块已经进入正式 Runner 接入与 pre-run review；训练前仍须完成同一最终代码的两轮审核。
+RUN-001 已完成：X2 `H=73.523304`，VCER `H=64.120270`，下降 `9.403034`；
+role-shuffle 反而比 VCER 高 `1.427339 H`，unique-swap 只低 `0.085910 H`。
+因此 IDEA-0014 已拒绝，不调 gamma、loss 权重或 rank，也不与 ARTV 叠加。完整证据见
+`experiments/v5/innovation/INNOVATION-017_vcer/result.md`。
 
 ## 决策规则
 

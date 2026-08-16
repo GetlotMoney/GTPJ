@@ -458,7 +458,7 @@
       "idea_id": "IDEA-0014",
       "idea_dir": "idea_tree/ideas/IDEA-0014_vcer/",
       "title": "可见反事实证据路由（VCER）",
-      "status": "candidate",
+      "status": "rejected",
       "source_type": "user",
       "source_ref": "owner:2026-08-16:VCER_6local_unique_router_global_foreground",
       "source_status": "local_heuristic",
@@ -468,9 +468,11 @@
         "v5": {
           "score": 80.0,
           "applicability": "needs_adaptation",
-          "stage": "candidate",
-          "rationale": "PSE-X2 已提供强全局原型，但缺少真正依赖 6 个局部、1 个全局和 1 个独特描述分工的视觉证据；VCER 保留冻结底分，仅学习共享低秩证据空间。",
-          "blockers": []
+          "stage": "rejected",
+          "rationale": "RUN-001 中 VCER H=64.120270，比同次 X2 低 9.403034；role-shuffle 反而高 1.427339 H，正确角色对应没有因果优势。",
+          "blockers": [
+            "共享低秩空间造成 unseen transfer 崩塌，按冻结规则停止且不调 gamma、loss 权重或 rank。"
+          ]
         }
       },
       "base_versions": [
@@ -498,7 +500,8 @@
       ],
       "evidence": [
         "experiments/v5/innovation/INNOVATION-017_vcer/vcer.py",
-        "tests/test_v5_vcer.py"
+        "tests/test_v5_vcer.py",
+        "experiments/v5/innovation/INNOVATION-017_vcer/result.md"
       ]
     },
     {
