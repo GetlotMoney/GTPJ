@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import math
 import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
+import scipy.io as sio
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -52,9 +55,21 @@ class VCERRunnerTest(unittest.TestCase):
             config["class_order_sha256"],
             "7b6ffe26103bfeb73324f328fac499d6ea7cfadfb2b56448b0df295aca22df38",
         )
-        RUNNER.verify_class_order(
-            config, ROOT / "data" / "xlsa17" / "data" / "CUB" / "att_splits.mat"
-        )
+
+    def test_class_order_verifier_uses_exact_serialized_names(self):
+        names = [f"class_{index:03d}" for index in range(200)]
+        serialized = json.dumps(names, ensure_ascii=False, separators=(",", ":"))
+        config = {"class_order_sha256": hashlib.sha256(serialized.encode("utf-8")).hexdigest()}
+        raw_names = np.empty((200, 1), dtype=object)
+        for index, name in enumerate(names):
+            raw_names[index, 0] = name
+        with tempfile.TemporaryDirectory() as directory:
+            split_path = Path(directory) / "att_splits.mat"
+            sio.savemat(split_path, {"allclasses_names": raw_names})
+            RUNNER.verify_class_order(config, split_path)
+            config["class_order_sha256"] = "0" * 64
+            with self.assertRaisesRegex(ValueError, "class order"):
+                RUNNER.verify_class_order(config, split_path)
 
     def test_x2_reconstruction_is_uniform_qk_invariant_and_preserves_unseen_mean8(self):
         generator = torch.Generator().manual_seed(19)
