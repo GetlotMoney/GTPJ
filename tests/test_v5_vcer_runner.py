@@ -117,7 +117,7 @@ class VCERRunnerTest(unittest.TestCase):
         self.assertAlmostEqual(float(scale), 1.0 / 0.07, places=5)
         self.assertEqual(diagnostics["checkpoint_best_epoch"], 50)
 
-    def test_metrics_use_global_200_class_ids_and_unseen_only_zs(self):
+    def test_metrics_use_global_200_class_ids_and_fresh_unseen_only_zs(self):
         seenclasses = torch.tensor([0, 2])
         unseenclasses = torch.tensor([1, 3])
         seen_labels = torch.tensor([0, 0, 2, 2])
@@ -126,11 +126,15 @@ class VCERRunnerTest(unittest.TestCase):
             [[4.0, 0.0, 1.0, 0.0], [4.0, 0.0, 1.0, 0.0], [0.0, 0.0, 4.0, 0.0], [0.0, 0.0, 4.0, 0.0]]
         )
         unseen_logits = torch.tensor(
-            [[5.0, 4.0, 0.0, 1.0], [5.0, 4.0, 0.0, 1.0], [0.0, 1.0, 5.0, 4.0], [0.0, 1.0, 5.0, 4.0]]
+            [[5.0, 1.0, 0.0, 4.0], [5.0, 1.0, 0.0, 4.0], [0.0, 4.0, 5.0, 1.0], [0.0, 4.0, 5.0, 1.0]]
+        )
+        zs_logits = torch.tensor(
+            [[4.0, 1.0], [4.0, 1.0], [1.0, 4.0], [1.0, 4.0]]
         )
         metrics = RUNNER.metrics_from_logits(
             seen_logits,
             unseen_logits,
+            zs_logits,
             seen_labels,
             unseen_labels,
             seenclasses,
@@ -140,6 +144,40 @@ class VCERRunnerTest(unittest.TestCase):
         self.assertEqual(metrics["U"], 0.0)
         self.assertEqual(metrics["H"], 0.0)
         self.assertEqual(metrics["ZS"], 100.0)
+
+    def test_batched_logits_recomputes_dynamic_rivals_for_candidate_subset(self):
+        generator = torch.Generator().manual_seed(41)
+        sentences = F.normalize(torch.randn(4, 8, 6, generator=generator), dim=-1)
+        prototypes = F.normalize(torch.randn(4, 6, generator=generator), dim=-1)
+        images = torch.randn(3, 6, generator=generator)
+        patches = torch.randn(3, 5, 6, generator=generator)
+        model = RUNNER.VisibilityAwareCounterfactualEvidenceRouter(
+            sentences,
+            prototypes,
+            1.0,
+            rank=2,
+        )
+        subset_ids = torch.tensor([1, 3])
+        full = RUNNER.batched_logits(
+            model,
+            images,
+            patches,
+            torch.device("cpu"),
+            2,
+            evidence_enabled=True,
+        )
+        subset = RUNNER.batched_logits(
+            model,
+            images,
+            patches,
+            torch.device("cpu"),
+            2,
+            evidence_enabled=True,
+            class_ids=subset_ids,
+        )
+        direct = model.logits(images, subset_ids, patch_features=patches)
+        self.assertTrue(torch.equal(subset, direct))
+        self.assertGreater(float((subset - full[:, subset_ids]).abs().max()), 1e-6)
 
     def test_output_inside_git_worktree_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "outside"):

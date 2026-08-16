@@ -274,6 +274,7 @@ def per_class_accuracy(
 def metrics_from_logits(
     seen_logits: torch.Tensor,
     unseen_logits: torch.Tensor,
+    zs_logits: torch.Tensor,
     seen_labels: torch.Tensor,
     unseen_labels: torch.Tensor,
     seenclasses: torch.Tensor,
@@ -281,9 +282,10 @@ def metrics_from_logits(
 ) -> dict[str, float]:
     seen_prediction = seen_logits.argmax(dim=1)
     unseen_prediction = unseen_logits.argmax(dim=1)
-    zsl_prediction = unseenclasses[
-        unseen_logits[:, unseenclasses].argmax(dim=1)
-    ]
+    unseenclasses = unseenclasses.detach().cpu().long()
+    if zs_logits.ndim != 2 or zs_logits.shape[1] != unseenclasses.numel():
+        raise ValueError("zs_logits must use the unseen-only candidate order.")
+    zsl_prediction = unseenclasses[zs_logits.argmax(dim=1).detach().cpu()]
     seen = per_class_accuracy(seen_labels, seen_prediction, seenclasses)
     unseen = per_class_accuracy(unseen_labels, unseen_prediction, unseenclasses)
     zsl = per_class_accuracy(unseen_labels, zsl_prediction, unseenclasses)
@@ -300,11 +302,16 @@ def batched_logits(
     batch_size: int,
     *,
     evidence_enabled: bool,
+    class_ids: torch.Tensor | None = None,
     unique_swap_with_rival: bool = False,
     role_evidence_permutation: torch.Tensor | None = None,
 ) -> torch.Tensor:
     rows = []
-    classes = torch.arange(model.class_count, device=device)
+    classes = (
+        torch.arange(model.class_count, device=device)
+        if class_ids is None
+        else torch.as_tensor(class_ids, device=device, dtype=torch.long)
+    )
     model.eval()
     for start in range(0, cls_features.shape[0], batch_size):
         images = cls_features[start : start + batch_size].to(device)
@@ -497,22 +504,27 @@ def run(
     shuffled_unseen = batched_logits(model, unseen_features, unseen_patches, device, eval_batch, evidence_enabled=True, role_evidence_permutation=shuffle)
     swapped_seen = batched_logits(model, seen_features, seen_patches, device, eval_batch, evidence_enabled=True, unique_swap_with_rival=True)
     swapped_unseen = batched_logits(model, unseen_features, unseen_patches, device, eval_batch, evidence_enabled=True, unique_swap_with_rival=True)
+    baseline_zs = batched_logits(model, unseen_features, None, device, eval_batch, evidence_enabled=False, class_ids=unseenclasses)
+    vcer_zs = batched_logits(model, unseen_features, unseen_patches, device, eval_batch, evidence_enabled=True, class_ids=unseenclasses)
+    shuffled_zs = batched_logits(model, unseen_features, unseen_patches, device, eval_batch, evidence_enabled=True, class_ids=unseenclasses, role_evidence_permutation=shuffle)
+    swapped_zs = batched_logits(model, unseen_features, unseen_patches, device, eval_batch, evidence_enabled=True, class_ids=unseenclasses, unique_swap_with_rival=True)
     conditions = {
-        "x2": (baseline_seen, baseline_unseen),
-        "vcer": (vcer_seen, vcer_unseen),
-        "role_shuffle": (shuffled_seen, shuffled_unseen),
-        "unique_swap": (swapped_seen, swapped_unseen),
+        "x2": (baseline_seen, baseline_unseen, baseline_zs),
+        "vcer": (vcer_seen, vcer_unseen, vcer_zs),
+        "role_shuffle": (shuffled_seen, shuffled_unseen, shuffled_zs),
+        "unique_swap": (swapped_seen, swapped_unseen, swapped_zs),
     }
     metrics = {
         name: metrics_from_logits(
             seen_logits,
             unseen_logits,
+            zs_logits,
             seen_labels,
             unseen_labels,
             seenclasses,
             unseenclasses,
         )
-        for name, (seen_logits, unseen_logits) in conditions.items()
+        for name, (seen_logits, unseen_logits, zs_logits) in conditions.items()
     }
     expected_x2 = config["x2_identity"]["metrics_percent"]
     if any(abs(metrics["x2"][key] - float(expected_x2[key])) > 1e-4 for key in ("U", "S", "H", "ZS")):

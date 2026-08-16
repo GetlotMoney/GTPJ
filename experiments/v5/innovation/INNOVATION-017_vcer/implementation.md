@@ -20,7 +20,8 @@ VCER 冻结 PSE-X2 的全局类别原型；对每个图像—候选类选择其�
 | `final_logits` | `[B, C]` / float32 / module device | 有 | 保持原类别顺序的 VCER logits |
 
 模块不接收 seen/unseen 标记。训练时调用方只能传训练 seen 类和 seen 图像；推理时
-同一接口可以传 pseudo 的联合候选集或 official 的 200 类联合候选集。
+同一接口可以传 pseudo 的联合候选集或 official 的 200 类联合候选集。ZS 必须另传
+50 个 unseen 类重新前向并重新选择动态混淆类，不能从 200 类前向结果中切列代替。
 
 `x2_prototypes` 必须是 X2 已经生成的最终 float32 单位原型。构造器只验证范数并
 逐元素保存原值，禁止再次归一化；这是 `VCER-off` 与历史 X2 bitwise 等价的必要条件。
