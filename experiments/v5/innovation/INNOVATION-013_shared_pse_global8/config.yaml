@@ -44,6 +44,16 @@ conditions:
     run_id: RUN-003
     mode: dcra
     topology_weight: 0.1
+  PSE-X1:
+    run_id: RUN-004
+    mode: uniform
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  PSE-X2:
+    run_id: RUN-005
+    mode: legacy_uniform
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
 inputs:
   sentence_embeds: data/cache/CUB_gpt55_8role_sentence_embeds.pt
   train_features: data/cache/CUB_train_features.pt

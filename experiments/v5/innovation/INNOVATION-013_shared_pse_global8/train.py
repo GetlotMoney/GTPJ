@@ -1,4 +1,4 @@
-"""Run the local PSE-A/B/C comparison on frozen CUB CLIP features."""
+"""Run the frozen local strong-PSE comparisons on CUB CLIP features."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ EXPECTED_ROLES = (
     "unique_discriminative_features",
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
-EXPECTED_CONFIG_SHA256 = "5ee0e9796e69949b0e33802e407310db766b9ca213ba92b7d883d74dcbb6f708"
+EXPECTED_CONFIG_SHA256 = "4d7a0c1ffc4fbdd592fbf63e41506e66cd0d3037381c2e8dc8c10130986a59d6"
 TRAINING_KEYS = ("sentence_embeds", "train_features", "train_labels", "res101", "att_splits")
 OFFICIAL_KEYS = ("seen_features", "seen_labels", "unseen_features", "unseen_labels")
 
@@ -93,15 +93,28 @@ def load_config(path: Path) -> tuple[dict, str]:
     if config.get("score_path") != "clip_cls_x_strong_pse_global_only":
         raise ValueError("score_path must keep the single clean global-only path.")
     conditions = config.get("conditions")
-    if not isinstance(conditions, dict) or set(conditions) != {"PSE-A", "PSE-B", "PSE-C"}:
-        raise ValueError("config must freeze exactly PSE-A, PSE-B, and PSE-C.")
+    expected_keys = {"PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2"}
+    if not isinstance(conditions, dict) or set(conditions) != expected_keys:
+        raise ValueError("config must freeze exactly PSE-A/B/C and PSE-X1/X2.")
     expected = {
         "PSE-A": {"run_id": "RUN-001", "mode": "uniform", "topology_weight": 0.1},
         "PSE-B": {"run_id": "RUN-002", "mode": "uniform", "topology_weight": 0.0},
         "PSE-C": {"run_id": "RUN-003", "mode": "dcra", "topology_weight": 0.1},
+        "PSE-X1": {
+            "run_id": "RUN-004",
+            "mode": "uniform",
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "PSE-X2": {
+            "run_id": "RUN-005",
+            "mode": "legacy_uniform",
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
     }
     if conditions != expected:
-        raise ValueError("PSE-A/B/C conditions differ from the frozen single-variable plan.")
+        raise ValueError("frozen PSE conditions differ from the paired plan.")
     return config, config_sha256
 
 
@@ -189,6 +202,14 @@ def stratified_train_validation_split(
     return torch.cat(train_indices).sort().values, torch.cat(validation_indices).sort().values
 
 
+def legacy_batch_indices(
+    sample_count: int, batch_size: int, generator: torch.Generator
+) -> torch.Tensor:
+    if not 0 < batch_size <= sample_count:
+        raise ValueError("batch_size must be within the training sample count.")
+    return torch.randperm(sample_count, generator=generator)[:batch_size]
+
+
 def frozen_visual_centroids(
     features: torch.Tensor,
     labels: torch.Tensor,
@@ -236,8 +257,8 @@ class StrongRolePSE(nn.Module):
         centroids = F.normalize(torch.as_tensor(visual_centroids).detach().float(), dim=-1)
         if tuple(centroids.shape) != (classes.numel(), 768):
             raise ValueError("visual_centroids must align with adapted_classes.")
-        if mode not in {"uniform", "dcra"}:
-            raise ValueError("mode must be uniform or dcra.")
+        if mode not in {"uniform", "dcra", "legacy_uniform"}:
+            raise ValueError("mode must be uniform, dcra, or legacy_uniform.")
         if not 0.0 < float(inner_ratio) < 1.0 or not 0.0 < float(outer_ratio) < 1.0:
             raise ValueError("inner_ratio and outer_ratio must be in (0, 1).")
         if not 0.0 <= float(dcra_mix) <= 1.0:
@@ -249,9 +270,20 @@ class StrongRolePSE(nn.Module):
         self.register_buffer("sentence_embeds", normalized, persistent=True)
         self.register_buffer("adapted_classes", classes, persistent=True)
         self.register_buffer("visual_centroids", centroids, persistent=True)
-        self.value_projection = nn.Linear(768, 768)
-        self.output_projection = nn.Linear(768, 768)
-        self.post_projection = nn.Linear(768, 768)
+        if mode == "legacy_uniform":
+            # Preserve the production Uniform-PSE parameter initialization and
+            # attention-dropout path, including unused Q/K parameters.
+            self.legacy_attention = nn.MultiheadAttention(
+                embed_dim=768,
+                num_heads=4,
+                dropout=float(dropout),
+                batch_first=True,
+            )
+            self.post_projection = nn.Linear(768, 768)
+        else:
+            self.value_projection = nn.Linear(768, 768)
+            self.output_projection = nn.Linear(768, 768)
+            self.post_projection = nn.Linear(768, 768)
         self.dropout = nn.Dropout(float(dropout))
         self.layer_norm = nn.LayerNorm(768)
         self.mode = mode
@@ -267,10 +299,43 @@ class StrongRolePSE(nn.Module):
     def base_vectors(self) -> torch.Tensor:
         return self.sentence_embeds.mean(dim=1)
 
+    def candidate_base_vectors(self) -> torch.Tensor:
+        # Keep the same Mean8 base for X1/X2 so the paired result isolates the
+        # PSE training operator rather than changing unseen text aggregation.
+        return self.base_vectors()
+
     def base_prototypes(self) -> torch.Tensor:
         return F.normalize(self.base_vectors(), dim=-1)
 
     def transformed_roles(self) -> torch.Tensor:
+        if self.mode == "legacy_uniform":
+            x = self.sentence_embeds.index_select(0, self.adapted_classes)
+            batch, tokens, dim = x.shape
+            heads = self.legacy_attention.num_heads
+            head_dim = dim // heads
+            _, _, value_weight = self.legacy_attention.in_proj_weight.chunk(3, dim=0)
+            if self.legacy_attention.in_proj_bias is None:
+                value_bias = None
+            else:
+                _, _, value_bias = self.legacy_attention.in_proj_bias.chunk(3, dim=0)
+            value = F.linear(x, value_weight, value_bias)
+            value = value.view(batch, tokens, heads, head_dim).transpose(1, 2)
+            weights = x.new_full((batch, heads, tokens, tokens), 1.0 / tokens)
+            weights = F.dropout(
+                weights,
+                p=float(self.legacy_attention.dropout),
+                training=self.training,
+            )
+            context = torch.matmul(weights, value)
+            context = context.transpose(1, 2).contiguous().view(batch, tokens, dim)
+            attention_output = F.linear(
+                context,
+                self.legacy_attention.out_proj.weight,
+                self.legacy_attention.out_proj.bias,
+            )
+            context = self.dropout(self.post_projection(attention_output))
+            mixed = self.inner_ratio * context + (1.0 - self.inner_ratio) * x
+            return self.layer_norm(2.0 * mixed)
         values = self.value_projection(self.sentence_embeds)
         context = self.output_projection(values.mean(dim=1))
         context = self.dropout(self.post_projection(context)).unsqueeze(1)
@@ -279,7 +344,7 @@ class StrongRolePSE(nn.Module):
 
     def role_attention(self, transformed: torch.Tensor) -> tuple[torch.Tensor, dict]:
         count = transformed.shape[1]
-        if self.mode == "uniform":
+        if self.mode in {"uniform", "legacy_uniform"}:
             weights = transformed.new_full((self.adapted_classes.numel(), count), 1.0 / count)
             return weights, {"margins": None, "rival_class_ids": None}
 
@@ -302,15 +367,22 @@ class StrongRolePSE(nn.Module):
     def prototype_components(self) -> tuple[torch.Tensor, torch.Tensor, dict]:
         transformed = self.transformed_roles()
         role_weights, evidence = self.role_attention(transformed)
-        base_vectors = self.base_vectors()
+        base_vectors = self.candidate_base_vectors()
         base_scale = base_vectors.new_ones((base_vectors.shape[0],))
         base_scale[self.adapted_classes] = 1.0 - self.outer_ratio
         base_part = base_scale.unsqueeze(-1) * base_vectors
-        role_part = transformed.new_zeros(transformed.shape)
+        role_part = transformed.new_zeros(
+            self.sentence_embeds.shape[0], self.sentence_embeds.shape[1], transformed.shape[-1]
+        )
+        adapted_roles = (
+            transformed
+            if self.mode == "legacy_uniform"
+            else transformed.index_select(0, self.adapted_classes)
+        )
         role_part[self.adapted_classes] = (
             self.outer_ratio
             * role_weights.unsqueeze(-1)
-            * transformed.index_select(0, self.adapted_classes)
+            * adapted_roles
         )
         enhanced = base_part + role_part.sum(dim=1)
         evidence.update(
@@ -459,32 +531,41 @@ def run(
     unseenclasses = allclasses[~torch.isin(allclasses, seenclasses)]
     if seenclasses.numel() != 150 or unseenclasses.numel() != 50:
         raise ValueError("CUB must expose 150 seen and 50 unseen classes.")
-    train_indices, validation_indices = stratified_train_validation_split(
-        tensors["train_labels"],
-        seenclasses,
-        float(config["validation_fraction"]),
-        seed,
+    selected_condition = config["conditions"][condition]
+    full_seen_protocol = (
+        selected_condition.get("training_protocol")
+        == "full_seen_fixed_epoch50_legacy_sampling"
     )
+    if full_seen_protocol:
+        train_indices = torch.arange(tensors["train_labels"].numel(), dtype=torch.long)
+        validation_indices = torch.empty(0, dtype=torch.long)
+    else:
+        train_indices, validation_indices = stratified_train_validation_split(
+            tensors["train_labels"],
+            seenclasses,
+            float(config["validation_fraction"]),
+            seed,
+        )
     split_sha256 = hashlib.sha256(
         validation_indices.numpy().astype("int64").tobytes()
     ).hexdigest()
 
     global_to_seen = torch.full((200,), -1, dtype=torch.long)
     global_to_seen[seenclasses] = torch.arange(seenclasses.numel())
-    train_dataset = TensorDataset(
-        tensors["train_features"][train_indices].float(),
-        global_to_seen[tensors["train_labels"][train_indices].long()],
-    )
-    loader_generator = torch.Generator().manual_seed(seed)
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=int(config["batch_size"]),
-        shuffle=True,
-        num_workers=0,
-        generator=loader_generator,
-    )
-
-    selected_condition = config["conditions"][condition]
+    train_loader = None
+    if not full_seen_protocol:
+        train_dataset = TensorDataset(
+            tensors["train_features"][train_indices].float(),
+            global_to_seen[tensors["train_labels"][train_indices].long()],
+        )
+        loader_generator = torch.Generator().manual_seed(seed)
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=int(config["batch_size"]),
+            shuffle=True,
+            num_workers=0,
+            generator=loader_generator,
+        )
     centroids = frozen_visual_centroids(
         tensors["train_features"], tensors["train_labels"], train_indices, seenclasses
     )
@@ -512,19 +593,27 @@ def run(
     for stage in stages:
         total += int(stage["epochs"])
         stage_boundaries.append(total)
+    if full_seen_protocol and total != 50:
+        raise ValueError("full-seen diagnostic protocol requires exactly 50 epochs.")
     active_stage = 0
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=int(stages[0]["epochs"]), eta_min=float(stages[0]["eta_min"])
     )
 
-    validation_features = tensors["train_features"][validation_indices].to(device).float()
-    validation_targets = global_to_seen[
-        tensors["train_labels"][validation_indices].long()
-    ].to(device)
+    validation_features = None
+    validation_targets = None
+    if not full_seen_protocol:
+        validation_features = tensors["train_features"][validation_indices].to(device).float()
+        validation_targets = global_to_seen[
+            tensors["train_labels"][validation_indices].long()
+        ].to(device)
     best_state = None
     best_validation_loss = float("inf")
     best_epoch = 0
     history = []
+    sampling_generator = None
+    if full_seen_protocol:
+        sampling_generator = torch.Generator(device="cpu").manual_seed(seed)
     for epoch in range(1, total + 1):
         target_stage = next(i for i, boundary in enumerate(stage_boundaries) if epoch <= boundary)
         if target_stage != active_stage:
@@ -542,7 +631,25 @@ def run(
         ce_sum = 0.0
         topology_sum = 0.0
         sample_count = 0
-        for features, targets in train_loader:
+        if full_seen_protocol:
+            steps = tensors["train_labels"].numel() // int(config["batch_size"])
+
+            def batches():
+                for _ in range(steps):
+                    indices = legacy_batch_indices(
+                        tensors["train_labels"].numel(),
+                        int(config["batch_size"]),
+                        sampling_generator,
+                    )
+                    yield (
+                        tensors["train_features"][indices].float(),
+                        global_to_seen[tensors["train_labels"][indices].long()],
+                    )
+
+            epoch_batches = batches()
+        else:
+            epoch_batches = train_loader
+        for features, targets in epoch_batches:
             features = features.to(device)
             targets = targets.to(device)
             optimizer.zero_grad(set_to_none=True)
@@ -559,12 +666,14 @@ def run(
         scheduler.step()
 
         model.eval()
-        with torch.no_grad():
-            validation_loss = float(
-                F.cross_entropy(
-                    model.logits(validation_features, seenclasses), validation_targets
-                ).cpu()
-            )
+        validation_loss = None
+        if not full_seen_protocol:
+            with torch.no_grad():
+                validation_loss = float(
+                    F.cross_entropy(
+                        model.logits(validation_features, seenclasses), validation_targets
+                    ).cpu()
+                )
         training_loss = loss_sum / sample_count
         history.append(
             {
@@ -576,11 +685,22 @@ def run(
                 "learning_rate": float(optimizer.param_groups[0]["lr"]),
             }
         )
+        validation_text = (
+            "none_fixed_epoch50"
+            if validation_loss is None
+            else f"{validation_loss:.6f}"
+        )
         print(
             f"epoch={epoch} train_loss={training_loss:.6f} "
-            f"validation_loss={validation_loss:.6f} topology={topology_sum/sample_count:.6f}"
+            f"validation_loss={validation_text} topology={topology_sum/sample_count:.6f}"
         )
-        if validation_loss < best_validation_loss - float(config["min_delta"]):
+        if full_seen_protocol and epoch == total:
+            best_epoch = epoch
+            best_state = copy.deepcopy(model.state_dict())
+        elif (
+            not full_seen_protocol
+            and validation_loss < best_validation_loss - float(config["min_delta"])
+        ):
             best_validation_loss = validation_loss
             best_epoch = epoch
             best_state = copy.deepcopy(model.state_dict())
@@ -644,8 +764,14 @@ def run(
         "input_sha256": input_sha256,
         "class_order_sha256": config["class_order_sha256"],
         "validation_indices_sha256": split_sha256,
-        "best_epoch_by_seen_validation_ce": best_epoch,
-        "best_validation_loss": best_validation_loss,
+        "selection_protocol": (
+            "fixed_epoch_50_no_validation"
+            if full_seen_protocol
+            else "seen_internal_validation_ce"
+        ),
+        "selected_epoch": best_epoch,
+        "best_epoch_by_seen_validation_ce": None if full_seen_protocol else best_epoch,
+        "best_validation_loss": None if full_seen_protocol else best_validation_loss,
         "baseline_metrics_percent": baseline_metrics,
         "metrics_percent": metrics,
         "delta_percent_points": delta,
@@ -676,7 +802,11 @@ def main() -> None:
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--expected-commit", required=True)
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--condition", choices=("PSE-A", "PSE-B", "PSE-C"), required=True)
+    parser.add_argument(
+        "--condition",
+        choices=("PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2"),
+        required=True,
+    )
     args = parser.parse_args()
     run(
         args.config.resolve(),

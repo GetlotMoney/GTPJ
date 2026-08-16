@@ -29,14 +29,14 @@ def make_inputs():
     return sentences, classes, centroids
 
 
-def make_model(mode: str, dcra_mix: float = 0.2):
+def make_model(mode: str, dcra_mix: float = 0.2, dropout: float = 0.0):
     sentences, classes, centroids = make_inputs()
     return MODULE.StrongRolePSE(
         sentences,
         classes,
         centroids,
         mode=mode,
-        dropout=0.0,
+        dropout=dropout,
         inner_ratio=0.35,
         outer_ratio=0.65,
         dcra_mix=dcra_mix,
@@ -95,3 +95,98 @@ def test_visual_centroids_use_only_supplied_training_indices():
     )
     assert torch.equal(centroids[0], features[0])
     assert torch.equal(centroids[1], features[2])
+
+
+class ReferenceLegacyUniform(torch.nn.Module):
+    """Independent transcription of the reviewed ABLATION-012 PSE path."""
+
+    def __init__(self, dropout: float):
+        super().__init__()
+        self.attn = torch.nn.MultiheadAttention(
+            embed_dim=768, num_heads=4, dropout=dropout, batch_first=True
+        )
+        self.proj = torch.nn.Linear(768, 768)
+        self.dropout = torch.nn.Dropout(dropout)
+        self.layer_norm = torch.nn.LayerNorm(768)
+
+    def forward(self, x):
+        batch, tokens, dim = x.shape
+        heads = self.attn.num_heads
+        head_dim = dim // heads
+        _, _, value_weight = self.attn.in_proj_weight.chunk(3, dim=0)
+        _, _, value_bias = self.attn.in_proj_bias.chunk(3, dim=0)
+        value = torch.nn.functional.linear(x, value_weight, value_bias)
+        value = value.view(batch, tokens, heads, head_dim).transpose(1, 2)
+        weights = x.new_full((batch, heads, tokens, tokens), 1.0 / tokens)
+        weights = torch.nn.functional.dropout(
+            weights, p=float(self.attn.dropout), training=self.training
+        )
+        context = torch.matmul(weights, value)
+        context = context.transpose(1, 2).contiguous().view(batch, tokens, dim)
+        attention_output = torch.nn.functional.linear(
+            context, self.attn.out_proj.weight, self.attn.out_proj.bias
+        )
+        attention_output = self.dropout(self.proj(attention_output))
+        mixed = 0.35 * attention_output + 0.65 * x
+        return self.layer_norm(2.0 * mixed)
+
+
+def test_legacy_uniform_matches_production_path_in_train_and_eval():
+    sentences, _, _ = make_inputs()
+    torch.manual_seed(31)
+    model = make_model("legacy_uniform", dropout=0.5)
+    torch.manual_seed(31)
+    reference = ReferenceLegacyUniform(dropout=0.5)
+    seen_sentences = torch.nn.functional.normalize(sentences[:150], dim=-1)
+
+    model.eval()
+    reference.eval()
+    assert torch.allclose(
+        model.transformed_roles(), reference(seen_sentences), atol=2e-6
+    )
+
+    model.train()
+    reference.train()
+    torch.manual_seed(1705)
+    actual = model.transformed_roles()
+    torch.manual_seed(1705)
+    expected = reference(seen_sentences)
+    assert torch.equal(actual, expected)
+
+
+def test_legacy_uniform_only_transforms_seen_and_keeps_mean8_unseen():
+    model = make_model("legacy_uniform", dropout=0.0)
+    model.eval()
+    assert model.transformed_roles().shape == (150, 8, 768)
+    expected_unseen = model.base_prototypes()[150:]
+    assert torch.equal(model.prototypes()[150:], expected_unseen)
+
+
+def test_legacy_uniform_gradients_reach_value_not_query_or_key():
+    model = make_model("legacy_uniform", dropout=0.0)
+    images = torch.randn(4, 768, generator=torch.Generator().manual_seed(41))
+    loss = torch.nn.functional.cross_entropy(
+        model.logits(images, torch.arange(150)), torch.tensor([0, 1, 2, 3])
+    )
+    loss.backward()
+    q_grad, k_grad, v_grad = model.legacy_attention.in_proj_weight.grad.chunk(3, dim=0)
+    assert torch.count_nonzero(q_grad) == 0
+    assert torch.count_nonzero(k_grad) == 0
+    assert float(v_grad.abs().sum()) > 0.0
+
+
+def test_full_seen_batch_schedule_is_independent_of_model_rng_consumption():
+    first_generator = torch.Generator(device="cpu").manual_seed(5)
+    second_generator = torch.Generator(device="cpu").manual_seed(5)
+    first_schedule = [
+        MODULE.legacy_batch_indices(7057, 64, first_generator) for _ in range(12)
+    ]
+    torch.manual_seed(999)
+    _ = torch.randn(10000)
+    second_schedule = [
+        MODULE.legacy_batch_indices(7057, 64, second_generator) for _ in range(12)
+    ]
+    assert all(
+        torch.equal(first, second)
+        for first, second in zip(first_schedule, second_schedule, strict=True)
+    )
