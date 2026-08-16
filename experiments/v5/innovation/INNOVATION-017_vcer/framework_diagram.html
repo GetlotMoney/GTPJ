@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VCER 框架图</title>
+  <style>
+    :root { color-scheme: light; --ink:#172033; --muted:#5f6b7c; --line:#9aa8bc;
+      --base:#e8f0ff; --local:#e9f8ef; --global:#fff2d9; --unique:#f1eaff;
+      --out:#ffe9e7; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#f7f8fb; color:var(--ink); font:16px/1.55 system-ui,"Microsoft YaHei",sans-serif; }
+    main { width:min(1180px,calc(100% - 32px)); margin:32px auto; }
+    h1 { margin:0 0 8px; font-size:30px; }
+    .lead { margin:0 0 24px; color:var(--muted); }
+    .flow { display:grid; grid-template-columns:1.05fr 1.15fr 1.15fr 1fr; gap:18px; align-items:stretch; }
+    .column { display:flex; flex-direction:column; gap:14px; }
+    .card { position:relative; min-height:104px; padding:16px; border:1px solid #ccd4e0;
+      border-radius:14px; background:white; box-shadow:0 5px 18px rgba(36,48,75,.06); }
+    .card h2 { margin:0 0 7px; font-size:17px; }
+    .card p { margin:0; color:var(--muted); font-size:14px; }
+    .base { background:var(--base); } .local { background:var(--local); }
+    .global { background:var(--global); } .unique { background:var(--unique); }
+    .out { background:var(--out); }
+    .arrow { display:flex; align-items:center; justify-content:center; color:#64748b; font-size:27px; }
+    .formula { margin-top:22px; padding:18px 20px; border-radius:14px; background:#172033; color:#f5f7fb;
+      font-family:Consolas,monospace; overflow:auto; }
+    .notes { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:18px; }
+    .note { padding:14px 16px; border-left:4px solid #6d7f9b; background:white; border-radius:8px; }
+    @media (max-width:850px) { .flow { grid-template-columns:1fr; } .arrow { transform:rotate(90deg); }
+      .notes { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>VCER：可见反事实证据路由</h1>
+  <p class="lead">固定 PSE-X2 强底分；6 个局部、1 个全局、1 个独特描述各司其职，而不是 8 条对称支路。</p>
+  <section class="flow" aria-label="VCER 数据流">
+    <div class="column">
+      <article class="card base"><h2>冻结全局底座</h2><p>CLIP CLS × PSE-X2 原型，得到候选底分，并为每个候选选择最强其他类 q。</p></article>
+      <article class="card"><h2>冻结 patch</h2><p>同一图像的 P 个局部 token；不使用 unseen 图像训练。</p></article>
+    </div>
+    <div class="column">
+      <article class="card local"><h2>6 个局部描述</h2><p>计算同一 patch 上候选类与混淆类的六组余弦边际。</p></article>
+      <article class="card global"><h2>1 个全局描述</h2><p>估计候选与混淆类共同相关的主体/前景可见性。</p></article>
+      <article class="card unique"><h2>1 个独特描述</h2><p>只把类别独特差异路由到六个局部角色，不直接充当额外分类头。</p></article>
+    </div>
+    <div class="column">
+      <article class="card"><h2>共享低秩证据空间</h2><p>文本与 patch 共用 Wdown/Wup；Wup 零初始化，无类别、角色或 split 专属参数。</p></article>
+      <article class="card"><h2>可见反事实证据 E</h2><p>局部边际 × 前景可见性 × unique 角色权重；各项有界且可单独干预。</p></article>
+    </div>
+    <div class="column">
+      <article class="card out"><h2>固定等权合成</h2><p>s = x2_scale × (base + E) / 2；不调 gamma。</p></article>
+      <article class="card"><h2>B × C logits</h2><p>保持候选顺序、label mapping 与 GZSL 联合竞争语义。</p></article>
+    </div>
+  </section>
+  <div class="formula">q(i,c)=argmax[j≠c] b(i,j)　　m=(cos(p,l_c)-cos(p,l_q))/2　　s=x2_scale·(b+E)/2</div>
+  <section class="notes">
+    <div class="note"><strong>VCER-off</strong><br>不读取 patch，逐元素退回冻结 X2 logits。</div>
+    <div class="note"><strong>因果检查</strong><br>role-shuffle 只错配 unique 权重与六路视觉证据；unique-swap、跨类局部替换也必须破坏证据。</div>
+    <div class="note"><strong>当前边界</strong><br>仅核心实现与单测；未启动 pseudo 或 official。</div>
+  </section>
+</main>
+</body>
+</html>

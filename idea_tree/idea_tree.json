@@ -453,6 +453,53 @@
           "note": "planned：干净 V6 候选先作为 V5 innovation 记录，尚未实现或训练。"
         }
       ]
+    },
+    {
+      "idea_id": "IDEA-0014",
+      "idea_dir": "idea_tree/ideas/IDEA-0014_vcer/",
+      "title": "可见反事实证据路由（VCER）",
+      "status": "candidate",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-16:VCER_6local_unique_router_global_foreground",
+      "source_status": "local_heuristic",
+      "global_score": 80.0,
+      "core_summary": "冻结 PSE-X2 全局底分；每个候选动态选择其最强混淆类，独特描述只把类别差异路由到 6 个局部角色，全局描述只估计前景可见性，局部描述与 patch 的同位置反事实边际形成有界修正。",
+      "version_scores": {
+        "v5": {
+          "score": 80.0,
+          "applicability": "needs_adaptation",
+          "stage": "candidate",
+          "rationale": "PSE-X2 已提供强全局原型，但缺少真正依赖 6 个局部、1 个全局和 1 个独特描述分工的视觉证据；VCER 保留冻结底分，仅学习共享低秩证据空间。",
+          "blockers": []
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE-X2"
+      ],
+      "target_component": "冻结 PSE-X2 之后的候选—混淆类局部视觉重排",
+      "hypothesis": "若独特描述决定看哪种局部差异、全局描述抑制背景 patch、6 个局部描述提供可见反事实边际，则能减少 seen 类原型对 unseen 图像的错误吸引，并且角色置换会显著破坏效果。",
+      "expected_effect": {
+        "U": "相对 pseudo-X2 下降不超过 0.5，理想情况下提升",
+        "S": "不以牺牲 seen 稳定性换取表面增益",
+        "H": "直接 official-test-guided 开发评估；目标相对 X2 提升至少 0.5"
+      },
+      "implementation_scope": "在冻结 X2 logits、8 句语义和 CLIP 图像特征之上新增一个共享低秩投影、动态 rival 选择、可见性加权反事实证据与 unique-swap 因果约束；不引入类别专属参数、gamma 或 official-test 选择。",
+      "risk": "patch 证据可能仍偏向背景，或 unique 路由退化为共享权重；必须用 role-shuffle、unique-swap 和跨类局部替换验证角色依赖。",
+      "compatibility": "开关关闭时逐元素退回冻结 PSE-X2；同一公式处理任意候选类集合，不编码 seen/unseen 身份。",
+      "transfer_notes": "迁移到后续框架时只要求提供同维度的 8 句证据、冻结类别原型、全局图像特征和 patch 特征；不得把 v5 的类顺序或 split 写进参数。",
+      "priority": 0.8,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-017_vcer"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-017_vcer/vcer.py",
+        "tests/test_v5_vcer.py"
+      ]
     }
   ]
 }

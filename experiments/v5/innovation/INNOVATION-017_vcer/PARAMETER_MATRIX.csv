@@ -1,0 +1,2 @@
+run_id,experiment_id,name,status,only_changed_factor,seed,rank,batch_size,epochs,unique_margin,unique_causal_weight,preserve_weight,selection_protocol,official_test_policy,H,decision
+RUN-001,V5-INNOVATION-017,VCER-on-X2-formal,frozen_ready,frozen_x2_plus_shared_vcer,5,16,8,50,0.1,1.0,0.05,fixed_epoch_50_no_official_selection,direct_after_fixed_checkpoint_owner_20260816,,pending

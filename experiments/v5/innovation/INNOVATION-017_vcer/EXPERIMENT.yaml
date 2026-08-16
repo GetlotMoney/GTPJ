@@ -1,0 +1,16 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-017
+framework_id: FRAMEWORK-V5
+kind: innovation
+idea_id: IDEA-0014
+base_identity_kind: frozen_historical_module
+base_code_ref: PSE-X2@a0ac9d8f82fef6022da5e823049b00760cd1fa2e
+base_checkpoint_sha256: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3
+implementation_branch: codex/vcer-implementation-20260816
+status: frozen_ready
+planned_runs: 1
+formal_training_started: false
+selection_protocol: fixed_epoch_50_no_official_selection
+official_test_policy: direct_after_fixed_checkpoint_owner_20260816
+evidence_label: official-test-guided development
+not_confirmation_evidence: true

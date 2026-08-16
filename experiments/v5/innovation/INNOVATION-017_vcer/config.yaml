@@ -1,0 +1,72 @@
+experiment_id: V5-INNOVATION-017
+run_id: RUN-001
+dataset: CUB
+device: cuda:0
+seed: 5
+score_path: frozen_x2_plus_vcer
+official_test_policy: direct_after_fixed_checkpoint_owner_20260816
+evidence_label: official-test-guided development
+class_order_sha256: 7b6ffe26103bfeb73324f328fac499d6ea7cfadfb2b56448b0df295aca22df38
+
+role_order:
+  - beak
+  - head_features
+  - body_plumage
+  - wings
+  - tail
+  - legs
+  - overall_appearance
+  - unique_discriminative_features
+role_shuffle_permutation: [1, 2, 3, 4, 5, 0]
+
+rank: 16
+batch_size: 8
+evaluation_batch_size: 8
+weight_decay: 0.0001
+unique_margin: 0.1
+unique_causal_weight: 1.0
+preserve_weight: 0.05
+lr_stages:
+  - {lr: 0.001, epochs: 20, eta_min: 0.00001}
+  - {lr: 0.0001, epochs: 20, eta_min: 0.000001}
+  - {lr: 0.00001, epochs: 10, eta_min: 0.0000001}
+
+x2_identity:
+  sha256: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3
+  code_commit: a0ac9d8f82fef6022da5e823049b00760cd1fa2e
+  best_epoch: 50
+  metrics_percent:
+    U: 73.39547872543335
+    S: 73.6515760421753
+    H: 73.52330437411622
+    ZS: 81.53468370437622
+
+inputs:
+  sentence_embeds: cache/CUB_gpt55_8role_sentence_embeds.pt
+  train_features: cache/CUB_train_features.pt
+  train_labels: cache/CUB_train_labels.pt
+  train_patches: cache/CUB_train_patch_features.pt
+  seen_features: cache/CUB_test_seen_features.pt
+  seen_labels: cache/CUB_test_seen_labels.pt
+  seen_patches: cache/CUB_test_seen_patch_features.pt
+  unseen_features: cache/CUB_test_unseen_features.pt
+  unseen_labels: cache/CUB_test_unseen_labels.pt
+  unseen_patches: cache/CUB_test_unseen_patch_features.pt
+  res101: xlsa17/data/CUB/res101.mat
+  att_splits: xlsa17/data/CUB/att_splits.mat
+  x2_checkpoint: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/local_trials/DCRA-PSE-20260816/RUN-005/model_best.pth
+
+expected_sha256:
+  sentence_embeds: e3b428a3588d4e715910e07472848de4641ddb7e37791edbe6c07f8681213663
+  train_features: a18cefc50ec541027598d742698622f7ddd2ec8687ba797ab1eeeacb743a4fe9
+  train_labels: b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666
+  train_patches: 244dbf96109362306555c55cf718590a6ffd2f3c5c403127463aff86311aacc2
+  seen_features: 5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5
+  seen_labels: 06f3f7057b6847fd912544ddb921d0ca3fca96d0888503f3fc87a52f98d3de14
+  seen_patches: d1a21b3a4797ffa28115ffb22cc6d1e401453d605b99360c731d46e523a794ca
+  unseen_features: 32c1b89edb72a94e27585060ac968f1afc99000a9bd8c42acee8469971fb107e
+  unseen_labels: 7fadd63d51f69cf09cc8107a132d28036b838649b75227a17656eac8640b9c59
+  unseen_patches: 3ef523a1fe582fa2e1be88f3a975bda64e31a565e69fe001efec2f21fa3b1d77
+  res101: 9a97c71951f9ac9f5c3708e6e55386e53f3d433289ed5e87a18b4af2a1a0fca1
+  att_splits: d7f5b4c2cb7853acdce43a9e87607ceed30bdf18c60344be3a266de29b6751e3
+  x2_checkpoint: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3
