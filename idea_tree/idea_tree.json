@@ -505,7 +505,7 @@
       "idea_id": "IDEA-0015",
       "idea_dir": "idea_tree/ideas/IDEA-0015_artv/",
       "title": "解剖锚定角色传输验证器（ARTV）",
-      "status": "developing",
+      "status": "rejected",
       "source_type": "hybrid",
       "source_ref": "owner-codex:2026-08-17:ARTV_crop_grounded_top2_verifier",
       "source_status": "local_heuristic",
@@ -515,10 +515,10 @@
         "v5": {
           "score": 84.0,
           "applicability": "direct",
-          "stage": "trialing",
-          "rationale": "X2 top-2 oracle 有明显空间；ARTV 不重学分类器，只把 6 局部、1 全局、1 独特描述转化为可干预的裁剪证据。",
+          "stage": "rejected",
+          "rationale": "RUN-001 中 ARTV H=70.052722，比同次 X2 低 3.470582；role-shuffle 只再低 0.311694 H，角色弱信号不足以抵消错误交换。",
           "blockers": [
-            "正式运行等待同一最终代码两轮审核与空闲 GPU。"
+            "RUN-001 主路径在 seen/unseen 上均 harmed 多于 rescued，按冻结规则停止且不调证书阈值。"
           ]
         }
       },
@@ -548,7 +548,8 @@
       ],
       "evidence": [
         "experiments/v5/innovation/INNOVATION-022_artv/artv.py",
-        "tests/test_v5_artv.py"
+        "tests/test_v5_artv.py",
+        "experiments/v5/innovation/INNOVATION-022_artv/result.md"
       ]
     }
   ]

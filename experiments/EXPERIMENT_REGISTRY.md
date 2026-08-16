@@ -55,7 +55,7 @@
 | `V5-INNOVATION-011` | `FRAMEWORK-V5` | innovation | planned | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` |
 | `V5-INNOVATION-015` | `FRAMEWORK-V5` | innovation | rejected | `experiments/v5/innovation/INNOVATION-015_te_pse/result.md` |
 | `V5-INNOVATION-016` | `FRAMEWORK-V5` | innovation | rejected | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc/result.md` |
-| `V5-INNOVATION-022` | `FRAMEWORK-V5` | innovation | pre_run | `experiments/v5/innovation/INNOVATION-022_artv/PARAMETER_MATRIX.md` |
+| `V5-INNOVATION-022` | `FRAMEWORK-V5` | innovation | rejected | `experiments/v5/innovation/INNOVATION-022_artv/result.md` |
 | `V5-CONFIRM-001` | `FRAMEWORK-V5` | confirmation | pre_run | `experiments/v5/confirmation/CONFIRM-001_v5-code-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-002` | `FRAMEWORK-V5` | confirmation | planned | `experiments/v5/confirmation/CONFIRM-002_v5-seed-equivalence/PARAMETER_MATRIX.md` |
 | `V5-CONFIRM-003` | `FRAMEWORK-V5` | confirmation | completed | `experiments/v5/confirmation/CONFIRM-003_current_local_diagnosis/result.md` |

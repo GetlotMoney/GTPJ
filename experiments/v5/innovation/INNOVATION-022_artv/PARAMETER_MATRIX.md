@@ -6,7 +6,7 @@
 
 | 任务 | 名称 | 类别 | 状态 | 本次改动 | 随机种子 | 复跑对象 | 旧任务/批次号 | 用途 | H | 决定 | 证据清单 SHA256 |
 |---|---|---|---|---|---:|---|---|---|---:|---|---|
-| RUN-001 | ARTV-on-frozen-X2 | innovation | frozen | {"artv_enabled":true,"certificate_votes":5,"crop_scheme":"deterministic_15","trainable_parameters":0} | 5 |  | RUN-001 | 验证固定角色裁剪证据能否只交换X2前两名并提高official GZSL H |  | pending |  |
+| RUN-001 | ARTV-on-frozen-X2 | innovation | completed | {"artv_enabled":true,"certificate_votes":5,"crop_scheme":"deterministic_15","trainable_parameters":0} | 5 |  | RUN-001 | 验证固定角色裁剪证据能否只交换X2前两名并提高official GZSL H | 70.05272232927119 | stop_no_gain |  |
 
 ## 查重说明
 

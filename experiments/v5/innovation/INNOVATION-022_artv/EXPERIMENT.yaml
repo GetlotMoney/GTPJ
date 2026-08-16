@@ -15,9 +15,10 @@ legacy_ref: IDEA-0015
 base_code_ref: PSE-X2@a0ac9d8f82fef6022da5e823049b00760cd1fa2e
 base_checkpoint_sha256: a0d8465d3a716ec52d197c8ca10ab9e70dff73d09fe56099e38d8270ee7243f3
 implementation_branch: codex/artv-implementation-20260817
-implementation_commit: clean_git_head_recorded_by_evaluator
-status: pre_run
+implementation_commit: 86fff007d134b3d6aa634f16b919c449f2d2931c
+status: rejected
 planned_runs: 1
+completed_runs: 1
 formal_training_started: false
 training_mode: training_free_frozen_inference
 selection_protocol: fixed_5_of_7_certificate_no_score_search
@@ -25,3 +26,7 @@ official_test_policy: direct_owner_20260817
 evidence_label: official-test-guided-development
 formal_evidence: false
 not_confirmation_evidence: true
+decision: stop_no_gain
+promotion_decision: rejected
+result_ref: result.md
+warehouse_ref: warehouse://runs/v5/local_trials/ARTV-20260817/RUN-001

@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0015
 title: 解剖锚定角色传输验证器（ARTV）
-status: developing
+status: rejected
 source_type: hybrid
 source_ref: owner-codex:2026-08-17:ARTV_crop_grounded_top2_verifier
 source_status: local_heuristic
@@ -58,9 +58,12 @@ Owner 要求保留 PSE-X2 的强文本原型，并让 `6 个局部 + 1 个全局
 - 5/7 证书可能过严或过松，但本轮固定不搜索，失败即停止。
 - 直接 official 属于开发反馈，结果不能冒充 confirmation。
 
-## 阻塞点
+## 实验结果
 
-正式运行仅等待同一最终代码两轮审核与空闲 GPU。
+RUN-001 已完成：X2 `H=73.523304`，ARTV `H=70.052722`，下降 `3.470582`。
+role-shuffle 比 ARTV 再低 `0.311694 H`，但 ARTV 本身在 seen/unseen 上都是 harmed 多于 rescued。
+因此 IDEA-0015 已拒绝，不调 5/7 阈值、不加 gamma、不叠加到后续模块。完整证据见
+`experiments/v5/innovation/INNOVATION-022_artv/result.md`。
 
 ## 决策规则
 
