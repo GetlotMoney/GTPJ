@@ -1,19 +1,15 @@
-# V5-INNOVATION-013：共享 PSE 全局分支
+# 本地 PSE-A/B/C 强原型对照
 
-## 问题
+本目录在独立本地分支复用既有八句训练入口，只用于筛选 DCRA-PSE；它不是 `V5-INNOVATION-013` 的结果改写，也不直接形成 promotion/confirmation 证据。
 
-在 `V5-INNOVATION-012/RUN-001` 的 `H=64.164039` 零号基线上，只加入一套共享 PSE，能否提升 GZSL-H？
+固定框架：冻结 CLIP CLS、GPT-5.5-derived 八角色文本、global-only、seen CE、无 ICSA、无局部、无 gamma。checkpoint 只按 seen 训练集内部固定 10% validation CE 选择，选择并保存完成后才读取 official test，一次同时计算 Mean8 和目标条件。
 
-保留冻结 CLIP CLS 和相同 8 句话；删除 patch、局部分支和全部旧模块。PSE 用同一套句内自注意力、角色权重和有界残差门同时处理 200 个类别，seen 与 unseen 不再走两套规则。残差门从 0 初始化，因此初始分类严格等于零号基线。
+三个条件在同一个 `config.yaml` 中一次冻结：
 
-训练只使用 seen 训练样本的 CE。epoch 选择只看 seen 训练集内部固定 10% 验证 CE，测试集只在恢复最佳验证 checkpoint 后评估一次。
+- `PSE-A / RUN-001`：旧强 Uniform Value/Output/Projection/LayerNorm/inner-outer residual，`topology=0.1`。
+- `PSE-B / RUN-002`：相对 PSE-A 只把 `topology=0`。
+- `PSE-C / RUN-003`：相对 PSE-A 只把 Uniform 聚合换为 DCRA；同角色视觉判别 margin 经类内标准化后使用 `0.8 × uniform + 0.2 × softmax`，每个角色权重结构上位于 `[0.10, 0.30]`。
 
-首轮 50 epoch 调试时验证 CE 到上限仍单调下降，因此正式配置只把 `max_epochs` 延长到 100、`patience` 延长到 10；决定来自训练内验证曲线，不增加模块或损失。
+DCRA 的 seen 视觉类中心只由训练 indices 计算，validation 和 official test 均不参与。第一轮为与旧 PSE 公平比较，seen 类使用增强原型，unseen 类逐值保持 Mean8。三个条件均使用同一八句 cache、seed、训练划分、50 epoch 分段 Adam 日程和评估口径。
 
-首次正式计算写入 Warehouse 的 `RUN-001` 在登记时发现参数矩阵误把零号实验配置当成框架基准，无法通过冻结计划一致性校验，因此只保留为无效计划留痕，不作为正式结果。修正基准配置和完整参数差异后，唯一正式计划改为确定性复跑 `RUN-002`。
-
-## 决策
-
-- `ΔH > 0`：保留为候选，检查角色权重和 seen/unseen 原型漂移。
-- `ΔH <= 0`：淘汰当前 PSE，不叠加后续模块。
-- 单次达到 75 只记 `best_observed_H`，不能写成 confirmed。
+本地筛选判定：先记录 PSE-A/B 的真实 topology 差值；PSE-C 必须不低于 PSE-A、相对同次 Mean8 至少约 `+4 H`，且 U/ZS 不出现明显塌陷，才进入机制控制与正式化。

@@ -1,7 +1,8 @@
 dataset: CUB
 device: cuda:0
 seed: 5
-score_path: clip_cls_x_shared_pse_global_only
+score_path: clip_cls_x_strong_pse_global_only
+text_variant: historical_gpt55_7_plus_gpt55_task_generated_unique_20260816
 role_order:
   - beak
   - head_features
@@ -11,19 +12,40 @@ role_order:
   - legs
   - overall_appearance
   - unique_discriminative_features
-pse_heads: 4
-pse_dropout: 0.1
-residual_cap: 0.35
-temperature: 0.05
-batch_size: 256
-learning_rate: 0.0001
+pse_dropout: 0.5
+pse_inner_ratio: 0.35
+pse_outer_ratio: 0.65
+dcra_mix: 0.2
+temperature: 0.07
+batch_size: 64
 weight_decay: 0.0001
 validation_fraction: 0.1
-max_epochs: 100
-patience: 10
-min_delta: 0.0001
+min_delta: 0.00001
+lr_stages:
+  - lr: 0.001
+    epochs: 20
+    eta_min: 0.00001
+  - lr: 0.0001
+    epochs: 20
+    eta_min: 0.000001
+  - lr: 0.00001
+    epochs: 10
+    eta_min: 0.0000001
+conditions:
+  PSE-A:
+    run_id: RUN-001
+    mode: uniform
+    topology_weight: 0.1
+  PSE-B:
+    run_id: RUN-002
+    mode: uniform
+    topology_weight: 0.0
+  PSE-C:
+    run_id: RUN-003
+    mode: dcra
+    topology_weight: 0.1
 inputs:
-  sentence_embeds: data/cache/CUB_gpt56_8sent_sentence_embeds.pt
+  sentence_embeds: data/cache/CUB_gpt55_8role_sentence_embeds.pt
   train_features: data/cache/CUB_train_features.pt
   train_labels: data/cache/CUB_train_labels.pt
   seen_features: data/cache/CUB_test_seen_features.pt
@@ -33,7 +55,7 @@ inputs:
   res101: data/xlsa17/data/CUB/res101.mat
   att_splits: data/xlsa17/data/CUB/att_splits.mat
 expected_sha256:
-  sentence_embeds: 8c1a8e27a70681759b22e87412c424b6c9c3a7991ed391b3acc244bbc3a6bca3
+  sentence_embeds: e3b428a3588d4e715910e07472848de4641ddb7e37791edbe6c07f8681213663
   train_features: a18cefc50ec541027598d742698622f7ddd2ec8687ba797ab1eeeacb743a4fe9
   train_labels: b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666
   seen_features: 5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5
