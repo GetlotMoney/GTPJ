@@ -55,8 +55,7 @@ evidence/
 `result.yaml` 保存 artifact identity、URI、hash 和结果摘要。
 
 实验结束后执行 checkpoint retention：完成日志解析、指标确认、hash/size 和
-manifest/result 登记后，每个普通实验最多保留 3 个模型 checkpoint。默认保留按主指标
-GZSL-H 排名最高的 3 个；其余 `.pth`、`.pt`、`.ckpt`、`.safetensors` 权重文件必须从运行目录
+manifest/result 登记后，每个候选 RUN 最多保留按预声明 pseudo-H 选出的 3 个 checkpoint；每个最终重训 RUN 或 exact-repeat RUN 只保留其唯一冻结 checkpoint。各 RUN 独立计数，不用 official GZSL-H 跨 RUN 排名。其余 `.pth`、`.pt`、`.ckpt`、`.safetensors` 权重文件必须从运行目录
 或 Warehouse checkpoint 目录清理。不得删除日志、配置、manifest、result、quality_check、
 runner receipt 或 registry。需要超过 3 个时，必须在 `quality_check.md` 写明例外理由。
 
@@ -110,7 +109,8 @@ U:
 S:
 H:
 ZS:
-best_epoch:
+pseudo_selected_epoch:
+legacy_best_epoch:  # 仅 legacy_protocol_exact_repeat 使用
 decision: keep | reject | rejected | rerun | needs_confirmation | blocked
 promotion_decision: not_applicable | promote | blocked | rejected
 promote_to:
@@ -239,6 +239,31 @@ run_log_sha256            = log_sha256
 - stderr 或 log 路径；
 - 是否需要 retry；
 - 本次失败是否改变下一步实验计划。
+
+## 所有 GZSL 实验的标准训练与测试规划
+
+从本规则生效后的所有新 CUB/xlsa17 GZSL 实验统一使用下面的五阶段规划。它适用于 tune、ablation、innovation 和新方法 confirmation；实验类型可以不同，但选参数据与正式测试的边界不能不同。为了复现历史结果而做的 `exact_repeat` 必须保留原始 split、配置、训练日程和评估口径，并标记 `legacy_protocol_exact_repeat`。如果历史协议逐 epoch 使用 official test 选模，该 repeat 可原样复现，但必须同时标记 `test_exposed: true`，只回答历史结果能否复现，不能作为新方法标准结果、横向公平比较或 promotion 输入。
+
+| 阶段 | 固定数据 | 用途 | 允许产生的结论 |
+|---|---|---|---|
+| 候选划分 | `train_loc`：4,702 张、100 个类 | 按类别固定划分 80% sub-train 与 20% pseudo-seen；所有候选复用同一索引与哈希 | 固定候选 split |
+| 候选训练 | `train_loc` 的固定 80% sub-train | 训练候选结构或参数；20% pseudo-seen 与全部 `val_loc` 图像不得进入梯度 | 仅候选 checkpoint |
+| pseudo-GZSL 选择 | `train_loc` 固定 20% 计算 pseudo-S；`val_loc` 2,355 张、50 个不重叠类计算 pseudo-U/ZS | 在 100 个 pseudo-seen 类与 50 个 pseudo-unseen 类的 150 类联合空间计算 U/S/H，以预先声明的 pseudo-H 选择结构、超参数、epoch、阈值及 gamma | validation-selected 配置 |
+| 最终重训 | `trainval_loc`：7,057 张、150 个 seen 类 | 在选择全部冻结后，从头训练最终模型 | 冻结 checkpoint |
+| 正式测试 | `test_seen`：1,764 张；`test_unseen`：2,967 张 | 只评估冻结后的最终模型 | 正式 U/S/H/ZS |
+
+固定边界：
+
+1. 全项目只使用一个 CUB 候选 split：MATLAB 样本索引先减 1 转为零基全局样本索引，xlsa17 类别编号固定为 `res101.mat` 中 `labels - 1` 的零基 `global_class_id`。每类先把零基样本索引升序排列，再用 `np.random.Generator(np.random.PCG64(20260817 + global_class_id)).permutation(...)` 独立打乱；前 `floor(0.8 * n_c)` 个作为 sub-train，其余作为 pseudo-seen，最后两组索引分别升序保存。唯一 artifact 路径为 `data/cache/CUB_xlsa17_pseudo_v1.json`，JSON schema 精确为 `algorithm_version`、`att_splits_sha256`、`res101_sha256`、`labels_zero_based_int64_sha256`、`subtrain_indices_zero_based`、`pseudo_seen_indices_zero_based` 六个 key；labels SHA 对 C-order little-endian int64 字节计算。artifact 本身不含 `split_sha256`，以 UTF-8、key 排序、紧凑分隔符、无尾换行序列化后计算 split SHA，并在参数表外部记录。首次生成后 artifact 不可改写；所有框架、基线、候选、消融和控制必须引用同一 split SHA，不得重新生成或换 split。
+2. 候选训练只能使用固定 80% sub-train；20% pseudo-seen 只计算 S，`val_loc` 只计算 U/ZS。两者不得进入梯度、optimizer、训练采样或训练统计，但允许按预先声明的 pseudo-H 选择候选 checkpoint 与固定 epoch。
+3. pseudo-GZSL 的 U、S、H 必须让 100 个 pseudo-seen 类和 50 个 pseudo-unseen 类在 150 类空间联合竞争；ZS 只让 50 个 pseudo-unseen 类竞争。进入正式候选、confirmation 或 promotion 的主选择指标必须是预先声明的 pseudo-H，不能只看 U 或 S 临时改判；只看 U/S 的偏置分析必须标记 `diagnostic_only / not_confirmation_evidence: true`。
+4. 进入最终重训前必须冻结模型结构、全部超参数、训练 epoch、阈值、融合权重和 gamma；最终重训不得根据正式测试结果 early stop。
+5. 最终模型必须从头使用 `trainval_loc` 训练，不能把只在候选 80% sub-train 上训练的 checkpoint 直接当正式最终模型。
+6. 对每个按本节新标准执行的独立正式 run，正式测试只在最终 checkpoint 冻结后执行一次。U、S、H 使用 150 个 seen 类和 50 个 unseen 类的 200 类联合竞争；ZS 使用同一批 2,967 张 unseen 图像，只在 50 个 unseen 类中竞争。多个预注册新标准 exact repeat 分别遵守“一 run 一次”；dry eval 只能使用非 official 的 smoke/validation 数据。`legacy_protocol_exact_repeat` 按第 1 段的历史复现例外处理。
+7. 快速筛选允许预先统一缩短候选训练 epoch 或预算，但所有候选必须使用同一预算并记录；选定配置仍须按完整冻结日程在 7,057 张图像上重训。
+8. 如果读取正式测试结果后再改结构、参数、阈值或 gamma，该运行必须标记为 `test_exposed / formal_evidence: false`，不得包装成标准正式结果。
+
+以后切换到其他公开 GZSL 数据集时，沿用同样的“训练类内固定 pseudo-seen 留出 + 类不重叠 pseudo-unseen 验证 → trainval 从头重训 → official test 一次”语义，并把该数据集的实际样本数、类别数和 split identity 写入参数表；不得照抄 CUB 的数量。
 
 ## 调参实验
 

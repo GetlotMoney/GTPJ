@@ -32,6 +32,10 @@
 
 训练、特征抽取和验证默认使用本机 conda 环境 `dvsr_gpu`，使用 `conda run -n dvsr_gpu ...` 或先激活该环境；运行记录必须能确认实际 Python 环境。
 
+所有新 CUB/xlsa17 GZSL 实验，包括 tune、ablation、innovation 和新方法 confirmation，统一使用 `docs/workflow/protocols/experiment_protocol.md` 中的标准训练测试规划：把 `train_loc`（4,702 张、100 类）作为候选阶段数据池，按项目唯一固定 split 划分 80% 训练与 20% pseudo-seen 验证；`val_loc`（2,355 张、50 个不重叠类）作为 pseudo-unseen 验证。候选必须在这 150 个类的联合空间报告 pseudo-U/S/H，并以预先声明的 pseudo-H 选择结构、超参数、epoch 和校准参数。全部选择冻结后，从头使用 `trainval_loc`（7,057 张、150 seen 类）训练最终模型；每个独立正式 run 的冻结 checkpoint 只在 `test_seen`（1,764 张）和 `test_unseen`（2,967 张）上评估一次。正式 U/S/H 必须在 200 类空间联合竞争，ZS 只在 50 unseen 类空间评估。禁止根据正式测试结果反向修改任何选择。历史结果的 `exact_repeat` 是唯一例外：必须原样保留原实验协议并明确标记 `legacy_protocol_exact_repeat`，不能混称为按新标准选参的结果。
+
+快速找方向时可以统一缩短候选阶段的 epoch 或训练预算，但必须预先固定并对所有候选一致；debug/smoke 可以使用更小数据或更短预算，但不能进入正式结果、best、confirmation 或 promotion 证据。
+
 ## 4. 修改与审核
 
 - 修改代码、workflow、helper、模板或训练配置生成逻辑前，先从干净基线切到 `codex/` 专用分支。
