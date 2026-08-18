@@ -68,7 +68,7 @@ python workflow/gtpj_workflow.py tune-suggest --version v5
 # framework tune example
 python workflow/gtpj_workflow.py validate-framework-templates
 git switch -c exp/v1/tune/tune-001-topo008 <TEMPLATE_TAG>
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind tune --exp-id TUNE-001 --slug topo008
+python workflow/gtpj_workflow.py new-experiment --base-identity-kind framework_template --version v1 --kind tune --exp-id TUNE-001 --slug topo008
 # 填写 experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv 的真实参数、seed 和目的后：
 python workflow/gtpj_workflow.py freeze-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --config experiments/v1/tune/TUNE-001_topo008/config.yaml --job-id RUN-001
 python workflow/gtpj_workflow.py validate-parameter-matrix --path experiments/v1/tune/TUNE-001_topo008/PARAMETER_MATRIX.csv --require-ready
@@ -83,13 +83,17 @@ python workflow/gtpj_workflow.py set-current-version --version v1
 # framework innovation example
 python workflow/gtpj_workflow.py validate-framework-templates
 git switch -c exp/v1/innovation/innovation-001-short-name <TEMPLATE_TAG>
-python workflow/gtpj_workflow.py new-experiment --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
+python workflow/gtpj_workflow.py new-experiment --base-identity-kind framework_template --version v1 --kind innovation --exp-id INNOVATION-001 --slug short_name
 # 填写 innovation 实验的 PARAMETER_MATRIX.csv；确认晋级后再注册新的同级正式框架和 Tag。
+
+# owner-selected source example（账本归属 v5，但代码起点由 owner 指定）
+git switch -c exp/v5/innovation/innovation-024-owner-source <OWNER_SOURCE_COMMIT>
+python workflow/gtpj_workflow.py new-experiment --base-identity-kind owner_selected_code_ref --version v5 --kind innovation --exp-id INNOVATION-024 --slug owner_source --owner-source-ref owner/chosen-branch --owner-source-commit <40_HEX_COMMIT> --owner-source-label chosen-model-v0 --owner-selection-ref owner:2026-08-18 --base-config path/to/source/config.yaml
 ```
 
 ## Boundary Rules
 
-- `new-experiment` 只在干净且命名准确的 `exp/vX/<type>/...` 分支运行；分支 `HEAD` 必须正好等于 `TEMPLATE.yaml` 登记的母版 commit，并生成 `EXPERIMENT.yaml`。
+- `new-experiment` 没有默认代码起点，必须由 owner 显式选择 `framework_template` 或 `owner_selected_code_ref`。前者要求 `HEAD` 等于模板 commit；后者必须同时传 `--owner-source-ref`、40 位 `--owner-source-commit`、`--owner-source-label`、`--owner-selection-ref` 和 `--base-config`，并要求创建瞬间 `HEAD` 与 owner 指定 commit 完全相等。
 - `start --phrase "..."` is read-only: it prints the owner-facing mini start card and never creates branches, files, or runs.
 - `new-trial`、`record-module-attempt` 和 `sync-trial-summary` 仅用于维护迁移前的旧 Trial/Attempt 证据，不是新实验入口。
 - `record-result` parses an external log, computes `sha256` and `size`, writes `manifest.yaml`, `result.yaml`, `result.md`, README, and indexes, but never copies the raw log into GitHub.

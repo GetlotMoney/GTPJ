@@ -8,6 +8,12 @@ base_template_tag: model/vx-template-v1
 base_template_commit: 0000000000000000000000000000000000000000
 template_registry_commit: 0000000000000000000000000000000000000000
 historical_code_ref: none
+# 非模板起点时改为 owner_selected_code_ref，并由 owner 明确填写以下五项；不得由 Agent 猜测。
+owner_selected_source_ref: none
+owner_selected_source_commit: none
+owner_selected_source_label: none
+owner_selection_ref: none
+owner_selected_base_config_ref: none
 template_binding_status: ready
 experiment_branch: exp/vx/tune/tune-001-example
 legacy_ref: none

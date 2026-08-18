@@ -1685,7 +1685,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         index_before = self._confirmation_index_text()
 
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -1709,7 +1709,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         index_before = self._confirmation_index_text()
 
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -1732,7 +1732,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         index_before = self._confirmation_index_text()
 
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -1756,7 +1756,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         index_before = self._confirmation_index_text()
 
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -1777,7 +1777,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self._git("switch", "-c", "exp/v1/confirmation/confirm-001-v1-seed5")
 
         code, stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -1809,6 +1809,257 @@ log:v1:module_trial:TRIAL-001:attempt-001
         confirmation_index = self._confirmation_index_text()
         self.assertIn("| 实验 | 状态 | Run ID | Formal | 目录 | 说明 |", confirmation_index)
         self.assertIn("formal_pending", confirmation_index)
+
+    def test_new_experiment_requires_owner_to_choose_base_kind(self) -> None:
+        code, _stdout, stderr = self._run_main(
+            "new-experiment",
+            "--version",
+            "v1",
+            "--kind",
+            "tune",
+            "--exp-id",
+            "TUNE-776",
+            "--slug",
+            "missing-base-choice",
+        )
+
+        self.assertEqual(2, code)
+        self.assertIn("--base-identity-kind", stderr)
+
+    def test_result_v2_schema_requires_source_identity(self) -> None:
+        schema = json.loads(
+            (MODULE_PATH.parents[1] / "schemas/result.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn("source_identity", schema["properties"])
+        self.assertTrue(
+            any(
+                "source_identity" in clause.get("then", {}).get("required", [])
+                for clause in schema.get("allOf", [])
+            )
+        )
+
+    def test_new_experiment_accepts_explicit_owner_selected_commit(self) -> None:
+        self._write("owner/config.yaml", "conditional_text_ratio: 0.123\n")
+        self._commit_all("add owner-selected source config")
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._git("branch", "owner/example-branch", source_commit)
+        self._git("switch", "-c", "exp/v1/tune/tune-777-owner-source")
+
+        code, stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v1",
+            "--kind", "tune",
+            "--exp-id", "TUNE-777",
+            "--slug", "owner-source",
+            "--owner-source-ref", "owner/example-branch",
+            "--owner-source-commit", source_commit,
+            "--owner-source-label", "owner-example-v0",
+            "--owner-selection-ref", "owner:unit-test",
+            "--base-config", "owner/config.yaml",
+        )
+
+        self.assertEqual(0, code, stderr)
+        self.assertEqual("", stderr)
+        self.assertIn("已创建 experiments/v1/tune/TUNE-777_owner-source", stdout)
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-777_owner-source"
+        binding = (exp_dir / "EXPERIMENT.yaml").read_text(encoding="utf-8")
+        self.assertIn("base_identity_kind: owner_selected_code_ref", binding)
+        self.assertIn(f"owner_selected_source_commit: {source_commit}", binding)
+        self.assertIn('owner_selected_source_ref: "owner/example-branch"', binding)
+        self.assertIn('owner_selection_ref: "owner:unit-test"', binding)
+        self.assertIn('owner_selected_base_config_ref: "owner/config.yaml"', binding)
+        readme = (exp_dir / "README.md").read_text(encoding="utf-8")
+        self.assertIn("base_source_label: owner-example-v0", readme)
+        self.assertIn("base_source_ref: owner/example-branch", readme)
+        self.assertIn(f"base_source_commit: {source_commit}", readme)
+        manifest = (exp_dir / "manifest.yaml").read_text(encoding="utf-8")
+        self.assertIn('base_version: "owner-example-v0"', manifest)
+        self.assertIn('base_code_tag: "owner/example-branch"', manifest)
+        self.assertIn(f'base_source_commit: "{source_commit}"', manifest)
+        self.assertIn('source_config_ref: "owner/config.yaml"', manifest)
+        initial_result = (exp_dir / "result.yaml").read_text(encoding="utf-8")
+        self.assertIn('label: "owner-example-v0"', initial_result)
+        self.assertIn('ref: "owner/example-branch"', initial_result)
+        self.assertIn(f'commit: "{source_commit}"', initial_result)
+        self.assertIn('base_config_ref: "owner/config.yaml"', initial_result)
+        self.assertIn('owner_selection_ref: "owner:unit-test"', initial_result)
+        with (exp_dir / "PARAMETER_MATRIX.csv").open(
+            "r", encoding="utf-8-sig", newline=""
+        ) as handle:
+            row = next(csv.DictReader(handle))
+        self.assertEqual("owner-example-v0", row["base_version"])
+        self.assertEqual(source_commit, row["code_ref"])
+        self.assertEqual(
+            (
+                "owner-example-v0",
+                "owner/example-branch",
+                source_commit,
+                "owner/config.yaml",
+            ),
+            self.module.experiment_manifest_source_identity(
+                "v1",
+                self.module.read_shallow_yaml(exp_dir / "EXPERIMENT.yaml"),
+                exp_dir / "config.yaml",
+            ),
+        )
+        binding_data = self.module.read_shallow_yaml(exp_dir / "EXPERIMENT.yaml")
+        self.assertEqual([], self.module.owner_selected_matrix_identity_errors(binding_data, row))
+        wrong_label_row = dict(row)
+        wrong_label_row["base_version"] = "wrong-owner-label"
+        self.assertIn(
+            "base_version must equal owner-selected source label",
+            self.module.owner_selected_matrix_identity_errors(binding_data, wrong_label_row),
+        )
+        wrong_code_row = dict(row)
+        wrong_code_row["code_ref"] = "0" * 40
+        self.assertIn(
+            "code_ref must equal owner-selected source commit",
+            self.module.owner_selected_matrix_identity_errors(binding_data, wrong_code_row),
+        )
+        wrong_config_row = dict(row)
+        wrong_config_row["base_config_sha256"] = "0" * 64
+        self.assertIn(
+            "base_config_sha256 must match owner-selected base config",
+            self.module.owner_selected_matrix_identity_errors(binding_data, wrong_config_row),
+        )
+        self.assertEqual(
+            (self.repo / "owner/config.yaml").resolve(),
+            self.module.experiment_baseline_config_path("v1", exp_dir).resolve(),
+        )
+        self._write("owner/config.yaml", "conditional_text_ratio: 9.999\n")
+        with self.assertRaisesRegex(
+            self.module.WorkflowError,
+            "no longer matches its recorded source commit",
+        ):
+            self.module.experiment_baseline_config_path("v1", exp_dir)
+        self._write("owner/config.yaml", "conditional_text_ratio: 0.123\n")
+        self.assertEqual(
+            (
+                "v1",
+                "model/v1-template-v1",
+                source_commit,
+                "experiments/v1/config.yaml",
+            ),
+            self.module.experiment_manifest_source_identity(
+                "v1",
+                {
+                    "base_identity_kind": "framework_template",
+                    "base_template_tag": "model/v1-template-v1",
+                    "base_template_commit": source_commit,
+                },
+                exp_dir / "config.yaml",
+            ),
+        )
+        self._write(
+            "schemas/experiment.schema.json",
+            json.dumps({"type": "object", "required": [], "properties": {}}, indent=2) + "\n",
+        )
+        self._commit_all("record owner-selected experiment")
+        self.module.require_ready_experiment_base(exp_dir)
+        self.assertEqual(
+            "owner-example-v0",
+            self.module.experiment_matrix_base_version(
+                "v1", self.module.read_shallow_yaml(exp_dir / "EXPERIMENT.yaml")
+            ),
+        )
+
+    def test_new_experiment_rejects_incomplete_owner_source_identity(self) -> None:
+        self._git("switch", "-c", "exp/v1/tune/tune-779-incomplete-owner-source")
+
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v1",
+            "--kind", "tune",
+            "--exp-id", "TUNE-779",
+            "--slug", "incomplete-owner-source",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("owner-selected experiment source must be explicit", stderr)
+        self.assertIn("--owner-source-ref", stderr)
+        self.assertIn("--base-config", stderr)
+
+    def test_new_experiment_rejects_none_owner_source_identity(self) -> None:
+        self._git("switch", "-c", "exp/v1/tune/tune-780-none-owner-source")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v1", "--kind", "tune", "--exp-id", "TUNE-780",
+            "--slug", "none-owner-source",
+            "--owner-source-ref", "none", "--owner-source-commit", "none",
+            "--owner-source-label", "none", "--owner-selection-ref", "none",
+            "--base-config", "none",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("owner-selected experiment source must be explicit", stderr)
+
+    def test_new_experiment_rejects_source_ref_commit_mismatch(self) -> None:
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._write("later-ref-marker.txt", "later\n")
+        self._commit_all("create a different source ref target")
+        self._git("branch", "owner/wrong-ref", "HEAD")
+        self._git("switch", "-c", "exp/v1/tune/tune-781-ref-mismatch", source_commit)
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v1", "--kind", "tune", "--exp-id", "TUNE-781",
+            "--slug", "ref-mismatch",
+            "--owner-source-ref", "owner/wrong-ref",
+            "--owner-source-commit", source_commit,
+            "--owner-source-label", "owner-source-v0",
+            "--owner-selection-ref", "owner:unit-test",
+            "--base-config", "experiments/v1/config.yaml",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("must resolve exactly", stderr)
+
+    def test_new_experiment_rejects_owner_source_for_non_framework_v4(self) -> None:
+        self._write(
+            "docs/workflow/FRAMEWORK_EXPERIMENT_STANDARD.md",
+            "standard_id: SYS-WORKFLOW-V5\nstatus: active\n",
+        )
+        self._write("experiments/v4/config.yaml", "random_seed: 5\n")
+        self._write("experiments/v4/tune/INDEX.md", "# tune\n")
+        self._commit_all("activate framework standard with legacy v4")
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._git("branch", "owner/v4-source", source_commit)
+        self._git("switch", "-c", "exp/v4/tune/tune-782-v4-owner-source")
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v4", "--kind", "tune", "--exp-id", "TUNE-782",
+            "--slug", "v4-owner-source",
+            "--owner-source-ref", "owner/v4-source",
+            "--owner-source-commit", source_commit,
+            "--owner-source-label", "legacy-v4",
+            "--owner-selection-ref", "owner:unit-test",
+            "--base-config", "experiments/v4/config.yaml",
+        )
+        self.assertEqual(1, code)
+        self.assertIn("require a formal framework ledger", stderr)
+
+    def test_new_experiment_rejects_owner_commit_that_is_not_current_head(self) -> None:
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        self._git("branch", "owner/older-commit", source_commit)
+        self._write("later-source-marker.txt", "later\n")
+        self._commit_all("move past owner-selected source")
+        self._git("switch", "-c", "exp/v1/tune/tune-778-wrong-owner-source")
+
+        code, _stdout, stderr = self._run_main(
+            "new-experiment", "--base-identity-kind", "owner_selected_code_ref",
+            "--version", "v1",
+            "--kind", "tune",
+            "--exp-id", "TUNE-778",
+            "--slug", "wrong-owner-source",
+            "--owner-source-ref", "owner/older-commit",
+            "--owner-source-commit", source_commit,
+            "--owner-source-label", "owner-old-v0",
+            "--owner-selection-ref", "owner:unit-test",
+            "--base-config", "experiments/v1/config.yaml",
+        )
+
+        self.assertEqual(1, code)
+        self.assertIn("must start exactly at", stderr)
+        self.assertFalse((self.repo / "experiments/v1/tune/TUNE-778_wrong-owner-source").exists())
 
     def test_framework_naming_and_generated_view_cover_four_peer_types(self) -> None:
         self.assertEqual("ABLATION", self.module.KINDS["ablation"].prefix)
@@ -2462,6 +2713,119 @@ log:v1:module_trial:TRIAL-001:attempt-001
         seal.assert_called_once()
         gate.assert_not_called()
         launch.assert_not_called()
+
+    def test_finished_owner_run_recovery_rejects_split_matrix_identity(self) -> None:
+        self._write("owner/recovery-base.yaml", "random_seed: 5\n")
+        self._commit_all("add owner recovery source config")
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        matrix_dir = self.repo / "experiments/v1/tune/TUNE-783_owner-recovery"
+        config_path = matrix_dir / "config.yaml"
+        matrix_path = matrix_dir / "PARAMETER_MATRIX.csv"
+        self._write(
+            "experiments/v1/tune/TUNE-783_owner-recovery/EXPERIMENT.yaml",
+            "base_identity_kind: owner_selected_code_ref\n"
+            f"owner_selected_source_commit: {source_commit}\n"
+            "owner_selected_base_config_ref: owner/recovery-base.yaml\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-783_owner-recovery/config.yaml",
+            "random_seed: 5\n",
+        )
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "RUN-001", "seed": 5, "config_updates": {}}],
+            base_config_text="random_seed: 5\n",
+            base_version="owner-recovery-v0",
+            code_ref="0" * 40,
+            run_id="RUN-OWNER-RECOVERY",
+        )
+        rows[0]["status"] = "running"
+        rows[0]["config_snapshot_ref"] = "config.yaml"
+        self.module.write_parameter_matrix(
+            directory=matrix_dir,
+            title=matrix_dir.name,
+            rows=rows,
+            source_note="owner recovery identity test",
+        )
+
+        with (
+            mock.patch.object(self.module, "require_ready_experiment_for_artifact") as gate,
+            self.assertRaisesRegex(
+                self.module.WorkflowError,
+                "code_ref must equal owner-selected source commit",
+            ),
+        ):
+            self.module.seal_finished_parameter_matrix_run(
+                matrix_path=matrix_path,
+                config_path=config_path,
+                receipt_path=self.repo / "receipt.json",
+                log_path=self.repo / "run.log",
+                job_id="RUN-001",
+                run_id="RUN-OWNER-RECOVERY",
+                pre_run_freeze_commit=source_commit,
+                command="python train.py --config config.yaml",
+            )
+        gate.assert_called_once()
+
+    def test_owner_record_result_rejects_split_matrix_identity(self) -> None:
+        self._write(
+            "docs/workflow/protocols/parameter_matrix_protocol.md",
+            "policy_status: active\n",
+        )
+        self._write("owner/record-base.yaml", "conditional_text_ratio: 0.008\n")
+        self._commit_all("add owner record source config")
+        source_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        exp_dir = self.repo / "experiments/v1/tune/TUNE-784_owner-record"
+        self._write(
+            "experiments/v1/tune/TUNE-784_owner-record/EXPERIMENT.yaml",
+            "base_identity_kind: owner_selected_code_ref\n"
+            f"owner_selected_source_commit: {source_commit}\n"
+            "owner_selected_base_config_ref: owner/record-base.yaml\n",
+        )
+        self._write(
+            "experiments/v1/tune/TUNE-784_owner-record/config.yaml",
+            "conditional_text_ratio: 0.008\n",
+        )
+        rows = self.module.build_parameter_matrix_rows(
+            jobs=[{"job_id": "RUN-001", "seed": 5, "config_updates": {}}],
+            base_config_text="conditional_text_ratio: 0.008\n",
+            base_version="owner-record-v0",
+            code_ref="0" * 40,
+            run_id="RUN-OWNER-RECORD",
+        )
+        rows[0]["status"] = "frozen"
+        rows[0]["job_kind"] = "tune"
+        rows[0]["work_item_id"] = "V1-TUNE-784"
+        rows[0]["config_snapshot_ref"] = "config.yaml"
+        self.module.write_parameter_matrix(
+            directory=exp_dir,
+            title=exp_dir.name,
+            rows=rows,
+            source_note="owner record identity test",
+        )
+        self._write(
+            "train_log/owner-record.log",
+            "Best Results @ Epoch 2\n  GZSL-U : 70.0%\n  GZSL-S : 72.0%\n"
+            "  GZSL-H : 71.0%\n  ZSL : 73.0%\n",
+        )
+        args = argparse.Namespace(
+            version="v1", kind="tune", exp_id="TUNE-784", slug="owner-record",
+            log="train_log/owner-record.log", parameter="conditional_text_ratio",
+            old_value="0.008", new_value="0.008", seed="5",
+            matrix_job_id="RUN-001", legacy_summary_only=False,
+            legacy_source_commit="", decision="rejected",
+            promotion_decision="not_applicable", promote_to="", attempt_id="RUN-OWNER-RECORD",
+            pre_run_freeze_commit=source_commit, command="python train.py --config config.yaml",
+            run_start_receipt="", artifact_uri="", log_artifact_id="",
+        )
+        with (
+            mock.patch.object(self.module, "require_ready_experiment_for_artifact") as gate,
+            self.assertRaisesRegex(
+                self.module.WorkflowError,
+                "code_ref must equal owner-selected source commit",
+            ),
+        ):
+            self.module._cmd_record_result_locked(args)
+        gate.assert_called_once()
 
     def test_formal_run_workflow_requires_ready_experiment_directory_under_v5(self) -> None:
         self._write(
@@ -4189,7 +4553,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
         self._commit_all("activate parameter-matrix policy")
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -4460,7 +4824,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self._write("docs/workflow/protocols/parameter_matrix_protocol.md", "policy_status: active\n")
         self._commit_all("activate parameter-matrix policy")
         code, _stdout, stderr = self._run_main(
-            "new-experiment", "--version", "v1", "--kind", "tune",
+            "new-experiment", "--base-identity-kind", "framework_template", "--version", "v1", "--kind", "tune",
             "--exp-id", "TUNE-003", "--slug", "direct",
         )
         self.assertEqual(0, code, stderr)
@@ -5266,7 +5630,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_legacy_summary_only_blocks_promotion_and_persists_its_identity(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-901-legacy-summary")
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -5341,7 +5705,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_new_experiment_cannot_claim_legacy_without_pre_policy_source(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-902-not-legacy")
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -7125,7 +7489,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_tune_record_result_parses_log_updates_index_and_cleanup_prompt(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-001-topo008")
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",
@@ -7199,7 +7563,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
         self.assertIn("warehouse://gtpj/runs/v1/tune/TUNE-001_topo008/attempt-001/logs/tune.log", manifest)
         self.assertIn('label_mapping_id: "standard_v1"', manifest)
         self.assertIn('metric_contract_id: "gzsl_u_s_h_zs_v1"', manifest)
-        self.assertIn("schema_version: gtpj-result/v1", result_yaml)
+        self.assertIn("schema_version: gtpj-result/v2", result_yaml)
         self.assertIn('H: "73.93"', result_yaml)
         self.assertIn('metric_semantics: "GZSL U/S/H/ZS from protected evaluator"', result_yaml)
         self.assertIn('label_mapping_id: "standard_v1"', result_yaml)
@@ -7215,7 +7579,7 @@ log:v1:module_trial:TRIAL-001:attempt-001
     def test_record_result_uses_entry_dirty_state_for_readme_and_manifest(self) -> None:
         self._git("switch", "-c", "exp/v1/tune/tune-001-topo008")
         code, _stdout, stderr = self._run_main(
-            "new-experiment",
+            "new-experiment", "--base-identity-kind", "framework_template",
             "--version",
             "v1",
             "--kind",

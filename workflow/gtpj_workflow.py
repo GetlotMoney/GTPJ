@@ -343,6 +343,7 @@ EXPERIMENT_BINDING_REQUIRED_KEYS = {
 DEFAULT_TEMPLATE_REGISTRY_REF = "main"
 EXPERIMENT_BINDING_RULES = {
     "framework_template": ("ready", True, False),
+    "owner_selected_code_ref": ("owner_selected_ready", False, False),
     "historical_code_ref": ("historical_read_only", False, True),
     "pending_clean_template": ("blocked_pending_clean_template", False, False),
 }
@@ -2880,15 +2881,30 @@ def cmd_validate_remote(args: argparse.Namespace) -> int:
     return 0
 
 
-def make_experiment_readme(version: str, kind: ExperimentKind, exp_id: str, slug: str) -> str:
+def make_experiment_readme(
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    *,
+    base_source_label: str = "",
+    base_source_ref: str = "",
+    base_source_commit: str = "",
+    base_config_ref: str = "",
+) -> str:
+    selected_label = base_source_label or version
+    selected_ref = base_source_ref or "not_recorded"
     return f"""# {exp_id}_{slug}
 
 ```text
 experiment_id: {exp_id}
 kind: {kind.name}
 version: {version}
-base_code_tag: {version}
-branch_source: main
+base_source_label: {selected_label}
+base_source_ref: {selected_ref}
+base_source_commit: {base_source_commit or "not_recorded"}
+base_config_ref: {base_config_ref or "not_recorded"}
+branch_source: exact_selected_commit
 code_branch: {experiment_branch_name(version, kind, exp_id, slug)}
 runtime: OpenClaw preferred / Codex compatible
 quality_check_mode: {kind.default_check}
@@ -2936,9 +2952,9 @@ status: planned
 
 ## 运行前检查
 
-- [ ] 实验分支从 `framework/{version}` 切出，并按 `exp/{version}/<type>/<experiment-id>-<slug>` 命名。
-- [ ] `base_code_tag: {version}` 和 `branch_source` 已记录。
-- [ ] 配置复制自 `experiments/{version}/config.yaml`。
+- [ ] owner 已明确来源 ref、准确 commit、来源标签和基础配置；实验分支从该 commit 切出，并按 `exp/{version}/<type>/<experiment-id>-<slug>` 命名。
+- [ ] `base_source_ref`、`base_source_commit` 和 `branch_source` 已记录。
+- [ ] `base_config_ref` 与 owner 选择的基础配置一致。
 - [ ] 只改变声明过的变量或开关。
 - [ ] Runner 开始前已用 `runner-lock` 占用 GPU；结束、失败或人工停止后已 `runner-unlock`。
 - [ ] 原始日志、checkpoint、generated figures 写入 Warehouse，不写入 GitHub。
@@ -3403,8 +3419,14 @@ def make_experiment_manifest(
     evidence_mode: str = "formal",
     run_start_receipt_sha256: str = "",
     run_start_receipt_ref: str = "",
+    base_source_label: str = "",
+    base_source_ref: str = "",
+    base_source_commit: str = "",
+    source_config_ref: str = "",
 ) -> str:
     config_rel = rel(config_path)
+    selected_label = base_source_label or version
+    selected_ref = base_source_ref or version
     return f"""schema_version: gtpj-manifest/v1
 experiment:
   id: {yaml_scalar(exp_id)}
@@ -3415,13 +3437,15 @@ experiment:
   attempt_id: {yaml_scalar(attempt_id)}
   created_or_recorded_at: {yaml_scalar(recorded_at or utc_now())}
 version:
-  base_version: {yaml_scalar(version)}
-  base_code_tag: {yaml_scalar(version)}
+  base_version: {yaml_scalar(selected_label)}
+  base_code_tag: {yaml_scalar(selected_ref)}
+  base_source_commit: {yaml_scalar(base_source_commit)}
   code_branch: {yaml_scalar(code_branch or experiment_branch_name(version, kind, exp_id, slug))}
   code_commit: {yaml_scalar(code_commit or git(["rev-parse", "--short", "HEAD"], check=False))}
   git_dirty: {yaml_scalar(git_dirty if git_dirty is not None else ("true" if git(["status", "--short"], check=False) else "false"))}
 reproducibility:
   config_file: {yaml_scalar(config_rel)}
+  source_config_ref: {yaml_scalar(source_config_ref or config_rel)}
   config_sha256: {yaml_scalar(sha256_file(config_path) if config_path.exists() else "")}
   pre_run_freeze_commit: {yaml_scalar(code_commit)}
   command: {yaml_scalar(command)}
@@ -3472,6 +3496,11 @@ def make_result_yaml(
     legacy_summary_only: bool = False,
     run_start_receipt_sha256: str = "",
     run_start_receipt_ref: str = "",
+    base_source_label: str = "",
+    base_source_ref: str = "",
+    base_source_commit: str = "",
+    source_config_ref: str = "",
+    owner_selection_ref: str = "",
 ) -> str:
     metrics = metrics or {}
     baseline_h = comparison_reference_h(version) if version in CANONICAL_BASELINES else ""
@@ -3495,11 +3524,17 @@ def make_result_yaml(
                 "confirmation_status": "not_applicable",
             }
         )
-    return f"""schema_version: gtpj-result/v1
+    return f"""schema_version: gtpj-result/v2
 experiment_id: {yaml_scalar(exp_id)}
 experiment_name: {yaml_scalar(f"{exp_id}_{slug}")}
 kind: {yaml_scalar(kind.name)}
 version: {yaml_scalar(version)}
+source_identity:
+  label: {yaml_scalar(base_source_label or version)}
+  ref: {yaml_scalar(base_source_ref or version)}
+  commit: {yaml_scalar(base_source_commit)}
+  base_config_ref: {yaml_scalar(source_config_ref)}
+  owner_selection_ref: {yaml_scalar(owner_selection_ref)}
 metrics:
   U: {yaml_scalar(metrics.get("U", ""))}
   S: {yaml_scalar(metrics.get("S", ""))}
@@ -4284,6 +4319,11 @@ def experiment_binding_errors(
         str(data.get("base_template_commit", "")),
     )
     registry_commit = str(data.get("template_registry_commit", ""))
+    owner_source_ref = str(data.get("owner_selected_source_ref", "")).strip()
+    owner_source_commit = str(data.get("owner_selected_source_commit", "")).strip()
+    owner_source_label = str(data.get("owner_selected_source_label", "")).strip()
+    owner_selection_ref = str(data.get("owner_selection_ref", "")).strip()
+    owner_base_config_ref = str(data.get("owner_selected_base_config_ref", "")).strip()
     if template_required:
         if any(_none_like(value) for value in template_fields):
             errors.append("framework_template requires the complete template id/tag/commit")
@@ -4324,6 +4364,28 @@ def experiment_binding_errors(
         # intentionally older than the later governance commit that registers
         # that template.  Trust the immutable registry object above rather than
         # the checkout's older TEMPLATE.yaml (often the historical V0 ledger).
+        expected_branch = _binding_expected_branch(version, kind_name, row)
+        if not expected_branch or str(data.get("experiment_branch", "")) != expected_branch:
+            errors.append(f"experiment_branch must be {expected_branch or '<valid experiment branch>'}")
+    elif identity_kind == "owner_selected_code_ref":
+        if any(not _none_like(value) for value in template_fields):
+            errors.append("owner_selected_code_ref must not claim template id/tag/commit")
+        if not _none_like(registry_commit):
+            errors.append("owner_selected_code_ref must use template_registry_commit: none")
+        if not _none_like(data.get("historical_code_ref", "")):
+            errors.append("owner_selected_code_ref must use historical_code_ref: none")
+        if not owner_source_ref or _none_like(owner_source_ref):
+            errors.append("owner_selected_code_ref requires owner_selected_source_ref")
+        if not re.fullmatch(r"[0-9a-f]{40}", owner_source_commit):
+            errors.append("owner_selected_code_ref requires a full owner_selected_source_commit")
+        elif git_object_type(owner_source_commit) != "commit":
+            errors.append("owner_selected_source_commit must resolve to a git commit")
+        if not owner_source_label or _none_like(owner_source_label):
+            errors.append("owner_selected_code_ref requires owner_selected_source_label")
+        if not owner_selection_ref or _none_like(owner_selection_ref):
+            errors.append("owner_selected_code_ref requires owner_selection_ref")
+        if not owner_base_config_ref or _none_like(owner_base_config_ref):
+            errors.append("owner_selected_code_ref requires owner_selected_base_config_ref")
         expected_branch = _binding_expected_branch(version, kind_name, row)
         if not expected_branch or str(data.get("experiment_branch", "")) != expected_branch:
             errors.append(f"experiment_branch must be {expected_branch or '<valid experiment branch>'}")
@@ -4416,6 +4478,40 @@ def validate_experiment_binding(
         else:
             errors.extend(historical_binding_evidence_errors(data, matrix_rows))
     return [f"{row['experiment_id']}: {item}" for item in errors]
+
+
+def experiment_matrix_base_version(
+    version: str, binding_data: dict[str, object]
+) -> str:
+    if str(binding_data.get("base_identity_kind", "")) == "owner_selected_code_ref":
+        return str(binding_data.get("owner_selected_source_label", ""))
+    return version
+
+
+def owner_selected_matrix_identity_errors(
+    binding_data: dict[str, object],
+    matrix_row: dict[str, str],
+) -> list[str]:
+    if str(binding_data.get("base_identity_kind", "")) != "owner_selected_code_ref":
+        return []
+    errors: list[str] = []
+    source_commit = str(binding_data.get("owner_selected_source_commit", ""))
+    source_label = str(binding_data.get("owner_selected_source_label", ""))
+    if matrix_cell(matrix_row.get("base_version")) != source_label:
+        errors.append("base_version must equal owner-selected source label")
+    if matrix_cell(matrix_row.get("code_ref")) != source_commit:
+        errors.append("code_ref must equal owner-selected source commit")
+    try:
+        source_config_text = read_text_at_commit(
+            source_commit,
+            str(binding_data.get("owner_selected_base_config_ref", "")),
+        )
+    except WorkflowError as exc:
+        errors.append(f"cannot read owner-selected base config: {exc}")
+    else:
+        if matrix_cell(matrix_row.get("base_config_sha256")) != parameter_matrix_sha256(source_config_text):
+            errors.append("base_config_sha256 must match owner-selected base config")
+    return errors
 
 
 def validate_framework_ledgers() -> list[str]:
@@ -4541,6 +4637,15 @@ def validate_framework_ledgers() -> list[str]:
                 if matrix_path.exists():
                     try:
                         matrix_rows = read_parameter_matrix(matrix_path)
+                        binding_path = experiment_binding_path(row)
+                        binding_data = (
+                            read_shallow_yaml(binding_path)
+                            if binding_path.exists()
+                            else {}
+                        )
+                        expected_base_version = experiment_matrix_base_version(
+                            version, binding_data
+                        )
                         for matrix_row in matrix_rows:
                             job_id = matrix_cell(matrix_row.get("job_id"))
                             work_item_id = matrix_cell(matrix_row.get("work_item_id"))
@@ -4558,10 +4663,16 @@ def validate_framework_ledgers() -> list[str]:
                                 errors.append(
                                     f"{experiment_id}: job_kind must be {kind_name}, got {job_kind or '<empty>'}"
                                 )
-                            if base_version != version:
+                            if base_version != expected_base_version:
                                 errors.append(
-                                    f"{experiment_id}: base_version must be {version}, got {base_version or '<empty>'}"
+                                    f"{experiment_id}: base_version must be {expected_base_version}, got {base_version or '<empty>'}"
                                 )
+                            errors.extend(
+                                f"{experiment_id}: {item}"
+                                for item in owner_selected_matrix_identity_errors(
+                                    binding_data, matrix_row
+                                )
+                            )
                         errors.extend(
                             f"{experiment_id}: {item}"
                             for item in validate_parameter_matrix_rows(matrix_rows, matrix_path=matrix_path)
@@ -4663,6 +4774,40 @@ status: planned
 """
 
 
+def make_owner_selected_experiment_binding_yaml(
+    version: str,
+    kind: ExperimentKind,
+    exp_id: str,
+    slug: str,
+    source_ref: str,
+    source_commit: str,
+    source_label: str,
+    owner_selection_ref: str,
+    base_config_ref: str,
+) -> str:
+    branch = experiment_branch_name(version, kind, exp_id, slug)
+    return f"""schema_version: gtpj.experiment.v1
+experiment_id: {version.upper()}-{exp_id}
+framework_id: FRAMEWORK-{version.upper()}
+kind: {kind.name}
+base_identity_kind: owner_selected_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+template_registry_commit: none
+historical_code_ref: none
+owner_selected_source_ref: {json.dumps(source_ref, ensure_ascii=False)}
+owner_selected_source_commit: {source_commit}
+owner_selected_source_label: {json.dumps(source_label, ensure_ascii=False)}
+owner_selection_ref: {json.dumps(owner_selection_ref, ensure_ascii=False)}
+owner_selected_base_config_ref: {json.dumps(base_config_ref, ensure_ascii=False)}
+template_binding_status: owner_selected_ready
+experiment_branch: {branch}
+legacy_ref: none
+status: planned
+"""
+
+
 def formal_experiment_coordinates(
     experiment_dir: Path,
 ) -> tuple[str, str, str] | None:
@@ -4702,8 +4847,51 @@ def require_ready_experiment_base(experiment_dir: Path) -> dict[str, object]:
             f"missing {display_path(binding_path)}"
         )
     data = read_shallow_yaml(binding_path)
+    identity_kind = str(data.get("base_identity_kind", ""))
+    if identity_kind == "owner_selected_code_ref":
+        if str(data.get("template_binding_status", "")) != "owner_selected_ready":
+            raise WorkflowError(
+                "formal experiment owner-selected source is not ready"
+            )
+        row = {
+            "experiment_id": f"{version.upper()}-{local_id}",
+            "directory": rel(experiment_dir),
+            "legacy_ref": str(data.get("legacy_ref", "none")),
+            "status": str(data.get("status", "")),
+            "parameter_matrix": rel(experiment_dir / PARAMETER_MATRIX_MD),
+        }
+        errors = experiment_binding_errors(
+            version=version,
+            kind_name=kind_name,
+            row=row,
+            data=data,
+            template_data={},
+        )
+        schema_path = REPO_ROOT / "schemas" / "experiment.schema.json"
+        try:
+            schema = json.loads(read_text(schema_path))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"cannot load experiment schema: {exc}")
+        else:
+            errors.extend(
+                f"schema: {item}" for item in json_schema_subset_errors(data, schema)
+            )
+        if errors:
+            raise WorkflowError(
+                "formal experiment owner-selected binding is invalid:\n"
+                + "\n".join(errors)
+            )
+        expected_branch = str(data.get("experiment_branch", ""))
+        require_expected_branch(expected_branch, "formal experiment")
+        source_commit = str(data.get("owner_selected_source_commit", ""))
+        require_ancestor(
+            source_commit,
+            "HEAD",
+            "experiment branch must contain its owner-selected source commit",
+        )
+        return data
     if (
-        str(data.get("base_identity_kind", "")) != "framework_template"
+        identity_kind != "framework_template"
         or str(data.get("template_binding_status", "")) != "ready"
     ):
         raise WorkflowError(
@@ -4836,40 +5024,92 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
     exp_id = require_clean_id(args.exp_id, rf"{kind.prefix}-[0-9]{{3}}", "experiment id")
     slug = require_slug(args.slug)
     expected_branch = experiment_branch_name(version, kind, exp_id, slug)
+    base_identity_kind = str(args.base_identity_kind)
+    owner_source_ref = str(getattr(args, "owner_source_ref", "") or "").strip()
+    owner_source_commit = str(getattr(args, "owner_source_commit", "") or "").strip()
+    owner_source_label = str(getattr(args, "owner_source_label", "") or "").strip()
+    owner_selection_ref = str(getattr(args, "owner_selection_ref", "") or "").strip()
 
     base_dir = REPO_ROOT / "experiments" / version
     if not base_dir.exists():
         raise WorkflowError(f"Unknown version directory: {rel(base_dir)}")
-    registry_ref = str(
-        getattr(args, "template_registry_ref", DEFAULT_TEMPLATE_REGISTRY_REF)
-        or DEFAULT_TEMPLATE_REGISTRY_REF
-    )
-    registry_active = immutable_template_standard_is_active_at_ref(registry_ref)
     template_registry_commit = "none"
     registry_template_data: dict[str, object] = {}
-    if registry_active:
-        registry_template_data, template_registry_commit = (
-            load_framework_template_from_registry(version, registry_ref)
+    if base_identity_kind == "framework_template":
+        registry_ref = str(
+            getattr(args, "template_registry_ref", DEFAULT_TEMPLATE_REGISTRY_REF)
+            or DEFAULT_TEMPLATE_REGISTRY_REF
         )
-        registry_framework = git_show(
-            f"{template_registry_commit}:experiments/{version}/framework.yaml",
-            check=False,
-        )
-        if not registry_framework:
-            raise WorkflowError(
-                f"{version} is not a formal framework in template registry "
-                f"{template_registry_commit}"
+        registry_active = immutable_template_standard_is_active_at_ref(registry_ref)
+        if registry_active:
+            registry_template_data, template_registry_commit = (
+                load_framework_template_from_registry(version, registry_ref)
             )
-    elif framework_standard_is_active():
-        if not (base_dir / "framework.yaml").exists():
-            raise WorkflowError(f"{version} is not a formal framework; missing {rel(base_dir / 'framework.yaml')}")
-        framework_errors = validate_framework_ledgers()
-        if framework_errors:
-            raise WorkflowError(
-                "Cannot create a formal experiment while framework ledgers are invalid:\n"
-                + "\n".join(framework_errors)
+            registry_framework = git_show(
+                f"{template_registry_commit}:experiments/{version}/framework.yaml",
+                check=False,
             )
-    src_config = base_dir / "config.yaml"
+            if not registry_framework:
+                raise WorkflowError(
+                    f"{version} is not a formal framework in template registry "
+                    f"{template_registry_commit}"
+                )
+        elif framework_standard_is_active():
+            if not (base_dir / "framework.yaml").exists():
+                raise WorkflowError(f"{version} is not a formal framework; missing {rel(base_dir / 'framework.yaml')}")
+            framework_errors = validate_framework_ledgers()
+            if framework_errors:
+                raise WorkflowError(
+                    "Cannot create a formal experiment while framework ledgers are invalid:\n"
+                    + "\n".join(framework_errors)
+                )
+        src_config = base_dir / "config.yaml"
+    else:
+        if framework_standard_is_active():
+            if not (base_dir / "framework.yaml").exists():
+                raise WorkflowError(
+                    f"owner-selected experiments require a formal framework ledger; missing {rel(base_dir / 'framework.yaml')}"
+                )
+            framework_errors = validate_framework_ledgers()
+            if framework_errors:
+                raise WorkflowError(
+                    "Cannot create an owner-selected experiment while framework ledgers are invalid:\n"
+                    + "\n".join(framework_errors)
+                )
+        missing = [
+            name
+            for name, value in (
+                ("--owner-source-ref", owner_source_ref),
+                ("--owner-source-commit", owner_source_commit),
+                ("--owner-source-label", owner_source_label),
+                ("--owner-selection-ref", owner_selection_ref),
+                ("--base-config", str(getattr(args, "base_config", "") or "").strip()),
+            )
+            if not value or _none_like(value)
+        ]
+        if missing:
+            raise WorkflowError(
+                "owner-selected experiment source must be explicit; missing "
+                + ", ".join(missing)
+            )
+        if not re.fullmatch(r"[0-9a-f]{40}", owner_source_commit):
+            raise WorkflowError("--owner-source-commit must be a full 40-character commit")
+        if resolve_commit(owner_source_commit) != owner_source_commit:
+            raise WorkflowError("--owner-source-commit must resolve exactly")
+        try:
+            resolved_source_ref = resolve_commit(owner_source_ref)
+        except WorkflowError as exc:
+            raise WorkflowError("--owner-source-ref must resolve to a git commit") from exc
+        if resolved_source_ref != owner_source_commit:
+            raise WorkflowError(
+                "--owner-source-ref must resolve exactly to --owner-source-commit"
+            )
+        src_config = Path(str(args.base_config))
+        if not src_config.is_absolute():
+            src_config = REPO_ROOT / src_config
+        require_path_inside(src_config, REPO_ROOT, "owner-selected base config")
+        if not src_config.is_file():
+            raise WorkflowError(f"owner-selected base config does not exist: {rel(src_config)}")
     duplicates = sorted((base_dir / kind.folder).glob(f"{exp_id}_*"))
     if duplicates:
         raise WorkflowError(
@@ -4882,16 +5122,22 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
 
     require_experiment_branch(expected_branch)
     require_clean_worktree("new-experiment")
-    require_experiment_branch_base(
-        version,
-        template_data=registry_template_data or None,
-    )
+    if base_identity_kind == "framework_template":
+        require_experiment_branch_base(
+            version,
+            template_data=registry_template_data or None,
+        )
+    elif git(["rev-parse", "HEAD"]).strip() != owner_source_commit:
+        raise WorkflowError(
+            "new-experiment owner-selected branch must start exactly at "
+            f"{owner_source_commit}"
+        )
 
     template_path = framework_template_path(version)
     template_data = registry_template_data or (
         read_shallow_yaml(template_path) if template_path.exists() else {}
     )
-    if template_data:
+    if base_identity_kind == "framework_template" and template_data:
         write_new(
             exp_dir / "EXPERIMENT.yaml",
             make_experiment_binding_yaml(
@@ -4903,8 +5149,38 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 template_registry_commit=template_registry_commit,
             ),
         )
+    elif base_identity_kind == "owner_selected_code_ref":
+        write_new(
+            exp_dir / "EXPERIMENT.yaml",
+            make_owner_selected_experiment_binding_yaml(
+                version=version,
+                kind=kind,
+                exp_id=exp_id,
+                slug=slug,
+                source_ref=owner_source_ref,
+                source_commit=owner_source_commit,
+                source_label=owner_source_label,
+                owner_selection_ref=owner_selection_ref,
+                base_config_ref=rel(src_config),
+            ),
+        )
 
-    write_new(exp_dir / "README.md", make_experiment_readme(version, kind, exp_id, slug))
+    selected_source_label = owner_source_label if base_identity_kind == "owner_selected_code_ref" else version
+    selected_source_ref = owner_source_ref if base_identity_kind == "owner_selected_code_ref" else str(template_data.get("template_tag", "none"))
+    selected_source_commit = owner_source_commit if base_identity_kind == "owner_selected_code_ref" else str(template_data.get("template_commit", "none"))
+    write_new(
+        exp_dir / "README.md",
+        make_experiment_readme(
+            version,
+            kind,
+            exp_id,
+            slug,
+            base_source_label=selected_source_label,
+            base_source_ref=selected_source_ref,
+            base_source_commit=selected_source_commit,
+            base_config_ref=rel(src_config),
+        ),
+    )
     write_new(exp_dir / "quality_check.md", make_quality_check(kind))
     write_new(exp_dir / "agent_summary.md", make_agent_summary(version, kind, exp_id, slug))
     copy_new(src_config, exp_dir / "config.yaml")
@@ -4920,9 +5196,9 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
                 "status": "draft",
                 "group": "待填写",
                 "name": "请填写本次具体参数组合",
-                "base_version": version,
+                "base_version": owner_source_label if base_identity_kind == "owner_selected_code_ref" else version,
                 "base_config_sha256": parameter_matrix_sha256(base_config_text),
-                "code_ref": str(template_data.get("template_tag", version)),
+                "code_ref": owner_source_commit if base_identity_kind == "owner_selected_code_ref" else str(template_data.get("template_tag", version)),
                 "config_snapshot_ref": "config.yaml",
                 "seed": "",
                 "changed_parameters": "{}",
@@ -4958,6 +5234,10 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
             config_path=exp_dir / "config.yaml",
             status="planned",
             git_dirty="false",
+            base_source_label=selected_source_label,
+            base_source_ref=selected_source_ref,
+            base_source_commit=selected_source_commit,
+            source_config_ref=rel(src_config),
         ),
     )
     write_new(
@@ -4967,6 +5247,11 @@ def cmd_new_experiment(args: argparse.Namespace) -> int:
             kind=kind,
             exp_id=exp_id,
             slug=slug,
+            base_source_label=selected_source_label,
+            base_source_ref=selected_source_ref,
+            base_source_commit=selected_source_commit,
+            source_config_ref=rel(src_config),
+            owner_selection_ref=owner_selection_ref if base_identity_kind == "owner_selected_code_ref" else "",
         ),
     )
     write_new(
@@ -5125,6 +5410,53 @@ def resolve_existing_path(path_text: str, label: str) -> Path:
     return source
 
 
+def experiment_manifest_source_identity(
+    version: str,
+    binding: dict[str, object],
+    config_path: Path,
+) -> tuple[str, str, str, str]:
+    identity_kind = str(binding.get("base_identity_kind", ""))
+    if identity_kind == "owner_selected_code_ref":
+        return (
+            str(binding.get("owner_selected_source_label", "")),
+            str(binding.get("owner_selected_source_ref", "")),
+            str(binding.get("owner_selected_source_commit", "")),
+            str(binding.get("owner_selected_base_config_ref", "")),
+        )
+    if identity_kind == "framework_template":
+        return (
+            version,
+            str(binding.get("base_template_tag", version)),
+            str(binding.get("base_template_commit", "")),
+            f"experiments/{version}/config.yaml",
+        )
+    return (version, version, "", rel(config_path))
+
+
+def experiment_baseline_config_path(
+    version: str,
+    exp_dir: Path,
+) -> Path:
+    binding_path = exp_dir / "EXPERIMENT.yaml"
+    binding = read_shallow_yaml(binding_path) if binding_path.exists() else {}
+    if str(binding.get("base_identity_kind", "")) != "owner_selected_code_ref":
+        return REPO_ROOT / "experiments" / version / "config.yaml"
+    source_commit = str(binding.get("owner_selected_source_commit", ""))
+    source_config_ref = str(binding.get("owner_selected_base_config_ref", ""))
+    source_path = REPO_ROOT / source_config_ref
+    require_path_inside(source_path, REPO_ROOT, "owner-selected base config")
+    if not source_path.is_file():
+        raise WorkflowError(
+            f"owner-selected base config does not exist: {display_path(source_path)}"
+        )
+    expected_text = read_text_at_commit(source_commit, source_config_ref)
+    if read_text(source_path) != expected_text:
+        raise WorkflowError(
+            "owner-selected base config no longer matches its recorded source commit"
+        )
+    return source_path
+
+
 def update_manifest_and_result_files(
     *,
     exp_dir: Path,
@@ -5151,6 +5483,16 @@ def update_manifest_and_result_files(
     run_start_receipt_ref: str = "",
 ) -> None:
     recorded_at = utc_now()
+    binding_path = exp_dir / "EXPERIMENT.yaml"
+    binding = read_shallow_yaml(binding_path) if binding_path.exists() else {}
+    (
+        manifest_base_label,
+        manifest_base_ref,
+        manifest_base_commit,
+        manifest_source_config,
+    ) = experiment_manifest_source_identity(
+        version, binding, config_path
+    )
     manifest = make_experiment_manifest(
         version=version,
         kind=kind,
@@ -5171,6 +5513,10 @@ def update_manifest_and_result_files(
         evidence_mode="legacy_summary_only" if legacy_summary_only else "formal",
         run_start_receipt_sha256=run_start_receipt_sha256,
         run_start_receipt_ref=run_start_receipt_ref,
+        base_source_label=manifest_base_label,
+        base_source_ref=manifest_base_ref,
+        base_source_commit=manifest_base_commit,
+        source_config_ref=manifest_source_config,
     )
     result_yaml = make_result_yaml(
         version=version,
@@ -5188,6 +5534,11 @@ def update_manifest_and_result_files(
         legacy_summary_only=legacy_summary_only,
         run_start_receipt_sha256=run_start_receipt_sha256,
         run_start_receipt_ref=run_start_receipt_ref,
+        base_source_label=manifest_base_label,
+        base_source_ref=manifest_base_ref,
+        base_source_commit=manifest_base_commit,
+        source_config_ref=manifest_source_config,
+        owner_selection_ref=str(binding.get("owner_selection_ref", "")),
     )
     result_md = make_result_md(
         exp_id=exp_id,
@@ -5302,7 +5653,15 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
             seed=args.seed,
             label="record-result",
         )
-        runtime_errors = parameter_matrix_runtime_errors(
+        binding_path = exp_dir / "EXPERIMENT.yaml"
+        binding = read_shallow_yaml(binding_path) if binding_path.exists() else {}
+        runtime_errors: list[str] = []
+        if str(binding.get("base_identity_kind", "")) == "owner_selected_code_ref":
+            require_ready_experiment_for_artifact(matrix_path)
+            runtime_errors.extend(
+                owner_selected_matrix_identity_errors(binding, matrix_result_row)
+            )
+        runtime_errors.extend(parameter_matrix_runtime_errors(
             matrix_result_row,
             matrix_path=matrix_path,
             config_path=exp_dir / "config.yaml",
@@ -5310,8 +5669,8 @@ def _cmd_record_result_locked(args: argparse.Namespace) -> int:
             tune_parameter=args.parameter if args.kind == "tune" else "",
             tune_new_value=args.new_value if args.kind == "tune" else "",
             tune_old_value=args.old_value if args.kind == "tune" else "",
-            baseline_config_path=REPO_ROOT / "experiments" / version / "config.yaml",
-        )
+            baseline_config_path=experiment_baseline_config_path(version, exp_dir),
+        ))
         runtime_errors.extend(
             parameter_matrix_freeze_commit_errors(
                 commit_ref=str(getattr(args, "pre_run_freeze_commit", "") or ""),
@@ -15909,6 +16268,22 @@ def seal_finished_parameter_matrix_run(
     command: str,
 ) -> dict[str, object]:
     """Idempotently bind a sealed process log back to its already-running row."""
+    binding_path = matrix_path.parent / "EXPERIMENT.yaml"
+    binding = read_shallow_yaml(binding_path) if binding_path.exists() else {}
+    owner_selected = str(binding.get("base_identity_kind", "")) == "owner_selected_code_ref"
+    if owner_selected:
+        require_ready_experiment_for_artifact(matrix_path)
+        recovery_rows = read_parameter_matrix(matrix_path)
+        recovery_matches = [item for item in recovery_rows if item.get("job_id") == job_id]
+        if len(recovery_matches) != 1:
+            raise WorkflowError("cannot seal the training log because its matrix row changed")
+        owner_errors = owner_selected_matrix_identity_errors(
+            binding, recovery_matches[0]
+        )
+        if owner_errors:
+            raise WorkflowError(
+                "Cannot seal the finished training process:\n" + "\n".join(owner_errors)
+            )
     process_result = sealed_training_process_evidence(log_path, command)
     return_code = int(process_result["returncode"])
     source_note = parameter_matrix_source_note_from_view(matrix_path.with_name(PARAMETER_MATRIX_MD))
@@ -15924,6 +16299,12 @@ def seal_finished_parameter_matrix_run(
         if len(current_matches) != 1:
             raise WorkflowError("cannot seal the training log because its matrix row changed")
         current_row = current_matches[0]
+        if owner_selected:
+            owner_errors = owner_selected_matrix_identity_errors(binding, current_row)
+            if owner_errors:
+                raise WorkflowError(
+                    "Cannot seal the finished training process:\n" + "\n".join(owner_errors)
+                )
         existing_log_sha256 = current_row.get("run_log_sha256", "")
         if existing_log_sha256 and existing_log_sha256 != str(process_result["log_sha256"]):
             raise WorkflowError("cannot replace an already-sealed log hash during finished-run recovery")
@@ -16039,6 +16420,13 @@ def cmd_prepare_run_start_receipt(args: argparse.Namespace) -> int:
             raise WorkflowError("Cannot create run-start receipt:\n" + "\n".join(errors))
         commit = resolve_commit(args.pre_run_freeze_commit)
         code_ref = row.get("code_ref", "").strip()
+        binding_path = matrix_path.parent / "EXPERIMENT.yaml"
+        binding = read_shallow_yaml(binding_path) if binding_path.exists() else {}
+        owner_matrix_errors = owner_selected_matrix_identity_errors(binding, row)
+        if owner_matrix_errors:
+            raise WorkflowError(
+                "Cannot create run-start receipt:\n" + "\n".join(owner_matrix_errors)
+            )
         try:
             code_ref_commit = resolve_commit(code_ref)
             require_ancestor(code_ref_commit, commit, "parameter-matrix code_ref must resolve within the frozen training history")
@@ -18822,10 +19210,21 @@ def build_parser() -> argparse.ArgumentParser:
     new_exp.add_argument("--exp-id", required=True)
     new_exp.add_argument("--slug", required=True)
     new_exp.add_argument(
+        "--base-identity-kind",
+        required=True,
+        choices=["framework_template", "owner_selected_code_ref"],
+        help="由 owner 明确选择框架模板或任意代码提交；没有默认值",
+    )
+    new_exp.add_argument(
         "--template-registry-ref",
         default=DEFAULT_TEMPLATE_REGISTRY_REF,
         help="记录 TEMPLATE.yaml 的管理分支或提交，默认 main",
     )
+    new_exp.add_argument("--owner-source-ref", default="")
+    new_exp.add_argument("--owner-source-commit", default="")
+    new_exp.add_argument("--owner-source-label", default="")
+    new_exp.add_argument("--owner-selection-ref", default="")
+    new_exp.add_argument("--base-config", default="")
     new_exp.set_defaults(func=cmd_new_experiment)
 
     validate_matrix = sub.add_parser("validate-parameter-matrix", help="校验一张参数矩阵是否可进入正式实验")

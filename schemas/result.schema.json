@@ -15,7 +15,18 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "gtpj-result/v1"
+      "enum": ["gtpj-result/v1", "gtpj-result/v2"]
+    },
+    "source_identity": {
+      "type": "object",
+      "required": ["label", "ref", "commit", "base_config_ref", "owner_selection_ref"],
+      "properties": {
+        "label": {"type": "string"},
+        "ref": {"type": "string"},
+        "commit": {"type": "string"},
+        "base_config_ref": {"type": "string"},
+        "owner_selection_ref": {"type": "string"}
+      }
     },
     "metrics": {
       "type": "object",
@@ -34,5 +45,17 @@
       "required": ["manifest_verified", "boundary_audit_passed", "interface_contract_checked", "evaluation_semantics_verified"]
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {"const": "gtpj-result/v2"}
+        }
+      },
+      "then": {
+        "required": ["source_identity"]
+      }
+    }
+  ],
   "additionalProperties": true
 }
