@@ -1,6 +1,49 @@
 # Project Status
 
-Date: 2026-08-08
+Date: 2026-08-18
+
+## 2026-08-18 当前实验汇总
+
+### 数据与评估口径
+
+当前 CUB 实验统一使用 `xlsa17/data/CUB/att_splits.mat` 的 Proposed Split。已直接核对本地文件：
+
+| 集合 | 字段 | 图片数 | 类别数 | 用途 |
+|---|---|---:|---:|---|
+| 开发训练 | `train_loc` | 4,702 | 100 | 候选参数训练 |
+| 类别级验证 | `val_loc` | 2,355 | 50 | 模拟未见类并选择参数 |
+| 最终训练 | `trainval_loc` | 7,057 | 150 | 参数冻结后重训最终模型 |
+| 已见类测试 | `test_seen_loc` | 1,764 | 150 | 只用于最终评估 S |
+| 未见类测试 | `test_unseen_loc` | 2,967 | 50 | 只用于最终评估 U/ZS |
+
+`trainval_loc`、`test_seen_loc`、`test_unseen_loc` 的图片索引两两不重叠，三者合计 11,788 张。正式训练只使用 7,057 张；论文表中出现的 8,855 属于旧 Standard Split 统计，不能替代当前 Proposed Split 训练数量。后续调参应在 `train_loc/val_loc` 内完成，冻结参数后再用 `trainval_loc` 重训，official test 不参与选参。
+
+### 当前结论总表
+
+| 对象 | 关键结果 | 证据级别 | 当前决定 |
+|---|---|---|---|
+| 正式参考 `V3-CONFIRM-001` | confirmed H=`74.47`，repeat mean=`74.45` | confirmed | 继续作为最强确认参考 |
+| 当前主线 `GTPJ-v5` | frozen-repeat mean U/S/H/ZS=`72.00/77.07/74.44/81.56`，best observed H=`74.54` | owner activated provisional | 主线不变，但未超过 V3 确认参考 |
+| 原 V5 局部分支 | 三 seed FULL/GLOBAL_ONLY 平均 H=`74.11/74.03`，差值仅 `+0.08` | completed reviewed ablation | 不作为论文主性能贡献，优先瘦身 |
+| FGVD 几何编码 | 关闭后 H=`74.1625`，相对完整参考 `-0.0658` | 单 seed 初筛 | 删除优先，不能声称提分 |
+| 六部位 FRPE | 开/关 H=`74.1499/74.0629`，贡献 `+0.0870` | local debug，单 seed | 低于 `+0.3` 保留门，删除 |
+| ICSA | 瘦身框架开/关 H=`74.0629/73.6711`，贡献 `+0.3918` | local debug，单 seed | 暂时保留；作用是提高 S、降低 U |
+| Topology Pearson loss | 开/关 H=`74.0629/72.0276`，贡献 `+2.0353` | local debug，单 seed | 暂时保留；明显改善 U/S 平衡 |
+| GALA hard-rival gate | gate-on 与联合后 gate-off 的 U/S/H 完全相同；相对原 checkpoint H 仅 `+0.0643`，ZS `-1.1453` | local debug，单 seed | 拒绝，不继续搜 gate |
+| TE-PSE | H=`63.7019`，相对同次 B0 `-0.4621` | valid single run，非确认 | 拒绝 |
+| TE-PSE + VSC | U/S/H/ZS 与 TE-PSE 完全相同 | valid single run，非确认 | 拒绝 |
+| VCER | H=`64.1203`，相对同次 X2 `-9.4030`；role-shuffle 反而更高 | official-test-guided development | 拒绝 |
+| ARTV | H=`70.0527`，相对同次 X2 `-3.4706` | official-test-guided development | 拒绝 |
+
+### 当前框架判断
+
+1. 正式主线仍是 `GTPJ-v5`，最强已确认参考仍是 `V3-CONFIRM-001 H=74.47`；没有新实验达到 promotion 条件。
+2. 原 FGVD/BVSA/SGMP 局部分支成本高、H 净增益不稳定，不能继续作为主要创新卖点。
+3. 当前最小瘦身候选是 `PSE + ICSA + Topology Pearson loss`，单 seed debug 成绩为 `U=71.7518、S=76.5278、H=74.0629、ZS=81.2728`。它只是待验证候选，不是新 baseline、confirmed 结果或新框架。
+4. FRPE、GALA、TE-PSE、VSC、VCER、ARTV 当前均未形成可保留增益；停止在已有证据处，不继续围绕 official test 搜参数。
+5. 下一次可信优化应回到 `train_loc/val_loc` 做类别不重叠的参数选择，再用 7,057 张 `trainval_loc` 重训并只做一次最终测试。
+
+GALA 的完整结果目前绑定独立分支 `codex/v5-pse-frpe-local`、结果提交 `6ac6520`；其余表内结果均可从当前分支对应 `PARAMETER_MATRIX` 与 `result.md` 回查。本节只做跨实验摘要，不改变各实验原有证据等级和 promotion 状态。
 
 ## 2026-08-08 V5 局部分支消融结果
 
