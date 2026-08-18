@@ -48,7 +48,7 @@
 
 ## 5. 框架、账本与资产
 
-- `main` 是治理分支；正式新实验读取所属 `experiments/vX/TEMPLATE.yaml`，从锁定的 `framework/vX-template-vN` / `model/vX-template-vN` 准确提交独立分叉。
+- `main` 是治理分支；实验归属的 `FRAMEWORK-VX` 只决定账本位置，不自动决定代码起点。每次新实验必须由 owner 明确指定起点类型、来源 ref、准确 commit 和基础配置；Agent 不得默认使用 V5 或任何模板。owner 选择正式模板时从其准确 commit 分叉；选择其他代码提交时使用 `owner_selected_code_ref`，并在创建瞬间要求实验分支 HEAD 与该提交完全相等。未得到 owner 明确选择时只能记录草稿，禁止正式启动。
 - 正式框架平级；每个框架只有 tune、ablation、innovation、confirmation 四类实验。创新通过确认和接纳后才注册新框架与 Tag。
 - 每个真实训练对应参数矩阵中的一行 `RUN-xxx`；旧记录无法可靠恢复时写 `legacy_summary_only`，不得猜值。
 - 正式复现固定 `repeat_type: exact_repeat`、`original_seed`、原始配置、代码、数据、训练日程和评估口径，并写明 `max_attempts: 5`、`max_attempts_hard_cap: true`、`early_stop_on_best_hit: true`、`restore_target_H`、`near_miss_tolerance_H`、`near_miss_not_restored`。`seed_sweep`、`score_search`、`multi_seed_stability` 必须写 `not_confirmation_evidence: true`；best hit、stable confirm 和 promotion 的详细判定以 `docs/workflow/protocols/promotion.md` 与 `docs/workflow/protocols/experiment_protocol.md` 为准。

@@ -6,9 +6,12 @@
 四类实验都是同级。tune、ablation 和 confirmation 不产生新框架；innovation 只有在确认、
 质量检查和接纳全部通过后，才注册一个新的同级正式框架 `FRAMEWORK-VY`。
 
-每个正式框架必须用 `TEMPLATE.yaml` 登记只读母版 `MODEL-VX-TEMPLATE-VN`；每项实验必须用
-`EXPERIMENT.yaml` 登记它实际使用的母版编号、Tag 和 commit。四类实验都从准确母版提交独立分叉；
-实验代码不得并回母版，也不得从另一个实验继续改。`legacy_frozen 不能启动新实验`，只允许回查历史证据。
+`FRAMEWORK-VX` 只决定实验账本归属，不自动决定代码起点。每项实验创建前必须由 owner 明确选择：
+
+- `framework_template`：记录模板编号、Tag、准确 commit，并从该 commit 独立分叉；
+- `owner_selected_code_ref`：记录 owner 指定的来源 ref、准确 commit、来源标签、基础配置和 owner 决策引用，创建瞬间实验分支 HEAD 必须与该 commit 完全相等。
+
+Agent 不得默认选择 V5、当前分支或任一模板；没有 owner 明确来源时只能保留草稿，禁止正式训练。实验代码不得反向并回来源分支。`historical_code_ref` 仍只用于回查历史证据，不能启动新实验。
 
 纯调参只改变 config 或训练超参，不改变模型/训练代码语义、forward 结构、模块连接、loss
 形式、logits shape 或 eval 语义，因此不能开新的 `vY`。即使 exact repeat 复现通过，也只能成为该
@@ -79,12 +82,18 @@ GitHub 只记录 artifact id。具体规则见 `docs/workflow/protocols/agent_re
 experiment_id:
 kind:
 version:
+base_identity_kind: framework_template | owner_selected_code_ref
 base_template_id:
 base_template_tag:
 base_template_commit:
 template_ledger: experiments/vX/TEMPLATE.yaml
 experiment_binding: EXPERIMENT.yaml
-branch_source: exact_template_commit
+branch_source: exact_selected_commit
+owner_selected_source_ref:
+owner_selected_source_commit:
+owner_selected_source_label:
+owner_selection_ref:
+owner_selected_base_config_ref:
 code_branch:
 run_commit:
 dirty_state:
@@ -228,7 +237,7 @@ run_log_uri              = log_uri
 run_log_sha256            = log_sha256
 ```
 
-如果普通实验显式写了 `base_version`，它必须和 `version` 一致。GitHub 不保存 raw log；
+`version` 表示账本所属框架，`base_version` / `owner_selected_source_label` 表示实际代码来源，两者允许不同，但都必须由 owner 明确。GitHub 不保存 raw log；
 长期证据是 `manifest.yaml` 中的 artifact identity，以及 `result.yaml` 中的
 `evidence.log_artifact_id`。
 
@@ -283,10 +292,10 @@ run_log_sha256            = log_sha256
 ### 框架调参
 
 ```text
-读取 experiments/vX/TEMPLATE.yaml
+读取 owner 明确选择的代码来源；不得默认选择 V5
 创建实验目录的 EXPERIMENT.yaml
-从 base_template_commit 开 exp/vX/tune/TUNE-XXX-xxx 分支
-branch_source: exact_template_commit
+从 owner 指定的准确 commit 开 exp/vX/tune/TUNE-XXX-xxx 分支
+branch_source: exact owner-selected commit
 先写 config 和计划行，提交 pre-run freeze commit
 确认 git status --short 为空，并记录 run_commit
 跑实验
@@ -294,7 +303,7 @@ branch_source: exact_template_commit
 更新 experiments/vX/tune/
 ```
 
-无论框架是否为当前使用版本，新调参都从对应的冻结母版准确 commit 开分支。历史 `vX` Tag 和旧长期分支只用于回查。
+新调参的账本仍写入目标框架，但代码起点由 owner 明确指定。未指定来源 ref、commit 和基础配置时不得开跑。
 长期资产是 `experiments/vX/tune/` 账本和参数表，不是临时实验分支。
 
 ### 调参表
@@ -386,7 +395,7 @@ module、forward、loss、eval、data view 或接口语义，那已经是 innova
 当前版本消融：
 
 ```text
-从 TEMPLATE.yaml 登记的准确母版 commit 开 exp/vX/ablation/ABLATION-XXX-xxx
+从 owner 指定的准确 commit 开 exp/vX/ablation/ABLATION-XXX-xxx
 用 EXPERIMENT.yaml 固定实际起点
 跑完后更新 experiments/vX/ablation/
 ```
@@ -431,7 +440,7 @@ confirmation 分支：
 exp/vX/confirmation/CONFIRM-XXX-xxx
 ```
 
-confirmation 从对应 `TEMPLATE.yaml` 登记的准确母版 commit 开分支，并由 `EXPERIMENT.yaml` 固定实际起点；跑完写入 `experiments/vX/confirmation/`，并同步 `main` 总索引。
+confirmation 必须由 owner 明确指定要复现的准确来源 commit；`EXPERIMENT.yaml` 固定实际起点。它不默认从所属框架模板开始；跑完写入 `experiments/vX/confirmation/`，并同步 `main` 总索引。
 
 confirmation 不允许从 dirty worktree 直接启动。若需要先补 config 副本、启动卡或索引条目，也必须先提交
 `pre-run freeze commit`，再从 clean 状态发起确认运行。

@@ -24,16 +24,39 @@
     "experiment_id": {"pattern": "^V[0-9]+-(TUNE|ABLATION|INNOVATION|CONFIRM)-[0-9]{3}$"},
     "framework_id": {"pattern": "^FRAMEWORK-V[0-9]+$"},
     "kind": {"enum": ["tune", "ablation", "innovation", "confirmation"]},
-    "base_identity_kind": {"enum": ["framework_template", "historical_code_ref", "pending_clean_template"]},
+    "base_identity_kind": {"enum": ["framework_template", "owner_selected_code_ref", "historical_code_ref", "pending_clean_template"]},
     "base_template_id": {"pattern": "^(none|MODEL-V[0-9]+-TEMPLATE-V[0-9]+)$"},
     "base_template_tag": {"type": "string"},
     "base_template_commit": {"pattern": "^(none|[0-9a-f]{40})$"},
     "template_registry_commit": {"pattern": "^(none|[0-9a-f]{40})$"},
     "historical_code_ref": {"type": "string"},
-    "template_binding_status": {"enum": ["ready", "historical_read_only", "blocked_pending_clean_template"]},
+    "owner_selected_source_ref": {"type": "string"},
+    "owner_selected_source_commit": {"pattern": "^[0-9a-f]{40}$"},
+    "owner_selected_source_label": {"type": "string"},
+    "owner_selection_ref": {"type": "string"},
+    "owner_selected_base_config_ref": {"type": "string"},
+    "template_binding_status": {"enum": ["ready", "owner_selected_ready", "historical_read_only", "blocked_pending_clean_template"]},
     "experiment_branch": {"type": "string"},
     "legacy_ref": {"type": "string"},
     "status": {"type": "string"}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "base_identity_kind": {"const": "owner_selected_code_ref"}
+        }
+      },
+      "then": {
+        "required": [
+          "owner_selected_source_ref",
+          "owner_selected_source_commit",
+          "owner_selected_source_label",
+          "owner_selection_ref",
+          "owner_selected_base_config_ref"
+        ]
+      }
+    }
+  ],
   "additionalProperties": true
 }
