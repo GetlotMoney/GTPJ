@@ -1,0 +1,100 @@
+experiment_id: V5-INNOVATION-018
+run_id: RUN-001
+dataset: CUB
+device: cuda:0
+seed: 5
+text_variant: historical_gpt55_7_plus_gpt55_task_generated_unique_20260816
+role_order:
+  - beak
+  - head_features
+  - body_plumage
+  - wings
+  - tail
+  - legs
+  - overall_appearance
+  - unique_discriminative_features
+batch_size: 64
+validation_fraction: 0.1
+max_epochs: 50
+weight_decay: 0.0001
+topology_weight: 0.1
+uniform_heads: 4
+uniform_dropout: 0.5
+uniform_inner_ratio: 0.35
+uniform_outer_ratio: 0.65
+temperature_init: 0.07
+lr_stages:
+  - {lr: 0.001, epochs: 20, eta_min: 0.00001}
+  - {lr: 0.0001, epochs: 20, eta_min: 0.000001}
+  - {lr: 0.00001, epochs: 10, eta_min: 0.0000001}
+selection_protocol: official_test_score_search
+not_confirmation_evidence: true
+seen_blend_grid:
+  - 0.00
+  - 0.01
+  - 0.02
+  - 0.03
+  - 0.04
+  - 0.05
+  - 0.06
+  - 0.07
+  - 0.08
+  - 0.09
+  - 0.10
+  - 0.11
+  - 0.12
+  - 0.13
+  - 0.14
+  - 0.15
+  - 0.16
+  - 0.17
+  - 0.18
+  - 0.19
+  - 0.20
+  - 0.21
+  - 0.22
+  - 0.23
+  - 0.24
+  - 0.25
+  - 0.26
+  - 0.27
+  - 0.28
+  - 0.29
+  - 0.30
+unseen_blend_grid:
+  - 0.80
+  - 0.82
+  - 0.84
+  - 0.86
+  - 0.88
+  - 0.90
+  - 0.92
+  - 0.94
+  - 0.96
+  - 0.98
+  - 1.00
+inputs:
+  sentence_embeds: data/cache/CUB_gpt55_8role_sentence_embeds.pt
+  train_features: data/cache/CUB_train_features.pt
+  train_labels: data/cache/CUB_train_labels.pt
+  seen_features: data/cache/CUB_test_seen_features.pt
+  seen_labels: data/cache/CUB_test_seen_labels.pt
+  unseen_features: data/cache/CUB_test_unseen_features.pt
+  unseen_labels: data/cache/CUB_test_unseen_labels.pt
+  res101: data/xlsa17/data/CUB/res101.mat
+  att_splits: data/xlsa17/data/CUB/att_splits.mat
+expected_sha256:
+  sentence_embeds: e3b428a3588d4e715910e07472848de4641ddb7e37791edbe6c07f8681213663
+  train_features: a18cefc50ec541027598d742698622f7ddd2ec8687ba797ab1eeeacb743a4fe9
+  train_labels: b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666
+  seen_features: 5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5
+  seen_labels: 06f3f7057b6847fd912544ddb921d0ca3fca96d0888503f3fc87a52f98d3de14
+  unseen_features: 32c1b89edb72a94e27585060ac968f1afc99000a9bd8c42acee8469971fb107e
+  unseen_labels: 7fadd63d51f69cf09cc8107a132d28036b838649b75227a17656eac8640b9c59
+  res101: 9a97c71951f9ac9f5c3708e6e55386e53f3d433289ed5e87a18b4af2a1a0fca1
+  att_splits: d7f5b4c2cb7853acdce43a9e87607ceed30bdf18c60344be3a266de29b6751e3
+class_order_sha256: 7b6ffe26103bfeb73324f328fac499d6ea7cfadfb2b56448b0df295aca22df38
+source_shared_pse:
+  artifact_ref: warehouse://runs/v5/innovation/V5-INNOVATION-017/RUN-002/model_best.pth
+  sha256: f83adac761d9a8e5f4df1864a38fd427dac7c1fe2cf215697155d959dd71035e
+  code_commit: acd5f6420f5260d9b2ace4885298930445eca4bf

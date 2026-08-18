@@ -1,0 +1,30 @@
+dataset: CUB
+device: cuda:0
+seed: 5
+score_path: clip_cls_x_shared_pse_x_seen_bias_calibration
+expected_run_id: RUN-001
+gamma_min: 0.0
+gamma_max: 5.0
+gamma_steps: 101
+inputs:
+  pse_config: experiments/v5/innovation/INNOVATION-013_shared_pse_global8/config.yaml
+  pse_checkpoint: /data/lby/projects/cv_project/GTPJ_Warehouse/runs/v5/innovation/V5-INNOVATION-013/RUN-002/model_best.pth
+  sentence_embeds: data/cache/CUB_gpt56_8sent_sentence_embeds.pt
+  train_labels: data/cache/CUB_train_labels.pt
+  seen_features: data/cache/CUB_test_seen_features.pt
+  seen_labels: data/cache/CUB_test_seen_labels.pt
+  unseen_features: data/cache/CUB_test_unseen_features.pt
+  unseen_labels: data/cache/CUB_test_unseen_labels.pt
+  res101: data/xlsa17/data/CUB/res101.mat
+  att_splits: data/xlsa17/data/CUB/att_splits.mat
+expected_sha256:
+  pse_config: e38bd1f760b0106b617cc5fad7d1dbca040460dc8bb4966f639da327958e3413
+  pse_checkpoint: 1fd4c21bde590585d393136009ff9f259d6be9134a33fd20848ad5b8981b1522
+  sentence_embeds: 8c1a8e27a70681759b22e87412c424b6c9c3a7991ed391b3acc244bbc3a6bca3
+  train_labels: b1cbf2c128a3a09979852ec5906161a737be58bf4517b18b4f7d16beec06b666
+  seen_features: 5af75c696c8d285e35a35cc41eb538017f5452d1eaf13e34fe3ee978e72983c5
+  seen_labels: 06f3f7057b6847fd912544ddb921d0ca3fca96d0888503f3fc87a52f98d3de14
+  unseen_features: 32c1b89edb72a94e27585060ac968f1afc99000a9bd8c42acee8469971fb107e
+  unseen_labels: 7fadd63d51f69cf09cc8107a132d28036b838649b75227a17656eac8640b9c59
+  res101: 9a97c71951f9ac9f5c3708e6e55386e53f3d433289ed5e87a18b4af2a1a0fca1
+  att_splits: d7f5b4c2cb7853acdce43a9e87607ceed30bdf18c60344be3a266de29b6751e3

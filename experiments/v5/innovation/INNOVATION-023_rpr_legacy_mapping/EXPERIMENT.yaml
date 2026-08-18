@@ -1,0 +1,20 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-023
+framework_id: FRAMEWORK-V5
+kind: innovation
+base_identity_kind: historical_code_ref
+base_template_id: none
+base_template_tag: none
+base_template_commit: none
+template_registry_commit: none
+historical_code_ref: commit:1b8f599a82b34d62f91c8fadcb2400395d31f76c
+template_binding_status: historical_read_only
+experiment_branch: none
+legacy_ref: IDEA-0020
+status: rejected
+planned_runs: 9
+completed_runs: 6
+not_confirmation_evidence: true
+evidence_mode: legacy_summary_only
+legacy_source_directory: experiments/v5/innovation/INNOVATION-017_rpr_role_separated_residual
+identity_note: 原实验从未进入当前权威 main；本目录只映射历史结果，不改写配置、日志、artifact 或来源提交。

@@ -554,6 +554,239 @@
         "tests/test_v5_artv.py",
         "experiments/v5/innovation/INNOVATION-022_artv/result.md"
       ]
+    },
+    {
+      "idea_id": "IDEA-0016",
+      "idea_dir": "idea_tree/ideas/IDEA-0016_dual_prototype_expert_fusion/",
+      "title": "双原型专家融合（DPEF）",
+      "status": "candidate",
+      "source_type": "observation",
+      "source_ref": "2026-08-16 dual-prototype score search",
+      "source_status": "local_heuristic",
+      "global_score": 82.0,
+      "core_summary": "融合强 seen 专家与共享迁移专家；H=76.447，但属于 test-exposed score-search 上限。",
+      "version_scores": {
+        "v5": {
+          "score": 82.0,
+          "applicability": "needs_adaptation",
+          "stage": "candidate",
+          "rationale": "V5-INNOVATION-018 达到 H=76.447，但不是 confirmation evidence。",
+          "blockers": [
+            "需按标准 pseudo-GZSL 冻结融合参数。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "PSE-X2",
+        "SharedPSE"
+      ],
+      "target_component": "双原型专家融合",
+      "hypothesis": "强 seen 与共享迁移原型互补。",
+      "expected_effect": {
+        "H": "标准验证后目标 H>=75。"
+      },
+      "implementation_scope": "冻结双专家并搜索融合系数。",
+      "risk": "official test score search 泄漏。",
+      "compatibility": "系数端点退回单专家。",
+      "transfer_notes": "需标准验证后才能成为正式证据。",
+      "priority": 0.82,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-018_dual_prototype_expert_fusion"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-018_dual_prototype_expert_fusion/result.md"
+      ]
+    },
+    {
+      "idea_id": "IDEA-0017",
+      "idea_dir": "idea_tree/ideas/IDEA-0017_role_contrastive_displacement_prototype/",
+      "title": "角色对比位移原型（RCDP）",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-16:干净双模块框架第一模块",
+      "source_status": "local_heuristic",
+      "global_score": 40.0,
+      "core_summary": "同角色跨类别对比位移增强原型；H=66.3363，低于 Mean8。",
+      "version_scores": {
+        "v5": {
+          "score": 40.0,
+          "applicability": "direct",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-019 delta_H=-0.3063。",
+          "blockers": [
+            "未提高 H。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "Mean8"
+      ],
+      "target_component": "角色对比原型位移",
+      "hypothesis": "同角色类别差异可形成共享判别位移。",
+      "expected_effect": {
+        "H": "相对 Mean8 至少 +0.5。"
+      },
+      "implementation_scope": "共享低秩位移与有界原型残差。",
+      "risk": "seen 原型漂移。",
+      "compatibility": "residual off 退回 Mean8。",
+      "transfer_notes": "当前公式已拒绝。",
+      "priority": 0.4,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-019_role_contrastive_displacement_prototype"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-019_role_contrastive_displacement_prototype/result.md"
+      ]
+    },
+    {
+      "idea_id": "IDEA-0018",
+      "idea_dir": "idea_tree/ideas/IDEA-0018_role_aligned_competitive_evidence/",
+      "title": "角色对齐竞争证据（RACE）",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-16:CAND-001",
+      "source_status": "local_heuristic",
+      "global_score": 40.0,
+      "core_summary": "同角色目标减 rival 证据；H=66.5411，wrong-role 控制未支持机制。",
+      "version_scores": {
+        "v5": {
+          "score": 40.0,
+          "applicability": "direct",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-020 delta_H=-0.1015。",
+          "blockers": [
+            "角色对齐无因果优势。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "Mean8"
+      ],
+      "target_component": "角色竞争 logit",
+      "hypothesis": "同角色 rival 差值能避免 seen 漂移。",
+      "expected_effect": {
+        "H": "相对 Mean8 至少 +0.5。"
+      },
+      "implementation_scope": "固定同角色 rival 与机制控制。",
+      "risk": "证据与角色语义无关。",
+      "compatibility": "lambda=0 退回 Mean8。",
+      "transfer_notes": "当前公式已拒绝。",
+      "priority": 0.4,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-020_role_aligned_competitive_evidence"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-020_role_aligned_competitive_evidence/result.md"
+      ]
+    },
+    {
+      "idea_id": "IDEA-0019",
+      "idea_dir": "idea_tree/ideas/IDEA-0019_faithful_role_patch_evidence/",
+      "title": "忠实角色—Patch 证据（FRPE）",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-16:CAND-003/CAND-005",
+      "source_status": "local_heuristic",
+      "global_score": 45.0,
+      "core_summary": "冻结 patch 的角色局部峰值减空间均值；H=66.9748，仅 +0.3322。",
+      "version_scores": {
+        "v5": {
+          "score": 45.0,
+          "applicability": "direct",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-021 未达到 +0.50 H 门。",
+          "blockers": [
+            "局部证据增益不足。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "Mean8",
+        "frozen CLIP patches"
+      ],
+      "target_component": "角色 patch 证据",
+      "hypothesis": "局部峰值相对背景提供新视觉信息。",
+      "expected_effect": {
+        "H": "相对 Mean8 至少 +0.5。"
+      },
+      "implementation_scope": "冻结 patch 证据及删除诊断。",
+      "risk": "相似类同向加分。",
+      "compatibility": "evidence off 退回 Mean8。",
+      "transfer_notes": "当前公式已拒绝。",
+      "priority": 0.45,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence/result.md"
+      ]
+    },
+    {
+      "idea_id": "IDEA-0020",
+      "idea_dir": "idea_tree/ideas/IDEA-0020_role_separated_prototype_residual/",
+      "title": "角色分离原型残差（RPR）",
+      "status": "rejected",
+      "source_type": "user",
+      "source_ref": "owner:2026-08-16:RPR冻结公式",
+      "source_status": "local_heuristic",
+      "global_score": 40.0,
+      "core_summary": "无句间 attention 的角色分离低秩原型残差；H=51.838248。",
+      "version_scores": {
+        "v5": {
+          "score": 40.0,
+          "applicability": "needs_adaptation",
+          "stage": "rejected",
+          "rationale": "V5-INNOVATION-023 legacy mapping，stop_no_gain。",
+          "blockers": [
+            "主条件远低于 Mean8。"
+          ]
+        }
+      },
+      "base_versions": [
+        "v5"
+      ],
+      "based_on_modules": [
+        "Mean8",
+        "SharedPSE"
+      ],
+      "target_component": "全局文本原型聚合",
+      "hypothesis": "角色分离残差能避免注意力坍缩。",
+      "expected_effect": {
+        "H": "相对 Mean8 至少 +2.0。"
+      },
+      "implementation_scope": "历史九条件实验的只读映射。",
+      "risk": "强位移破坏分类几何。",
+      "compatibility": "off 条件退回 Mean8。",
+      "transfer_notes": "失败历史证据。",
+      "priority": 0.4,
+      "linked_trials": [],
+      "linked_versions": [],
+      "linked_experiments": [
+        "experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping"
+      ],
+      "evidence": [
+        "experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping/result.md"
+      ]
     }
   ]
 }

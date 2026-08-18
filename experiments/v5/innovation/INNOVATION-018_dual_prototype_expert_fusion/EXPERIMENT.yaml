@@ -1,0 +1,21 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-018
+framework_id: FRAMEWORK-V5
+kind: innovation
+idea_id: IDEA-0016
+idea_binding_status: owner_selected_2026_08_16
+base_identity_kind: framework_template
+base_template_id: MODEL-V5-TEMPLATE-V2
+base_template_tag: model/v5-template-v2
+base_template_commit: fb4b29b04087640890a532f105cb527d3a8c461b
+template_registry_commit: 9e459a12a98fca726e7da3649645451602ab5230
+historical_code_ref: V5-ABLATION-011/012; legacy_unmerged_rpr@1b8f599a/RUN-002
+template_binding_status: ready
+implementation_branch: codex/v5-innovation-018-dpef-20260816
+experiment_branch: exp/v5/innovation/innovation-018-dual-prototype-expert-fusion
+legacy_ref: IDEA-0016
+status: completed
+planned_runs: 1
+not_confirmation_evidence: true
+selection_protocol: official_test_score_search
+official_test_policy: load_after_checkpoint_then_search_frozen_grid

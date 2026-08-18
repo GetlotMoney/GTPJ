@@ -6,7 +6,7 @@
 |---|---:|---|
 | 调参 | 4 | `tune/INDEX.md` |
 | 消融 | 13 | `ablation/INDEX.md` |
-| 创新 | 15 | `innovation/INDEX.md` |
+| 创新 | 23 | `innovation/INDEX.md` |
 | 确认 | 5 | `confirmation/INDEX.md` |
 
 ## 调参实验
@@ -51,10 +51,18 @@
 | `V5-INNOVATION-009` | rejected | 只让全局图像选择8句话是否已经足够；RUN-002 H=59.41，未保留 | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse/PARAMETER_MATRIX.md` | `IDEA-0011` | `experiments/v5/innovation/INNOVATION-009_image_conditioned_pse` | - |
 | `V5-INNOVATION-010` | rejected | 统一的 8 句—全局/Top-K32 区域双向匹配能否比实验 A 进一步提高 H；RUN-001 H=58.92，未保留 | `experiments/v5/innovation/INNOVATION-010_pse_vsce/PARAMETER_MATRIX.md` | `IDEA-0012` | `experiments/v5/innovation/INNOVATION-010_pse_vsce` | - |
 | `V5-INNOVATION-011` | planned | 删除旧频域、旧局部分支、拓扑和多辅助损失后，干净 V6 候选是否能证明句子—区域交互本身合理 | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/PARAMETER_MATRIX.md` | `IDEA-0013` | `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate` | - |
+| `V5-INNOVATION-012` | completed | 8 句纯 CLIP 全局零模块基线 H=64.164039；用于后续单模块比较，不作为原创贡献 | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-012_global8_clip_baseline` | - |
+| `V5-INNOVATION-013` | completed | 共享 PSE 单模块 H=68.613253，较纯 CLIP 八句基线提高 +4.449214；单 seed 未确认 | `experiments/v5/innovation/INNOVATION-013_shared_pse_global8/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-013_shared_pse_global8` | - |
+| `V5-INNOVATION-014` | completed | official-test gamma score search 得到 H=70.585674；仅为路线容量诊断，不是 confirmation evidence | `experiments/v5/innovation/INNOVATION-014_pse_seen_bias_calibration/PARAMETER_MATRIX.md` | `-` | `experiments/v5/innovation/INNOVATION-014_pse_seen_bias_calibration` | - |
 | `V5-INNOVATION-015` | rejected | TE-PSE 的 RUN-001 得到 H=63.70，比同次 B0 低 0.46；停止，不进入 seed 17 | `experiments/v5/innovation/INNOVATION-015_te_pse/PARAMETER_MATRIX.md` | `owner_conversation_2026_08_15` | `experiments/v5/innovation/INNOVATION-015_te_pse` | - |
 | `V5-INNOVATION-016` | rejected | VSC 与父 TE-PSE 的 U/S/H/ZS 完全相同，H=63.70；无增益并停止 controls | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc/PARAMETER_MATRIX.md` | `owner_conversation_2026_08_15` | `experiments/v5/innovation/INNOVATION-016_te_pse_vsc` | - |
 | `V5-INNOVATION-017` | rejected | VCER H=64.12，比同次 X2 低 9.40；role-shuffle 反而更高，角色因果门失败并停止 | `experiments/v5/innovation/INNOVATION-017_vcer/PARAMETER_MATRIX.md` | `IDEA-0014` | `experiments/v5/innovation/INNOVATION-017_vcer` | - |
+| `V5-INNOVATION-018` | completed | DPEF official-test 341 点 score search 得到 H=76.447016；只证明已披露测试集上限，not confirmation evidence | `experiments/v5/innovation/INNOVATION-018_dual_prototype_expert_fusion/PARAMETER_MATRIX.md` | `IDEA-0016` | `experiments/v5/innovation/INNOVATION-018_dual_prototype_expert_fusion` | - |
+| `V5-INNOVATION-019` | rejected | RCDP H=66.336303，较同次 Mean8 低 0.306272；提高 S/ZS 但损失更多 U，停止 | `experiments/v5/innovation/INNOVATION-019_role_contrastive_displacement_prototype/PARAMETER_MATRIX.md` | `IDEA-0017` | `experiments/v5/innovation/INNOVATION-019_role_contrastive_displacement_prototype` | - |
+| `V5-INNOVATION-020` | rejected | RACE H=66.541096，较 Mean8 低 0.101480；wrong-role 近似且 no-contrast 更高，机制不成立 | `experiments/v5/innovation/INNOVATION-020_role_aligned_competitive_evidence/PARAMETER_MATRIX.md` | `IDEA-0018` | `experiments/v5/innovation/INNOVATION-020_role_aligned_competitive_evidence` | - |
+| `V5-INNOVATION-021` | rejected | FRPE H=66.974786，较 Mean8 仅 +0.332210；后续 GALA 对 U/S/H 净贡献为 0 且损害 ZS，均停止 | `experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence/PARAMETER_MATRIX.md` | `IDEA-0019` | `experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence` | - |
 | `V5-INNOVATION-022` | rejected | ARTV 得到 H=70.05，比同次 X2 低 3.47；角色干预有弱信号但主路径净伤害，停止且不调阈值 | `experiments/v5/innovation/INNOVATION-022_artv/PARAMETER_MATRIX.md` | `IDEA-0015` | `experiments/v5/innovation/INNOVATION-022_artv` | - |
+| `V5-INNOVATION-023` | rejected | RPR 历史主条件 H=51.838248；因旧 017 与 VCER 冲突，保留原 commit/artifact 并映射到 023 | `experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping/PARAMETER_MATRIX.md` | `IDEA-0020` | `experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping` | - |
 
 ## 确认实验
 

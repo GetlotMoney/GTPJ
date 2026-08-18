@@ -1,0 +1,8 @@
+experiment_id: V5-INNOVATION-023
+mode: legacy_summary_only
+source_commit: 1b8f599a82b34d62f91c8fadcb2400395d31f76c
+source_directory: experiments/v5/innovation/INNOVATION-017_rpr_role_separated_residual
+source_config_directory: experiments/v5/innovation/INNOVATION-017_rpr_role_separated_residual/configs
+source_parameter_matrix: experiments/v5/innovation/INNOVATION-017_rpr_role_separated_residual/PARAMETER_MATRIX.csv
+rewrite_historical_config: false
+formal_evidence: false
