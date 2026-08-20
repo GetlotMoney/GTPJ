@@ -42,7 +42,7 @@ EXPECTED_ROLES = (
     "unique_discriminative_features",
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
-EXPECTED_CONFIG_SHA256 = "4d7a0c1ffc4fbdd592fbf63e41506e66cd0d3037381c2e8dc8c10130986a59d6"
+EXPECTED_CONFIG_SHA256 = "9e45030eefa3a3c7f9826b54896f2e3ceefe1986490e78e7a8eae03b19446238"
 TRAINING_KEYS = ("sentence_embeds", "train_features", "train_labels", "res101", "att_splits")
 OFFICIAL_KEYS = ("seen_features", "seen_labels", "unseen_features", "unseen_labels")
 
@@ -93,9 +93,9 @@ def load_config(path: Path) -> tuple[dict, str]:
     if config.get("score_path") != "clip_cls_x_strong_pse_global_only":
         raise ValueError("score_path must keep the single clean global-only path.")
     conditions = config.get("conditions")
-    expected_keys = {"PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2"}
+    expected_keys = {"PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2", "TG-VPR"}
     if not isinstance(conditions, dict) or set(conditions) != expected_keys:
-        raise ValueError("config must freeze exactly PSE-A/B/C and PSE-X1/X2.")
+        raise ValueError("config must freeze exactly PSE-A/B/C, PSE-X1/X2, and TG-VPR.")
     expected = {
         "PSE-A": {"run_id": "RUN-001", "mode": "uniform", "topology_weight": 0.1},
         "PSE-B": {"run_id": "RUN-002", "mode": "uniform", "topology_weight": 0.0},
@@ -109,6 +109,12 @@ def load_config(path: Path) -> tuple[dict, str]:
         "PSE-X2": {
             "run_id": "RUN-005",
             "mode": "legacy_uniform",
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "TG-VPR": {
+            "run_id": "RUN-006",
+            "mode": "tg_vpr",
             "topology_weight": 0.1,
             "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
         },
@@ -257,8 +263,8 @@ class StrongRolePSE(nn.Module):
         centroids = F.normalize(torch.as_tensor(visual_centroids).detach().float(), dim=-1)
         if tuple(centroids.shape) != (classes.numel(), 768):
             raise ValueError("visual_centroids must align with adapted_classes.")
-        if mode not in {"uniform", "dcra", "legacy_uniform"}:
-            raise ValueError("mode must be uniform, dcra, or legacy_uniform.")
+        if mode not in {"uniform", "dcra", "legacy_uniform", "tg_vpr"}:
+            raise ValueError("mode must be uniform, dcra, legacy_uniform, or tg_vpr.")
         if not 0.0 < float(inner_ratio) < 1.0 or not 0.0 < float(outer_ratio) < 1.0:
             raise ValueError("inner_ratio and outer_ratio must be in (0, 1).")
         if not 0.0 <= float(dcra_mix) <= 1.0:
@@ -280,6 +286,11 @@ class StrongRolePSE(nn.Module):
                 batch_first=True,
             )
             self.post_projection = nn.Linear(768, 768)
+        elif mode == "tg_vpr":
+            # Four independent 192-D Value subspaces; no Query/Key parameters.
+            self.tg_value_projection = nn.Linear(768, 768)
+            self.tg_output_projection = nn.Linear(768, 768)
+            self.post_projection = nn.Linear(768, 768)
         else:
             self.value_projection = nn.Linear(768, 768)
             self.output_projection = nn.Linear(768, 768)
@@ -292,6 +303,9 @@ class StrongRolePSE(nn.Module):
         self.dcra_mix = float(dcra_mix)
         self.temperature = float(temperature)
         self.logit_scale = nn.Parameter(torch.tensor(math.log(1.0 / self.temperature)))
+        if mode == "tg_vpr":
+            # [local-six, unique, global], shared by every class.
+            self.semantic_group_logits = nn.Parameter(torch.zeros(3))
 
     def scale(self) -> torch.Tensor:
         return self.logit_scale.exp().clamp(max=100.0)
@@ -299,15 +313,57 @@ class StrongRolePSE(nn.Module):
     def base_vectors(self) -> torch.Tensor:
         return self.sentence_embeds.mean(dim=1)
 
+    def semantic_group_weights(self) -> torch.Tensor:
+        if self.mode != "tg_vpr":
+            return self.sentence_embeds.new_full((3,), 1.0 / 3.0)
+        return F.softmax(self.semantic_group_logits, dim=0)
+
+    def semantic_group_vectors(self) -> torch.Tensor:
+        local = F.normalize(self.sentence_embeds[:, :6].mean(dim=1), dim=-1)
+        # Frozen cache order: six local roles, overall appearance, unique feature.
+        unique = F.normalize(self.sentence_embeds[:, 7], dim=-1)
+        global_appearance = F.normalize(self.sentence_embeds[:, 6], dim=-1)
+        return torch.stack((local, unique, global_appearance), dim=1)
+
     def candidate_base_vectors(self) -> torch.Tensor:
         # Keep the same Mean8 base for X1/X2 so the paired result isolates the
         # PSE training operator rather than changing unseen text aggregation.
-        return self.base_vectors()
+        base = self.base_vectors()
+        if self.mode != "tg_vpr":
+            return base
+        group_weights = self.semantic_group_weights()
+        groups = self.semantic_group_vectors()
+        grouped = F.normalize((group_weights.view(1, 3, 1) * groups).sum(dim=1), dim=-1)
+        candidate = base.clone()
+        candidate[self.adapted_classes] = grouped.index_select(0, self.adapted_classes)
+        return candidate
 
     def base_prototypes(self) -> torch.Tensor:
         return F.normalize(self.base_vectors(), dim=-1)
 
     def transformed_roles(self) -> torch.Tensor:
+        if self.mode == "tg_vpr":
+            x = self.semantic_group_vectors().index_select(0, self.adapted_classes)
+            batch, groups, dim = x.shape
+            heads = 4
+            head_dim = dim // heads
+            value = self.tg_value_projection(x)
+            value = value.view(batch, groups, heads, head_dim).transpose(1, 2)
+            group_weights = self.semantic_group_weights()
+            mixing = group_weights.view(1, 1, 1, groups).expand(
+                batch, heads, groups, groups
+            )
+            mixing = F.dropout(
+                mixing,
+                p=float(self.dropout.p),
+                training=self.training,
+            )
+            context = torch.einsum("bhqg,bhgd->bhqd", mixing, value)
+            context = context.transpose(1, 2).contiguous().view(batch, groups, dim)
+            context = self.tg_output_projection(context)
+            context = self.dropout(self.post_projection(context))
+            mixed = self.inner_ratio * context + (1.0 - self.inner_ratio) * x
+            return self.layer_norm(2.0 * mixed)
         if self.mode == "legacy_uniform":
             x = self.sentence_embeds.index_select(0, self.adapted_classes)
             batch, tokens, dim = x.shape
@@ -347,6 +403,16 @@ class StrongRolePSE(nn.Module):
         if self.mode in {"uniform", "legacy_uniform"}:
             weights = transformed.new_full((self.adapted_classes.numel(), count), 1.0 / count)
             return weights, {"margins": None, "rival_class_ids": None}
+        if self.mode == "tg_vpr":
+            group_weights = self.semantic_group_weights()
+            if count != 3:
+                raise RuntimeError("TG-VPR transformed roles must be [local, unique, global].")
+            weights = group_weights.unsqueeze(0).expand(self.adapted_classes.numel(), -1)
+            return weights, {
+                "margins": None,
+                "rival_class_ids": None,
+                "semantic_group_weights": group_weights,
+            }
 
         own_roles = transformed.index_select(0, self.adapted_classes)
         by_role = transformed.transpose(0, 1)
@@ -372,13 +438,14 @@ class StrongRolePSE(nn.Module):
         base_scale[self.adapted_classes] = 1.0 - self.outer_ratio
         base_part = base_scale.unsqueeze(-1) * base_vectors
         role_part = transformed.new_zeros(
-            self.sentence_embeds.shape[0], self.sentence_embeds.shape[1], transformed.shape[-1]
+            self.sentence_embeds.shape[0], transformed.shape[1], transformed.shape[-1]
         )
-        adapted_roles = (
-            transformed
-            if self.mode == "legacy_uniform"
-            else transformed.index_select(0, self.adapted_classes)
-        )
+        if self.mode == "tg_vpr":
+            adapted_roles = F.normalize(transformed, dim=-1)
+        elif self.mode == "legacy_uniform":
+            adapted_roles = transformed
+        else:
+            adapted_roles = transformed.index_select(0, self.adapted_classes)
         role_part[self.adapted_classes] = (
             self.outer_ratio
             * role_weights.unsqueeze(-1)
@@ -405,6 +472,7 @@ class StrongRolePSE(nn.Module):
                 "margins": evidence["margins"],
                 "rival_class_ids": evidence["rival_class_ids"],
                 "transformed_roles": evidence["transformed_roles"],
+                "semantic_group_weights": evidence.get("semantic_group_weights"),
             }
         return adapted
 
@@ -431,7 +499,7 @@ class StrongRolePSE(nn.Module):
         return F.normalize(image_features.float(), dim=-1) @ prototypes.T * self.scale()
 
     def logit_components(self, image_features: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return exact base and eight role addends of the normalized final logits."""
+        """Return exact base and role addends of the normalized final logits."""
         enhanced, _, evidence = self.prototype_components()
         denominator = enhanced.norm(dim=-1).clamp_min(1e-12)
         images = F.normalize(image_features.float(), dim=-1)
@@ -784,6 +852,11 @@ def run(
             "base_adapted_cosine_seen_mean": float(cosine[seenclasses].mean()),
             "base_adapted_cosine_unseen_mean": float(cosine[unseenclasses].mean()),
             "topology_weight": float(selected_condition["topology_weight"]),
+            "semantic_group_weights": (
+                model.semantic_group_weights().detach().cpu().tolist()
+                if condition == "TG-VPR"
+                else None
+            ),
         },
         "history": history,
     }
@@ -804,7 +877,7 @@ def main() -> None:
     parser.add_argument("--run-id", required=True)
     parser.add_argument(
         "--condition",
-        choices=("PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2"),
+        choices=("PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2", "TG-VPR"),
         required=True,
     )
     args = parser.parse_args()

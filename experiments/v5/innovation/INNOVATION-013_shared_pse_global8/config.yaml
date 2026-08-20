@@ -54,6 +54,11 @@ conditions:
     mode: legacy_uniform
     topology_weight: 0.1
     training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  TG-VPR:
+    run_id: RUN-006
+    mode: tg_vpr
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
 inputs:
   sentence_embeds: data/cache/CUB_gpt55_8role_sentence_embeds.pt
   train_features: data/cache/CUB_train_features.pt

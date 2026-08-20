@@ -15,6 +15,7 @@ TRAIN_PATH = (
     / "INNOVATION-013_shared_pse_global8"
     / "train.py"
 )
+CONFIG_PATH = TRAIN_PATH.with_name("config.yaml")
 SPEC = importlib.util.spec_from_file_location("local_dcra_train", TRAIN_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -173,6 +174,56 @@ def test_legacy_uniform_gradients_reach_value_not_query_or_key():
     assert torch.count_nonzero(q_grad) == 0
     assert torch.count_nonzero(k_grad) == 0
     assert float(v_grad.abs().sum()) > 0.0
+
+
+def test_tg_vpr_starts_group_equal_and_preserves_unseen_mean8():
+    model = make_model("tg_vpr", dropout=0.0)
+    model.eval()
+    expected_groups = torch.full((3,), 1.0 / 3.0)
+    assert torch.allclose(model.semantic_group_weights(), expected_groups)
+
+    _, diagnostics = model.prototypes(return_diagnostics=True)
+    assert model.transformed_roles().shape == (150, 3, 768)
+    assert torch.allclose(diagnostics["role_weights"][0], expected_groups)
+    group_vectors = model.semantic_group_vectors()
+    assert torch.allclose(group_vectors.norm(dim=-1), torch.ones(200, 3), atol=1e-6)
+    assert torch.equal(model.prototypes()[150:], model.base_prototypes()[150:])
+
+
+def test_tg_vpr_group_weights_and_value_path_receive_gradient_but_qk_do_not():
+    model = make_model("tg_vpr", dropout=0.0)
+    images = torch.randn(4, 768, generator=torch.Generator().manual_seed(43))
+    loss = torch.nn.functional.cross_entropy(
+        model.logits(images, torch.arange(150)), torch.tensor([0, 1, 2, 3])
+    )
+    loss = loss + 0.1 * model.topology_loss()
+    loss.backward()
+    assert model.semantic_group_logits.grad is not None
+    assert float(model.semantic_group_logits.grad.abs().sum()) > 0.0
+    assert not hasattr(model, "legacy_attention")
+    assert model.tg_value_projection.weight.grad is not None
+    assert float(model.tg_value_projection.weight.grad.abs().sum()) > 0.0
+
+
+def test_tg_vpr_group_weights_change_the_shared_value_context():
+    model = make_model("tg_vpr", dropout=0.0)
+    model.eval()
+    baseline = model.transformed_roles().detach().clone()
+    with torch.no_grad():
+        model.semantic_group_logits.copy_(torch.tensor([2.0, -1.0, -1.0]))
+    changed = model.transformed_roles().detach()
+    assert not torch.allclose(baseline, changed)
+
+
+def test_modified_config_hash_and_frozen_tg_vpr_condition_load():
+    config, digest = MODULE.load_config(CONFIG_PATH)
+    assert digest == MODULE.EXPECTED_CONFIG_SHA256
+    assert config["conditions"]["TG-VPR"] == {
+        "run_id": "RUN-006",
+        "mode": "tg_vpr",
+        "topology_weight": 0.1,
+        "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+    }
 
 
 def test_full_seen_batch_schedule_is_independent_of_model_rng_consumption():
