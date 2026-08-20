@@ -89,11 +89,14 @@ class TGVPRH1(nn.Module):
         source = self.semantic_group_vectors().index_select(0, self.adapted_classes)
         batch, group_count, dim = source.shape
         value = self.tg_value_projection(source)
-        weights = self.semantic_group_weights().view(1, 1, group_count).expand(
-            batch, group_count, group_count
+        value = value.view(batch, group_count, 1, dim).transpose(1, 2)
+        group_weights = self.semantic_group_weights()
+        weights = group_weights.view(1, 1, 1, group_count).expand(
+            batch, 1, group_count, group_count
         )
         weights = F.dropout(weights, p=float(self.dropout.p), training=self.training)
-        context = torch.bmm(weights, value)
+        context = torch.einsum("bhqg,bhgd->bhqd", weights, value)
+        context = context.transpose(1, 2).contiguous().view(batch, group_count, dim)
         context = self.tg_output_projection(context)
         context = self.dropout(self.post_projection(context))
         mixed = self.inner_ratio * context + (1.0 - self.inner_ratio) * source
@@ -101,14 +104,14 @@ class TGVPRH1(nn.Module):
 
     def prototype_components(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         groups = F.normalize(self.transformed_groups(), dim=-1)
-        weights = self.semantic_group_weights()
+        weights = self.semantic_group_weights().unsqueeze(0).expand(150, -1)
         base_vectors = self.candidate_base_vectors()
         base_scale = base_vectors.new_ones((200,))
         base_scale[self.adapted_classes] = 1.0 - self.outer_ratio
         base_part = base_scale.unsqueeze(-1) * base_vectors
         role_part = groups.new_zeros((200, 3, 768))
         role_part[self.adapted_classes] = (
-            self.outer_ratio * weights.view(1, 3, 1) * groups
+            self.outer_ratio * weights.unsqueeze(-1) * groups
         )
         return base_part + role_part.sum(dim=1), base_part, role_part
 
