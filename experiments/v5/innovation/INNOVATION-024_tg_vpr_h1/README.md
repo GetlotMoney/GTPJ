@@ -11,6 +11,8 @@ unseen描述     → Mean8 ─────────────────�
 
 本目录不包含 X1/X2、head搜索、CR、BR、GA 或 CSVG 失败模块。
 
+seed 7独立迁移RUN已通过：checkpoint全部13个模型张量、50轮history、三组权重和U/S/H/ZS均与来源RUN逐项一致。
+
 ```powershell
 conda run -n dvsr_gpu python experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/train.py `
   --config experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/config.yaml `

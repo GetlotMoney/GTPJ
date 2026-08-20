@@ -792,7 +792,7 @@
       "idea_id": "IDEA-0021",
       "idea_dir": "idea_tree/ideas/IDEA-0021_tg_vpr_h1/",
       "title": "三组 Value 原型重参数化（TG-VPR-H1）",
-      "status": "validated_candidate",
+      "status": "standalone_validated_candidate",
       "source_type": "owner_derived",
       "source_ref": "git+commit://5ff6ce31b31872e042dec14028dd49d028a05cd6/experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md",
       "source_status": "verified_local_evidence",
@@ -802,11 +802,9 @@
         "v5": {
           "score": 86.0,
           "applicability": "direct",
-          "stage": "validated_candidate",
-          "rationale": "seeds 5/6/7/8 H均高于X2，当前进入独立代码迁移验证。",
-          "blockers": [
-            "独立训练入口尚未完成迁移等价运行。"
-          ]
+          "stage": "standalone_validated_candidate",
+          "rationale": "seeds 5/6/7/8 H均高于X2，独立seed 7迁移RUN与来源state/history/metrics逐项一致。",
+          "blockers": []
         }
       },
       "base_versions": ["v5"],
@@ -814,7 +812,7 @@
       "target_component": "全局文本类别原型",
       "hypothesis": "三组平级语义与单一Value重参数化能稳定改善X2。",
       "expected_effect": {"H": "四seed均高于X2历史H=73.523304。"},
-      "implementation_scope": "独立模型、配置和训练入口；不包含失败附加模块。",
+      "implementation_scope": "独立模型、配置和训练入口；迁移等价已通过，不包含失败附加模块。",
       "risk": "来源骨架必须引用VDT-Adapter，最高seed不能冒充confirmation。",
       "compatibility": "unseen保持Mean8，200类GZSL与50类ZS语义不变。",
       "transfer_notes": "multi_seed_stability only; not confirmation evidence.",
@@ -826,7 +824,8 @@
       ],
       "evidence": [
         "git+commit://5ff6ce31b31872e042dec14028dd49d028a05cd6/experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md",
-        "warehouse://runs/tg-vpr-h1-multiseed-20260821/"
+        "warehouse://runs/tg-vpr-h1-multiseed-20260821/",
+        "warehouse://runs/tg-vpr-h1-standalone-r2-20260821/RUN-001"
       ]
     }
   ]

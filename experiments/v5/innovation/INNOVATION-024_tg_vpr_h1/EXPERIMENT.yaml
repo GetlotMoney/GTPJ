@@ -11,9 +11,21 @@ standalone_code_commit: 1882568f93719e5b6cb89d153cf873ea55de4f92
 evidence_commit: 5ff6ce31b31872e042dec14028dd49d028a05cd6
 evidence_path: experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md
 warehouse_ref: warehouse://runs/tg-vpr-h1-multiseed-20260821/
-status: standalone_ready_pending_migration_run
+status: migration_equivalence_passed
 formal_evidence: false
-promotion_status: blocked_pending_migration_equivalence
+promotion_status: blocked_pending_owner_decision
+run_commit: f0f804a846f14e32c8658019b50048b8c8ce3e0e
+migration_result:
+  run_id: RUN-001
+  seed: 7
+  U: 72.690260
+  S: 75.398600
+  H: 74.019664
+  ZS: 81.534684
+  best_epoch: 50
+  source_checkpoint_state_max_diff: 0.0
+  history_equal: true
+  metrics_equal: true
 previous_migration_diagnostic:
   run_commit: 674e9ca95b2d0329091c080da13e3a3ce40b18a5
   output: warehouse://runs/tg-vpr-h1-standalone-20260821/RUN-001

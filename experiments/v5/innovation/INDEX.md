@@ -25,7 +25,7 @@
 | `V5-INNOVATION-021` | rejected | FRPE H=66.974786，较 Mean8 仅 +0.332210；后续 GALA 对 U/S/H 净贡献为 0 且损害 ZS，均停止 | `experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence/PARAMETER_MATRIX.md` | `IDEA-0019` | `experiments/v5/innovation/INNOVATION-021_faithful_role_patch_evidence` | - |
 | `V5-INNOVATION-022` | rejected | ARTV 得到 H=70.05，比同次 X2 低 3.47；角色干预有弱信号但主路径净伤害，停止且不调阈值 | `experiments/v5/innovation/INNOVATION-022_artv/PARAMETER_MATRIX.md` | `IDEA-0015` | `experiments/v5/innovation/INNOVATION-022_artv` | - |
 | `V5-INNOVATION-023` | rejected | RPR 历史主条件 H=51.838248；因旧 017 与 VCER 冲突，保留原 commit/artifact 并映射到 023 | `experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping/PARAMETER_MATRIX.md` | `IDEA-0020` | `experiments/v5/innovation/INNOVATION-023_rpr_legacy_mapping` | - |
-| `V5-INNOVATION-024` | standalone_ready_pending_migration_run | TG-VPR-H1能否从历史多条件诊断代码中无损提取为独立模型和训练入口 | `experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/PARAMETER_MATRIX.csv` | `IDEA-0021` | `experiments/v5/innovation/INNOVATION-024_tg_vpr_h1` | - |
+| `V5-INNOVATION-024` | migration_equivalence_passed | TG-VPR-H1已无损提取；seed 7独立RUN的state、history和指标与来源逐项一致 | `experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/PARAMETER_MATRIX.csv` | `IDEA-0021` | `experiments/v5/innovation/INNOVATION-024_tg_vpr_h1` | - |
 
 ## 编号与证据边界
 

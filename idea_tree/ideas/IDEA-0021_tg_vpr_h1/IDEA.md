@@ -3,7 +3,7 @@
 ```text
 idea_id: IDEA-0021
 title: TG-VPR-H1
-status: validated_candidate
+status: standalone_validated_candidate
 source_type: owner_derived_from_X2_diagnostics
 source_ref: git+commit://5ff6ce31b31872e042dec14028dd49d028a05cd6/experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md
 ```
@@ -19,5 +19,7 @@ source_ref: git+commit://5ff6ce31b31872e042dec14028dd49d028a05cd6/experiments/v5
 - 四 seed 平均 `73.838267`，范围 `0.310211`；当前 best observed 为 seed 7 `H=74.019664`。
 
 上述多 seed 结果是 `not_confirmation_evidence`，不自动形成 promotion。
+
+独立模型迁移验证已通过：seed 7新RUN与来源checkpoint全部模型张量、训练history和最终指标逐项一致。
 
 证据提交：`5ff6ce31b31872e042dec14028dd49d028a05cd6`。原始产物：`warehouse://runs/tg-vpr-h1-multiseed-20260821/`。
