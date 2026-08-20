@@ -7,10 +7,16 @@ question: 已验证H1能否从历史多条件诊断代码中无损提取为独�
 source_code_commit: 7ebbb6cbf28a2aac63997bb89ec87024beaf51c3
 source_condition: TG-VPR-H1
 source_tune: V5-TUNE-005
-standalone_code_commit: 1184656020b8831f387a9188772d03407503e176
+standalone_code_commit: 1882568f93719e5b6cb89d153cf873ea55de4f92
 evidence_commit: 5ff6ce31b31872e042dec14028dd49d028a05cd6
 evidence_path: experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md
 warehouse_ref: warehouse://runs/tg-vpr-h1-multiseed-20260821/
 status: standalone_ready_pending_migration_run
 formal_evidence: false
 promotion_status: blocked_pending_migration_equivalence
+previous_migration_diagnostic:
+  run_commit: 674e9ca95b2d0329091c080da13e3a3ce40b18a5
+  output: warehouse://runs/tg-vpr-h1-standalone-20260821/RUN-001
+  metrics_equal: true
+  checkpoint_state_max_diff: 3.5762786865234375e-07
+  decision: invalidated_after_gradient_reduction_order_fix
