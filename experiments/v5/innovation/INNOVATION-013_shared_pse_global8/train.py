@@ -42,7 +42,7 @@ EXPECTED_ROLES = (
     "unique_discriminative_features",
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
-EXPECTED_CONFIG_SHA256 = "dde54ce821e536a4a4617e517cac1dc13817495a070909c7c7356743dcaad840"
+EXPECTED_CONFIG_SHA256 = "54bc5e5ae23beb512a2951dde37dbfa728f7fe2b3d59593daef74d32f045f9ca"
 TRAINING_KEYS = ("sentence_embeds", "train_features", "train_labels", "res101", "att_splits")
 OFFICIAL_KEYS = ("seen_features", "seen_labels", "unseen_features", "unseen_labels")
 
@@ -96,6 +96,7 @@ def load_config(path: Path) -> tuple[dict, str]:
     expected_keys = {
         "PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2",
         "TG-VPR", "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8",
+        "TG-VPR-H1-S6", "TG-VPR-H1-S7", "TG-VPR-H1-S8",
     }
     if not isinstance(conditions, dict) or set(conditions) != expected_keys:
         raise ValueError("config must freeze exactly PSE-A/B/C, PSE-X1/X2, and TG-VPR.")
@@ -142,6 +143,36 @@ def load_config(path: Path) -> tuple[dict, str]:
             "value_heads": 8,
             "topology_weight": 0.1,
             "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "TG-VPR-H1-S6": {
+            "run_id": "RUN-020",
+            "mode": "tg_vpr",
+            "value_heads": 1,
+            "seed": 6,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+            "repeat_type": "multi_seed_stability",
+            "not_confirmation_evidence": True,
+        },
+        "TG-VPR-H1-S7": {
+            "run_id": "RUN-021",
+            "mode": "tg_vpr",
+            "value_heads": 1,
+            "seed": 7,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+            "repeat_type": "multi_seed_stability",
+            "not_confirmation_evidence": True,
+        },
+        "TG-VPR-H1-S8": {
+            "run_id": "RUN-022",
+            "mode": "tg_vpr",
+            "value_heads": 1,
+            "seed": 8,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+            "repeat_type": "multi_seed_stability",
+            "not_confirmation_evidence": True,
         },
     }
     if conditions != expected:
@@ -559,6 +590,7 @@ def build_checkpoint(
     best_epoch: int,
     run_id: str,
     condition: str,
+    seed: int,
 ) -> dict:
     return {
         "model": {name: value.detach().cpu() for name, value in model.state_dict().items()},
@@ -567,6 +599,7 @@ def build_checkpoint(
         "best_epoch": int(best_epoch),
         "run_id": run_id,
         "condition": condition,
+        "seed": int(seed),
         "value_heads": model.value_heads,
     }
 
@@ -628,7 +661,8 @@ def run(
         raise FileExistsError(f"refusing to reuse run directory: {run_dir}")
     run_dir.mkdir(parents=True, exist_ok=False)
 
-    seed = int(config["seed"])
+    selected_condition = config["conditions"][condition]
+    seed = int(selected_condition.get("seed", config["seed"]))
     print(f"代码 commit：{code_commit}")
     print(f"配置 SHA-256：{config_sha256}")
     print(f"随机种子：{seed}")
@@ -649,7 +683,6 @@ def run(
     unseenclasses = allclasses[~torch.isin(allclasses, seenclasses)]
     if seenclasses.numel() != 150 or unseenclasses.numel() != 50:
         raise ValueError("CUB must expose 150 seen and 50 unseen classes.")
-    selected_condition = config["conditions"][condition]
     full_seen_protocol = (
         selected_condition.get("training_protocol")
         == "full_seen_fixed_epoch50_legacy_sampling"
@@ -836,7 +869,7 @@ def run(
 
     checkpoint_path = run_dir / "model_best.pth"
     torch.save(
-        build_checkpoint(model, config, code_commit, best_epoch, run_id, condition),
+        build_checkpoint(model, config, code_commit, best_epoch, run_id, condition, seed),
         checkpoint_path,
     )
     # Official caches are first hashed and loaded only after checkpoint selection
@@ -869,6 +902,10 @@ def run(
         "condition": condition,
         "value_heads": model.value_heads,
         "formal_evidence": False,
+        "repeat_type": selected_condition.get("repeat_type"),
+        "not_confirmation_evidence": bool(
+            selected_condition.get("not_confirmation_evidence", False)
+        ),
         "official_test_used_for_selection": False,
         "official_test_evaluations": {"mean8": 1, condition: 1},
         "code_commit": code_commit,
@@ -928,6 +965,7 @@ def main() -> None:
         choices=(
             "PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2",
             "TG-VPR", "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8",
+            "TG-VPR-H1-S6", "TG-VPR-H1-S7", "TG-VPR-H1-S8",
         ),
         required=True,
     )

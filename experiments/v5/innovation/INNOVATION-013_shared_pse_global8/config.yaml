@@ -78,6 +78,33 @@ conditions:
     value_heads: 8
     topology_weight: 0.1
     training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  TG-VPR-H1-S6:
+    run_id: RUN-020
+    mode: tg_vpr
+    value_heads: 1
+    seed: 6
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+    repeat_type: multi_seed_stability
+    not_confirmation_evidence: true
+  TG-VPR-H1-S7:
+    run_id: RUN-021
+    mode: tg_vpr
+    value_heads: 1
+    seed: 7
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+    repeat_type: multi_seed_stability
+    not_confirmation_evidence: true
+  TG-VPR-H1-S8:
+    run_id: RUN-022
+    mode: tg_vpr
+    value_heads: 1
+    seed: 8
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+    repeat_type: multi_seed_stability
+    not_confirmation_evidence: true
 inputs:
   sentence_embeds: data/cache/CUB_gpt55_8role_sentence_embeds.pt
   train_features: data/cache/CUB_train_features.pt

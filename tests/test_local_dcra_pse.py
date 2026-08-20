@@ -255,11 +255,13 @@ def test_checkpoint_is_self_describing_for_head_variant():
         50,
         "RUN-008",
         "TG-VPR-H3",
+        5,
     )
     assert payload["run_id"] == "RUN-008"
     assert payload["condition"] == "TG-VPR-H3"
     assert payload["value_heads"] == 3
     assert payload["best_epoch"] == 50
+    assert payload["seed"] == 5
 
 
 def test_modified_config_hash_and_frozen_tg_vpr_condition_load():
@@ -275,6 +277,9 @@ def test_modified_config_hash_and_frozen_tg_vpr_condition_load():
     assert [config["conditions"][name]["value_heads"] for name in (
         "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8"
     )] == [1, 3, 8]
+    assert [config["conditions"][name]["seed"] for name in (
+        "TG-VPR-H1-S6", "TG-VPR-H1-S7", "TG-VPR-H1-S8"
+    )] == [6, 7, 8]
 
 
 def test_full_seen_batch_schedule_is_independent_of_model_rng_consumption():
@@ -292,3 +297,21 @@ def test_full_seen_batch_schedule_is_independent_of_model_rng_consumption():
         torch.equal(first, second)
         for first, second in zip(first_schedule, second_schedule, strict=True)
     )
+
+
+def test_multi_seed_conditions_change_initialization_and_batch_schedule():
+    torch.manual_seed(6)
+    model_s6 = make_model("tg_vpr", value_heads=1)
+    torch.manual_seed(7)
+    model_s7 = make_model("tg_vpr", value_heads=1)
+    assert not torch.equal(
+        model_s6.tg_value_projection.weight,
+        model_s7.tg_value_projection.weight,
+    )
+    batch_s6 = MODULE.legacy_batch_indices(
+        7057, 64, torch.Generator(device="cpu").manual_seed(6)
+    )
+    batch_s7 = MODULE.legacy_batch_indices(
+        7057, 64, torch.Generator(device="cpu").manual_seed(7)
+    )
+    assert not torch.equal(batch_s6, batch_s7)
