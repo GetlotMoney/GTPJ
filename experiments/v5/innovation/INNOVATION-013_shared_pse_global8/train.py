@@ -42,7 +42,7 @@ EXPECTED_ROLES = (
     "unique_discriminative_features",
 )
 EXPECTED_SENTENCE_SHAPE = (200, 8, 768)
-EXPECTED_CONFIG_SHA256 = "9e45030eefa3a3c7f9826b54896f2e3ceefe1986490e78e7a8eae03b19446238"
+EXPECTED_CONFIG_SHA256 = "dde54ce821e536a4a4617e517cac1dc13817495a070909c7c7356743dcaad840"
 TRAINING_KEYS = ("sentence_embeds", "train_features", "train_labels", "res101", "att_splits")
 OFFICIAL_KEYS = ("seen_features", "seen_labels", "unseen_features", "unseen_labels")
 
@@ -93,7 +93,10 @@ def load_config(path: Path) -> tuple[dict, str]:
     if config.get("score_path") != "clip_cls_x_strong_pse_global_only":
         raise ValueError("score_path must keep the single clean global-only path.")
     conditions = config.get("conditions")
-    expected_keys = {"PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2", "TG-VPR"}
+    expected_keys = {
+        "PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2",
+        "TG-VPR", "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8",
+    }
     if not isinstance(conditions, dict) or set(conditions) != expected_keys:
         raise ValueError("config must freeze exactly PSE-A/B/C, PSE-X1/X2, and TG-VPR.")
     expected = {
@@ -115,6 +118,28 @@ def load_config(path: Path) -> tuple[dict, str]:
         "TG-VPR": {
             "run_id": "RUN-006",
             "mode": "tg_vpr",
+            "value_heads": 4,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "TG-VPR-H1": {
+            "run_id": "RUN-007",
+            "mode": "tg_vpr",
+            "value_heads": 1,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "TG-VPR-H3": {
+            "run_id": "RUN-008",
+            "mode": "tg_vpr",
+            "value_heads": 3,
+            "topology_weight": 0.1,
+            "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
+        },
+        "TG-VPR-H8": {
+            "run_id": "RUN-009",
+            "mode": "tg_vpr",
+            "value_heads": 8,
             "topology_weight": 0.1,
             "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
         },
@@ -248,6 +273,7 @@ class StrongRolePSE(nn.Module):
         outer_ratio: float,
         dcra_mix: float,
         temperature: float,
+        value_heads: int = 4,
     ):
         super().__init__()
         if tuple(sentence_embeds.shape) != EXPECTED_SENTENCE_SHAPE:
@@ -271,6 +297,10 @@ class StrongRolePSE(nn.Module):
             raise ValueError("dcra_mix must be in [0, 1].")
         if float(temperature) <= 0.0:
             raise ValueError("temperature must be positive.")
+        if isinstance(value_heads, bool) or not isinstance(value_heads, int):
+            raise ValueError("value_heads must be an integer.")
+        if value_heads <= 0 or 768 % value_heads != 0:
+            raise ValueError("value_heads must be a positive divisor of 768.")
 
         normalized = F.normalize(sentence_embeds.detach().float(), dim=-1)
         self.register_buffer("sentence_embeds", normalized, persistent=True)
@@ -287,7 +317,7 @@ class StrongRolePSE(nn.Module):
             )
             self.post_projection = nn.Linear(768, 768)
         elif mode == "tg_vpr":
-            # Four independent 192-D Value subspaces; no Query/Key parameters.
+            # Configurable equal-width Value subspaces; no Query/Key parameters.
             self.tg_value_projection = nn.Linear(768, 768)
             self.tg_output_projection = nn.Linear(768, 768)
             self.post_projection = nn.Linear(768, 768)
@@ -302,6 +332,7 @@ class StrongRolePSE(nn.Module):
         self.outer_ratio = float(outer_ratio)
         self.dcra_mix = float(dcra_mix)
         self.temperature = float(temperature)
+        self.value_heads = value_heads
         self.logit_scale = nn.Parameter(torch.tensor(math.log(1.0 / self.temperature)))
         if mode == "tg_vpr":
             # [local-six, unique, global], shared by every class.
@@ -345,7 +376,7 @@ class StrongRolePSE(nn.Module):
         if self.mode == "tg_vpr":
             x = self.semantic_group_vectors().index_select(0, self.adapted_classes)
             batch, groups, dim = x.shape
-            heads = 4
+            heads = self.value_heads
             head_dim = dim // heads
             value = self.tg_value_projection(x)
             value = value.view(batch, groups, heads, head_dim).transpose(1, 2)
@@ -521,6 +552,25 @@ def per_class_accuracy(labels, predictions, classes) -> float:
     return float(torch.stack(values).mean().item())
 
 
+def build_checkpoint(
+    model: StrongRolePSE,
+    config: dict,
+    code_commit: str,
+    best_epoch: int,
+    run_id: str,
+    condition: str,
+) -> dict:
+    return {
+        "model": {name: value.detach().cpu() for name, value in model.state_dict().items()},
+        "config": config,
+        "code_commit": code_commit,
+        "best_epoch": int(best_epoch),
+        "run_id": run_id,
+        "condition": condition,
+        "value_heads": model.value_heads,
+    }
+
+
 @torch.no_grad()
 def evaluate(
     model, tensors, seenclasses, unseenclasses, device, *, use_base: bool = False
@@ -647,6 +697,7 @@ def run(
         outer_ratio=float(config["pse_outer_ratio"]),
         dcra_mix=float(config["dcra_mix"]),
         temperature=float(config["temperature"]),
+        value_heads=int(selected_condition.get("value_heads", 4)),
     ).to(device)
     stages = config["lr_stages"]
     if not isinstance(stages, list) or not stages:
@@ -785,12 +836,7 @@ def run(
 
     checkpoint_path = run_dir / "model_best.pth"
     torch.save(
-        {
-            "model": {name: value.detach().cpu() for name, value in model.state_dict().items()},
-            "config": config,
-            "code_commit": code_commit,
-            "best_epoch": best_epoch,
-        },
+        build_checkpoint(model, config, code_commit, best_epoch, run_id, condition),
         checkpoint_path,
     )
     # Official caches are first hashed and loaded only after checkpoint selection
@@ -821,6 +867,7 @@ def run(
         "experiment_id": "LOCAL-DCRA-PSE-20260816",
         "run_id": run_id,
         "condition": condition,
+        "value_heads": model.value_heads,
         "formal_evidence": False,
         "official_test_used_for_selection": False,
         "official_test_evaluations": {"mean8": 1, condition: 1},
@@ -854,9 +901,10 @@ def run(
             "topology_weight": float(selected_condition["topology_weight"]),
             "semantic_group_weights": (
                 model.semantic_group_weights().detach().cpu().tolist()
-                if condition == "TG-VPR"
+                if selected_condition["mode"] == "tg_vpr"
                 else None
             ),
+            "value_heads": model.value_heads,
         },
         "history": history,
     }
@@ -877,7 +925,10 @@ def main() -> None:
     parser.add_argument("--run-id", required=True)
     parser.add_argument(
         "--condition",
-        choices=("PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2", "TG-VPR"),
+        choices=(
+            "PSE-A", "PSE-B", "PSE-C", "PSE-X1", "PSE-X2",
+            "TG-VPR", "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8",
+        ),
         required=True,
     )
     args = parser.parse_args()

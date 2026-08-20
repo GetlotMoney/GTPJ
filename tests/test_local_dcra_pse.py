@@ -30,7 +30,9 @@ def make_inputs():
     return sentences, classes, centroids
 
 
-def make_model(mode: str, dcra_mix: float = 0.2, dropout: float = 0.0):
+def make_model(
+    mode: str, dcra_mix: float = 0.2, dropout: float = 0.0, value_heads: int = 4
+):
     sentences, classes, centroids = make_inputs()
     return MODULE.StrongRolePSE(
         sentences,
@@ -42,6 +44,7 @@ def make_model(mode: str, dcra_mix: float = 0.2, dropout: float = 0.0):
         outer_ratio=0.65,
         dcra_mix=dcra_mix,
         temperature=0.05,
+        value_heads=value_heads,
     )
 
 
@@ -215,15 +218,63 @@ def test_tg_vpr_group_weights_change_the_shared_value_context():
     assert not torch.allclose(baseline, changed)
 
 
+def test_tg_vpr_supported_head_counts_preserve_shapes_and_qk_free_path():
+    for heads in (1, 3, 4, 8):
+        model = make_model("tg_vpr", dropout=0.0, value_heads=heads)
+        model.eval()
+        assert model.value_heads == heads
+        assert model.transformed_roles().shape == (150, 3, 768)
+        assert model.prototypes().shape == (200, 768)
+        assert not hasattr(model, "legacy_attention")
+
+
+def test_tg_vpr_rejects_head_count_that_does_not_divide_768():
+    try:
+        make_model("tg_vpr", value_heads=5)
+    except ValueError as exc:
+        assert "positive divisor of 768" in str(exc)
+    else:
+        raise AssertionError("value_heads=5 must be rejected")
+
+
+def test_tg_vpr_rejects_non_integer_head_count():
+    try:
+        make_model("tg_vpr", value_heads=3.5)
+    except ValueError as exc:
+        assert "must be an integer" in str(exc)
+    else:
+        raise AssertionError("value_heads=3.5 must be rejected")
+
+
+def test_checkpoint_is_self_describing_for_head_variant():
+    model = make_model("tg_vpr", value_heads=3)
+    payload = MODULE.build_checkpoint(
+        model,
+        {"conditions": {"TG-VPR-H3": {"value_heads": 3}}},
+        "a" * 40,
+        50,
+        "RUN-008",
+        "TG-VPR-H3",
+    )
+    assert payload["run_id"] == "RUN-008"
+    assert payload["condition"] == "TG-VPR-H3"
+    assert payload["value_heads"] == 3
+    assert payload["best_epoch"] == 50
+
+
 def test_modified_config_hash_and_frozen_tg_vpr_condition_load():
     config, digest = MODULE.load_config(CONFIG_PATH)
     assert digest == MODULE.EXPECTED_CONFIG_SHA256
     assert config["conditions"]["TG-VPR"] == {
         "run_id": "RUN-006",
         "mode": "tg_vpr",
+        "value_heads": 4,
         "topology_weight": 0.1,
         "training_protocol": "full_seen_fixed_epoch50_legacy_sampling",
     }
+    assert [config["conditions"][name]["value_heads"] for name in (
+        "TG-VPR-H1", "TG-VPR-H3", "TG-VPR-H8"
+    )] == [1, 3, 8]
 
 
 def test_full_seen_batch_schedule_is_independent_of_model_rng_consumption():

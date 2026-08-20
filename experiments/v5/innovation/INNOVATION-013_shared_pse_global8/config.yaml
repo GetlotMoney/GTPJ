@@ -57,6 +57,25 @@ conditions:
   TG-VPR:
     run_id: RUN-006
     mode: tg_vpr
+    value_heads: 4
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  TG-VPR-H1:
+    run_id: RUN-007
+    mode: tg_vpr
+    value_heads: 1
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  TG-VPR-H3:
+    run_id: RUN-008
+    mode: tg_vpr
+    value_heads: 3
+    topology_weight: 0.1
+    training_protocol: full_seen_fixed_epoch50_legacy_sampling
+  TG-VPR-H8:
+    run_id: RUN-009
+    mode: tg_vpr
+    value_heads: 8
     topology_weight: 0.1
     training_protocol: full_seen_fixed_epoch50_legacy_sampling
 inputs:
