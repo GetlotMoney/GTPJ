@@ -1,0 +1,15 @@
+schema_version: gtpj.experiment.v1
+experiment_id: V5-INNOVATION-024
+framework_id: FRAMEWORK-V5
+idea_id: IDEA-0021
+title: TG-VPR-H1 独立化
+question: 已验证H1能否从历史多条件诊断代码中无损提取为独立模型、配置和训练入口
+source_code_commit: 7ebbb6cbf28a2aac63997bb89ec87024beaf51c3
+source_condition: TG-VPR-H1
+source_tune: V5-TUNE-005
+evidence_commit: 5ff6ce31b31872e042dec14028dd49d028a05cd6
+evidence_path: experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/result.md
+warehouse_ref: warehouse://runs/tg-vpr-h1-multiseed-20260821/
+status: standalone_ready_pending_migration_run
+formal_evidence: false
+promotion_status: blocked_pending_migration_equivalence

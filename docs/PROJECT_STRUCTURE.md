@@ -49,6 +49,8 @@ idea_tree/                 # 创意来源、评分、排序
 干净 V6 这类“准备升级成新框架”的想法，在确认前仍先登记为所属框架的 innovation。例如当前入口是
 `experiments/v5/innovation/INNOVATION-011_clean_v6_candidate/`；只有实现、训练、重复验证并通过 promotion 后，才创建正式 `experiments/v6/`、`FRAMEWORK-V6` 和对应 Tag。
 
+`experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/` 保存 TG-VPR-H1 的独立模型、冻结配置、训练入口、框架图和迁移等价参数表；它不包含历史多条件诊断与失败附加模块，迁移运行通过前不晋级正式框架。
+
 版本规则：
 
 ```text

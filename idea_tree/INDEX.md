@@ -15,6 +15,7 @@
 | `IDEA-0017` | 角色对比位移原型（RCDP） | 用同角色跨类别对比位移增强原型；H 低于 Mean8。 | `idea_tree/ideas/IDEA-0017_role_contrastive_displacement_prototype/IDEA.md` | local_heuristic | 40.0 | `v5` | rejected |
 | `IDEA-0018` | 角色对齐竞争证据（RACE） | 同角色目标减 rival 证据未获 wrong-role 控制支持。 | `idea_tree/ideas/IDEA-0018_role_aligned_competitive_evidence/IDEA.md` | local_heuristic | 40.0 | `v5` | rejected |
 | `IDEA-0020` | 角色分离原型残差（RPR） | 无句间 attention 的角色分离低秩残差；历史主条件 H=51.838。 | `idea_tree/ideas/IDEA-0020_role_separated_prototype_residual/IDEA.md` | local_heuristic | 40.0 | `v5` | rejected |
+| `IDEA-0021` | 三组 Value 原型重参数化（TG-VPR-H1） | 六个局部描述先组内平均，再与独特、整体描述形成三组；使用单一768维Value路径重参数化seen原型。 | `idea_tree/ideas/IDEA-0021_tg_vpr_h1/IDEA.md` | owner_derived | 86.0 | `v5` | validated_candidate |
 | `IDEA-0003` | Dynamic Residual Routing | 把 v5 中固定 residual/mix 系数改成可学习 dynamic gates，按样本或类别调节 local、ICSA、BVSA direction 和 PSE routing。 | `idea_tree/ideas/IDEA-0003_dynamic_residual_routing/IDEA.md` | local_heuristic | 78.0 | `v5` | weakened |
 | `IDEA-0013` | 干净 V6 框架候选 | 把 8 句话作为 6 个局部部位、1 个独特判别特征、1 个全局描述，删除 V5 旧频域/拓扑/多辅助损失干扰，用干净的句子—区域匹配框架先证明核心机制是否合理。 | `idea_tree/ideas/IDEA-0013_clean_v6_candidate/IDEA.md` | local_heuristic | 78.0 | `v5` | selected |
 | `IDEA-0002` | FAE-memory JEPA auxiliary loss | 把 JEPA 辅助损失的视觉 context 移到 FAE memory，用 FAE-enhanced context 预测 detached pre-FAE patch target。 | `idea_tree/ideas/IDEA-0002_fae_memory_jepa/IDEA.md` | local_heuristic | 72.0 | `v2`, `v3`, `v4`, `v5` | validated |
