@@ -36,3 +36,11 @@ trial_framework_source: experiments/module_trials/IDEA-0002_fae_memory_jepa/TRIA
 ## Version Delta
 
 Compared with `v3`, `v5` activates the TRIAL-003 conditional BVSA text path and freezes the `trial003-main100-069` source config. It is owner-activated for future tuning. Its repeat mean does not beat the stronger confirmed `v3/CONFIRM-001 local-v3-054` reference, so v5 must not be described as a stronger confirmed baseline.
+
+## 当前 TG-VPR-H1 研究进度
+
+`TG-VPR-H1` 使用六个局部描述、一个独特描述和一个整体描述构造三组语义，以单个 768 维 Value 路径重参数化 seen 类原型；不使用 Q/K attention，unseen 类保持 Mean8。
+
+seeds 5/6/7/8 的 H 分别为 `73.709453 / 73.864640 / 74.019664 / 73.759312`，四 seed 平均 `73.838267`，范围 `0.310211`。当前最高单次是 seed 7 的 `U=72.690260、S=75.398600、H=74.019664、ZS=81.534684`。
+
+该结果属于 `multi_seed_stability`，`not_confirmation_evidence=true`。seed 7 只登记为当前 `best_observed`，不能写成 confirmed、promotion 或正式主线。权威轻量账本见 `experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/`，原始日志和 checkpoint 保存在 Warehouse。

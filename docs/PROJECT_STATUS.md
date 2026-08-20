@@ -2,6 +2,12 @@
 
 Date: 2026-08-08
 
+## 2026-08-21 TG-VPR-H1 当前研究进度
+
+TG-VPR-H1 已完成 seeds 5/6/7/8 的多 seed 稳定性运行。当前 `best_observed` 是 seed 7：`U=72.690260、S=75.398600、H=74.019664、ZS=81.534684`；四 seed 的 H 平均为 `73.838267`，最小 `73.709453`，最大 `74.019664`，范围 `0.310211`。
+
+该批结果明确为 `multi_seed_stability / not_confirmation_evidence`，没有改变 `GTPJ-v5` 正式主线、confirmed reference 或 promotion 状态。轻量账本位于 `experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/`，原始产物位于本地 Warehouse。
+
 ## 2026-08-13 V5 主线与干净母版更新
 
 当前 V5 新实验起点已更新为 `MODEL-V5-TEMPLATE-V2`：本地分支

@@ -6,3 +6,4 @@
 | `V5-TUNE-002` | pre_run_gated | 固定 V5 其余语义时，局部分支融合权重取多少更合适 | `experiments/v5/tune/TUNE-002_local_fusion_weight/PARAMETER_MATRIX.md` | - | `experiments/v5/tune/TUNE-002_local_fusion_weight` | - |
 | `V5-TUNE-003` | pre_run_gated | FGVD 选择的局部块数量怎样影响结果 | `experiments/v5/tune/TUNE-003_fgvd_select_k/PARAMETER_MATRIX.md` | - | `experiments/v5/tune/TUNE-003_fgvd_select_k` | - |
 | `V5-TUNE-004` | pre_run_gated | SGMP 的 top-k 设为 16 会怎样影响结果 | `experiments/v5/tune/TUNE-004_sgmp_topk/PARAMETER_MATRIX.md` | - | `experiments/v5/tune/TUNE-004_sgmp_topk` | - |
+| `V5-TUNE-005` | completed | TG-VPR-H1 在 seeds 5/6/7/8 下的稳定性与当前最高单次是多少 | `experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed/PARAMETER_MATRIX.csv` | `LOCAL-DCRA-PSE-20260816/RUN-007` | `experiments/v5/tune/TUNE-005_tg_vpr_h1_multiseed` | - |
