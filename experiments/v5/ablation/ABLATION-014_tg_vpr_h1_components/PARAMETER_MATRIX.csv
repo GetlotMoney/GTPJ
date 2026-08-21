@@ -1,5 +1,5 @@
 run_id,condition,seed,code_commit,config_sha256,status,U,S,H,ZS,best_epoch,decision,artifact_uri
-RUN-001,SINGLE-GROUP-VALUE,7,<pre-run-commit>,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
-RUN-002,THREE-GROUP-NO-VALUE,7,<pre-run-commit>,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
-RUN-003,THREE-GROUP-FIXED-EQUAL-VALUE,7,<pre-run-commit>,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
-RUN-004,FULL-H1-LEARNED-WEIGHTS,7,<pre-run-commit>,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
+RUN-001,SINGLE-GROUP-VALUE,7,495b401b33e60be43036251534335cace706090b,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
+RUN-002,THREE-GROUP-NO-VALUE,7,495b401b33e60be43036251534335cace706090b,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
+RUN-003,THREE-GROUP-FIXED-EQUAL-VALUE,7,495b401b33e60be43036251534335cace706090b,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
+RUN-004,FULL-H1-LEARNED-WEIGHTS,7,495b401b33e60be43036251534335cace706090b,d67f893cbba168bec8c40d8eca7de99608fc8c9806402e7373d1908b1e448ca0,planned,,,,,,pending,
