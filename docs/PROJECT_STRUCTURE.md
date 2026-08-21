@@ -51,6 +51,8 @@ idea_tree/                 # 创意来源、评分、排序
 
 `experiments/v5/innovation/INNOVATION-024_tg_vpr_h1/` 保存 TG-VPR-H1 的独立模型、冻结配置、训练入口、框架图和迁移等价参数表；它不包含历史多条件诊断与失败附加模块，迁移运行通过前不晋级正式框架。
 
+`experiments/v5/ablation/ABLATION-014_tg_vpr_h1_components/` 使用同一独立训练制度比较单组Value、三组无Value、三组固定等权Value和完整H1，只用于定位H1增益来源。
+
 版本规则：
 
 ```text

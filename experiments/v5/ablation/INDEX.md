@@ -15,3 +15,4 @@
 | `V5-ABLATION-011` | completed | 只保留当前 V5 全局分数路径时，性能相对完整母版如何变化 | `experiments/v5/ablation/ABLATION-011_current_global_only/PARAMETER_MATRIX.md` | - | `experiments/v5/ablation/ABLATION-011_current_global_only` | - |
 | `V5-ABLATION-012` | ready_to_run | PSE 的 Q/K 注意力是否真正有效，以及清零是否由权重衰减造成 | `experiments/v5/ablation/ABLATION-012_pse_attention_validation/PARAMETER_MATRIX.md` | - | `experiments/v5/ablation/ABLATION-012_pse_attention_validation` | - |
 | `V5-ABLATION-013` | ready_to_run | 同一个 PSE 是否应该在评估时同时处理已见类和未见类文本 | `experiments/v5/ablation/ABLATION-013_pse_shared_unseen/PARAMETER_MATRIX.md` | - | `experiments/v5/ablation/ABLATION-013_pse_shared_unseen` | - |
+| `V5-ABLATION-014` | pre_run | H1增益来自三组结构、Value路径还是可学习组权重 | `experiments/v5/ablation/ABLATION-014_tg_vpr_h1_components/PARAMETER_MATRIX.csv` | `V5-INNOVATION-024` | `experiments/v5/ablation/ABLATION-014_tg_vpr_h1_components` | - |
